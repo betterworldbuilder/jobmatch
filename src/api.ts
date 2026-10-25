@@ -53,7 +53,7 @@ export const api = {
     if (!response.ok) throw new Error(body.error || 'Photo upload failed');
     return body;
   },
-  createJob: (payload: JobDraft & { employerId: string }) => request<{ job: Job }>('/api/jobs', { method: 'POST', body: JSON.stringify(payload) }),
+  createJob: (payload: JobDraft & { employerId: string; postSource?: 'editor' | 'quick_post' }) => request<{ job: Job }>('/api/jobs', { method: 'POST', body: JSON.stringify(payload) }),
   importJobFile: async (employerId: string, sourceSystem: string, file: File): Promise<JobImportResult> => {
     const params = new URLSearchParams({ employerId, sourceSystem });
     const response = await fetch(`${apiBase}/api/jobs/import-file?${params}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });

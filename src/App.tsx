@@ -35,6 +35,7 @@ import { NotesBox } from './components/NotesBox';
 // Lazy-loaded: pulls in pdf.js only when a resume is actually opened.
 const ResumeViewerModal = lazy(() => import('./components/ResumeViewerModal').then((m) => ({ default: m.ResumeViewerModal })));
 import { JobEditor } from './components/jobs/JobEditor';
+import { QuickPostRole } from './components/jobs/QuickPostRole';
 import { JobImportModal } from './components/jobs/JobImportModal';
 import { CompanyLogoMark, JobHeaderBadge } from './components/jobs/JobHeaderBadge';
 import { GapCoach, JobDetailModal, MatchDetailModal, ScreeningModal } from './components/coach/CoachModals';
@@ -1200,6 +1201,7 @@ function Companies({ data, navigate }: { data: Bootstrap; navigate: (v: View) =>
 
 function Jobs({ data, reload, onAddJobs, manualJobRequest, onOpenMessages, editJobId }: { data: Bootstrap; reload: () => void; onAddJobs: () => void; manualJobRequest: number; onOpenMessages?: (matchId: string) => void; editJobId?: string }) {
   const [editing, setEditing] = useState<Job | 'new' | null>(null);
+  const [quickPost, setQuickPost] = useState(false);
   const [detailJob, setDetailJob] = useState<Job | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -1211,9 +1213,10 @@ function Jobs({ data, reload, onAddJobs, manualJobRequest, onOpenMessages, editJ
     try { await api.deleteJob(id); setConfirmDeleteId(null); setDetailJob(null); reload(); } finally { setDeleting(false); }
   };
   if (editing) return <JobEditor viewer={data.viewer} job={editing === 'new' ? undefined : editing} onSaved={() => { setEditing(null); setDetailJob(null); reload(); }} onCancel={() => setEditing(null)} />;
+  if (quickPost) return <QuickPostRole viewer={data.viewer} onPosted={() => { setQuickPost(false); reload(); }} onCancel={() => setQuickPost(false)} />;
   if (detailJob) return <JobOfferDetail job={detailJob} data={data} onBack={() => setDetailJob(null)} onEdit={() => { setEditing(detailJob); }} onDelete={() => void doDelete(detailJob.id)} deleting={deleting} onOpenMessages={onOpenMessages} />;
   const mine = data.jobs.filter((j) => j.employerId === data.viewer.id);
-  return <div className="page"><div className="page-title"><div><span className="overline">Recruiting</span><h1>My Job Offers</h1><p>Import, review, and manage every role in one place.</p></div><button className="primary-button small" onClick={onAddJobs}>+ Add New Job Offers</button></div>
+  return <div className="page"><div className="page-title"><div><span className="overline">Recruiting</span><h1>My Job Offers</h1><p>Import, review, and manage every role in one place.</p></div><div style={{ display: 'flex', gap: 8 }}><button className="secondary-button small" onClick={() => setQuickPost(true)}>Post a real role</button><button className="primary-button small" onClick={onAddJobs}>+ Add New Job Offers</button></div></div>
     <section className="job-add-banner"><span><Sparkles size={19} /></span><div><strong>Add jobs in minutes</strong><p>Use an ATS feed, paste LinkedIn descriptions, or create an offer manually.</p></div><div className="job-add-methods"><small>CSV / XML / JSON</small><small>LinkedIn links</small><small>Manual</small></div><button className="secondary-button" onClick={onAddJobs}>Choose a method <ArrowRight size={15} /></button></section>
     <div className="channel-bar"><div className="linkedin-mark"><BriefcaseBusiness size={18} /></div><section><strong>JobMatchNow is your job hub</strong><p>Imported offers become reviewable five-card drafts. Nothing is scraped or published automatically.</p></section><span>Recruiter controlled</span></div>
     <div className="jobs-table"><header><span>Role</span><span>Status</span><span>Salary</span><span>Applicants</span><span>Skills</span><span /></header>{mine.map((job) => <div className="job-row job-row-clickable" key={job.id} role="button" tabIndex={0} onClick={() => setDetailJob(job)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setDetailJob(job); } }}><div><JobHeaderBadge job={job} compact />{job.importNeedsReview?.length ? <small className="job-review-note">Review {job.importNeedsReview.join(', ')}</small> : null}</div><span className={`status status-${job.status.toLowerCase()}`}><i />{job.status[0].toUpperCase()}{job.status.slice(1)}</span><span>{job.salary}</span><span>{job.applicants}</span><span>{job.requiredSkills.length} weighted</span>

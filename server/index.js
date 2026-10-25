@@ -21,6 +21,7 @@ import fs from 'node:fs';
 import { exchangeLinkedinCode, linkedinAuthorizationUrl, readSignedValue, signedValue, toLinkedinJobPayload } from './integrations/linkedin.js';
 import { oauthAuthorizationUrl, oauthExchangeCode, oauthProviders } from './integrations/oauth.js';
 import { logBillingEvent } from './billing/audit.js';
+import { actorSide, track, weeklyCounts } from './analytics.js';
 import {
   applyCredit, availableCredits, canUseRecruiterFeatures, computeEffectiveStatus, DAY_MS,
   findSubscription, getOrCreateTrialSubscription, isBillingExempt, PRICE_AMOUNT, PRICE_CURRENCY,
@@ -100,6 +101,8 @@ await store.transaction((db) => {
   for (const collection of ['reports', 'supportRequests']) {
     if (!Array.isArray(db[collection])) db[collection] = [];
   }
+  // Funnel analytics events (server/analytics.js), same reasoning.
+  if (!Array.isArray(db.events)) db.events = [];
 });
 console.log(`JobMatch store: ${process.env.DATABASE_URL ? 'postgresql (RDS)' : 'json file'}`);
 const demoDistances = { 'j-1': 7, 'j-2': 18, 'j-3': 42, 'j-4': 75, 'c-1': 5, 'c-2': 26, 'c-3': 12, 'c-4': 65 };
@@ -107,6 +110,21 @@ const demoDistances = { 'j-1': 7, 'j-2': 18, 'j-3': 42, 'j-4': 75, 'c-1': 5, 'c-
 /** A profile counts as verified once it's SSO-authenticated or well filled in. */
 function verifiedUser(user) {
   return Boolean(user && (user.authProvider || user.provider === 'google' || user.provider === 'linkedin' || (user.completeness ?? 0) >= 80));
+}
+
+/**
+ * What may leave the server about ANOTHER user or their job: never credentials,
+ * never exact coordinates (distance is computed here and sent as distanceKm).
+ */
+function otherPartyView(user) {
+  if (!user) return user;
+  const { passwordHash, authSubject, geo, ...rest } = user;
+  return rest;
+}
+function jobPublicView(job) {
+  if (!job) return job;
+  const { geo, ...rest } = job;
+  return rest;
 }
 
 /** Great-circle distance in km between two {lat,lng} points. */
@@ -553,6 +571,7 @@ app.get('/api/auth/oauth/:provider/callback', async (req, res, next) => {
         conductAcceptedAt: Date.now(),
       };
       db.users.push(created);
+      track(db, 'signup_completed', { userId: created.id, props: { side: actorSide(created), method: provider } });
       return created;
     });
     if (user.suspendedAt) return res.redirect(`${APP_PATH}?sso=${encodeURIComponent('account_suspended')}`);
@@ -658,6 +677,9 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
         conductAcceptedAt: Date.now(),
       };
       db.users.push(created);
+      // Only brand-new accounts count — the demo-mode idempotent re-register
+      // above returns early and is never a signup.
+      track(db, 'signup_completed', { userId: created.id, props: { side: actorSide(created), method: provider || 'email' } });
       if (role === 'employer') {
         getOrCreateTrialSubscription(db, created.id);
         const referralCode = readReferralCookie(req);
@@ -779,6 +801,8 @@ app.delete('/api/me', async (req, res, next) => {
       db.messages = db.messages.filter((m) => !myMatchIds.has(m.matchId) && m.senderId !== me.id);
       db.calls = db.calls.filter((c) => !myMatchIds.has(c.matchId) && c.createdBy !== me.id);
       db.bookmarks = db.bookmarks.filter((b) => b.userId !== me.id);
+      // Keep aggregate funnel counts, but drop the link back to this person.
+      for (const event of db.events || []) if (event.userId === me.id) event.userId = null;
     });
     setCookie(res, AUTH_COOKIE, '', { maxAge: 0 });
     res.json({ ok: true });
@@ -1138,6 +1162,16 @@ const ACTIVE_JOB_REVIEW_THRESHOLD = Number(process.env.ACTIVE_JOB_REVIEW_THRESHO
 const HIDDEN_FROM_CANDIDATES = ['draft', 'expired', 'suspended'];
 const isLiveStatus = (status) => String(status).toLowerCase() === 'active';
 
+/** Fire role_posted the first time a job goes live (never again on pause→active toggles). */
+function trackRolePosted(db, employer, job, source) {
+  if ((db.events || []).some((event) => event.name === 'role_posted' && event.props?.jobId === job.id)) return;
+  track(db, 'role_posted', {
+    userId: employer.id, demo: employer.demo === true,
+    // Categorical only: no salary amounts or coordinates in analytics.
+    props: { jobId: job.id, workMode: job.workMode, type: job.type, source },
+  });
+}
+
 // Move promoted cards to the front, in place, preserving the relative order of
 // both groups. Nothing else about a card changes — the match score a promoted
 // card shows is the score it earned, so paid reach never edits the explanation.
@@ -1373,6 +1407,8 @@ app.post('/api/jobs/import-linkedin', async (req, res, next) => {
 app.post('/api/jobs', async (req, res, next) => {
   try {
     const employerId = resolveActor(req, reqString(req.body, 'employerId', { max: 128 }));
+    // Which UI posted it — analytics only, never stored on the job.
+    const postSource = oneOf(req.body, 'postSource', ['editor', 'quick_post'], { optional: true }) || 'editor';
     const job = await store.transaction((db) => {
       const employer = db.users.find((user) => user.id === employerId && user.role === 'employer');
       if (!employer) throw new ValidationError('employerId', 'Unknown recruiter account');
@@ -1396,6 +1432,7 @@ app.post('/api/jobs', async (req, res, next) => {
       // draft is always free — only publishing consumes an allowance.
       if (isLiveStatus(created.status)) applyPublishEntitlement(db, employer, created);
       db.jobs.push(created);
+      if (isLiveStatus(created.status)) trackRolePosted(db, employer, created, postSource);
       // Fair-use flag only (never a hard block) once a recruiter crosses the
       // configured active-postings threshold — an admin reviews, nothing is
       // auto-deleted or hidden.
@@ -1453,6 +1490,7 @@ app.patch('/api/jobs/:id', async (req, res, next) => {
       }
       const updated = applyJob(item, req.body);
       if (updated.sourceSystem) updated.importNeedsReview = importedJobMissing(updated);
+      if (!wasLive && isLiveStatus(updated.status) && employer) trackRolePosted(db, employer, updated, updated.sourceSystem ? 'import' : 'editor');
       return updated;
     });
     res.json({ job });
@@ -1698,6 +1736,7 @@ app.get('/api/bootstrap', async (req, res, next) => {
       // Real haversine distance when both sides have coordinates; else demo fallback.
       const realDist = haversineKm(viewer.geo, job.geo);
       const withDistance = { ...job, distanceKm: realDist ?? job.distanceKm ?? demoDistances[job.id] };
+      if (job.employerId !== viewer.id) delete withDistance.geo; // private distance range only
       const match = scoreCandidateForJob(viewer, withDistance);
       if (role === 'candidate' && !matchedJobIds.has(job.id)) {
         delete withDistance.salary; delete withDistance.salaryRange;
@@ -1718,9 +1757,10 @@ app.get('/api/bootstrap', async (req, res, next) => {
       || pool.jobs.find((job) => job.employerId === viewer.id) || pool.jobs[0];
     // Deck candidates: contact details and exact salary stay hidden until a mutual match.
     const jobGeo = referenceJob?.geo || viewer.geo;
-    const scoredCandidates = candidates.filter((candidate) => candidate.id !== viewer.id).map(({ email, phone, contactChannels, ...candidate }) => {
+    // passwordHash/authSubject/geo never leave the server for another user.
+    const scoredCandidates = candidates.filter((candidate) => candidate.id !== viewer.id).map(({ email, phone, contactChannels, passwordHash, authSubject, geo, ...candidate }) => {
       if (candidate.agePrivacy !== 'public' && !candidate.discloseAge) delete candidate.birthdate; // age shown in deck only if public
-      const realDist = haversineKm(jobGeo, candidate.geo);
+      const realDist = haversineKm(jobGeo, geo);
       const withDistance = { ...candidate, distanceKm: realDist ?? candidate.distanceKm ?? demoDistances[candidate.id] };
       const match = scoreCandidateForJob(withDistance, { ...referenceJob, distanceKm: withDistance.distanceKm });
       if (!matchedCandidateIds.has(candidate.id) && withDistance.preferences?.salary) {
@@ -1770,9 +1810,9 @@ app.get('/api/bootstrap', async (req, res, next) => {
         ...match,
         // Recruiter-side match rows show a real fit % — score the candidate against
         // the specific job they matched on rather than leaving match undefined (0%).
-        candidate: candidateUser && job ? { ...candidateUser, match: scoreCandidateForJob(candidateUser, job) } : candidateUser,
-        employer,
-        job: job ? { ...job, companyLogo: employer?.companyLogo } : job,
+        candidate: candidateUser && job ? { ...otherPartyView(candidateUser), match: scoreCandidateForJob(candidateUser, job) } : otherPartyView(candidateUser),
+        employer: otherPartyView(employer),
+        job: job ? { ...jobPublicView(job), companyLogo: employer?.companyLogo } : job,
         screeningAnswers: db.swipes.find((swipe) => swipe.actorId === match.candidateId && swipe.targetId === match.jobId && swipe.direction === 'like')?.answers,
       };
     });
@@ -1856,12 +1896,16 @@ app.post('/api/swipes', async (req, res, next) => {
       const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}) };
       const mutual = detectMutualMatch(swipe, db);
       db.swipes.push(swipe);
+      const demo = actor.demo === true;
+      track(db, 'swipe', { userId: actorId, demo, props: { direction, side: actorSide(actor), targetType, superLike: Boolean(swipe.superLike) } });
       let match = null;
       if (mutual && !db.matches.some((item) => item.candidateId === mutual.candidateId && item.jobId === mutual.jobId)) {
         match = { id: crypto.randomUUID(), ...mutual, stage: 'Matched', createdAt: Date.now() };
         db.matches.push(match);
+        // completedBy = which side's swipe closed the mutual match.
+        track(db, 'match_created', { userId: actorId, demo, props: { matchId: match.id, jobId: match.jobId, completedBy: actorSide(actor) } });
         // Expand for the match screen: names, photos, and the mutual salary reveal.
-        match = { ...match, candidate: db.users.find((user) => user.id === match.candidateId), employer: db.users.find((user) => user.id === match.employerId), job: db.jobs.find((job) => job.id === match.jobId) };
+        match = { ...match, candidate: otherPartyView(db.users.find((user) => user.id === match.candidateId)), employer: otherPartyView(db.users.find((user) => user.id === match.employerId)), job: jobPublicView(db.jobs.find((job) => job.id === match.jobId)) };
       }
       return { swipe, match, duplicate: false, likesRemaining: likesRemainingToday(db.swipes, actorId) };
     });
@@ -2875,6 +2919,16 @@ app.get('/api/admin/analytics/overview', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Funnel events per ISO week (Monday, UTC). Demo/seeded activity excluded
+// unless ?includeDemo=true. Read-only, admin session required.
+app.get('/api/admin/analytics/events', async (req, res, next) => {
+  try {
+    requireAdminRole(authSession(req));
+    const db = await store.read();
+    res.json({ weeks: weeklyCounts(db.events, { includeDemo: req.query.includeDemo === 'true' }) });
+  } catch (error) { next(error); }
+});
+
 // --- Admin: candidate/recruiter account management -------------------------
 // Search/suspend/reactivate only — no silent edits to a user's own profile
 // data (skills, CV, salary, feedback), matching the "no silent changes"
@@ -3467,7 +3521,16 @@ app.post('/api/messages', async (req, res, next) => {
         const error = new Error('Only the matched parties can message this thread'); error.status = 403; throw error;
       }
       const item = { id: crypto.randomUUID(), matchId, senderId, text, createdAt: Date.now() };
+      const isFirst = !db.messages.some((message) => message.matchId === matchId);
       db.messages.push(item);
+      if (isFirst) {
+        const sender = db.users.find((user) => user.id === senderId);
+        // Never the message text — only who opened the conversation and how long it took.
+        track(db, 'first_message', {
+          userId: senderId, demo: sender?.demo === true,
+          props: { matchId, senderSide: actorSide(sender), minutesSinceMatch: match.createdAt ? Math.round((item.createdAt - match.createdAt) / 60000) : null },
+        });
+      }
       return item;
     });
     res.status(201).json(message);

@@ -122,6 +122,8 @@ export function applyJob(job, body, { strict = false } = {}) {
     if (job.workMode !== 'Remote' && job.hiringRadiusKm === undefined) throw new ValidationError('hiringRadiusKm', 'Hiring radius is required for on-site or hybrid roles');
     if (job.workMode === 'Remote' && !job.remoteScope) job.remoteScope = 'worldwide';
     if (!job.salaryRange) throw new ValidationError('salaryRange', 'Salary range is mandatory');
+    // Salary up front is the promise: a 0–0 range is not a salary.
+    if (!(job.salaryRange.max > 0)) throw new ValidationError('salaryRange', 'Enter a real salary range');
     if (!job.description) throw new ValidationError('description', 'Description is required');
     if (!job.status) job.status = 'draft';
   }
