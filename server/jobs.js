@@ -113,21 +113,30 @@ export function applyJob(job, body, { strict = false } = {}) {
   if (body.referenceCheck !== undefined) job.referenceCheck = Boolean(body.referenceCheck);
 
   if (strict) {
-    if (!job.title) throw new ValidationError('title', 'Title is required');
-    if (!job.requiredSkills || job.requiredSkills.length < 1) throw new ValidationError('requiredSkillsDetail', 'At least 1 required skill');
-    if (!job.type) throw new ValidationError('type', 'Employment type is required');
-    if (!job.workMode) throw new ValidationError('workMode', 'Work mode is required');
-    if (!job.location) throw new ValidationError('location', 'Location is required');
-    // Radius only matters for on-site/hybrid; remote roles use scope instead.
-    if (job.workMode !== 'Remote' && job.hiringRadiusKm === undefined) throw new ValidationError('hiringRadiusKm', 'Hiring radius is required for on-site or hybrid roles');
     if (job.workMode === 'Remote' && !job.remoteScope) job.remoteScope = 'worldwide';
-    if (!job.salaryRange) throw new ValidationError('salaryRange', 'Salary range is mandatory');
-    // Salary up front is the promise: a 0–0 range is not a salary.
-    if (!(job.salaryRange.max > 0)) throw new ValidationError('salaryRange', 'Enter a real salary range');
-    if (!job.description) throw new ValidationError('description', 'Description is required');
+    assertPublishable(job);
     if (!job.status) job.status = 'draft';
   }
   return job;
+}
+
+/**
+ * The required-field contract a job must meet to be created via POST and to
+ * go live via PATCH (draft/imported/paused → active). One function so the two
+ * paths can't drift: an imported draft can't be published without a real salary.
+ */
+export function assertPublishable(job) {
+  if (!job.title) throw new ValidationError('title', 'Title is required');
+  if (!job.requiredSkills || job.requiredSkills.length < 1) throw new ValidationError('requiredSkillsDetail', 'At least 1 required skill');
+  if (!job.type) throw new ValidationError('type', 'Employment type is required');
+  if (!job.workMode) throw new ValidationError('workMode', 'Work mode is required');
+  if (!job.location) throw new ValidationError('location', 'Location is required');
+  // Radius only matters for on-site/hybrid; remote roles use scope instead.
+  if (job.workMode !== 'Remote' && job.hiringRadiusKm === undefined) throw new ValidationError('hiringRadiusKm', 'Hiring radius is required for on-site or hybrid roles');
+  if (!job.salaryRange) throw new ValidationError('salaryRange', 'Salary range is mandatory');
+  // Salary up front is the promise: a 0–0 (or inverted) range is not a salary.
+  if (!(job.salaryRange.max > 0) || job.salaryRange.min > job.salaryRange.max) throw new ValidationError('salaryRange', 'Enter a real salary range');
+  if (!job.description) throw new ValidationError('description', 'Description is required');
 }
 
 // ---------------------------------------------------------------------------

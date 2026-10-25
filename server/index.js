@@ -10,7 +10,7 @@ import { importMetadata, normalizeLinkedInImports, parseJobImportFile } from './
 import { detectMutualMatch, isStrongRoleMatch, likesRemainingToday, scoreCandidateForJob, ValidationError, reqString, optString, optStringArray, oneOf } from './matching.js';
 import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, recruiterCompleteness } from './profile.js';
 import { anonymizeText, convertDocxToPdf, detectTools, docxToHtml, extractDocxText, extractPdfText, makeSimplePdf, pdfThumbnail } from './resume.js';
-import { applyJob, parseJobText } from './jobs.js';
+import { applyJob, assertPublishable, parseJobText } from './jobs.js';
 import { backupToS3, mirrorToS3, restoreFromS3, s3Enabled } from './storage.js';
 import { parseResumeToProfile } from './resume-parse.js';
 import os from 'node:os';
@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import { exchangeLinkedinCode, linkedinAuthorizationUrl, readSignedValue, signedValue, toLinkedinJobPayload } from './integrations/linkedin.js';
 import { oauthAuthorizationUrl, oauthExchangeCode, oauthProviders } from './integrations/oauth.js';
 import { logBillingEvent } from './billing/audit.js';
-import { actorSide, track, weeklyCounts } from './analytics.js';
+import { actorSide, involvesDemo, track, untrack, weeklyCounts } from './analytics.js';
 import {
   applyCredit, availableCredits, canUseRecruiterFeatures, computeEffectiveStatus, DAY_MS,
   findSubscription, getOrCreateTrialSubscription, isBillingExempt, PRICE_AMOUNT, PRICE_CURRENCY,
@@ -101,8 +101,8 @@ await store.transaction((db) => {
   for (const collection of ['reports', 'supportRequests']) {
     if (!Array.isArray(db[collection])) db[collection] = [];
   }
-  // Funnel analytics events (server/analytics.js), same reasoning.
-  if (!Array.isArray(db.events)) db.events = [];
+  // Funnel analytics weekly counters (server/analytics.js), same reasoning.
+  if (!Array.isArray(db.eventCounts)) db.eventCounts = [];
 });
 console.log(`JobMatch store: ${process.env.DATABASE_URL ? 'postgresql (RDS)' : 'json file'}`);
 const demoDistances = { 'j-1': 7, 'j-2': 18, 'j-3': 42, 'j-4': 75, 'c-1': 5, 'c-2': 26, 'c-3': 12, 'c-4': 65 };
@@ -118,7 +118,17 @@ function verifiedUser(user) {
  */
 function otherPartyView(user) {
   if (!user) return user;
-  const { passwordHash, authSubject, geo, ...rest } = user;
+  const { geo, ...rest } = selfView(user);
+  return rest;
+}
+
+/**
+ * The one sanitizer for any user record leaving the server — including the
+ * user's OWN record (bootstrap viewer, profile saves). Credentials never leave.
+ */
+function selfView(user) {
+  if (!user) return user;
+  const { passwordHash, authSubject, ...rest } = user;
   return rest;
 }
 function jobPublicView(job) {
@@ -571,7 +581,7 @@ app.get('/api/auth/oauth/:provider/callback', async (req, res, next) => {
         conductAcceptedAt: Date.now(),
       };
       db.users.push(created);
-      track(db, 'signup_completed', { userId: created.id, props: { side: actorSide(created), method: provider } });
+      track(db, 'signup_completed', { dim: `${actorSide(created)}/${provider}` });
       return created;
     });
     if (user.suspendedAt) return res.redirect(`${APP_PATH}?sso=${encodeURIComponent('account_suspended')}`);
@@ -679,7 +689,7 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
       db.users.push(created);
       // Only brand-new accounts count — the demo-mode idempotent re-register
       // above returns early and is never a signup.
-      track(db, 'signup_completed', { userId: created.id, props: { side: actorSide(created), method: provider || 'email' } });
+      track(db, 'signup_completed', { dim: `${actorSide(created)}/${provider || 'email'}` });
       if (role === 'employer') {
         getOrCreateTrialSubscription(db, created.id);
         const referralCode = readReferralCookie(req);
@@ -801,8 +811,7 @@ app.delete('/api/me', async (req, res, next) => {
       db.messages = db.messages.filter((m) => !myMatchIds.has(m.matchId) && m.senderId !== me.id);
       db.calls = db.calls.filter((c) => !myMatchIds.has(c.matchId) && c.createdBy !== me.id);
       db.bookmarks = db.bookmarks.filter((b) => b.userId !== me.id);
-      // Keep aggregate funnel counts, but drop the link back to this person.
-      for (const event of db.events || []) if (event.userId === me.id) event.userId = null;
+      // Funnel counters (db.eventCounts) hold no user ids, so nothing to unlink.
     });
     setCookie(res, AUTH_COOKIE, '', { maxAge: 0 });
     res.json({ ok: true });
@@ -838,7 +847,7 @@ app.patch('/api/users/:id', async (req, res, next) => {
       } else { applyRecruiterProfile(item, req.body); item.completeness = recruiterCompleteness(item); }
       return item;
     });
-    res.json({ user });
+    res.json({ user: selfView(user) });
   } catch (error) { next(error); }
 });
 
@@ -1164,12 +1173,9 @@ const isLiveStatus = (status) => String(status).toLowerCase() === 'active';
 
 /** Fire role_posted the first time a job goes live (never again on pause→active toggles). */
 function trackRolePosted(db, employer, job, source) {
-  if ((db.events || []).some((event) => event.name === 'role_posted' && event.props?.jobId === job.id)) return;
-  track(db, 'role_posted', {
-    userId: employer.id, demo: employer.demo === true,
-    // Categorical only: no salary amounts or coordinates in analytics.
-    props: { jobId: job.id, workMode: job.workMode, type: job.type, source },
-  });
+  if (job.rolePostedTracked) return;
+  // Categorical only: no salary amounts or coordinates in analytics.
+  job.rolePostedTracked = track(db, 'role_posted', { demo: involvesDemo(employer, job), dim: source });
 }
 
 // Move promoted cards to the front, in place, preserving the relative order of
@@ -1490,6 +1496,10 @@ app.patch('/api/jobs/:id', async (req, res, next) => {
       }
       const updated = applyJob(item, req.body);
       if (updated.sourceSystem) updated.importNeedsReview = importedJobMissing(updated);
+      // Publishing (draft/paused → active) must meet the same contract as
+      // POST: real salary range, title, skills, location, etc. Throwing here
+      // rolls the whole transaction back, so nothing is half-published.
+      if (!wasLive && isLiveStatus(updated.status)) assertPublishable(updated);
       if (!wasLive && isLiveStatus(updated.status) && employer) trackRolePosted(db, employer, updated, updated.sourceSystem ? 'import' : 'editor');
       return updated;
     });
@@ -1758,7 +1768,9 @@ app.get('/api/bootstrap', async (req, res, next) => {
     // Deck candidates: contact details and exact salary stay hidden until a mutual match.
     const jobGeo = referenceJob?.geo || viewer.geo;
     // passwordHash/authSubject/geo never leave the server for another user.
-    const scoredCandidates = candidates.filter((candidate) => candidate.id !== viewer.id).map(({ email, phone, contactChannels, passwordHash, authSubject, geo, ...candidate }) => {
+    const scoredCandidates = candidates.filter((candidate) => candidate.id !== viewer.id).map((source) => {
+      const { email, phone, contactChannels, geo } = source;
+      const { email: _e, phone: _p, contactChannels: _c, ...candidate } = otherPartyView(source);
       if (candidate.agePrivacy !== 'public' && !candidate.discloseAge) delete candidate.birthdate; // age shown in deck only if public
       const realDist = haversineKm(jobGeo, geo);
       const withDistance = { ...candidate, distanceKm: realDist ?? candidate.distanceKm ?? demoDistances[candidate.id] };
@@ -1850,7 +1862,7 @@ app.get('/api/bootstrap', async (req, res, next) => {
       }
     }
     const billingNotifications = billing ? (db.billingNotifications || []).filter((entry) => entry.userId === viewer.id).slice(-20).reverse() : undefined;
-    res.json({ viewer, jobs: scoredJobs, candidates: scoredCandidates, roleMatches, matches, messages: db.messages.filter((message) => matchIds.has(message.matchId)), calls: db.calls.filter((call) => matchIds.has(call.matchId)), notes, bookmarkedIds, likesRemaining: likesRemainingToday(pool.swipes, viewer.id), billing, billingNotifications });
+    res.json({ viewer: selfView(viewer), jobs: scoredJobs, candidates: scoredCandidates, roleMatches, matches, messages: db.messages.filter((message) => matchIds.has(message.matchId)), calls: db.calls.filter((call) => matchIds.has(call.matchId)), notes, bookmarkedIds, likesRemaining: likesRemainingToday(pool.swipes, viewer.id), billing, billingNotifications });
   } catch (error) { next(error); }
 });
 
@@ -1896,14 +1908,23 @@ app.post('/api/swipes', async (req, res, next) => {
       const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}) };
       const mutual = detectMutualMatch(swipe, db);
       db.swipes.push(swipe);
-      const demo = actor.demo === true;
-      track(db, 'swipe', { userId: actorId, demo, props: { direction, side: actorSide(actor), targetType, superLike: Boolean(swipe.superLike) } });
+      // Demo if ANY party is demo/sample — starter sample accounts pre-like
+      // real users, and those interactions must not inflate real counts.
+      const targetJob = targetType === 'job' ? db.jobs.find((job) => job.id === targetId) : undefined;
+      const targetUser = targetType === 'candidate'
+        ? db.users.find((user) => user.id === targetId)
+        : db.users.find((user) => user.id === targetJob?.employerId);
+      // The stamp lives on the swipe so undo can retract exactly this count.
+      swipe.tracked = track(db, 'swipe', { demo: involvesDemo(actor, targetUser, targetJob), dim: `${direction}/${actorSide(actor)}`, at: swipe.createdAt });
       let match = null;
+      // One match (and so one match_created) per candidate × job pair.
       if (mutual && !db.matches.some((item) => item.candidateId === mutual.candidateId && item.jobId === mutual.jobId)) {
         match = { id: crypto.randomUUID(), ...mutual, stage: 'Matched', createdAt: Date.now() };
+        const matchJob = db.jobs.find((job) => job.id === match.jobId);
+        const parties = [db.users.find((user) => user.id === match.candidateId), db.users.find((user) => user.id === match.employerId), matchJob];
+        // dim = which side's swipe closed the mutual match.
+        match.tracked = track(db, 'match_created', { demo: involvesDemo(...parties), dim: actorSide(actor), at: match.createdAt });
         db.matches.push(match);
-        // completedBy = which side's swipe closed the mutual match.
-        track(db, 'match_created', { userId: actorId, demo, props: { matchId: match.id, jobId: match.jobId, completedBy: actorSide(actor) } });
         // Expand for the match screen: names, photos, and the mutual salary reveal.
         match = { ...match, candidate: otherPartyView(db.users.find((user) => user.id === match.candidateId)), employer: otherPartyView(db.users.find((user) => user.id === match.employerId)), job: jobPublicView(db.jobs.find((job) => job.id === match.jobId)) };
       }
@@ -1926,6 +1947,9 @@ app.post('/api/swipes/undo', async (req, res, next) => {
       // Drop any match this swipe completed (and its messages), so undo is clean.
       const removedMatches = db.matches.filter((m) => (last.targetType === 'job' ? m.candidateId === actorId && m.jobId === last.targetId : m.employerId === actorId && m.candidateId === last.targetId));
       const removedIds = new Set(removedMatches.map((m) => m.id));
+      // Retract exactly what was counted, so undo + re-swipe never double counts.
+      untrack(db, last.tracked);
+      for (const m of removedMatches) { untrack(db, m.tracked); untrack(db, m.firstMessageTracked); }
       db.matches = db.matches.filter((m) => !removedIds.has(m.id));
       db.messages = db.messages.filter((msg) => !removedIds.has(msg.matchId));
       db.calls = db.calls.filter((c) => !removedIds.has(c.matchId));
@@ -2925,7 +2949,7 @@ app.get('/api/admin/analytics/events', async (req, res, next) => {
   try {
     requireAdminRole(authSession(req));
     const db = await store.read();
-    res.json({ weeks: weeklyCounts(db.events, { includeDemo: req.query.includeDemo === 'true' }) });
+    res.json({ weeks: weeklyCounts(db.eventCounts, { includeDemo: req.query.includeDemo === 'true' }) });
   } catch (error) { next(error); }
 });
 
@@ -3521,15 +3545,13 @@ app.post('/api/messages', async (req, res, next) => {
         const error = new Error('Only the matched parties can message this thread'); error.status = 403; throw error;
       }
       const item = { id: crypto.randomUUID(), matchId, senderId, text, createdAt: Date.now() };
-      const isFirst = !db.messages.some((message) => message.matchId === matchId);
+      const isFirst = !match.firstMessageTracked && !db.messages.some((message) => message.matchId === matchId);
       db.messages.push(item);
       if (isFirst) {
         const sender = db.users.find((user) => user.id === senderId);
-        // Never the message text — only who opened the conversation and how long it took.
-        track(db, 'first_message', {
-          userId: senderId, demo: sender?.demo === true,
-          props: { matchId, senderSide: actorSide(sender), minutesSinceMatch: match.createdAt ? Math.round((item.createdAt - match.createdAt) / 60000) : null },
-        });
+        const parties = [db.users.find((user) => user.id === match.candidateId), db.users.find((user) => user.id === match.employerId), db.jobs.find((job) => job.id === match.jobId)];
+        // Once per match (stamp on the match). Never the message text — only which side opened.
+        match.firstMessageTracked = track(db, 'first_message', { demo: involvesDemo(sender, ...parties), dim: actorSide(sender), at: item.createdAt });
       }
       return item;
     });
@@ -3646,7 +3668,7 @@ app.post('/api/profile-variants/:id/activate', async (req, res, next) => {
       if (item.role === 'candidate') item.completeness = candidateCompleteness(item);
       return item;
     });
-    res.json({ user });
+    res.json({ user: selfView(user) });
   } catch (error) { next(error); }
 });
 

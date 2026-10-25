@@ -1,14 +1,20 @@
-import crypto from 'node:crypto';
-
 /**
- * Funnel analytics. One append-only row per business event, written inside the
- * SAME store transaction that persists the action — so an event exists if and
- * only if the action committed (no double counting from client retries, no
- * orphan events on rollback). Lives in db.events, the same JSON-blob-array
- * pattern as billingEvents.
+ * Funnel analytics as BOUNDED weekly counters, not raw event rows.
  *
- * Privacy: props carry categorical values only. Never put coordinates,
- * distances, salary amounts, emails, names, or message text in an event.
+ * Production keeps all app state in one JSONB document that is rewritten on
+ * every write (store-pg.js), so raw per-swipe rows would grow that document
+ * forever. Instead db.eventCounts holds one row per
+ *   (ISO week, event name, demo flag, dim)
+ * where `dim` is a single low-cardinality category (e.g. "like/candidate").
+ * That is a few dozen rows per week at most, regardless of traffic.
+ *
+ * Counters are bumped inside the SAME store transaction as the action, so a
+ * count exists iff the action committed. track() returns a small "stamp" the
+ * caller stores on the record (swipe / match); untrack(stamp) retracts exactly
+ * that count later (Rewind/undo), in the week it was originally counted.
+ *
+ * Privacy: no user ids, coordinates, salary amounts, names, emails, or message
+ * text are ever stored here — only counts per category.
  */
 export const TRACKED_EVENTS = ['signup_completed', 'role_posted', 'swipe', 'match_created', 'first_message'];
 
@@ -17,33 +23,56 @@ export function actorSide(user) {
   return user?.role === 'employer' ? 'team' : 'candidate';
 }
 
-export function track(db, name, { userId, demo = false, props = {} } = {}) {
-  if (!TRACKED_EVENTS.includes(name)) throw new Error(`Unknown analytics event: ${name}`);
-  if (!Array.isArray(db.events)) db.events = [];
-  const event = {
-    id: crypto.randomUUID(),
-    name,
-    userId: userId || null,
-    // Demo/seeded accounts are flagged so weekly counts can exclude them.
-    demo: demo === true,
-    props,
-    createdAt: Date.now(),
-  };
-  db.events.push(event);
-  return event;
+/** Seeded demo personas AND auto-generated starter "sample" records are not real activity. */
+export function isTestRecord(record) {
+  return record?.demo === true || record?.sample === true;
 }
 
-/** Weekly counts per event (ISO week starting Monday, UTC), excluding demo events by default. */
-export function weeklyCounts(events, { includeDemo = false } = {}) {
+/** An interaction is demo if ANY party to it (users, the job, the job's owner) is demo/sample. */
+export function involvesDemo(...records) {
+  return records.some(isTestRecord);
+}
+
+/** Monday (UTC) of the ISO week containing `ts`, as YYYY-MM-DD. */
+export function isoWeek(ts) {
+  const date = new Date(ts);
+  const day = (date.getUTCDay() + 6) % 7; // Monday = 0
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - day)).toISOString().slice(0, 10);
+}
+
+function bump(db, name, { demo = false, dim = '', at = Date.now() }, delta) {
+  if (!TRACKED_EVENTS.includes(name)) throw new Error(`Unknown analytics event: ${name}`);
+  if (!Array.isArray(db.eventCounts)) db.eventCounts = [];
+  const week = isoWeek(at);
+  const flag = demo === true;
+  let row = db.eventCounts.find((entry) => entry.week === week && entry.name === name && entry.demo === flag && entry.dim === dim);
+  if (!row) {
+    if (delta < 0) return null; // nothing to retract
+    row = { week, name, demo: flag, dim, count: 0 };
+    db.eventCounts.push(row);
+  }
+  row.count = Math.max(0, row.count + delta);
+  return { name, demo: flag, dim, at };
+}
+
+/** Count one event. Returns a stamp to store on the record for later retraction. */
+export function track(db, name, options = {}) {
+  return bump(db, name, options, 1);
+}
+
+/** Retract a previously counted event (no-op for records that were never counted). */
+export function untrack(db, stamp) {
+  if (stamp && stamp.name) bump(db, stamp.name, stamp, -1);
+}
+
+/** { "<Monday>": { "<event>": count } }, demo excluded by default. */
+export function weeklyCounts(rows, { includeDemo = false } = {}) {
   const counts = {};
-  for (const event of events || []) {
-    if (!includeDemo && event.demo) continue;
-    const date = new Date(event.createdAt);
-    const day = (date.getUTCDay() + 6) % 7; // Monday = 0
-    const monday = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - day));
-    const week = monday.toISOString().slice(0, 10);
-    counts[week] ??= {};
-    counts[week][event.name] = (counts[week][event.name] || 0) + 1;
+  for (const row of rows || []) {
+    if (!includeDemo && row.demo) continue;
+    if (!row.count) continue;
+    counts[row.week] ??= {};
+    counts[row.week][row.name] = (counts[row.week][row.name] || 0) + row.count;
   }
   return counts;
 }

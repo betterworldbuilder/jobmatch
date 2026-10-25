@@ -29,7 +29,25 @@ const { pathToFileURL } = require('node:url');
 })().catch((e) => { console.error(e); process.exit(1); });
 EOF
 cp -r marketing/dist/client/. "$STAGE/"
-cp public/sw.js "$STAGE/sw.js" 2>/dev/null || true
+# The app (and its service worker, scoped to /app/) lives under /app/. Older
+# releases shipped the app's sw.js at the ROOT with scope "/", and browsers may
+# still have it registered — so the root gets a self-unregistering kill-switch
+# worker instead of nothing. Keep it deployed for a few months, then remove.
+cat > "$STAGE/sw.js" <<'EOF'
+// Kill switch: retire the old root-scoped JobsMatchNow service worker.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  // Cache storage is per-origin, so only drop the OLD root worker's caches
+  // (v1-v5) — never the /app/ worker's current one.
+  event.waitUntil(caches.keys()
+    .then((keys) => Promise.all(keys.filter((key) => /^jobsmatchnow-shell-v[1-5]$/.test(key)).map((key) => caches.delete(key))))
+    .then(() => self.registration.unregister()));
+});
+EOF
+# dist/ must come from `npm run build:web:production` (base /app/, run by
+# 20-ecs-alb.sh). A plain `npm run build` uses base / and would 404 the
+# manifest, service worker and assets under /app/ — refuse to ship that.
+grep -q '/app/assets/' dist/index.html || { echo "dist/ was not built with base /app/ (run: npm run build:web:production)"; exit 1; }
 cp -r dist/. "$STAGE/app/"
 cp releases/JobsMatchNow-android-debug.apk "$STAGE/downloads/" 2>/dev/null || true
 aws s3 sync "$STAGE/" "s3://$BUCKET/" --delete --only-show-errors
