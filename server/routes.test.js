@@ -34,6 +34,11 @@ async function get(path) {
   return { status: response.status, body: await response.json().catch(() => ({})) };
 }
 
+async function post(path, payload) {
+  const response = await fetch(`${await listening()}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  return { status: response.status, body: await response.json().catch(() => ({})), signedIn: /jm_auth=[^;]+/.test(response.headers.get('set-cookie') || '') };
+}
+
 after(() => {
   server?.close();
   try { unlinkSync(DB_PATH); } catch { /* already gone */ }
@@ -86,4 +91,36 @@ test('admin billing surfaces refuse anonymous callers', async () => {
 test('a candidate account has no recruiter subscription', async () => {
   const { status } = await get('/api/billing/subscription?userId=candidate-demo');
   assert.equal(status, 400, 'candidates are never billed, so this is a client error not a plan');
+});
+
+// Account safety. These run with demo auth ON — the same setting production uses
+// for the live showcase — so they prove demo mode never weakens real sign-up.
+const signup = (extra) => ({ role: 'candidate', name: 'Test Person', provider: 'email', conductAccepted: true, ...extra });
+
+test('email sign-up needs a password even in demo mode', async () => {
+  const { status, signedIn } = await post('/api/auth/register', signup({ email: 'nopass@example.com' }));
+  assert.equal(status, 400);
+  assert.equal(signedIn, false);
+});
+
+test('signing up with a taken email never signs you into that account', async () => {
+  const first = await post('/api/auth/register', signup({ email: 'owner@example.com', password: 'owner-secret-1' }));
+  assert.equal(first.status, 201);
+  const again = await post('/api/auth/register', signup({ email: 'Owner@Example.com', password: 'attacker-pass-2' }));
+  assert.equal(again.status, 409);
+  assert.equal(again.signedIn, false);
+});
+
+test('a passwordless account cannot be claimed by signing up with its email', async () => {
+  // Passwordless accounts exist from the old demo sign-up (and dev mock SSO).
+  const ssoAccount = await post('/api/auth/register', signup({ email: 'sso-user@example.com', provider: 'linkedin' }));
+  assert.equal(ssoAccount.status, 201);
+  const claim = await post('/api/auth/register', signup({ email: 'sso-user@example.com', password: 'attacker-pass-3' }));
+  assert.equal(claim.status, 409);
+  assert.equal(claim.signedIn, false);
+});
+
+test('auth config tells the client whether mock SSO is allowed', async () => {
+  const { body } = await get('/api/auth/config');
+  assert.equal(typeof body.mockSso, 'boolean');
 });

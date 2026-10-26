@@ -280,6 +280,6 @@ export interface AdminAnalyticsOverview {
 export interface SessionUser { id: string; role: Role; kind?: EmployerKind; name: string; email?: string; photo?: string; provider?: string; isNew?: boolean; demo?: boolean; title?: string; company?: string; emailVerified?: boolean }
 
 /** What the server allows for signing in (demo logins, real SSO availability). */
-export interface AuthConfig { demoAuth: boolean; passwordMinLength: number; sso: { google: boolean; linkedin: boolean } }
+export interface AuthConfig { demoAuth: boolean; mockSso: boolean; passwordMinLength: number; sso: { google: boolean; linkedin: boolean } }
 
 export interface Review { id: string; name: string; role?: string; rating?: number; message: string; createdAt: number }

@@ -156,6 +156,12 @@ if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) throw 
 const demoAuth = process.env.DEMO_AUTH !== undefined
   ? process.env.DEMO_AUTH === 'true'
   : process.env.NODE_ENV !== 'production';
+// Mock SSO (fake LinkedIn/Google round-trip onto a pre-made account) is a dev
+// convenience only: it is never real identity, so it stays OFF in production
+// even when the live showcase keeps DEMO_AUTH on (MOCK_SSO=true cannot override that).
+const mockSso = process.env.NODE_ENV !== 'production' && (process.env.MOCK_SSO !== undefined
+  ? process.env.MOCK_SSO === 'true'
+  : demoAuth);
 
 const AUTH_COOKIE = 'jm_auth';
 const SESSION_TTL_SECONDS = 7 * 24 * 3600;
@@ -473,10 +479,8 @@ app.get('/api/auth/linkedin/callback', async (req, res, next) => {
     const session = signedValue({ sub: profile.sub, name: profile.name, email: profile.email, picture: profile.picture, provider: 'linkedin', expiresAt: Date.now() + Math.min(expiresIn * 1000, 86400000) }, sessionSecret);
     setCookie(res, 'jm_session', session, { maxAge: Math.min(expiresIn, 86400) });
     setCookie(res, 'jm_oauth_state', '', { maxAge: 0 });
-    await store.transaction((db) => {
-      const user = db.users.find((item) => item.id === 'candidate-demo');
-      if (user) Object.assign(user, { name: profile.name || user.name, photo: profile.picture || user.photo, email: profile.email, linkedinSubject: profile.sub, linkedinConnected: true });
-    });
+    // The real person's identity stays in their jm_session cookie only — never
+    // copied onto candidate-demo, which anyone can sign into in demo mode.
     res.redirect(statePayload.native ? 'jobmatch://auth/linkedin?success=1' : '/?linkedin=connected');
   } catch (error) { next(error); }
 });
@@ -528,7 +532,7 @@ async function sendVerificationEmail(user) {
 
 const authLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 30, bucket: 'auth' });
 
-app.get('/api/auth/config', (_req, res) => res.json({ demoAuth, passwordMinLength: PASSWORD_MIN_LENGTH, sso: oauthProviders() }));
+app.get('/api/auth/config', (_req, res) => res.json({ demoAuth, mockSso, passwordMinLength: PASSWORD_MIN_LENGTH, sso: oauthProviders() }));
 
 // ---------------------------------------------------------------------------
 // Real SSO (Google / LinkedIn via OpenID Connect) — active when env vars exist.
@@ -639,7 +643,7 @@ app.post('/api/auth/login', authLimiter, async (req, res, next) => {
 
 app.post('/api/auth/sso', authLimiter, async (req, res, next) => {
   try {
-    if (!demoAuth) { const error = new Error('Mock SSO is disabled'); error.status = 403; throw error; }
+    if (!mockSso) { const error = new Error('Mock SSO is disabled'); error.status = 403; throw error; }
     const provider = oneOf(req.body, 'provider', ['linkedin', 'google']);
     const db = await store.read();
     const user = db.users.find((item) => item.id === `sso-${provider}-demo`);
@@ -659,18 +663,18 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
     if (!/.+@.+\..+/.test(email)) throw new ValidationError('email', 'A valid email address is required');
     const password = optString(req.body, 'password', { max: 200 });
     const photo = optString(req.body, 'photo', { max: 500 });
-    // Real accounts require a password; demo mode keeps the near-instant flow.
-    if (!demoAuth && !validPassword(password)) throw new ValidationError('password', `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
-    if (password !== undefined && !validPassword(password)) throw new ValidationError('password', `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+    // Every real account needs a password — DEMO_AUTH only affects the demo
+    // personas, never sign-up. The one passwordless path is dev-only mock SSO.
+    const mockSsoSignup = mockSso && (provider === 'linkedin' || provider === 'google');
+    if ((!mockSsoSignup || password !== undefined) && !validPassword(password)) throw new ValidationError('password', `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
     if (req.body.conductAccepted !== true) throw new ValidationError('conductAccepted', 'You must agree to the Code of Conduct to register');
     const user = await store.transaction((db) => {
       const existing = db.users.find((item) => item.email && item.email.toLowerCase() === email.toLowerCase());
       if (existing) {
-        // Demo accounts and real accounts can never be claimed by re-registering.
-        if (existing.demo === true || existing.passwordHash || !demoAuth) {
-          const error = new Error('An account with this email already exists — log in instead'); error.status = 409; throw error;
-        }
-        return existing; // demo-mode passwordless idempotency
+        // Signing up with a taken email never signs you in as that account.
+        // Only dev mock SSO re-uses its own pre-made passwordless account.
+        if (mockSsoSignup && existing.demo !== true && !existing.passwordHash && existing.provider === provider) return existing;
+        const error = new Error('An account with this email already exists — log in instead'); error.status = 409; throw error;
       }
       // Password accounts need email verification once a mailer is configured;
       // without one (demo/dev) they're auto-verified so the flow stays usable.
@@ -687,8 +691,8 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
         conductAcceptedAt: Date.now(),
       };
       db.users.push(created);
-      // Only brand-new accounts count — the demo-mode idempotent re-register
-      // above returns early and is never a signup.
+      // Only brand-new accounts count — the dev mock-SSO re-use above returns
+      // early and is never a signup.
       track(db, 'signup_completed', { dim: `${actorSide(created)}/${provider || 'email'}` });
       if (role === 'employer') {
         getOrCreateTrialSubscription(db, created.id);
@@ -743,7 +747,9 @@ app.post('/api/auth/forgot', authLimiter, async (req, res, next) => {
   try {
     const email = reqString(req.body, 'email', { max: 200 }).toLowerCase();
     const db = await store.read();
-    const user = db.users.find((item) => item.email && item.email.toLowerCase() === email && item.passwordHash);
+    // Passwordless accounts from the old demo sign-up set their first password
+    // here too — the emailed link proves control of the address.
+    const user = db.users.find((item) => item.email && item.email.toLowerCase() === email && item.demo !== true && item.role !== 'admin');
     if (user) {
       const token = actionToken('reset', user.id, 3600 * 1000);
       const link = `${publicOrigin}${APP_PATH}?reset=${encodeURIComponent(token)}`;
@@ -763,6 +769,9 @@ app.post('/api/auth/reset', authLimiter, async (req, res, next) => {
     const user = await store.transaction((db) => {
       const u = db.users.find((item) => item.id === payload.sub);
       if (!u) { const error = new Error('Account not found'); error.status = 404; throw error; }
+      // Same gates as /forgot and /login: a reset never revives a suspended,
+      // demo or admin account (admins sign in through Google only).
+      if (u.suspendedAt || u.demo === true || u.role === 'admin') { const error = new Error('This reset link is invalid or expired'); error.status = 400; throw error; }
       u.passwordHash = hashPassword(password);
       u.emailVerified = true; // proving email control also verifies it
       return u;

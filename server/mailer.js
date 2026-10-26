@@ -10,7 +10,9 @@ export function mailerConfigured() {
 
 export async function sendMail({ to, subject, text, html }) {
   if (!mailerConfigured()) {
-    console.log(`[mailer:dev] → ${to}\n  subject: ${subject}\n  ${text}`);
+    // Mail bodies carry live sign-in links (reset, verify) — never put them in production logs.
+    if (process.env.NODE_ENV === 'production') console.log(`[mailer:off] not sent → ${to} (${subject})`);
+    else console.log(`[mailer:dev] → ${to}\n  subject: ${subject}\n  ${text}`);
     return { delivered: false, dev: true };
   }
   const nodemailer = await import('nodemailer');

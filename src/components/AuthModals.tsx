@@ -23,7 +23,7 @@ function detectNativeWebview() {
 }
 const isNativeWebview = detectNativeWebview();
 
-const defaultConfig: AuthConfig = { demoAuth: true, passwordMinLength: 8, sso: { google: false, linkedin: false } };
+const defaultConfig: AuthConfig = { demoAuth: true, mockSso: false, passwordMinLength: 8, sso: { google: false, linkedin: false } };
 
 function useAuthConfig() {
   const [config, setConfig] = useState<AuthConfig>(defaultConfig);
@@ -34,7 +34,7 @@ function useAuthConfig() {
 /**
  * SSO buttons: when a provider has real OAuth credentials configured, the
  * button starts the real OpenID Connect redirect flow; otherwise it falls back
- * to mock SSO (demo mode only).
+ * to mock SSO (dev only — the server never enables it in production).
  */
 function SsoButtons({ config, role, busy, onMockSso, disabled }: { config: AuthConfig; role?: Role; busy: SsoBusy; onMockSso: (provider: 'linkedin' | 'google') => void; disabled?: boolean }) {
   const start = (provider: 'linkedin' | 'google') => {
@@ -43,7 +43,7 @@ function SsoButtons({ config, role, busy, onMockSso, disabled }: { config: AuthC
   };
   // In the native app, real SSO can't run in a webview — show a hint instead.
   if (isNativeWebview) return <p className="sso-native-note">Signing in with Google or LinkedIn? Open <b>jobsmatchnow.com</b> in your browser. On the app, use email or a demo profile below.</p>;
-  const visible = (provider: 'linkedin' | 'google') => config.sso[provider] || config.demoAuth;
+  const visible = (provider: 'linkedin' | 'google') => config.sso[provider] || config.mockSso;
   if (!visible('linkedin') && !visible('google')) return null;
   return <div className="sso-stack">
     {visible('linkedin') && <button type="button" className="sso-button sso-linkedin" disabled={busy !== null || disabled} onClick={() => start('linkedin')}>
@@ -95,7 +95,7 @@ export function LoginModal({ onClose, onComplete }: { onClose: () => void; onCom
 
   if (forgot) return <ModalShell title="Reset your password" subtitle="Enter your email and we'll send a reset link." onClose={onClose}>
     {forgotDone ? <div className="feedback-done"><div className="feedback-done-mark"><LogIn size={22} /></div><strong>Check your email</strong><p>{forgotDone}</p><button className="text-button" onClick={() => { setForgot(false); setForgotDone(null); }}>Back to log in</button></div>
-      : <form className="auth-form" onSubmit={async (event) => { event.preventDefault(); if (!email.trim()) return; setSubmitting('forgot'); setError(''); try { const r = await api.forgotPassword(email.trim()); setForgotDone(r.mailer ? 'If that email has an account, a reset link is on its way.' : 'Email delivery isn’t configured in this demo — check the server logs for the link.'); } catch (e) { setError(e instanceof Error ? e.message : 'Failed'); } finally { setSubmitting(null); } }}>
+      : <form className="auth-form" onSubmit={async (event) => { event.preventDefault(); if (!email.trim()) return; setSubmitting('forgot'); setError(''); try { const r = await api.forgotPassword(email.trim()); setForgotDone(r.mailer ? 'If that email has an account, a reset link is on its way.' : 'Email delivery isn’t set up yet, so no link was sent. Contact support to reset your password.'); } catch (e) { setError(e instanceof Error ? e.message : 'Failed'); } finally { setSubmitting(null); } }}>
         <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" aria-label="Email address" required />
         <button type="submit" className="primary-button auth-submit" disabled={submitting === 'forgot' || !email.trim()}>{submitting === 'forgot' ? <Loader2 size={16} className="spin" /> : 'Send reset link'}</button>
         <button type="button" className="text-button" onClick={() => setForgot(false)}>Back to log in</button>
@@ -136,8 +136,8 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
   const [error, setError] = useState('');
   const [conductAccepted, setConductAccepted] = useState(false);
   const [conductOpen, setConductOpen] = useState(false);
-  const needsPassword = !config.demoAuth;
-  const passwordOk = !needsPassword || password.length >= config.passwordMinLength;
+  // Every real account has a password; demo mode only adds the demo personas on login.
+  const passwordOk = password.length >= config.passwordMinLength;
 
   const run = async (action: () => Promise<SessionUser>) => {
     setError('');
@@ -146,7 +146,7 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
     finally { setBusy(null); setSubmitting(false); }
   };
 
-  return <ModalShell title="Join JobsMatchNow" subtitle={needsPassword ? 'Create your account in under a minute.' : "One click and you're in. No forms, no waiting."} onClose={onClose}>
+  return <ModalShell title="Join JobsMatchNow" subtitle="Create your account in under a minute." onClose={onClose}>
     <div className="role-choice" role="radiogroup" aria-label="I am a">
       <button type="button" className={role === 'candidate' ? 'role-option active' : 'role-option'} onClick={() => setRole('candidate')} aria-pressed={role === 'candidate'}><User size={17} /><strong>Candidate</strong><small>Find your next role</small></button>
       <button type="button" className={role === 'employer' ? 'role-option active' : 'role-option'} onClick={() => setRole('employer')} aria-pressed={role === 'employer'}><BriefcaseBusiness size={17} /><strong>Company / Headhunter</strong><small>Find great people</small></button>
@@ -157,10 +157,10 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
     </label>
     <SsoButtons config={config} role={role} busy={busy} disabled={!conductAccepted} onMockSso={(provider) => { setBusy(provider); run(() => authProviders[provider].signIn({ registerRole: role, conductAccepted })); }} />
     <div className="auth-divider"><span>or continue with email</span></div>
-    <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || !email.trim() || !passwordOk || !conductAccepted) return; setSubmitting(true); run(() => authProviders.email.signIn({ register: { role, name: name.trim(), email: email.trim(), password: password || undefined, conductAccepted } })); }}>
+    <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || !email.trim() || !passwordOk || !conductAccepted) return; setSubmitting(true); run(() => authProviders.email.signIn({ register: { role, name: name.trim(), email: email.trim(), password, conductAccepted } })); }}>
       <input className="auth-input" placeholder="Full name" value={name} onChange={(event) => setName(event.target.value)} required aria-label="Full name" autoComplete="name" />
       <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} required aria-label="Email address" autoComplete="email" />
-      {needsPassword && <input className="auth-input" type="password" placeholder={`Password (min ${config.passwordMinLength} characters)`} value={password} onChange={(event) => setPassword(event.target.value)} required minLength={config.passwordMinLength} aria-label="Password" autoComplete="new-password" />}
+      <input className="auth-input" type="password" placeholder={`Password (min ${config.passwordMinLength} characters)`} value={password} onChange={(event) => setPassword(event.target.value)} required minLength={config.passwordMinLength} aria-label="Password" autoComplete="new-password" />
       <button type="submit" className="primary-button auth-submit" disabled={submitting || !name.trim() || !email.trim() || !passwordOk || !conductAccepted}>{submitting ? <Loader2 size={16} className="spin" /> : <><Mail size={16} /> Create my account</>}</button>
     </form>
     {error && <p className="auth-error">{error}</p>}
