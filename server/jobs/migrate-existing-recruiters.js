@@ -6,6 +6,8 @@
 // a generous default since there's no record of what they've "already paid"
 // for under the old, free-forever model. Run manually once after deploying
 // the billing release: `node server/jobs/migrate-existing-recruiters.js`.
+// Stop the API first: the PostgreSQL store lets one process own the database
+// at a time, so this refuses to run while the API is up.
 import { JsonStore } from '../store.js';
 import { PgStore } from '../store-pg.js';
 import { createSeed } from '../seed.js';

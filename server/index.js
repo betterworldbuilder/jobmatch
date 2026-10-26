@@ -1844,11 +1844,12 @@ app.get('/api/bootstrap', async (req, res, next) => {
     if (role === 'employer' && !isBillingExempt(viewer)) {
       let subscription = findSubscription(db, viewer.id);
       if (!subscription) subscription = await store.transaction((db2) => getOrCreateTrialSubscription(db2, viewer.id));
-      // getOrCreateReferralCode mutates `viewer` in place, so capture whether
-      // it already had one BEFORE calling it — checking viewer.referralCode
-      // afterward would always see the just-generated value and never persist.
-      const hadReferralCode = Boolean(viewer.referralCode);
-      const referralCode = getOrCreateReferralCode(db, viewer);
+      // Bootstrap is a read (the state is frozen), so a first-time code is
+      // generated and saved in its own transaction, stable on every later load.
+      const referralCode = viewer.referralCode || await store.transaction((db2) => {
+        const u = db2.users.find((entry) => entry.id === viewer.id);
+        return u ? getOrCreateReferralCode(db2, u) : null;
+      });
       billing = {
         subscription,
         effectiveStatus: computeEffectiveStatus(subscription),
@@ -1864,11 +1865,6 @@ app.get('/api/bootstrap', async (req, res, next) => {
         appleEnabled: isAppleConfigured(),
         appleProductId: appleSubscriptionProductId(),
       };
-      // Bootstrap is a read, not a transaction — write a freshly-generated
-      // code back once so it's stable on every future load.
-      if (!hadReferralCode && referralCode) {
-        await store.transaction((db2) => { const u = db2.users.find((entry) => entry.id === viewer.id); if (u && !u.referralCode) u.referralCode = referralCode; });
-      }
     }
     const billingNotifications = billing ? (db.billingNotifications || []).filter((entry) => entry.userId === viewer.id).slice(-20).reverse() : undefined;
     res.json({ viewer: selfView(viewer), jobs: scoredJobs, candidates: scoredCandidates, roleMatches, matches, messages: db.messages.filter((message) => matchIds.has(message.matchId)), calls: db.calls.filter((call) => matchIds.has(call.matchId)), notes, bookmarkedIds, likesRemaining: likesRemainingToday(pool.swipes, viewer.id), billing, billingNotifications });
