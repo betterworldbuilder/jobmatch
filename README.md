@@ -80,6 +80,34 @@ Everything from a first swipe to a signed offer lives in **one** respectful, int
 
 ---
 
+## 🧭 Company command center (`jobsmatchnow-team/`)
+
+The company runs from a local dashboard site: one founder plus seven Claude Code agents (Bui builds, Rev reviews,
+Mark markets, Selly sells, Rizer raises, Desi designs, Avi advises), working backwards from a 36-month plan.
+Agents only draft; the founder approves and sends everything by hand.
+
+```bash
+cd jobsmatchnow-team && ./dash.sh   # http://localhost:4321 (local only, 127.0.0.1)
+```
+
+Three tabs, rebuilt from the repo files on every load (missing numbers show `[NEEDS DATA]`, never estimates):
+
+- 🏢 **Company:** the business, the problem we solve, for who, how it works, sourced market potential, mission,
+  and a link to the live app.
+- ⛵ **Our team:** the crew picture; each member's role in their own words; the 8-step business workflow
+  (attract → vet → win teams → pilot → match → get paid → prove → raise and exit) with who acts at each step, in order.
+- 🎛️ **Command center:**
+  - **Global timeline** Day 1 → M36, one row per member (ownership), the current stage outlined, live progress.
+  - **Meetings calendar** with **Propose a meeting** (subject, problem to solve, desired output); every member
+    speaks in order, then the CEO **decides the final action**.
+  - **Stage loop:** each member's task and result → **CEO Yes / No / Delay** → team meeting → agreed next tasks →
+    goal achieved? → reiterate.
+  - Drafts to approve, leads, member actions, KPIs, charts and acquisition readiness.
+
+Details, commands and data files: [`jobsmatchnow-team/README.md`](jobsmatchnow-team/README.md).
+
+---
+
 ## 🏗️ Tech overview
 
 **Frontend** — React 19 + TypeScript + Vite, [`motion`](https://motion.dev) for gestures/animation, `lucide-react` icons, `pdfjs-dist` for the in-app resume viewer. Zero UI framework — hand-built, theme-aware CSS.
