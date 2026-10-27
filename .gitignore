@@ -25,3 +25,6 @@ oauth/
 
 # Scratch commit-message file used by deploys in this session
 .git-commit-msg.txt
+
+# Claude Code agents, commands and settings stay local (any folder)
+.claude/
