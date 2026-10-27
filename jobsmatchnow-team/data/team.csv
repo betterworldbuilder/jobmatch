@@ -1,0 +1,9 @@
+id,name,title,intro
+founder,Founder,CEO + community lead,"I set the goals, sell one hour a day and vet engineers in person. I approve everything that leaves the building. The team proposes; I decide."
+builder,Bui,Builder · product engineer,"I build the JobsMatchNow app: features, fixes, tests and staging. I only build what a pilot, the feedback log or the exit checklist asks for."
+reviewer,Rev,Reviewer · quality and truth,"I check every code change and every claim before it leaves. If a number is not in docs/metrics.md, it does not ship."
+marketer,Mark,Marketer · growth and candidates,"I tell our story and grow the bench of engineers: posts, communities and the vetting pipeline. One message: let the perfect match chase you."
+seller,Selly,Seller · US hiring teams,"I find US startups that hire globally, draft the outreach and run each pilot to a first match within 7 days. I prepare; you send."
+fundraiser,Rizer,Fundraiser · investors and acquirers,"I build the deck, the investor list and the acquirer map, with real numbers only. My job is to make LinkedIn meet us at the right moment, with a second bidder in the room."
+advisor,Avi,Board advisor · mentorship,"I ask the questions investors and acquirers will ask, before they do. Every week I name the one hurdle that matters, back or challenge your proposals and say what to kill. I advise; the founder decides."
+designer,Desi,Designer · game-grade UX/UI,"I make the command center, and later the app, feel like a great game HUD: you always know the main quest, where you are on the map and the next move."

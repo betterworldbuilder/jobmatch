@@ -1,0 +1,27 @@
+date,agent,task,output,handoff_to
+2026-10-25,seller,"Rewrote ICP and objections for US buyers; researched US startups hiring remote engineers (3 verified of 30 asked, no padding)",docs/icp.md docs/objections.md data/leads.csv outbox/2026-10-25_seller_us-prospects.md,reviewer
+2026-10-25,builder,"Installed operating rhythm: feedback and decisions logs, /log and /ceo commands, daily-run and weekly-review updates",docs/operating-rhythm.md docs/feedback.md docs/decisions.md,reviewer
+2026-10-25,reviewer,"Reviewed operating rhythm install: BLOCK on ceo.md and daily-run.md (unsafe unattended builder step, pronouns); fixes applied",outbox/2026-10-25_reviewer_daily.md,chief-of-staff
+2026-10-25,builder,"Dashboard upgrade to full spec (stopped partway, finished by Chief of Staff)",scripts/build_dashboard.py,reviewer
+2026-10-25,chief-of-staff,"Added team sections to dashboard: project status, actions per member, last 7 days, feedback analysis, collaboration",scripts/build_dashboard.py,reviewer
+2026-10-25,chief-of-staff,"Made dashboard interactive: founder action buttons and forms, pie charts, CTA bar, direct links; 11 tests pass",dash/server.mjs dash/actions.mjs scripts/build_dashboard.py,reviewer
+2026-10-25,chief-of-staff,"Wrote 20 external messages, one per file: 12 lead emails and LinkedIn notes, 8 US LinkedIn posts",outbox/2026-10-25_seller_*-email-1.md outbox/2026-10-25_marketer_post-*.md,reviewer
+2026-10-25,reviewer,"Checked 20 messages: 17 PASS, 3 BLOCK (unbuilt overlap matching); all 9 fixed files PASS on re-check",outbox/2026-10-25_reviewer_daily.md,Founder
+2026-10-25,marketer,"Outreach strategy for 3 segments: sequences, send windows, 2-week experiment, conflicts, YC workstream note, dashboard requirements, investor handoff",docs/outreach-strategy-yc.md,reviewer
+2026-10-26,builder,"Feature health check: 182/182 unit tests, typecheck clean, build OK, live smoke 19/19; no code changed",tests-e2e-smoke.sh server/*.test.js,Founder
+2026-10-26,builder,"Production-readiness and capacity check: live is demo-mode MVP on one t3.micro; whole app in one DB row, ~46 MB per write at 1k+1k users; LinkedIn job scraping declined (rule 4)",server/store-pg.js server/index.js,Founder
+2026-10-26,builder,"Closed sign-up account-takeover paths (password always required, no re-register claim, mock SSO off in prod); Rev PASS, nits fixed; committed f4bc5f8, not deployed",server/index.js src/components/AuthModals.tsx server/routes.test.js,reviewer
+2026-10-26,builder,"Database restructure: one row per record instead of one 46 MB row; swipe 83 ms at 1k+1k users; 201/201 tests, smoke 19/19 on Postgres; Rev PASS, nits fixed; committed 47ab868, not deployed",server/store-memory.js server/store-pg.js server/store.js,Founder
+2026-10-25,marketer,"Drafted 6 first-email variants (A and B ready for review, C blocked by evidence gate) and 3 LinkedIn notes",outbox/2026-10-25_marketer_yc-first-emails.md,reviewer
+2026-10-25,marketer,"Created message tracker with the 3 existing lead email-1 drafts (all DRAFTED)",data/outreach.csv,reviewer
+2026-10-25,marketer,"Appended 6 open decisions (geography, tracker, offer, address, YC time); no decision rows changed",docs/decisions.md,reviewer
+2026-10-25,marketer,"Appended outreach copy-rule learning",docs/brand.md,reviewer
+2026-10-25,marketer,"Researched acquirer contacts (roles; CEO verified) and drafted 7 gated acquirer emails (LinkedIn CEO and Talent, Indeed, ZipRecruiter, Greenhouse, Lever, Workday)",outbox/2026-10-25_marketer_acq-*.md data/outreach.csv docs/outreach-strategy-yc.md,reviewer
+2026-10-27,chief-of-staff,"Vision backcast (36 months), timeline, team board, /team-meeting, README, dashboard top section",docs/vision-backcast.md data/timeline.csv data/team_board.csv README.md,Founder
+2026-10-27,seller,"M1: pilot shortlist (4 verified targets) and pilot offer with 7-day onboarding; fixed after Rev BLOCK; pilot-tracking columns; vetting objection",outbox/2026-10-27_seller_pilot-shortlist.md outbox/2026-10-27_seller_pilot-offer.md data/leads.csv docs/objections.md,Founder
+2026-10-27,marketer,"M1: vetting pipeline, community kit, vetted-definition aid; brand and ICP rules",outbox/2026-10-27_marketer_vetting-pipeline.md outbox/2026-10-27_marketer_community-kit.md outbox/2026-10-27_marketer_vetted-definition.md,Founder
+2026-10-27,fundraiser,"M1: YC W27 memo and pre-seed deck v1 (fixed after Rev BLOCK); 10 US investors listed",outbox/2026-10-27_fundraiser_yc-decision.md outbox/2026-10-27_fundraiser_preseed-deck-v1.md docs/investors.md,Founder
+2026-10-27,builder,"M1: branch audit; full suite 201/201 incl. PostgreSQL migration tests on a disposable container; Option B SQL for app_records",docs/metrics.md,reviewer
+2026-10-27,reviewer,"M1 review: 3 BLOCK then 9/9 PASS after re-review",outbox/2026-10-27_reviewer_daily.md,Founder
+2026-10-27,designer,"Command-center redesign spec and 4-option mockup",design/2026-10-27_command-center-spec.md design/2026-10-27_command-center-mockup.html,Founder
+2026-10-27,chief-of-staff,"M1 team meeting: 4 proposals agreed for the founder",plans/meetings/2026-10-27_M1.md,Founder

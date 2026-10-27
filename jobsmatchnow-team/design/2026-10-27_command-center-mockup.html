@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command Center Mockup</title>
+<!-- Desi (designer), 2026-10-27. Static mockup, self-contained, no external resources.
+     Every value is copied from repo files on 2026-10-27 (sources named next to each value).
+     Spec: design/2026-10-27_command-center-spec.md -->
+<style>
+/* ---------- tokens (light) ---------- */
+:root{
+  --bg:#f6f7fb;--surface:#fff;--surface-2:#eef0f7;--text:#1b2340;--muted:#56617f;--line:#dfe3ee;
+  --brand-1:#fd267a;--brand-2:#ff7a3d;--accent:#c8135c;--cta-1:#d4145a;--cta-2:#c2410c;
+  --ok:#17794a;--warn:#935600;--bad:#c0233d;--info:#3b4a8c;--lock:#9aa1b8;
+  --glow:rgba(253,38,122,.35);--shadow:0 1px 3px rgba(27,35,64,.08);
+  --r-s:8px;--r-m:12px;--r-l:18px;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;
+  --fs-xs:12px;--fs-s:13px;--fs-m:15px;--fs-l:18px;--fs-xl:24px;--fs-xxl:32px;
+  --t-fast:150ms;--t-med:240ms;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c1020;--surface:#151a2e;--surface-2:#1f2542;--text:#eceef7;--muted:#a5adca;--line:#2c3354;
+  --accent:#ff6aa3;--ok:#4cc38a;--warn:#f0b453;--bad:#ff7a8d;--info:#9fb0ff;--lock:#5d6585;
+  --glow:rgba(255,106,163,.4);--shadow:none;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1020;--surface:#151a2e;--surface-2:#1f2542;--text:#eceef7;--muted:#a5adca;--line:#2c3354;
+  --accent:#ff6aa3;--ok:#4cc38a;--warn:#f0b453;--bad:#ff7a8d;--info:#9fb0ff;--lock:#5d6585;
+  --glow:rgba(255,106,163,.4);--shadow:none;color-scheme:dark}
+
+/* ---------- base ---------- */
+*{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font:var(--fs-m)/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body::before{content:"";display:block;height:4px;background:linear-gradient(90deg,var(--brand-1),var(--brand-2))}
+h1,h2,h3,h4{margin:0;line-height:1.25}
+p{margin:0}
+a{color:var(--accent)}
+button,select{font:inherit}
+.muted{color:var(--muted);font-size:var(--fs-s)}
+.src{color:var(--muted);font-size:var(--fs-xs);overflow-wrap:anywhere}
+.nd{color:var(--muted);font-weight:600}
+.wrap{max-width:1180px;margin:0 auto;padding:var(--s4)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ico{width:1em;height:1em;vertical-align:-.125em;flex:none}
+
+/* ---------- mockup switcher (not part of the product) ---------- */
+.switcher{background:var(--surface);border-bottom:1px solid var(--line)}
+.switcher .wrap{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);align-items:center;padding-top:var(--s3);padding-bottom:var(--s3)}
+.switcher label{font-size:var(--fs-s);font-weight:700}
+.switcher select{padding:6px 10px;border-radius:var(--r-s);border:1px solid var(--line);background:var(--surface-2);color:var(--text);max-width:100%}
+.bestfor{flex-basis:100%;font-size:var(--fs-s);color:var(--muted)}
+.bestfor b{color:var(--text)}
+.mocknote{flex-basis:100%;font-size:var(--fs-xs);color:var(--muted)}
+
+/* ---------- shared components ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);padding:var(--s4);min-width:0}
+.cta{display:inline-flex;align-items:center;gap:var(--s2);border:0;border-radius:var(--r-m);padding:12px 18px;min-height:44px;
+  font-weight:700;color:#fff;background:linear-gradient(90deg,var(--cta-1),var(--cta-2));cursor:pointer;text-decoration:none}
+.cta:hover{filter:brightness(1.07)}
+.cta:active{transform:scale(.98)}
+.cta.pulse{animation:pulse 1.6s ease-out 2}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--glow)}100%{box-shadow:0 0 0 14px transparent}}
+.btn2{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:6px 12px;border-radius:var(--r-s);border:1px solid var(--line);
+  background:var(--surface);color:var(--text);font-weight:600;font-size:var(--fs-s);cursor:pointer}
+.btn2:hover{border-color:var(--accent)}
+.st{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-xs);font-weight:700;padding:2px 9px;border-radius:99px;background:var(--surface-2);white-space:nowrap}
+.st.active{color:var(--ok)}.st.blocked{color:var(--bad)}.st.idle{color:var(--muted)}.st.new{color:var(--info)}
+.st.done{color:var(--ok)}.st.cur{color:var(--accent)}.st.locked{color:var(--muted)}
+.ty{display:inline-block;font-size:var(--fs-xs);font-weight:700;padding:1px 8px;border-radius:6px;background:var(--surface-2)}
+.ty.result{color:var(--ok)}.ty.feedback{color:var(--info)}.ty.proposal{color:var(--warn)}.ty.blocker{color:var(--bad)}
+.xp{height:10px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.xp>span{display:block;height:100%;background:linear-gradient(90deg,var(--brand-1),var(--brand-2));transition:width var(--t-med)}
+.av{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:var(--fs-s);
+  background:var(--surface-2);color:var(--text);box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--ring,var(--line))}
+.av.founder{background:linear-gradient(135deg,var(--cta-1),var(--cta-2));color:#fff}
+.ring-active{--ring:var(--ok)}.ring-blocked{--ring:var(--bad)}.ring-new{--ring:var(--info)}
+.empty{color:var(--muted);font-style:italic;font-size:var(--fs-s)}
+.imag{font-size:var(--fs-xs);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.chk{list-style:none;padding:0;margin:0}
+.chk li{display:flex;gap:var(--s2);align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--line)}
+.chk li:last-child{border-bottom:0}
+.box{flex:none;width:18px;height:18px;border:2px solid var(--muted);border-radius:5px;margin-top:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:99px;padding:4px 12px;min-height:32px;font-size:var(--fs-s);font-weight:600;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.log{list-style:none;margin:0;padding:0}
+.log li{padding:var(--s2) 0;border-bottom:1px solid var(--line);font-size:var(--fs-s)}
+.log li:last-child{border-bottom:0}
+.log .who{font-weight:700}
+.sec-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s2);margin:var(--s5) 0 var(--s3)}
+.sec-h h2{font-size:var(--fs-l)}
+.kicker{font-size:var(--fs-xs);font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+
+/* ---------- Option A: strategy HUD ---------- */
+.a-hud{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+.a-hud .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:var(--s2);padding-top:var(--s2);padding-bottom:var(--s2)}
+.a-stat{display:flex;flex-direction:column;gap:2px;padding:6px 10px;border-radius:var(--r-s);background:var(--surface-2);min-width:0;text-decoration:none;color:var(--text)}
+.a-stat .l{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.a-stat b{font-size:var(--fs-l)}
+.a-stat.hot{background:linear-gradient(90deg,var(--cta-1),var(--cta-2));color:#fff}
+.a-stat.hot .l{color:#fff}
+.a-top{display:grid;gap:var(--s4);grid-template-columns:1fr}
+@media (min-width:900px){.a-top{grid-template-columns:3fr 2fr}}
+.a-quest h2{font-size:var(--fs-xl);margin:var(--s1) 0 var(--s2)}
+.a-quest .do{margin-top:var(--s4);padding:var(--s3);border-radius:var(--r-m);background:var(--surface-2);display:flex;flex-direction:column;gap:var(--s2)}
+.a-goals{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin-top:var(--s3)}
+.a-goals div{font-size:var(--fs-s);padding:6px 8px;border-left:3px solid var(--line);background:var(--surface-2);border-radius:0 6px 6px 0}
+.a-dl li{display:flex;justify-content:space-between;gap:var(--s2);padding:8px 0;border-bottom:1px solid var(--line);font-size:var(--fs-s)}
+.a-dl li:last-child{border-bottom:0}
+.a-dl b{white-space:nowrap}
+.map{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:var(--s2);list-style:none;padding:0;margin:0}
+.node{position:relative;border:2px solid var(--line);border-radius:var(--r-m);padding:var(--s2);background:var(--surface);min-height:104px;display:flex;flex-direction:column;gap:2px}
+.node .id{font-weight:800;font-size:var(--fs-m)}
+.node .w{font-size:var(--fs-xs);color:var(--muted)}
+.node .c{font-size:var(--fs-xs);margin-top:auto}
+.node.done{border-color:var(--ok)}
+.node.cur{border-color:var(--accent);box-shadow:0 0 0 4px var(--glow)}
+.node.locked{border-style:dashed;background:var(--surface-2)}
+.node.locked .c{color:var(--muted)}
+.node .boss{position:absolute;top:6px;right:6px;color:var(--warn)}
+.party{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:var(--s3)}
+.pm{display:flex;flex-direction:column;gap:var(--s2)}
+.pm .hd{display:flex;gap:var(--s3);align-items:center}
+.pm .nm{font-weight:800}
+.pm .goal{font-size:var(--fs-s)}
+.pm .last{font-size:var(--fs-xs);color:var(--muted)}
+.pm .ft{display:flex;justify-content:space-between;gap:var(--s2);font-size:var(--fs-xs);color:var(--muted);border-top:1px solid var(--line);padding-top:6px;margin-top:auto}
+.loot{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:var(--s3)}
+.loot .card b.n{font-size:var(--fs-xxl);display:block;line-height:1.1}
+
+/* ---------- Option B: RPG quest log ---------- */
+.b{max-width:700px;margin:0 auto;padding:var(--s5) var(--s4) var(--s6)}
+.b-ch{text-align:center;padding:var(--s5) 0 var(--s4)}
+.b-ch h1{font-size:var(--fs-xl);margin:var(--s2) 0}
+.b-ch p{color:var(--muted)}
+.b-next{border:2px solid var(--accent);border-radius:var(--r-l);padding:var(--s5);background:var(--surface);display:flex;flex-direction:column;gap:var(--s3)}
+.b-next h2{font-size:var(--fs-l)}
+.b details{border-top:1px solid var(--line);padding:var(--s3) 0}
+.b summary{cursor:pointer;font-weight:700;min-height:32px;display:flex;align-items:center;gap:var(--s2)}
+.b-road{list-style:none;margin:0;padding:0 0 0 22px;border-left:3px solid var(--line)}
+.b-road li{position:relative;padding:0 0 var(--s3) var(--s3)}
+.b-road li::before{content:"";position:absolute;left:-33px;top:4px;width:16px;height:16px;border-radius:50%;background:var(--surface);border:3px solid var(--lock)}
+.b-road li.done::before{background:var(--ok);border-color:var(--ok)}
+.b-road li.cur::before{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 4px var(--glow)}
+.b-road li.locked{color:var(--muted)}
+.b-voice{display:flex;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--line)}
+.b-voice:last-child{border-bottom:0}
+.b-voice p{font-size:var(--fs-s)}
+.b-voice q{font-style:italic}
+
+/* ---------- Option C: mobile-game home ---------- */
+.c{max-width:560px;margin:0 auto;padding:var(--s4) var(--s4) 96px}
+.c-top{display:flex;justify-content:space-between;align-items:center;gap:var(--s2)}
+.c-lvl{display:flex;align-items:center;gap:var(--s2);font-weight:800}
+.c-lvl .badge{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--cta-1),var(--cta-2));font-size:var(--fs-s)}
+.c-hero{margin-top:var(--s4);border-radius:var(--r-l);padding:var(--s5);color:#fff;background:linear-gradient(135deg,#b3124f,#a6380b)}
+.c-hero .kicker{color:#fff;opacity:.9}
+.c-hero h2{font-size:var(--fs-xl);margin:var(--s2) 0}
+.c-hero .cta{background:#fff;color:#a3104a;width:100%;justify-content:center;font-size:var(--fs-l);min-height:56px;margin-top:var(--s4)}
+.c-tiles{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);margin-top:var(--s4)}
+.c-tile{border-radius:var(--r-l);padding:var(--s4);min-height:110px;display:flex;flex-direction:column;justify-content:space-between;background:var(--surface);border:1px solid var(--line);color:var(--text);text-decoration:none}
+.c-tile b{font-size:var(--fs-xxl);line-height:1}
+.c-tile .l{font-weight:700;font-size:var(--fs-s)}
+.c-tile .s{font-size:var(--fs-xs);color:var(--muted)}
+.c-rail{display:flex;gap:var(--s3);overflow-x:auto;scroll-snap-type:x mandatory;padding:var(--s2) 2px var(--s3);margin:0;list-style:none}
+.c-rail li{scroll-snap-align:start;flex:0 0 132px;min-height:140px;border-radius:var(--r-l);padding:var(--s3);background:var(--surface);border:2px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.c-rail li.done{border-color:var(--ok)}
+.c-rail li.cur{border-color:var(--accent);box-shadow:0 0 0 4px var(--glow)}
+.c-rail li.locked{border-style:dashed;background:var(--surface-2);color:var(--muted)}
+.c-rail .id{font-size:var(--fs-l);font-weight:800}
+.c-party{display:flex;gap:var(--s3);overflow-x:auto;padding:var(--s2) 4px var(--s3);list-style:none;margin:0}
+.c-party li{flex:0 0 72px;text-align:center;font-size:var(--fs-xs)}
+.c-party .av{width:56px;height:56px;margin:0 auto 6px;font-size:var(--fs-m)}
+.c-feed .card{margin-bottom:var(--s2)}
+.c-tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+.c-tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;min-height:56px;font-size:var(--fs-xs);font-weight:700;color:var(--muted);text-decoration:none}
+.c-tabs a.on{color:var(--accent)}
+.c-tabs .ico{width:22px;height:22px}
+
+/* ---------- Option D: clean pro ---------- */
+.d-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--s3);align-items:flex-end;margin:var(--s3) 0 var(--s4)}
+.d-head h1{font-size:var(--fs-xl)}
+.d-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:var(--s3)}
+.d-kpi .l{font-size:var(--fs-xs);font-weight:700;color:var(--muted)}
+.d-kpi b{display:block;font-size:var(--fs-xl);margin:2px 0}
+.d-grid{display:grid;gap:var(--s4);grid-template-columns:1fr;margin-top:var(--s4)}
+@media (min-width:900px){.d-grid{grid-template-columns:1fr 1fr}}
+.d-step{display:flex;list-style:none;padding:0;margin:var(--s2) 0 0;flex-wrap:wrap;gap:4px}
+.d-step li{flex:1 1 72px;text-align:center;font-size:var(--fs-xs);padding:6px 2px;border-top:4px solid var(--line);color:var(--muted)}
+.d-step li.done{border-color:var(--ok);color:var(--text)}
+.d-step li.cur{border-color:var(--accent);color:var(--text);font-weight:800}
+.d-step b{display:block;font-size:var(--fs-s)}
+.tbl{width:100%;border-collapse:collapse;font-size:var(--fs-s)}
+.tbl th,.tbl td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl th{font-size:var(--fs-xs);color:var(--muted)}
+.tbl td{overflow-wrap:anywhere}
+@media (max-width:640px){
+  .tbl thead{display:none}
+  .tbl tr{display:block;padding:var(--s2) 0;border-bottom:1px solid var(--line)}
+  .tbl td{display:block;border:0;padding:2px 0}
+  .tbl td[data-l]::before{content:attr(data-l) ": ";color:var(--muted);font-size:var(--fs-xs);font-weight:700}
+}
+.ol{margin:0;padding-left:20px}.ol li{margin:var(--s2) 0}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style></head>
+<body>
+<div class="switcher" role="region" aria-label="Mockup controls">
+ <div class="wrap">
+  <label for="opt">UI option</label>
+  <select id="opt">
+   <option value="A">A. Strategy-game HUD</option>
+   <option value="B">B. RPG quest log</option>
+   <option value="C">C. Mobile-game home screen</option>
+   <option value="D">D. Clean pro dashboard</option>
+  </select>
+  <label for="theme">Theme</label>
+  <select id="theme">
+   <option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option>
+  </select>
+  <p class="bestfor" id="bestfor" aria-live="polite"></p>
+  <p class="mocknote">Static mockup by Desi, 2026-10-27. Same real data in every option, copied from repo files. Buttons do nothing here. Future stages are imagined (<code>docs/vision-backcast.md</code>), never fact.</p>
+ </div>
+</div>
+<div id="view"><noscript><p class="wrap">This mockup needs JavaScript to switch options.</p></noscript></div>
+
+<script>
+(function(){
+"use strict";
+var ND = "[NEEDS DATA]";
+/* ---------- REAL DATA, copied 2026-10-27 ---------- */
+var D = {
+  asOf: "2026-10-27",
+  dayOfStory: 3, // day 1 = 2026-10-25 (docs/vision-backcast.md); exit-readiness start date is not set
+  readiness: 12, readinessSrc: "docs/exit-readiness.md, reviewed 2026-10-25",
+  northStar: ND,
+  stage: { id: "M1", when: "Nov 2026", compound: "Can legally take US customers and money",
+    objectives: ["Delaware C-corp", "Privacy policy + terms", "YC W27 decision (deadline 2026-11-02)",
+                 "Differentiators in production", "3 pilots started"], ticked: 0 },
+  // data/timeline.csv, shown forward (Day 1 to M36). Status column is real; content after Day 1 is imagined.
+  stages: [
+    ["Day 1","Oct 2026","DONE","Right market: everyone aims at US buyers"],
+    ["M1","Nov 2026","IN PROGRESS","Can legally take US customers and money"],
+    ["M3","Jan 2027","NOT STARTED","First proof that the match works"],
+    ["M6","Apr 2027","NOT STARTED","Vetted supply meets paying demand: the flywheel starts",1],
+    ["M9","Jul 2027","NOT STARTED","Proof + no workflow change = sales get easier"],
+    ["M12","Oct 2027","NOT STARTED","Growth becomes repeatable, not founder-only"],
+    ["M18","Apr 2028","NOT STARTED","Second market + enterprise-safe = bigger buyers"],
+    ["M24","Oct 2028","NOT STARTED","LinkedIn sees our value in its own product"],
+    ["M30","Apr 2029","NOT STARTED","Competition, not revenue alone, sets the price",1],
+    ["M33","Jul 2029","NOT STARTED","Clean company + clean claims = fast LOI"],
+    ["M36","Oct 2029","NOT STARTED","Every layer below adds up to the price"]
+  ],
+  // party: M1 goal from data/timeline.csv; state/open/results from dashboard.html Team section (build 2026-10-27)
+  party: [
+    {k:"Founder",n:"Founder",role:"CEO + community lead",st:"active",goal:"C-corp; YC decision",open:23,res:"9 decisions (7 days)",last:"Decided: Daily vision, Exit horizon, Community lead (2026-10-27)"},
+    {k:"builder",n:"Bui",role:"builder",st:"active",goal:"Differentiators live",open:3,res:"6 tasks, 6 commits (7 days)",last:"Branch feat/funnel-pwa-post-role is 6 commits ahead of master, NOT live"},
+    {k:"reviewer",n:"Rev",role:"reviewer",st:"active",goal:"Daily review",open:5,res:"28 PASS, 3 BLOCK (7 days)",last:"Asked to review 47ab868 + f4bc5f8 before any merge"},
+    {k:"marketer",n:"Mark",role:"marketer",st:"blocked",goal:"Daily news posts",open:4,res:"Vetting pipeline + community kit drafted",last:"Blocked: acq-ziprecruiter draft BLOCKed by Rev (needs a primary-source reason)"},
+    {k:"seller",n:"Selly",role:"seller",st:"active",goal:"3 pilots",open:3,res:"3 leads, 0 contacted",last:"Railway, Cal.com, GoGoGrandparent: openers drafted, status NEW"},
+    {k:"fundraiser",n:"Rizer",role:"fundraiser",st:"active",goal:"Pre-seed deck",open:3,res:"YC W27 memo + pre-seed deck v1 (DRAFT)",last:"Biggest gap: no customer evidence yet"},
+    {k:"designer",n:"Desi",role:"designer",st:"new",goal:ND+" (no Desi column in data/timeline.csv)",open:0,res:"First mission: this redesign",last:"Joined 2026-10-27"}
+  ],
+  // data/team_board.csv, stage M1, newest first (all 2026-10-27)
+  board: [
+    ["fundraiser","Founder","proposal","YC W27: apply on time with a lean application (about 6h over 6 days), only if you answer yes to both by Wed 10/28: (1) can you be in SF Jan-Mar 2027, (2) can you add about 1h/day until 11/2."],
+    ["fundraiser","builder","feedback","By M6 investors will ask for 8+ weeks of demo=false weekly counts plus a retention signal. Get funnel events into production and add a retention event."],
+    ["fundraiser","seller","feedback","Log every pilot in data/leads.csv and every reply in docs/feedback.md from the first call."],
+    ["fundraiser","marketer","feedback","Write down what 'vetted' means and start a vetted-candidate count in docs/metrics.md."],
+    ["fundraiser","team","result","YC W27 memo + pre-seed deck v1 drafted (DRAFT). Deadline confirmed Mon 11/2 20:00 PT. All traction is [NEEDS DATA]. Biggest gap: no customer evidence yet."],
+    ["marketer","Founder","proposal","Decide: (1) vetted = live interview only, or two badges (Verified / Interviewed); (2) a weekly hour budget for interviews and meetups. Without them M3 300 vetted is not reachable."],
+    ["marketer","seller","feedback","Signal to show buyers once real: vetted/interviewed badge plus the pass criteria. No vetted count or pass rate until it is in docs/metrics.md."],
+    ["marketer","builder","feedback","Vetting needs: vetting_status field, a badge on card and profile, a buyer-side filter, an admin view, a funnel event per stage."],
+    ["marketer","team","result","M1 drafts ready: vetting pipeline v1 and community kit. Main risk: 300 live interviews by M3 is about 150 founder hours."],
+    ["builder","Founder","proposal","Approve merge + deploy of the branch after Rev PASS, with a DB backup first. Deploy scripts in the repo are stale."],
+    ["builder","marketer","feedback","docs/metrics.md SQL (Option B) may be stale after 47ab868. Use the admin endpoint (Option A)."],
+    ["builder","reviewer","feedback","Please review 47ab868 and f4bc5f8 before any merge; storage change needs a DB backup and migration check."],
+    ["builder","team","result","Differentiators + funnel events are on feat/funnel-pwa-post-role, 6 commits ahead of master, NOT live."]
+  ],
+  // dashboard.html CTA bar + Collaboration + footer warning (build 2026-10-27)
+  loot: { drafts: 32, pass: 26, unreviewed: 5, blocked: 1, approved: 0, sent: 0 },
+  leads: { total: 3, fresh: 3, contacted: 0 },
+  openDecisions: ["Founder time budget","Pre-seed deck deadline","Candidate geography","Investor geography",
+                  "Outreach tracker","Founding-partner places offer","Postal address for cold email","YC application time"],
+  recentDecisions: [["2026-10-27","Community lead"],["2026-10-27","Exit horizon"],["2026-10-27","Daily vision"],
+                    ["2026-10-25","Delaware C-corp"],["2026-10-25","Founder's daily selling hours"]],
+  // deadlines: docs/decisions.md + data/team_board.csv; days counted from 2026-10-27
+  deadlines: [
+    {t:"Answer the 2 YC questions (Rizer)", d:"Wed 2026-10-28", days:1},
+    {t:"YC W27 on-time deadline", d:"Mon 2026-11-02 20:00 PT", days:6},
+    {t:"Book the Delaware lawyer call", d:"2026-11-08", days:12}
+  ],
+  meeting: null // plans/meetings/ is empty
+};
+var NAME = {Founder:"Founder",builder:"Bui",reviewer:"Rev",marketer:"Mark",seller:"Selly",fundraiser:"Rizer",designer:"Desi",team:"Team"};
+var STLABEL = {active:"Active",blocked:"Blocked",idle:"Idle",new:"New"};
+var STICON = {active:"●",blocked:"■",idle:"○",new:"★"};
+var counts = {result:0,feedback:0,proposal:0,blocker:0};
+D.board.forEach(function(r){counts[r[2]]++;});
+var doneStages = D.stages.filter(function(s){return s[2]==="DONE";}).length;
+
+/* ---------- helpers ---------- */
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function nd(v){return v===ND?'<span class="nd">'+ND+'</span>':esc(v);}
+var SVG = {
+  lock:'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  check:'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>',
+  flag:'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M5 3h2v18H5zM8 4h11l-2 4 2 4H8z"/></svg>',
+  boss:'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 18h18l-1.5-10-4.5 4-3-6-3 6-4.5-4z"/></svg>',
+  map:'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
+  party:'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2 1-4 4-4 1.5 0 2 .5 2 .5"/></svg>',
+  chest:'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="11" rx="2"/><path d="M3 13h18M5 9V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v2"/><rect x="10.5" y="11.5" width="3" height="3"/></svg>',
+  play:'<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg>'
+};
+function stBadge(st){return '<span class="st '+st+'"><span aria-hidden="true">'+STICON[st]+'</span>'+STLABEL[st]+'</span>';}
+function stageCls(s){return s[2]==="DONE"?"done":s[2]==="IN PROGRESS"?"cur":"locked";}
+function stageTag(s){
+  if(s[2]==="DONE") return '<span class="st done">'+SVG.check+'Done</span>';
+  if(s[2]==="IN PROGRESS") return '<span class="st cur">'+SVG.flag+'You are here</span>';
+  return '<span class="st locked">'+SVG.lock+'Locked</span>';
+}
+function initials(n){return n==="Founder"?"F":n.slice(0,2);}
+function av(p,extra){return '<span class="av '+(p.k==="Founder"?"founder ":"")+'ring-'+p.st+(extra?" "+extra:"")+'" aria-hidden="true">'+esc(initials(p.n))+'</span>';}
+function boardLi(r){
+  return '<li data-type="'+r[2]+'"><span class="who">'+esc(NAME[r[0]]||r[0])+' → '+esc(NAME[r[1]]||r[1])+'</span> <span class="ty '+r[2]+'">'+r[2]+'</span> '+esc(r[3])+'</li>';
+}
+function filterChips(id){
+  var h='<div class="chips" role="group" aria-label="Filter the quest log" data-for="'+id+'">';
+  h+='<button type="button" class="chip" aria-pressed="true" data-f="all">All '+D.board.length+'</button>';
+  ["proposal","result","feedback","blocker"].forEach(function(t){h+='<button type="button" class="chip" aria-pressed="false" data-f="'+t+'">'+t+' '+counts[t]+'</button>';});
+  return h+'</div>';
+}
+var NOW = {
+  title:"Answer Rizer's 2 YC questions",
+  why:"Due Wed 2026-10-28. (1) Can you be in SF Jan-Mar 2027? (2) Can you add about 1h/day until 11/2? Two yeses = apply to YC W27 on time.",
+  src:"data/team_board.csv · outbox/2026-10-27_fundraiser_yc-decision.md",
+  btn:"Decide YC (open /ceo)"
+};
+var THEN = [
+  "Claim loot: 26 drafts Rev PASSed are waiting for your approval (outbox/)",
+  "Approve or hold Bui's merge + deploy (DB backup first; branch is NOT live)",
+  "Decide the vetting definition + weekly hour budget (Mark's proposal)"
+];
+function emptyMeeting(){return '<p class="empty">No team meeting yet. Run <code>/team-meeting</code> (plans/meetings/ is empty).</p>';}
+
+/* ---------- Option A: strategy-game HUD ---------- */
+function renderA(){
+  var h='<div class="a-hud" role="region" aria-label="HUD"><div class="wrap">';
+  h+='<a class="a-stat hot" href="#a-quest"><span class="l">Stage</span><b>'+D.stage.id+' · '+D.stage.when+'</b></a>';
+  h+='<div class="a-stat"><span class="l">Stages cleared</span><b>'+doneStages+' / '+D.stages.length+'</b></div>';
+  h+='<div class="a-stat"><span class="l">Day</span><b>'+D.dayOfStory+'</b></div>';
+  h+='<div class="a-stat"><span class="l">Readiness</span><b>'+D.readiness+'%</b></div>';
+  h+='<a class="a-stat" href="#a-loot"><span class="l">Loot</span><b>'+D.loot.drafts+' drafts</b></a>';
+  h+='<div class="a-stat"><span class="l">Decide</span><b>'+D.openDecisions.length+' open</b></div>';
+  h+='<div class="a-stat"><span class="l">YC deadline</span><b>'+D.deadlines[1].days+' days</b></div>';
+  h+='</div></div><div class="wrap">';
+  h+='<div class="a-top">';
+  h+='<section class="card a-quest" id="a-quest" aria-labelledby="a-q"><span class="kicker">Main quest · '+D.stage.id+' ('+D.stage.when+')</span>';
+  h+='<h2 id="a-q">'+esc(D.stage.compound)+'</h2>';
+  h+='<div class="xp" role="img" aria-label="'+D.stage.ticked+' of '+D.stage.objectives.length+' objectives ticked"><span style="width:'+(100*D.stage.ticked/D.stage.objectives.length)+'%"></span></div>';
+  h+='<p class="src">'+D.stage.ticked+' of '+D.stage.objectives.length+' objectives ticked · docs/vision-backcast.md (tick only with real evidence)</p>';
+  h+='<ul class="chk" style="margin-top:8px">'+D.stage.objectives.map(function(o){return '<li><span class="box" aria-hidden="true"></span>'+esc(o)+'</li>';}).join("")+'</ul>';
+  h+='<div class="a-goals">'+D.party.slice(0,6).map(function(p){return '<div><b>'+p.n+'</b>: '+esc(p.goal)+'</div>';}).join("")+'</div>';
+  h+='<div class="do"><span class="kicker">Do this now</span><b>'+esc(NOW.title)+'</b><p class="muted">'+esc(NOW.why)+'</p>';
+  h+='<div><button type="button" class="cta pulse">'+SVG.play+esc(NOW.btn)+'</button></div><p class="src">'+esc(NOW.src)+'</p></div>';
+  h+='</section>';
+  h+='<div style="display:grid;gap:16px;align-content:start">';
+  h+='<section class="card" aria-labelledby="a-dl"><h3 id="a-dl" style="font-size:15px">Timers</h3><ul class="chk a-dl">'+D.deadlines.map(function(x){return '<li><span>'+esc(x.t)+'<br><span class="muted">'+esc(x.d)+'</span></span><b>'+x.days+(x.days===1?' day':' days')+'</b></li>';}).join("")+'</ul><p class="src">days from 2026-10-27 · docs/decisions.md · data/team_board.csv</p></section>';
+  h+='<section class="card" aria-labelledby="a-dec"><h3 id="a-dec" style="font-size:15px">Founder decisions</h3><p class="muted" style="margin:6px 0"><b>'+D.openDecisions.length+' open:</b> '+esc(D.openDecisions.join(" · "))+'</p><p class="muted"><b>Latest decided:</b> '+D.recentDecisions.slice(0,3).map(function(d){return esc(d[1])+' ('+d[0].slice(5)+')';}).join(", ")+'</p><p class="src">docs/decisions.md</p></section>';
+  h+='<section class="card" aria-labelledby="a-mt"><h3 id="a-mt" style="font-size:15px">Team meeting</h3>'+emptyMeeting()+'</section>';
+  h+='</div></div>';
+  h+='<div class="sec-h"><h2>'+SVG.map+' Level map</h2><span class="muted">Day 1 → M36 · data/timeline.csv · locked stages are imagined until DONE</span></div>';
+  h+='<ol class="map">'+D.stages.map(function(s){
+    return '<li class="node '+stageCls(s)+'">'+(s[4]?'<span class="boss" title="Boss gate">'+SVG.boss+'<span class="sr">Boss gate</span></span>':'')+'<span class="id">'+s[0]+'</span><span class="w">'+s[1]+'</span>'+stageTag(s)+'<span class="c">'+(s[2]==="NOT STARTED"?'<span class="imag">imagined</span><br>':'')+esc(s[3])+'</span></li>';
+  }).join("")+'</ol>';
+  h+='<div class="sec-h"><h2>'+SVG.party+' Party</h2><span class="muted">state from the 7-day team view · M1 goal from data/timeline.csv</span></div>';
+  h+='<div class="party">'+D.party.map(function(p){
+    return '<article class="card pm"><div class="hd">'+av(p)+'<div><div class="nm">'+esc(p.n)+'</div><div class="muted">'+esc(p.role)+'</div></div><span style="margin-left:auto">'+stBadge(p.st)+'</span></div>'
+      +'<div class="goal"><span class="muted">M1:</span> '+nd(p.goal)+'</div><div class="last">'+esc(p.last)+'</div>'
+      +'<div class="ft"><span>'+esc(p.res)+'</span><span><b>'+p.open+'</b> open</span></div></article>';
+  }).join("")+'</div>';
+  h+='<div class="sec-h"><h2>Quest log</h2><span class="muted">'+D.stage.id+' · data/team_board.csv</span></div>';
+  h+='<section class="card">'+filterChips("a-log")+'<ul class="log" id="a-log" style="margin-top:8px">'+D.board.map(boardLi).join("")+'</ul></section>';
+  h+='<div class="sec-h" id="a-loot"><h2>'+SVG.chest+' Loot to claim</h2><span class="muted">outbox/ · data/leads.csv</span></div>';
+  h+=lootCards();
+  h+='<p class="muted" style="margin:24px 0">Below this line (unchanged order): KPIs, graphs, feedback, collaboration, today, readiness gaps.</p>';
+  return h+'</div>';
+}
+function lootCards(){
+  return '<div class="loot">'
+   +'<div class="card"><span class="kicker">Ready to approve</span><b class="n">'+D.loot.pass+'</b><p class="muted">drafts Rev PASSed, waiting for you</p><button type="button" class="cta" style="margin-top:10px">Review drafts</button></div>'
+   +'<div class="card"><span class="kicker">Not reviewed yet</span><b class="n">'+D.loot.unreviewed+'</b><p class="muted">drafts waiting for Rev</p></div>'
+   +'<div class="card"><span class="kicker">Blocked</span><b class="n">'+D.loot.blocked+'</b><p class="muted">acq-ziprecruiter: needs a primary-source reason</p></div>'
+   +'<div class="card"><span class="kicker">Leads to open</span><b class="n">'+D.leads.fresh+'</b><p class="muted">NEW, 0 contacted (Railway, Cal.com, GoGoGrandparent)</p></div>'
+   +'</div><p class="src" style="margin-top:6px">'+D.loot.drafts+' drafts in outbox/ · '+D.loot.approved+' approved · '+D.loot.sent+' sent</p>';
+}
+
+/* ---------- Option B: RPG quest log ---------- */
+function renderB(){
+  var h='<div class="b">';
+  h+='<header class="b-ch"><span class="kicker">Chapter '+D.stage.id+' · '+D.stage.when+' · day '+D.dayOfStory+'</span><h1>'+esc(D.stage.compound)+'</h1>';
+  h+='<p>Stage '+(doneStages+1)+' of '+D.stages.length+' on the road to the LinkedIn sale (imagined, M36).</p></header>';
+  h+='<section class="b-next" aria-labelledby="b-n"><span class="kicker">Your next quest</span><h2 id="b-n">'+esc(NOW.title)+'</h2><p>'+esc(NOW.why)+'</p>';
+  h+='<div><button type="button" class="cta pulse">'+SVG.play+esc(NOW.btn)+'</button></div><p class="src">'+esc(NOW.src)+'</p></section>';
+  h+='<details open><summary>Then, in this order ('+THEN.length+')</summary><ol class="ol">'+THEN.map(function(t){return '<li>'+esc(t)+'</li>';}).join("")+'</ol></details>';
+  h+='<details open><summary>Chapter objectives ('+D.stage.ticked+' of '+D.stage.objectives.length+')</summary><ul class="chk">'+D.stage.objectives.map(function(o){return '<li><span class="box" aria-hidden="true"></span>'+esc(o)+'</li>';}).join("")+'</ul><p class="src">docs/vision-backcast.md</p></details>';
+  h+='<details open><summary>'+SVG.party+' What the party is doing</summary>'+D.party.map(function(p){
+    return '<div class="b-voice">'+av(p)+'<div><p><b>'+esc(p.n)+'</b> '+stBadge(p.st)+' <span class="muted">M1: '+nd(p.goal)+'</span></p><p><q>'+esc(p.last)+'</q></p><p class="muted">'+esc(p.res)+' · '+p.open+' open</p></div></div>';
+  }).join("")+'</details>';
+  h+='<details><summary>Journal: '+D.board.length+' entries this chapter</summary>'+filterChips("b-log")+'<ul class="log" id="b-log" style="margin-top:8px">'+D.board.map(boardLi).join("")+'</ul></details>';
+  h+='<details><summary>'+SVG.chest+' Loot waiting ('+D.loot.drafts+' drafts, '+D.leads.fresh+' leads)</summary><p>'+D.loot.pass+' drafts Rev PASSed wait for your approval; '+D.loot.unreviewed+' wait for Rev; '+D.loot.blocked+' blocked (acq-ziprecruiter). '+D.leads.fresh+' leads are NEW, none contacted.</p><p class="src">outbox/ · data/leads.csv</p></details>';
+  h+='<details><summary>Decisions ('+D.openDecisions.length+' open)</summary><p class="muted">'+esc(D.openDecisions.join(" · "))+'</p><p class="muted" style="margin-top:6px">Latest decided: '+D.recentDecisions.map(function(d){return esc(d[1]);}).join(", ")+'</p><p class="src">docs/decisions.md</p></details>';
+  h+='<details><summary>Council (team meeting)</summary>'+emptyMeeting()+'</details>';
+  h+='<details><summary>'+SVG.map+' The road (Day 1 → M36)</summary><ol class="b-road">'+D.stages.map(function(s){
+    return '<li class="'+stageCls(s)+'"><b>'+s[0]+'</b> <span class="muted">'+s[1]+'</span> '+stageTag(s)+(s[4]?' <span class="st locked" style="color:var(--warn)">'+SVG.boss+'Boss gate</span>':'')+'<br><span class="'+(s[2]==="NOT STARTED"?"muted":"")+'">'+(s[2]==="NOT STARTED"?'<span class="imag">imagined:</span> ':'')+esc(s[3])+'</span></li>';
+  }).join("")+'</ol><p class="src">data/timeline.csv</p></details>';
+  return h+'</div>';
+}
+
+/* ---------- Option C: mobile-game home ---------- */
+function renderC(){
+  var h='<div class="c"><div class="c-top"><div class="c-lvl"><span class="badge">'+D.stage.id+'</span><div>Stage '+D.stage.id+'<div class="muted">'+D.stage.when+' · day '+D.dayOfStory+'</div></div></div>';
+  h+='<div style="min-width:120px;flex:0 1 160px"><div class="xp" role="img" aria-label="'+doneStages+' of '+D.stages.length+' stages cleared"><span style="width:'+(100*doneStages/D.stages.length)+'%"></span></div><div class="src" style="text-align:right">'+doneStages+'/'+D.stages.length+' stages cleared</div></div></div>';
+  h+='<section class="c-hero" id="c-quest" aria-labelledby="c-h"><span class="kicker">Do this now</span><h2 id="c-h">'+esc(NOW.title)+'</h2><p>'+esc(NOW.why)+'</p><button type="button" class="cta pulse">'+SVG.play+'Play: '+esc(NOW.btn)+'</button></section>';
+  h+='<div class="c-tiles" id="c-loot">';
+  h+='<a class="c-tile" href="#c-loot"><span class="l">'+SVG.chest+' Loot</span><b>'+D.loot.pass+'</b><span class="s">drafts ready to approve ('+D.loot.drafts+' total)</span></a>';
+  h+='<a class="c-tile" href="#c-loot"><span class="l">Decide</span><b>'+D.openDecisions.length+'</b><span class="s">open decisions</span></a>';
+  h+='<a class="c-tile" href="#c-loot"><span class="l">Leads</span><b>'+D.leads.fresh+'</b><span class="s">NEW, 0 contacted</span></a>';
+  h+='<a class="c-tile" href="#c-loot"><span class="l">YC timer</span><b>'+D.deadlines[1].days+'d</b><span class="s">'+esc(D.deadlines[1].d)+'</span></a>';
+  h+='</div>';
+  h+='<div class="sec-h" id="c-map"><h2>Stages</h2><span class="muted">swipe · imagined until DONE</span></div>';
+  h+='<ol class="c-rail" aria-label="Stages Day 1 to M36">'+D.stages.map(function(s){
+    return '<li class="'+stageCls(s)+'"><span class="id">'+s[0]+'</span><span class="muted">'+s[1]+'</span>'+stageTag(s)+(s[4]?'<span class="st locked" style="color:var(--warn)">'+SVG.boss+'Boss</span>':'')+'<span style="font-size:12px">'+(s[2]==="NOT STARTED"?'<span class="imag">imagined</span><br>':'')+esc(s[3])+'</span></li>';
+  }).join("")+'</ol>';
+  h+='<div class="sec-h" id="c-party"><h2>Party</h2></div><ul class="c-party">'+D.party.map(function(p){
+    return '<li>'+av(p)+'<b>'+esc(p.n)+'</b><br>'+stBadge(p.st)+'<br><span class="muted">'+p.open+' open</span></li>';
+  }).join("")+'</ul>';
+  h+='<div class="sec-h"><h2>Quest log</h2><span class="muted">'+D.board.length+' this stage</span></div>'+filterChips("c-log");
+  h+='<ul class="log c-feed" id="c-log" style="margin-top:8px">'+D.board.map(function(r){return boardLi(r).replace('<li ','<li class="card" ');}).join("")+'</ul>';
+  h+='<div class="sec-h"><h2>Team meeting</h2></div>'+emptyMeeting();
+  h+='</div><nav class="c-tabs" aria-label="Sections"><a class="on" href="#c-quest">'+SVG.play+'Quest</a><a href="#c-map">'+SVG.map+'Map</a><a href="#c-party">'+SVG.party+'Party</a><a href="#c-loot">'+SVG.chest+'Loot '+D.loot.pass+'</a></nav>';
+  return h;
+}
+
+/* ---------- Option D: clean pro dashboard ---------- */
+function renderD(){
+  var h='<div class="wrap"><div class="d-head"><div><span class="kicker">JobsMatchNow command center</span><h1>'+D.stage.id+': '+esc(D.stage.compound)+'</h1><p class="muted">Built '+D.asOf+' from repo files only</p></div>';
+  h+='<button type="button" class="cta pulse">'+esc(NOW.btn)+'</button></div>';
+  h+='<div class="d-kpis">';
+  [["Current stage",D.stage.id+" · "+D.stage.when,"data/timeline.csv"],["Stages cleared",doneStages+" / "+D.stages.length,"data/timeline.csv"],
+   ["Acquisition readiness",D.readiness+"%",D.readinessSrc],["Drafts to approve",D.loot.pass+" of "+D.loot.drafts,"outbox/ (Rev PASS)"],
+   ["Open decisions",String(D.openDecisions.length),"docs/decisions.md"],["North star (weekly)",D.northStar,"needs 2 rows in data/metrics_history.csv"]].forEach(function(k){
+    h+='<div class="card d-kpi"><span class="l">'+k[0]+'</span><b>'+nd(k[1])+'</b><span class="src">'+esc(k[2])+'</span></div>';
+  });
+  h+='</div>';
+  h+='<section class="card" style="margin-top:16px" aria-labelledby="d-tl"><h2 id="d-tl" style="font-size:15px">Path to LinkedIn <span class="muted">Day 1 → M36 · grey stages are imagined</span></h2><ol class="d-step">'+D.stages.map(function(s){
+    return '<li class="'+stageCls(s)+'"><b>'+s[0]+'</b>'+s[1]+(s[2]==="NOT STARTED"?'<br>'+SVG.lock:s[2]==="DONE"?'<br>'+SVG.check:'<br>here')+'</li>';
+  }).join("")+'</ol></section>';
+  h+='<div class="d-grid">';
+  h+='<section class="card" aria-labelledby="d-now"><h2 id="d-now" style="font-size:15px">Now (in order)</h2><ol class="ol"><li><b>'+esc(NOW.title)+'</b> <span class="muted">due Wed 2026-10-28</span></li>'+THEN.map(function(t){return '<li>'+esc(t)+'</li>';}).join("")+'</ol></section>';
+  h+='<section class="card" aria-labelledby="d-obj"><h2 id="d-obj" style="font-size:15px">M1 objectives <span class="muted">'+D.stage.ticked+' of '+D.stage.objectives.length+'</span></h2><ul class="chk">'+D.stage.objectives.map(function(o){return '<li><span class="box" aria-hidden="true"></span>'+esc(o)+'</li>';}).join("")+'</ul></section>';
+  h+='</div>';
+  h+='<section class="card" style="margin-top:16px" aria-labelledby="d-team"><h2 id="d-team" style="font-size:15px">Team</h2><table class="tbl"><thead><tr><th>Member</th><th>State</th><th>M1 goal</th><th>Latest</th><th>Open</th></tr></thead><tbody>'+D.party.map(function(p){
+    return '<tr><td><b>'+esc(p.n)+'</b> <span class="muted">'+esc(p.role)+'</span></td><td data-l="State">'+stBadge(p.st)+'</td><td data-l="M1 goal">'+nd(p.goal)+'</td><td data-l="Latest">'+esc(p.last)+'</td><td data-l="Open">'+p.open+'</td></tr>';
+  }).join("")+'</tbody></table></section>';
+  h+='<div class="d-grid">';
+  h+='<section class="card" aria-labelledby="d-log"><h2 id="d-log" style="font-size:15px">Team board <span class="muted">'+D.stage.id+'</span></h2>'+filterChips("d-logl")+'<ul class="log" id="d-logl" style="margin-top:8px">'+D.board.map(boardLi).join("")+'</ul></section>';
+  h+='<div style="display:grid;gap:16px;align-content:start"><section class="card"><h2 style="font-size:15px">Approvals</h2><p style="margin-top:6px">'+D.loot.pass+' drafts passed review · '+D.loot.unreviewed+' not reviewed · '+D.loot.blocked+' blocked · '+D.leads.fresh+' leads NEW</p><button type="button" class="btn2" style="margin-top:10px">Review drafts</button></section>';
+  h+='<section class="card"><h2 style="font-size:15px">Decisions</h2><p class="muted" style="margin-top:6px">'+D.openDecisions.length+' open: '+esc(D.openDecisions.join(", "))+'</p></section>';
+  h+='<section class="card"><h2 style="font-size:15px">Team meeting</h2>'+emptyMeeting()+'</section></div>';
+  h+='</div></div>';
+  return h;
+}
+
+/* ---------- switcher ---------- */
+var BEST = {
+  A:"<b>Best for:</b> a founder who scans everything in 10 seconds on a laptop each morning. Dense; sticky HUD; all parts on one screen.",
+  B:"<b>Best for:</b> calm focus: one quest at a time, everything else folded. Lowest cognitive load; least overview.",
+  C:"<b>Best for:</b> checking from the phone: big thumb targets, swipeable stage rail, bottom tab bar.",
+  D:"<b>Best for:</b> showing the page to investors or advisors: professional tables with light game touches. Least fun."
+};
+var R = {A:renderA,B:renderB,C:renderC,D:renderD};
+var opt = document.getElementById("opt"), theme = document.getElementById("theme"), view = document.getElementById("view");
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
+function show(o){
+  if(!R[o]) o="A";
+  opt.value=o; view.innerHTML=R[o](); document.getElementById("bestfor").innerHTML=BEST[o]; store("jmn-mock-opt",o);
+}
+function setTheme(t){
+  if(t==="light"||t==="dark") document.documentElement.setAttribute("data-theme",t); else document.documentElement.removeAttribute("data-theme");
+  theme.value=t||"auto"; store("jmn-mock-theme",t||"auto");
+}
+view.addEventListener("click",function(e){
+  var b=e.target.closest(".chip"); if(!b) return;
+  var g=b.parentNode, list=document.getElementById(g.getAttribute("data-for")), f=b.getAttribute("data-f");
+  Array.prototype.forEach.call(g.querySelectorAll(".chip"),function(c){c.setAttribute("aria-pressed",String(c===b));});
+  Array.prototype.forEach.call(list.children,function(li){li.hidden=!(f==="all"||li.getAttribute("data-type")===f);});
+});
+opt.addEventListener("change",function(){show(opt.value);});
+theme.addEventListener("change",function(){setTheme(theme.value);});
+setTheme(store("jmn-mock-theme"));
+show(store("jmn-mock-opt")||"A");
+})();
+</script>
+</body></html>

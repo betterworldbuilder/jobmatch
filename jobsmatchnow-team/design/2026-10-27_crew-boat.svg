@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-labelledby="crewTitle crewDesc" preserveAspectRatio="xMidYMid meet">
+<title id="crewTitle">JobsMatchNow crew: one boat, one course</title>
+<desc id="crewDesc">Comic illustration of the JobsMatchNow team as the crew of one sailing boat heading right toward an island harbour labelled M36, LinkedIn exit (imagined). Founder is captain at the wheel, Avi the harbour pilot stands beside with a compass, Mark hoists the pink-to-orange brand flag, Rev keeps lookout in the crow's nest with a spyglass, Rizer holds a map next to a treasure chest, Selly throws a line from the bow to a small boat labelled US startups, Bui works in the engine room with a wrench, and Desi paints the hull. A buoy near the boat reads M1, you are here, and a distant boat on the horizon is labelled 2nd bidder.</desc>
+<defs>
+<linearGradient id="br" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fd267a"/><stop offset="1" stop-color="#ff7a00"/></linearGradient>
+<linearGradient id="brd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fd267a"/><stop offset="1" stop-color="#ff7a00"/></linearGradient>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6ec6f5"/><stop offset="0.6" stop-color="#bfe7ff"/><stop offset="1" stop-color="#ffe2c2"/></linearGradient>
+<linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3aa0d8"/><stop offset="1" stop-color="#1a5c92"/></linearGradient>
+<radialGradient id="glow"><stop offset="0" stop-color="#ffb347" stop-opacity="0.75"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+<clipPath id="hullClip"><path d="M110,398 Q500,420 895,392 C880,470 845,530 790,565 L240,565 C175,540 130,480 110,398 Z"/></clipPath>
+<clipPath id="engClip"><rect x="420" y="452" width="160" height="86" rx="12"/></clipPath>
+<style>
+text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.k{stroke:#1d1b2e;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.ai{fill:none;stroke:#1d1b2e;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+.ac{fill:none;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+.ink{fill:#1d1b2e}
+.bx{fill:#fffbea;stroke:#1d1b2e;stroke-width:3}
+.sh{fill:#1d1b2e}
+.tl{fill:#fffbea;stroke:#1d1b2e;stroke-width:3;stroke-linejoin:round}
+.nm{font-size:16px;font-weight:800;fill:#1d1b2e}
+.rl{fill:#b3125f}
+.cp{font-size:14px;fill:#2b2940}
+.halo{paint-order:stroke;stroke:#ffffff;stroke-width:4px;stroke-linejoin:round}
+.crest{fill:none;stroke:#d8f1ff;stroke-width:3;stroke-linecap:round}
+</style>
+</defs>
+
+<!-- SKY -->
+<rect x="0" y="0" width="1200" height="432" fill="url(#sky)"/>
+<circle cx="110" cy="140" r="38" fill="#ffd84d" class="k"/>
+<path d="M340,108 q-2,-22 22,-22 q8,-18 30,-12 q16,-10 30,4 q20,0 20,18 q0,12 -14,12 h-74 q-14,0 -14,0 Z" fill="#ffffff" class="k"/>
+<path d="M1040,118 q-2,-22 22,-22 q8,-18 30,-12 q16,-10 30,4 q20,0 20,18 q0,12 -14,12 h-74 q-14,0 -14,0 Z" fill="#ffffff" class="k"/>
+<path d="M190,206 q8,-8 16,0 q8,-8 16,0 M232,190 q6,-6 12,0 q6,-6 12,0" fill="none" stroke="#1d1b2e" stroke-width="3" stroke-linecap="round"/>
+
+<!-- HORIZON: island harbour (imagined exit) -->
+<polygon points="1128,374 1030,352 1030,398" fill="#fff3a8" opacity="0.6"/>
+<path d="M990,432 Q1030,392 1075,400 Q1110,380 1150,392 Q1180,396 1200,408 L1200,432 Z" fill="#4caf6a" class="k"/>
+<rect x="1040" y="410" width="16" height="18" fill="#fffbea" class="k"/>
+<path d="M1037,411 L1048,400 L1059,411 Z" fill="#fd267a" class="k"/>
+<rect x="1064" y="414" width="14" height="14" fill="#fffbea" class="k"/>
+<path d="M1061,415 L1071,405 L1081,415 Z" fill="#ff7a00" class="k"/>
+<path d="M1120,428 L1124,380 L1136,380 L1140,428 Z" fill="#ffffff" class="k"/>
+<path d="M1122,402 L1138,402 L1139,412 L1121,412 Z" fill="#fd267a"/>
+<rect x="1121" y="368" width="18" height="12" fill="#ffd84d" class="k"/>
+<path d="M1118,368 L1130,358 L1142,368 Z" fill="#1d1b2e"/>
+<path d="M1000,432 L1040,432" stroke="#8a5a2c" stroke-width="5"/>
+
+<!-- HORIZON: distant second boat -->
+<path d="M40,420 L104,420 L96,432 L48,432 Z" fill="#5d6f8c" stroke="#1d1b2e" stroke-width="2"/>
+<line x1="72" y1="420" x2="72" y2="390" stroke="#1d1b2e" stroke-width="2.5"/>
+<path d="M74,392 L74,418 L96,418 Z" fill="#c9d3e3" stroke="#1d1b2e" stroke-width="2" stroke-linejoin="round"/>
+<text x="72" y="368" text-anchor="middle" font-size="13" font-weight="800" fill="#1d1b2e" class="halo">2nd bidder</text>
+<text x="72" y="383" text-anchor="middle" font-size="11" font-weight="700" fill="#1d1b2e" class="halo">(imagined)</text>
+
+<!-- SEA (back) -->
+<rect x="0" y="432" width="1200" height="268" fill="url(#sea)"/>
+<line x1="0" y1="432" x2="1200" y2="432" stroke="#1d1b2e" stroke-width="3"/>
+<path class="crest" d="M930,522 q10,-6 20,0 t20,0 M1150,470 q10,-6 20,0 t20,0 M20,560 q10,-6 20,0"/>
+<path d="M892,452 C930,440 965,446 998,434" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round"/>
+<path d="M915,500 L928,480 L944,478 L956,500 Z" fill="#6d7a8a" class="k"/>
+<path d="M948,502 L960,488 L972,490 L980,502 Z" fill="#7f8c9c" class="k"/>
+<path class="crest" d="M908,504 q36,8 78,0"/>
+<path class="crest" d="M104,512 q-22,8 -46,2 M110,536 q-26,8 -54,2"/>
+
+<!-- MAST, FLAG, SAIL -->
+<rect x="513" y="58" width="14" height="364" fill="#8a5a2c" class="k"/>
+<circle cx="520" cy="56" r="6" fill="#ffc93c" class="k"/>
+<path d="M527,62 C548,54 572,74 602,64 L602,94 C574,102 550,84 527,92 Z" fill="url(#br)" class="k"/>
+<path d="M564,88 C552,80 556,70 562,72 Q564,73 564,76 Q564,73 566,72 C572,70 576,80 564,88 Z" fill="#ffffff"/>
+<path d="M528,196 L668,204 Q716,258 696,316 L528,316 Z" fill="url(#brd)" class="k"/>
+<path d="M584,202 L584,316 M640,204 L640,316" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+<path d="M612,284 C580,262 588,238 604,244 Q612,247 612,256 Q612,247 620,244 C636,238 644,262 612,284 Z" fill="#ffffff" class="k"/>
+<line x1="522" y1="318" x2="706" y2="318" class="ai" stroke-width="11"/>
+<line x1="522" y1="318" x2="706" y2="318" stroke="#b07a3c" stroke-width="6" stroke-linecap="round"/>
+<line x1="509" y1="64" x2="509" y2="420" stroke="#7a5a2e" stroke-width="2.5"/>
+
+<!-- REV in the crow's nest (lookout) -->
+<g transform="translate(515,190)">
+<rect x="-18" y="-62" width="36" height="42" rx="13" fill="#3aa365" class="k"/>
+<circle cx="-3" cy="-84" r="22" fill="#1d1b2e"/>
+<circle cx="0" cy="-78" r="18" fill="#5c3a21" class="k"/>
+<path d="M-18,-86 Q-10,-104 10,-98 Q2,-92 -6,-92 Q-14,-90 -18,-86 Z" fill="#1d1b2e"/>
+<path d="M0,-80 q3,-3 6,0" fill="none" stroke="#1d1b2e" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M1,-71 Q6,-66 11,-71" fill="none" stroke="#1d1b2e" stroke-width="2.5" stroke-linecap="round"/>
+<path class="ai" d="M6,-54 Q20,-64 18,-80"/>
+<path class="ac" stroke="#3aa365" d="M6,-54 Q20,-64 18,-80"/>
+<line x1="8" y1="-83" x2="52" y2="-92" class="ai" stroke-width="14"/>
+<line x1="8" y1="-83" x2="52" y2="-92" stroke="#e0a43a" stroke-width="9" stroke-linecap="round"/>
+<line x1="40" y1="-90" x2="52" y2="-92" stroke="#b9852a" stroke-width="9" stroke-linecap="round"/>
+<circle cx="18" cy="-81" r="5.5" fill="#5c3a21" class="k"/>
+</g>
+<path d="M480,150 L560,150 L552,190 L488,190 Z" fill="#8a5a2c" class="k"/>
+<rect x="475" y="144" width="90" height="10" rx="3" fill="#b07a3c" class="k"/>
+<path d="M498,160 L500,186 M520,158 L520,188 M542,160 L540,186" stroke="#5e3b1a" stroke-width="2"/>
+
+<!-- DECK PROPS -->
+<rect x="380" y="386" width="32" height="30" rx="6" fill="#b07a3c" class="k"/>
+<path d="M380,394 H412 M380,406 H412" stroke="#1d1b2e" stroke-width="2.5"/>
+<rect x="251" y="375" width="8" height="50" fill="#8a5a2c" class="k"/>
+<g transform="translate(255,375)">
+<path d="M36,0 L-36,0 M0,36 L0,-36 M25.5,25.5 L-25.5,-25.5 M25.5,-25.5 L-25.5,25.5" stroke="#1d1b2e" stroke-width="7" stroke-linecap="round"/>
+<path d="M36,0 L-36,0 M0,36 L0,-36 M25.5,25.5 L-25.5,-25.5 M25.5,-25.5 L-25.5,25.5" stroke="#b07a3c" stroke-width="3" stroke-linecap="round"/>
+<circle r="26" fill="none" stroke="#1d1b2e" stroke-width="11"/>
+<circle r="26" fill="none" stroke="#b07a3c" stroke-width="6"/>
+<circle r="7" fill="#ffc93c" class="k"/>
+</g>
+
+<!-- FOUNDER (captain at the helm) -->
+<g transform="translate(205,430)">
+<rect x="-14" y="-26" width="12" height="26" fill="#1f2d4d" class="k"/>
+<rect x="2" y="-26" width="12" height="26" fill="#1f2d4d" class="k"/>
+<path class="ai" d="M-4,-50 Q8,-38 22,-46"/>
+<path class="ac" stroke="#24406e" d="M-4,-50 Q8,-38 22,-46"/>
+<rect x="-18" y="-62" width="36" height="42" rx="13" fill="#24406e" class="k"/>
+<circle cx="4" cy="-50" r="2.5" fill="#ffc93c"/>
+<circle cx="4" cy="-38" r="2.5" fill="#ffc93c"/>
+<path class="ai" d="M6,-54 L22,-64"/>
+<path class="ac" stroke="#24406e" d="M6,-54 L22,-64"/>
+<circle cx="23" cy="-64" r="5" fill="#c68642" class="k"/>
+<circle cx="23" cy="-46" r="5" fill="#c68642" class="k"/>
+<circle cx="0" cy="-78" r="18" fill="#c68642" class="k"/>
+<path d="M-18,-78 Q-19,-90 -10,-92 L-6,-86 Q-12,-84 -14,-74 Z" fill="#2b1d14"/>
+<circle cx="4" cy="-80" r="2.3" class="ink"/>
+<circle cx="11" cy="-80" r="2.3" class="ink"/>
+<path d="M4,-71 Q9,-67 13,-72" fill="none" stroke="#1d1b2e" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M-17,-91 Q-14,-112 2,-112 Q20,-110 18,-91 Z" fill="#ffffff" class="k"/>
+<path d="M-20,-93 L24,-93 L22,-86 L-18,-86 Z" fill="#1d1b2e"/>
+<circle cx="2" cy="-101" r="4" fill="#fd267a"/>
+</g>
+
+<!-- AVI (harbour pilot, mentor) -->
+<g transform="translate(322,430)">
+<rect x="-14" y="-26" width="12" height="26" fill="#5b4636" class="k"/>
+<rect x="2" y="-26" width="12" height="26" fill="#5b4636" class="k"/>
+<circle cx="9" cy="-99" r="7" fill="#e2e2e2" class="k"/>
+<path class="ai" d="M4,-52 Q-4,-38 -14,-40"/>
+<path class="ac" stroke="#2a9d8f" d="M4,-52 Q-4,-38 -14,-40"/>
+<rect x="-18" y="-62" width="36" height="42" rx="13" fill="#2a9d8f" class="k"/>
+<path d="M0,-60 L0,-22" stroke="#1d1b2e" stroke-width="2"/>
+<circle cx="-24" cy="-46" r="11" fill="#f4e3b5" class="k"/>
+<path d="M-24,-54 L-21,-46 L-27,-46 Z" fill="#e63946"/>
+<path d="M-24,-38 L-21,-46 L-27,-46 Z" fill="#1d1b2e"/>
+<path class="ai" d="M-6,-54 Q-10,-52 -14,-52"/>
+<path class="ac" stroke="#2a9d8f" d="M-6,-54 Q-10,-52 -14,-52"/>
+<circle cx="-15" cy="-52" r="5" fill="#8d5524" class="k"/>
+<circle cx="-15" cy="-40" r="5" fill="#8d5524" class="k"/>
+<circle cx="0" cy="-78" r="18" fill="#8d5524" class="k"/>
+<path d="M-18,-80 Q-18,-98 0,-98 Q18,-98 18,-80 Q14,-90 2,-90 Q-10,-90 -18,-80 Z" fill="#e2e2e2" class="k"/>
+<circle cx="-11" cy="-80" r="5.5" fill="#ffffff" fill-opacity="0.3" stroke="#1d1b2e" stroke-width="2"/>
+<circle cx="1" cy="-80" r="5.5" fill="#ffffff" fill-opacity="0.3" stroke="#1d1b2e" stroke-width="2"/>
+<path d="M-5.5,-80 L-4.5,-80" stroke="#1d1b2e" stroke-width="2"/>
+<circle cx="-11" cy="-80" r="2" class="ink"/>
+<circle cx="1" cy="-80" r="2" class="ink"/>
+<path d="M-12,-70 Q-7,-66 -2,-70" fill="none" stroke="#1d1b2e" stroke-width="2.5" stroke-linecap="round"/>
+</g>
+
+<!-- MARK (signal officer hoisting the colours) -->
+<g transform="translate(478,430)">
+<rect x="-14" y="-26" width="12" height="26" fill="#3b3f6b" class="k"/>
+<rect x="2" y="-26" width="12" height="26" fill="#3b3f6b" class="k"/>
+<path class="ai" d="M-4,-52 Q14,-66 30,-80"/>
+<path class="ac" stroke="#e63946" d="M-4,-52 Q14,-66 30,-80"/>
+<rect x="-18" y="-62" width="36" height="42" rx="13" fill="#ffffff"/>
+<path d="M-17,-50 H17 M-17,-38 H17 M-17,-27 H17" stroke="#e63946" stroke-width="5"/>
+<rect x="-18" y="-62" width="36" height="42" rx="13" fill="none" class="k"/>
+<path class="ai" d="M6,-56 L30,-96"/>
+<path class="ac" stroke="#e63946" d="M6,-56 L30,-96"/>
+<circle cx="30" cy="-96" r="5" fill="#f1c27d" class="k"/>
+<circle cx="30" cy="-80" r="5" fill="#f1c27d" class="k"/>
+<circle cx="-15" cy="-88" r="7" fill="#a0441a" class="k"/>
+<circle cx="-7" cy="-95" r="7" fill="#a0441a" class="k"/>
+<circle cx="3" cy="-97" r="7" fill="#a0441a" class="k"/>
+<circle cx="12" cy="-93" r="7" fill="#a0441a" class="k"/>
+<circle cx="0" cy="-78" r="18" fill="#f1c27d" class="k"/>
+<path d="M-16,-86 Q-4,-94 12,-88 Q2,-90 -6,-86 Z" fill="#a0441a"/>
+<circle cx="4" cy="-80" r="2.3" class="ink"/>
+<circle cx="11" cy="-80" r="2.3" class="ink"/>
+<path d="M4,-71 Q9,-67 13,-72" fill="none" stroke="#1d1b2e" stroke-width="2.5" stroke-linecap="round"/>
+<circle cx="-4" cy="-72" r="3" fill="#ff8fa3" opacity="0.6"/>
+</g>
+
+<!-- RIZER (navigator and purser) -->
+<g transform="translate(690,430)">
+<rect x="-14" y="-26" width="12" height="26" fill="#3d3d3d" class="k"/>
+<rect x="2" y="-26" width="12" height="26" fill="#3d3d3d" class="k"/>
+<rect x="-18" y="-62" width="36" height="42" rx="13" fill="#ffffff" class="k"/>
+<path d="M-17,-56 L-4,-60 L-6,-22 L-17,-24 Z M17,-56 L4,-60 L6,-22 L17,-24 Z" fill="#6c4ab6" class="k"/>
+<path class="ai" d="M-14,-54 Q-30,-52 -40,-44"/>
+<path class="ac" stroke="#ffffff" d="M-14,-54 Q-30,-52 -40,-44"/>
+<path class="ai" d="M14,-54 Q28,-52 36,-44"/>
+<path class="ac" stroke="#ffffff" d="M14,-54 Q28,-52 36,-44"/>
+<rect x="-40" y="-58" width="76" height="34" rx="3" fill="#f6e7c1" class="k"/>
+<path d="M-32,-32 Q-14,-54 4,-40 T26,-50" fill="none" stroke="#e63946" stroke-width="2.5" stroke-dasharray="4 3"/>
+<path d="M22,-54 L30,-46 M30,-54 L22,-46" stroke="#e63946" stroke-width="3" stroke-linecap="round"/>
+<path d="M-34,-52 q4,-4 8,0 M-22,-30 q4,-3 8,0" fill="none" stroke="#3aa0d8" stroke-width="2"/>
+<circle cx="-40" cy="-44" r="5" fill="#e0a878" class="k"/>
+<circle cx="36" cy="-44" r="5" fill="#e0a878" class="k"/>
+<circle cx="0" cy="-78" r="18" fill="#e0a878" class="k"/>
+<path d="M-20,-74 Q-22,-100 0,-99 Q22,-100 20,-74 L20,-64 L12,-64 Q14,-84 0,-88 Q-14,-84 -12,-64 L-20,-64 Z" fill="#3b2414" class="k"/>
+<circle cx="-5" cy="-78" r="2.3" class="ink"/>
+<circle cx="5" cy="-78" r="2.3" class="ink"/>
+<path d="M-5,-70 Q0,-66 5,-70" fill="none" stroke="#1d1b2e" stroke-width="2.5" stroke-linecap="round"/>
+</g>
+<path d="M738,380 L744,360 L782,360 L788,380 Z" fill="#6e3d17" class="k"/>
+<circle cx="750" cy="378" r="5" fill="#ffc93c" stroke="#1d1b2e" stroke-width="1.5"/>
+<circle cx="760" cy="373" r="5" fill="#ffc93c" stroke="#1d1b2e" stroke-width="1.5"/>
+<circle cx="770" cy="376" r="5" fill="#ffc93c" stroke="#1d1b2e" stroke-width="1.5"/>
+<circle cx="779" cy="379" r="5" fill="#ffc93c" stroke="#1d1b2e" stroke-width="1.5"/>
+<rect x="738" y="380" width="50" height="26" fill="#9c5b25" class="k"/>
+<rect x="760" y="380" width="6" height="26" fill="#ffc93c" class="k"/>
+<path d="M792,356 l3,-8 l3,8 l8,3 l-8,3 l-3,8 l-3,-8 l-8,-3 Z" fill="#fff3a8" stroke="#1d1b2e" stroke-width="1.5"/>
+
+<!-- SELLY (bosun at the bow) -->
+<g transform="translate(835,430)">
+<ellipse cx="-21" cy="-78" rx="7" ry="14" fill="#4a2c17" class="k" transform="rotate(20 -21 -78)"/>
+<rect x="-14" y="-26" width="12" height="26" fill="#2d4a6e" class="k"/>
+<rect x="2" y="-26" width="12" height="26" fill="#2d4a6e" class="k"/>
+<path class="ai" d="M-6,-52 Q-20,-46 -20,-34"/>
+<path class="ac" stroke="#ffc93c" d="M-6,-52 Q-20,-46 -20,-34"/>
+<circle cx="-20" cy="-30" r="8" fill="none" stroke="#1d1b2e" stroke-width="7"/>
+<circle cx="-20" cy="-30" r="8" fill="none" stroke="#c99a5b" stroke-width="3.5"/>
+<rect x="-18" y="-62" width="36" height="42" rx="13" fill="#ffc93c" class="k"/>
+<path d="M0,-60 L0,-22" stroke="#1d1b2e" stroke-width="2"/>
+<path class="ai" d="M6,-54 L32,-80"/>
+<path class="ac" stroke="#ffc93c" d="M6,-54 L32,-80"/>
+<circle cx="32" cy="-80" r="5" fill="#a86b3c" class="k"/>
+<circle cx="0" cy="-78" r="18" fill="#a86b3c" class="k"/>
+<path d="M-18,-80 Q-16,-99 2,-98 Q18,-97 18,-84 Q8,-92 -4,-88 Q-12,-86 -18,-80 Z" fill="#4a2c17" class="k"/>
+<circle cx="4" cy="-80" r="2.3" class="ink"/>
+<circle cx="11" cy="-80" r="2.3" class="ink"/>
+<path d="M3,-72 Q8,-63 13,-72 Z" fill="#1d1b2e"/>
+</g>
+
+<!-- HULL -->
+<path d="M110,398 Q500,420 895,392 C880,470 845,530 790,565 L240,565 C175,540 130,480 110,398 Z" fill="#234a7a"/>
+<g clip-path="url(#hullClip)">
+<path d="M90,500 H910 M90,535 H910" stroke="#1a3a63" stroke-width="2"/>
+<rect x="90" y="442" width="166" height="24" fill="url(#br)"/>
+<rect x="256" y="442" width="660" height="24" fill="none" stroke="#ffffff" stroke-opacity="0.65" stroke-width="2" stroke-dasharray="6 5"/>
+</g>
+<path d="M110,398 Q500,420 895,392 C880,470 845,530 790,565 L240,565 C175,540 130,480 110,398 Z" fill="none" stroke="#1d1b2e" stroke-width="4" stroke-linejoin="round"/>
+<path d="M110,398 Q500,420 895,392" fill="none" stroke="#1d1b2e" stroke-width="13" stroke-linecap="round"/>
+<path d="M110,398 Q500,420 895,392" fill="none" stroke="#b07a3c" stroke-width="7" stroke-linecap="round"/>
+<circle cx="370" cy="492" r="9" fill="#bfe7ff" stroke="#d4a537" stroke-width="4"/>
+<circle cx="370" cy="492" r="11.5" fill="none" stroke="#1d1b2e" stroke-width="2"/>
+<circle cx="612" cy="492" r="9" fill="#bfe7ff" stroke="#d4a537" stroke-width="4"/>
+<circle cx="612" cy="492" r="11.5" fill="none" stroke="#1d1b2e" stroke-width="2"/>
+<text x="735" y="522" text-anchor="middle" font-size="24" font-weight="800" font-style="italic" fill="#ffffff">JobsMatchNow</text>
+
+<!-- ENGINE ROOM with BUI -->
+<g clip-path="url(#engClip)">
+<rect x="420" y="452" width="160" height="86" fill="#22304a"/>
+<circle cx="500" cy="500" r="70" fill="url(#glow)"/>
+<path d="M420,464 H580 M430,464 V538" stroke="#7d8a99" stroke-width="5"/>
+<circle cx="556" cy="482" r="14" fill="none" stroke="#9aa5b1" stroke-width="8" stroke-dasharray="4 3.3"/>
+<circle cx="556" cy="482" r="9" fill="#9aa5b1" stroke="#1d1b2e" stroke-width="2"/>
+<circle cx="556" cy="482" r="3" class="ink"/>
+<circle cx="548" cy="514" r="10" fill="none" stroke="#9aa5b1" stroke-width="7" stroke-dasharray="3.5 3"/>
+<circle cx="548" cy="514" r="6" fill="#9aa5b1" stroke="#1d1b2e" stroke-width="2"/>
+<g transform="translate(492,538) scale(0.72)">
+<rect x="-14" y="-26" width="12" height="26" fill="#d9661a" class="k"/>
+<rect x="2" y="-26" width="12" height="26" fill="#d9661a" class="k"/>
+<path class="ai" d="M-10,-54 Q-24,-46 -24,-34"/>
+<path class="ac" stroke="#f08a24" d="M-10,-54 Q-24,-46 -24,-34"/>
+<circle cx="-24" cy="-32" r="5" fill="#f3c9a4" class="k"/>
+<rect x="-18" y="-62" width="36" height="42" rx="13" fill="#f08a24" class="k"/>
+<rect x="-8" y="-56" width="16" height="12" rx="2" fill="#ffc93c" class="k"/>
+<path class="ai" d="M10,-54 L30,-78"/>
+<path class="ac" stroke="#f08a24" d="M10,-54 L30,-78"/>
+<line x1="30" y1="-78" x2="46" y2="-102" stroke="#1d1b2e" stroke-width="10" stroke-linecap="round"/>
+<line x1="30" y1="-78" x2="46" y2="-102" stroke="#c9d1da" stroke-width="5" stroke-linecap="round"/>
+<path d="M40,-104 a9,9 0 1 1 14,4 l-6,-4 z" fill="#c9d1da" class="k"/>
+<circle cx="30" cy="-78" r="5" fill="#f3c9a4" class="k"/>
+<circle cx="0" cy="-78" r="18" fill="#f3c9a4" class="k"/>
+<path d="M-18,-82 L-15,-100 L-8,-91 L0,-104 L7,-91 L15,-100 L18,-82 Q0,-92 -18,-82 Z" fill="#1d1b2e"/>
+<circle cx="-6" cy="-78" r="2.3" class="ink"/>
+<circle cx="6" cy="-78" r="2.3" class="ink"/>
+<path d="M-5,-70 Q0,-66 5,-70" fill="none" stroke="#1d1b2e" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M-12,-66 l6,2" stroke="#1d1b2e" stroke-width="2" opacity="0.5"/>
+</g>
+</g>
+<rect x="420" y="452" width="160" height="86" rx="12" fill="none" stroke="#1d1b2e" stroke-width="9"/>
+<rect x="420" y="452" width="160" height="86" rx="12" fill="none" stroke="#d4a537" stroke-width="4"/>
+<circle cx="432" cy="458" r="2" class="ink"/><circle cx="568" cy="458" r="2" class="ink"/>
+<circle cx="432" cy="532" r="2" class="ink"/><circle cx="568" cy="532" r="2" class="ink"/>
+
+<!-- DESI (shipwright painting the hull) -->
+<line x1="246" y1="406" x2="246" y2="514" stroke="#c99a5b" stroke-width="3"/>
+<line x1="326" y1="410" x2="326" y2="514" stroke="#c99a5b" stroke-width="3"/>
+<path d="M302,521 L320,521 L318,540 L304,540 Z" fill="#ccd5df" class="k"/>
+<ellipse cx="311" cy="522" rx="8" ry="3" fill="url(#br)"/>
+<rect x="240" y="513" width="90" height="8" rx="2" fill="#b07a3c" class="k"/>
+<g transform="translate(292,515)">
+<path class="ai" d="M-2,-4 L-20,-4 L-20,20"/>
+<path class="ac" stroke="#3a4a8a" d="M-2,-4 L-20,-4 L-20,20"/>
+<ellipse cx="-23" cy="23" rx="7" ry="4" fill="#1d1b2e"/>
+<path class="ai" d="M6,-30 Q2,-18 -6,-16"/>
+<path class="ac" stroke="#ffffff" d="M6,-30 Q2,-18 -6,-16"/>
+<rect x="-16" y="-40" width="32" height="38" rx="12" fill="#ffffff" class="k"/>
+<circle cx="-6" cy="-24" r="3" fill="#fd267a"/>
+<circle cx="6" cy="-14" r="3" fill="#ff7a00"/>
+<circle cx="5" cy="-32" r="2" fill="#fd267a"/>
+<path class="ai" d="M-6,-32 L-26,-48"/>
+<path class="ac" stroke="#ffffff" d="M-6,-32 L-26,-48"/>
+<line x1="-26" y1="-48" x2="-37" y2="-56" stroke="#1d1b2e" stroke-width="6" stroke-linecap="round"/>
+<line x1="-26" y1="-48" x2="-37" y2="-56" stroke="#8a5a2c" stroke-width="3" stroke-linecap="round"/>
+<circle cx="-41" cy="-58" r="5" fill="url(#br)" class="k"/>
+<circle cx="-26" cy="-48" r="5" fill="#d9a066" class="k"/>
+<circle cx="0" cy="-56" r="17" fill="#d9a066" class="k"/>
+<path d="M-17,-58 Q-18,-76 0,-75 Q16,-74 17,-60 Q8,-68 -2,-66 Q-10,-66 -17,-58 Z" fill="#7b4bd6" class="k"/>
+<ellipse cx="2" cy="-74" rx="15" ry="6" fill="#fd267a" class="k"/>
+<circle cx="4" cy="-81" r="2.5" fill="#fd267a" class="k"/>
+<circle cx="-9" cy="-57" r="2.2" class="ink"/>
+<circle cx="-2" cy="-57" r="2.2" class="ink"/>
+<path d="M-11,-49 Q-6,-45 -1,-49" fill="none" stroke="#1d1b2e" stroke-width="2.5" stroke-linecap="round"/>
+</g>
+
+<!-- SEA (front) -->
+<path d="M0,556 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 q25,-12 50,0 L1200,700 L0,700 Z" fill="#1f6aa0" stroke="#1d1b2e" stroke-width="3" stroke-linejoin="round"/>
+<path class="crest" d="M320,600 q10,-6 20,0 t20,0 M720,610 q10,-6 20,0 t20,0 M880,650 q10,-6 20,0 t20,0 M330,668 q10,-6 20,0 t20,0 M1160,640 q10,-6 20,0"/>
+
+<!-- US STARTUPS boat + Selly's line -->
+<rect x="1014" y="530" width="14" height="20" fill="#3a86ff" class="k"/>
+<rect x="1040" y="532" width="14" height="18" fill="#2a9d8f" class="k"/>
+<circle cx="1021" cy="526" r="8" fill="#f3c9a4" class="k"/>
+<circle cx="1047" cy="528" r="8" fill="#6b4226" class="k"/>
+<line x1="1052" y1="534" x2="1062" y2="514" stroke="#1d1b2e" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="1018" y1="534" x2="1016" y2="518" stroke="#1d1b2e" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="1080" y1="548" x2="1080" y2="468" stroke="#1d1b2e" stroke-width="4"/>
+<path d="M1084,474 L1084,540 L1136,540 Z" fill="#ffffff" class="k"/>
+<path d="M1080,468 L1098,472 L1080,478 Z" fill="#3a86ff" class="k"/>
+<path d="M995,548 L1150,548 Q1142,580 1112,590 L1030,590 Q1004,580 995,548 Z" fill="#f4f6fb" class="k"/>
+<text x="1072" y="575" text-anchor="middle" font-size="15" font-weight="800" fill="#1d1b2e">US startups</text>
+<path class="crest" d="M990,596 q20,-8 40,0 t40,0 t40,0 t40,0"/>
+<path d="M867,350 Q980,280 1016,518" fill="none" stroke="#1d1b2e" stroke-width="6" stroke-linecap="round"/>
+<path d="M867,350 Q980,280 1016,518" fill="none" stroke="#e2b77a" stroke-width="3" stroke-linecap="round"/>
+
+<!-- M1 BUOY -->
+<ellipse cx="70" cy="526" rx="17" ry="5" fill="#1d1b2e"/>
+<path d="M58,524 L82,524 L76,492 L64,492 Z" fill="#e63946" class="k"/>
+<path d="M61,510 L79,510 L78,503 L62,503 Z" fill="#ffffff"/>
+<circle cx="70" cy="488" r="5" fill="#ffd84d" class="k"/>
+
+<!-- LABELS -->
+<g>
+<rect x="16" y="456" width="140" height="28" class="sh"/>
+<path d="M62,478 L76,478 L70,484 Z" class="tl"/>
+<rect x="12" y="452" width="140" height="28" class="bx"/>
+<text x="82" y="471" text-anchor="middle" font-size="13.5" font-weight="800" fill="#1d1b2e">M1 · you are here</text>
+</g>
+
+<g>
+<rect x="16" y="254" width="205" height="54" class="sh"/>
+<path d="M168,296 L186,296 L200,322 Z" class="tl"/>
+<rect x="12" y="250" width="205" height="54" class="bx"/>
+<text x="24" y="272" class="nm">Founder<tspan class="rl"> · Captain</tspan></text>
+<text x="24" y="292" class="cp">Sets course, decides</text>
+</g>
+
+<g>
+<rect x="236" y="254" width="205" height="54" class="sh"/>
+<path d="M310,296 L328,296 L324,324 Z" class="tl"/>
+<rect x="232" y="250" width="205" height="54" class="bx"/>
+<text x="244" y="272" class="nm">Avi<tspan class="rl"> · Harbour pilot</tspan></text>
+<text x="244" y="292" class="cp">Advises, never steers</text>
+</g>
+
+<g>
+<rect x="244" y="154" width="225" height="72" class="sh"/>
+<path d="M436,214 L452,214 L480,326 Z" class="tl"/>
+<rect x="240" y="150" width="225" height="72" class="bx"/>
+<text x="252" y="172" class="nm">Mark<tspan class="rl"> · Signal officer</tspan></text>
+<text x="252" y="192" class="cp">Hoists our colours,</text>
+<text x="252" y="210" class="cp">calls engineers aboard</text>
+</g>
+
+<g>
+<rect x="614" y="70" width="210" height="72" class="sh"/>
+<path d="M618,94 L618,112 L548,100 Z" class="tl"/>
+<rect x="610" y="66" width="210" height="72" class="bx"/>
+<text x="622" y="88" class="nm">Rev<tspan class="rl"> · Lookout</tspan></text>
+<text x="622" y="108" class="cp">Spots rocks:</text>
+<text x="622" y="126" class="cp">every claim checked</text>
+</g>
+
+<g>
+<rect x="724" y="179" width="240" height="72" class="sh"/>
+<path d="M738,240 L756,240 L702,330 Z" class="tl"/>
+<rect x="720" y="175" width="240" height="72" class="bx"/>
+<text x="732" y="197" class="nm">Rizer<tspan class="rl"> · Navigator, purser</tspan></text>
+<text x="732" y="217" class="cp">Charts the route,</text>
+<text x="732" y="235" class="cp">raises the funds</text>
+</g>
+
+<g>
+<rect x="974" y="240" width="215" height="54" class="sh"/>
+<path d="M978,262 L978,280 L858,330 Z" class="tl"/>
+<rect x="970" y="236" width="215" height="54" class="bx"/>
+<text x="982" y="258" class="nm">Selly<tspan class="rl"> · Bosun</tspan></text>
+<text x="982" y="278" class="cp">Brings hiring teams aboard</text>
+</g>
+
+<g>
+<rect x="984" y="308" width="200" height="54" class="sh"/>
+<path d="M1110,348 L1124,348 L1128,360 Z" class="tl"/>
+<rect x="980" y="304" width="200" height="54" class="bx"/>
+<text x="992" y="326" class="nm">M36<tspan class="rl"> · LinkedIn exit</tspan></text>
+<text x="992" y="346" class="cp" font-style="italic">(imagined)</text>
+</g>
+
+<g>
+<rect x="44" y="628" width="215" height="54" class="sh"/>
+<path d="M198,630 L216,630 L262,548 Z" class="tl"/>
+<rect x="40" y="624" width="215" height="54" class="bx"/>
+<text x="52" y="646" class="nm">Desi<tspan class="rl"> · Shipwright</tspan></text>
+<text x="52" y="666" class="cp">Makes the ship look great</text>
+</g>
+
+<g>
+<rect x="434" y="620" width="235" height="72" class="sh"/>
+<path d="M480,622 L498,622 L500,540 Z" class="tl"/>
+<rect x="430" y="616" width="235" height="72" class="bx"/>
+<text x="442" y="638" class="nm">Bui<tspan class="rl"> · Ship's engineer</tspan></text>
+<text x="442" y="658" class="cp">Builds and fixes the engine</text>
+<text x="442" y="676" class="cp">(the app)</text>
+</g>
+
+<!-- TITLE -->
+<rect x="255" y="15" width="700" height="44" rx="4" class="sh"/>
+<rect x="250" y="10" width="700" height="44" rx="4" fill="#ffd84d" stroke="#1d1b2e" stroke-width="3.5"/>
+<text x="600" y="41" text-anchor="middle" font-size="26" font-weight="900" fill="#1d1b2e">JobsMatchNow crew — one boat, one course</text>
+
+<rect x="1.5" y="1.5" width="1197" height="697" fill="none" stroke="#1d1b2e" stroke-width="3"/>
+</svg>

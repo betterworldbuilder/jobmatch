@@ -1,0 +1,10 @@
+id,date,time,type,subject,requested_by,problem,desired_output,status,file,decision
+2026-10-27-m1-team-meeting-cycle-1,2026-10-27,,team,M1 team meeting (cycle 1),Founder,"Kickoff: each member's M1 results and feedback, agree proposals for the founder","Agreed proposals P1-P4, next task per member, goal check",DONE,plans/meetings/2026-10-27_M1.md,
+2026-10-28-yc-w27-a16z-speedrun-apply-o,2026-10-28,09:00,urgent,"YC W27 + a16z speedrun: apply or not?",Avi,"Speedrun closes 11/1 and YC 11/2. Both need the founder in SF in early 2027 and about 6 hours on top of the 1h/day selling budget. Avi says 10/30 is too late to decide.","Apply to both, one or neither, plus the next 3 actions",PROPOSED,,
+2026-10-30-weekly-review,2026-10-30,,weekly,/weekly-review,Founder,"What shipped, what moved the numbers, what to stop","Weekly review in plans/",SCHEDULED,,
+2026-10-30-m1-team-meeting-cycle-2,2026-10-30,,team,M1 team meeting (cycle 2),Founder,"Goal check after the founder's decisions on P1-P4","Updated goal check and next task per member",SCHEDULED,,
+2026-11-01-a16z-speedrun-sr008-closes,2026-11-01,23:59,deadline,a16z speedrun SR008 closes (PT),Rizer,,,SCHEDULED,docs/investors.md,
+2026-11-02-yc-w27-on-time-deadline,2026-11-02,20:00,deadline,YC W27 on-time deadline (PT),Rizer,,,SCHEDULED,outbox/2026-10-27_fundraiser_yc-decision.md,
+2026-11-02-weekly-plan,2026-11-02,,weekly,/weekly-plan,Founder,"One task per agent for the week","Weekly plan in plans/",SCHEDULED,,
+2026-11-08-delaware-lawyer-call-booked,2026-11-08,,deadline,Delaware lawyer call booked,Founder,,,SCHEDULED,docs/decisions.md,
+2026-11-10-widen-the-niche-decision,2026-11-10,,deadline,Widen the niche decision,Selly,,,SCHEDULED,outbox/2026-10-27_seller_pilot-shortlist.md,
