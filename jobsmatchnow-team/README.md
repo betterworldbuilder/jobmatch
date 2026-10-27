@@ -1,6 +1,6 @@
 # JobsMatchNow team
 
-The operating system for JobsMatchNow (https://jobsmatchnow.com/app/): one founder and five Claude Code agents
+The operating system for JobsMatchNow (https://jobsmatchnow.com/app/): one founder and seven Claude Code agents
 working backwards from one goal. **Be acquired by LinkedIn within 36 months.** That's the imagined signing on
 2029-10-26; day 1 was the US pivot on 2026-10-25.
 
@@ -51,11 +51,38 @@ stage moves to `DONE` only when the founder confirms the evidence.
 | When decisions pile up | `/ceo` | Max 5 founder decisions with a recommendation |
 | Monday / Friday | `/weekly-plan` / `/weekly-review` | One task per agent; what moved the numbers |
 | Weekly | `/log-metrics` | The only source of real numbers |
-| Any time | `./dash.sh` | Open the site: **Company** (business, mission, team, products) and **Command center** (global timeline, meeting calendar, stage loop, actions) |
+| Any time | `./dash.sh` | Open the dashboard site (next section) |
+
+## The dashboard site
+```bash
+./dash.sh                    # http://localhost:4321, opens the browser; Ctrl+C stops (DASH_PORT=5000 for another port)
+python3 scripts/build_dashboard.py   # rebuild dashboard.html only (no server, buttons disabled)
+node --test dash/actions.test.mjs    # tests for the server actions
+```
+One local page with three tabs (`?p=company`, `?p=team`, `?p=command`). It is rebuilt from the repo files on
+every load: every number comes from a file, anything missing shows `[NEEDS DATA]`. The server binds 127.0.0.1
+only, and nothing is ever sent from it.
+
+| Tab | What it shows | Edit it in |
+|---|---|---|
+| **Company** | The business we build, the problem, for who, how it works, market potential (sourced), mission, a link to the live app | `docs/company.md` |
+| **Our team** | The crew picture; one card per member in their own words, with the workflow steps they act in and their current task; the 8-step business workflow (who acts, in order, and the output); who steps in where; the decision loop | `data/team.csv`, `data/workflow.csv`, `design/*crew-boat.jpg` |
+| **Command center** | 1. **Global timeline** Day 1 → M36, one row per member (ownership), current stage outlined, progress now. 2. **Meetings**: two-month calendar, **Propose a meeting**, meetings waiting for your decision, coming up, past. 3. **Stage loop**: stage → each member's task and result with your **Yes / No / Delay** → team meeting → agreed next tasks → goal achieved? → reiterate. 4. The rest: drafts to approve, leads, member actions, KPIs, charts, readiness | `data/timeline.csv`, `data/meetings.csv`, `data/team_board.csv`, `data/ceo_reviews.csv`, `plans/meetings/`, `plans/urgent/` |
+
+**Founder buttons** (they work only through `./dash.sh`; opened as a plain file they are greyed out):
+- **Propose a meeting:** requested by, type, date, subject, problem to solve, desired output → a `PROPOSED` row in
+  `data/meetings.csv`. Run it with the **Copy** button's command; every member speaks in order.
+- **Decide final action** on a meeting → saved on the meeting and in `docs/decisions.md`.
+- **Yes / No / Delay** on each member's stage task → `data/ceo_reviews.csv`, and posted to that member on the team
+  board. No needs a note (what to change). Yes counts the member's goal as achieved.
+- Approve, edit or send drafts; change lead status; log metrics, feedback and decisions.
+
+Every button write is atomic, logged in `data/activity.csv`, and followed by a rebuild.
 
 ## Where things live
-- `docs/`: facts (brand, ICP, metrics, competitors, investors, objections, decisions, vision backcast)
-- `data/`: timeline, team board, leads, activity, metrics history, daily runs
+- `docs/`: facts (company page, brand, ICP, metrics, competitors, investors, objections, decisions, vision backcast)
+- `data/`: timeline, team, workflow, team board, meetings calendar, CEO reviews, leads, activity, metrics history, daily runs
 - `outbox/`: drafts awaiting approval (`Status: DRAFT` → founder sets `APPROVED` and sends by hand)
-- `plans/`: weekly plans, reviews and `meetings/`
-- `scripts/build_dashboard.py` → `dashboard.html`
+- `plans/`: weekly plans and reviews, `meetings/` (team meetings), `urgent/` (urgent meetings), `advisor/` (Avi's memos)
+- `design/`: Desi's specs, mockups and the crew picture
+- `scripts/build_dashboard.py` → `dashboard.html` (generated, not committed); `dash/` holds the local server and its actions
