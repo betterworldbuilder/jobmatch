@@ -547,7 +547,7 @@ def load_activity():
 TL_MEMBERS = [("founder", "Founder"), ("builder", "Bui"), ("reviewer", "Rev"), ("marketer", "Mark"),
               ("seller", "Selly"), ("fundraiser", "Rizer")]
 TL_NAME = dict(TL_MEMBERS) | {"designer": "Desi", "advisor": "Avi", "Founder": "Founder", "team": "Team"}
-BOARD_TYPES = ("result", "feedback", "blocker", "proposal", "urgent")
+BOARD_TYPES = ("result", "feedback", "blocker", "proposal", "urgent", "message")
 URGENT_STATUS = {"REQUESTED": "mid", "IN SESSION": "mid", "AWAITING CEO": "bad", "DECIDED": "ok"}
 SPEAKERS = {"founder": "F", "bui": "B", "rev": "R", "mark": "M", "selly": "S", "rizer": "R", "desi": "D", "avi": "A",
             "chief of staff": "C"}
@@ -704,16 +704,6 @@ def render_full_timeline(timeline, board, cur):
         body.append(row(esc(name), [esc(r.get(k)) if (r.get(k) or "").strip() else f"<span class='nd'>{ND}</span>"
                                     for r in stages]))
     body.append(row("Compound effect", [f"<i>{esc(r.get('compound'))}</i>" for r in stages], "comp"))
-    prog = []
-    for r in stages:
-        items = [p.strip() for p in (r.get("progress") or "").split("|") if p.strip()]
-        sb = [b for b in board if b.get("stage") == r.get("stage")]
-        n = {t: sum(1 for b in sb if (b.get("type") or "").lower() == t) for t in BOARD_TYPES}
-        counts = " · ".join(f"{v} {t}" for t, v in n.items() if v)
-        prog.append(("<ul class='list'>" + "".join(f"<li>{esc(p)}</li>" for p in items) + "</ul>" if items else "")
-                    + (f"<span class='muted'>board: {esc(counts)}</span>" if counts else "")
-                    or "<span class='muted'>-</span>")
-    body.append(row("Progress now", prog, "prog"))
     if not stages:
         return empty("No data/timeline.csv yet.")
     return f'<div class="tw tlmap"><table class="tl"><thead>{head}</thead><tbody>{"".join(body)}</tbody></table></div>'
@@ -814,7 +804,8 @@ def month_grid(year, month, meetings):
     while d < nxt or d.weekday() != 0:
         chips = "".join(
             f"<a class='chip {MEETING_TYPE_CLS.get(m.get('type'), 'na')}' href='#mt-{esc(m['id'])}' title='{esc(m.get('subject'))}'>"
-            f"{esc((m.get('time') or '') + ' ' + (m.get('subject') or ''))}</a>" for m in meetings if m["_d"] == d)
+            f"{esc((m.get('time') or '') + ' ' + (m.get('subject') or ''))}</a>" for m in meetings
+            if m["_d"] == d and d.month == month)
         cls = " ".join(c for c in ["out" if d.month != month else "", "today" if d == TODAY else ""] if c)
         cells.append(f"<div class='day {cls}'><span class='dn'>{d.day}</span>{chips}</div>")
         d += dt.timedelta(days=1)
@@ -853,21 +844,16 @@ def render_meetings(meetings, urgent_html):
     cal = month_grid(TODAY.year, TODAY.month, meetings) + month_grid(nxt_m.year, nxt_m.month, meetings)
     legend = " ".join(f"<span class='chip {c}'>{t}</span>" for t, c in MEETING_TYPE_CLS.items())
     open_ = [m for m in meetings if m["status"] in ("PROPOSED", "AWAITING CEO")]
-    upcoming = [m for m in meetings if m["_d"] >= TODAY and m not in open_ and m["status"] not in ("DECIDED", "DONE")]
-    past = [m for m in meetings if m not in open_ and m not in upcoming]
-    intro = (f"<p>{btn('Propose a meeting', 'meeting-propose')} <span class='muted'>Any member can propose one with a "
-             "subject, the problem to solve and the desired output. Agents propose with an <code>urgent</code> row on the team "
-             "board. Every member speaks in order (<code>/urgent-meeting</code> or <code>/team-meeting</code>); the CEO decides "
-             "the final next action.</span></p>")
-    return ('<section id="meetings"><h2>Meetings <small>calendar, proposals and CEO decisions · data/meetings.csv</small></h2>'
-            f'<div class="grid"><div class="card wide">{intro}<div class="cals">{cal}</div><p class="muted">{legend}</p></div>'
-            f'<div class="card wide"><h3>Needs your decision ({len(open_)})</h3>'
+    upcoming = [m for m in meetings if TODAY <= m["_d"] <= TODAY + dt.timedelta(days=14)
+                and m not in open_ and m["status"] not in ("DECIDED", "DONE")]
+    up = "".join(f"<li><b>{esc(m['_d'].strftime('%a %d %b'))}</b> {esc(m.get('time') or '')} "
+                 f"<span class='badge {MEETING_TYPE_CLS.get(m.get('type'), 'na')}'>{esc(m.get('type'))}</span> "
+                 f"{esc(m.get('subject'))}</li>" for m in upcoming)
+    return ('<section id="meetings"><h2>Meetings <small>data/meetings.csv</small></h2><div class="grid">'
+            f'<div class="card wide"><h3>Needs your decision ({len(open_)}) {btn("Propose a meeting", "meeting-propose", primary=False)}</h3>'
             + (f"<div class='grid'>{''.join(meeting_card(m) for m in open_)}</div>" if open_ else empty("Nothing waiting."))
-            + f'</div><div class="card wide"><h3>Coming up ({len(upcoming)})</h3>'
-            + (f"<div class='grid'>{''.join(meeting_card(m) for m in upcoming)}</div>" if upcoming else empty("Nothing scheduled."))
-            + "</div>"
-            + (f"<details class='card wide'><summary><b>Past and decided ({len(past)})</b></summary><div class='grid'>"
-               f"{''.join(meeting_card(m) for m in reversed(past))}</div></details>" if past else "")
+            + f"</div><div class='card'><h3>Next 14 days</h3>{('<ul class=list>' + up + '</ul>') if up else empty('Nothing scheduled.')}</div>"
+            + f"<details class='card' open><summary><b>Calendar</b> <span class='muted'>{legend}</span></summary><div class='cals'>{cal}</div></details>"
             + f"</div></section>{urgent_html}")
 
 
@@ -1043,7 +1029,9 @@ def render_loop(cur, board, mt_name, mt, dec_rows):
     rows = []
     for k, name in lanes:
         res = [b for b in sb if (b.get("from") or "").strip() == k and (b.get("type") or "").lower() == "result"]
-        rs = "<ul class='list'>" + "".join(f"<li>{esc(b.get('message'))}</li>" for b in res[:2]) + "</ul>" if res \
+        short = lambda s: s if len(s) <= 170 else s[:167].rsplit(" ", 1)[0] + "…"
+        rs = (f"{esc(short(res[0].get('message') or ''))}"
+              + (f" <span class='muted'>(+{len(res) - 1} earlier)</span>" if len(res) > 1 else "")) if res \
             else "<span class='muted'>no result posted</span>"
         task = cur.get(k) or ""
         rows.append([f"<b>{esc(name)}</b>", esc(task) if task.strip() else f"<span class='nd'>{ND}</span>", rs, gstatus(k),
@@ -1061,11 +1049,7 @@ def render_loop(cur, board, mt_name, mt, dec_rows):
 
     # ⑤ common decision: next task per member, plus the founder's latest decisions
     nrows = [[f"<b>{esc(n)}</b>", esc(nexts[k]) if k in nexts else f"<span class='nd'>{ND}</span>"] for k, n in lanes]
-    recent = dec_rows[-5:][::-1]
-    s5 = (table(["Member", "Next task (agreed)"], nrows)
-          + "<h4>Founder decisions (latest 5, docs/decisions.md)</h4>"
-          + ("<ul class='list'>" + "".join(f"<li><span class='muted'>{esc(r[0])}</span> <b>{esc(plain(r[1]))}</b>: {esc(plain(r[2]))}</li>"
-                                          for r in recent) + "</ul>" if recent else empty("No decisions yet.")))
+    s5 = table(["Member", "Next task (agreed)"], nrows)
 
     # ⑥ goal achieved? if not, reiterate
     n_ok = sum(1 for k, n in lanes
@@ -1074,9 +1058,6 @@ def render_loop(cur, board, mt_name, mt, dec_rows):
     gate_key = next((k for k in mt if k.startswith("gate to")), None)
     s6 = (f"<p class='stagehead'>{vb} <b>{n_ok} of {len(lanes)}</b> member goals achieved</p>"
           f"<p>{esc(verdict) if verdict else empty('No stage verdict yet.')}</p>"
-          "<p class='muted'>A member goal counts as achieved when the meeting's goal check says ACHIEVED or you said Yes in ③.</p>"
-          + (f"<p class='muted'>↻ Loop: next tasks (⑤) → results (③) → team meeting (④) → goal check (⑥), until every goal is ACHIEVED "
-             f"and the Founder confirms. Then {esc(stage)} is DONE and the next stage opens.</p>")
           + (f"<details><summary class='muted'>{esc(gate_key.capitalize())}</summary>{list_html(mt[gate_key])}</details>" if gate_key else ""))
 
     body = (step("②", f"Stage we are at: {stage}", s2, "data/timeline.csv")
@@ -2009,6 +1990,8 @@ def render():
     cards.append(card("Fresh leads", lb, "wide", f"data/leads.csv · {len(leads)} total"))
 
     queue = sorted([d for d in drafts if d["status"] in ("DRAFT", "APPROVED")], key=send_key)
+    parked = [d for d in queue if d["superseded"] or d["blocked"]]  # superseded or gated: nothing to do today
+    queue = [d for d in queue if d not in parked]
     if queue:
         rows = []
         for d in queue:
@@ -2030,9 +2013,14 @@ def render():
         qb = table(["Draft", "Agent", "Age", "Reviewer", "Flags", ""], rows)
     else:
         qb = empty("Nothing waiting. Agents draft into outbox/ during <code>/daily-run</code>.")
-    qb += ("<p class='muted'>Oldest first. Approve: change <code>Status: DRAFT</code> to "
-           "<code>Status: APPROVED</code>, then send it yourself.</p>")
-    cards.append(card("Approval queue", qb, "wide", f"outbox/ · {len(queue)} DRAFT"))
+    qb += "<p class='muted'>By send date. Approve, then send it yourself.</p>"
+    if parked:
+        qb += (f"<details><summary class='muted'>Parked: {len(parked)} superseded or gated drafts (nothing to do now)</summary>"
+               "<ul class='list'>" + "".join(
+                   f"<li>{link(d['title'], 'outbox/' + d['file'])} · {esc(d['superseded'] or d['blocked'])} "
+                   + (btn("Archive", "archive", primary=False, file=d["file"]) if d["superseded"] else "") + "</li>"
+                   for d in parked) + "</ul></details>")
+    cards.append(card("Approval queue", qb, "wide", f"outbox/ · {len(queue)} to review"))
     h.append(section("Today", cards, "today"))
 
     # 7. PATH TO ACQUISITION
@@ -2080,9 +2068,7 @@ def render():
     else:
         ws = "<p>0 warning(s)</p>"
     h.append(f'<footer><p>Last updated: <b>{esc(dt.datetime.now().strftime("%Y-%m-%d %H:%M"))}</b> '
-             f'by scripts/build_dashboard.py (read-only). Chart.js 4.4.1 from cdnjs is the only external resource.</p>'
-             f'{ws}<p class="muted">Sources read: ' + ", ".join(f"<code>{esc(s)}</code>" for s in sources) +
-             "</p></footer>")
+             f'by scripts/build_dashboard.py from the repo files.</p>{ws}</footer>')
 
     dash = {
         "today": TODAY.isoformat(),
@@ -2109,14 +2095,38 @@ def render():
                          "problem": m.get("problem") or "", "desired": m.get("desired_output") or ""}
                         for m in load_meetings()]
     dash["members"] = ["Founder", "Bui", "Rev", "Mark", "Selly", "Rizer", "Desi", "Avi"]
+    # Founder chat box: messages are board rows (type "message"); the thread shows the last 30 rows to or from the founder.
+    who = lambda k: TL_NAME.get((k or "").strip(), (k or "").strip())
+    thread = [r for r in load_board() if r.get("from") == "Founder" or r.get("to") == "Founder"][:30][::-1]
+    turns = "".join(
+        f"<li class='turn{' me' if r.get('from') == 'Founder' else ''}'><span class='av' aria-hidden='true'>"
+        f"{esc(who(r.get('from'))[:1])}</span><div><b>{esc(who(r.get('from')))} → {esc(who(r.get('to')))}</b> "
+        f"<span class='muted'>{esc(r.get('date'))} · {esc(r.get('type'))}</span><p>{esc(r.get('message'))}</p></div></li>"
+        for r in thread) or "<li class='muted'>No messages yet.</li>"
+    to_opts = "".join(f'<option value="{m}">{"Whole team" if m == "Team" else m}</option>'
+                      for m in ["Team", "Bui", "Rev", "Mark", "Selly", "Rizer", "Desi", "Avi"])
+    chatbox = (f'<form class="chatbox" id="chatbox" autocomplete="off">'
+               f'<select id="chat-to" aria-label="Send to">{to_opts}</select>'
+               f'<input id="chat-msg" maxlength="1500" placeholder="Message the team… (they answer on their next run)" aria-label="Message">'
+               f'<button type="submit" class="act primary">Send</button>'
+               f'<button type="button" class="act" id="chat-open" aria-expanded="false" aria-controls="chat-panel">Thread</button>'
+               f'<div class="chatpanel card" id="chat-panel" hidden><ol class="chat">{turns}</ol>'
+               f'<p class="muted">Saved to {link("data/team_board.csv", "data/team_board.csv")}. Each member reads its '
+               f'messages at the start of its next run and replies here.</p></div></form>')
     nav = ('<nav class="sitenav" aria-label="Site"><a class="brandlink" href="?p=company"><span class="logo" aria-hidden="true">'
-           '</span><b>JobsMatchNow</b></a><a class="tab" data-page="company" href="?p=company">Company</a>'
+           '</span><b>JobsMatchNow</b></a>' + chatbox + '<a class="tab" data-page="company" href="?p=company">Company</a>'
            '<a class="tab" data-page="team" href="?p=team">Our team</a>'
            '<a class="tab" data-page="command" href="?p=command">Command center</a>'
            '<a class="tab ext" href="https://jobsmatchnow.com/app/" target="_blank" rel="noopener noreferrer">Open the app ↗</a></nav>')
+    # Command center = action bar, timeline, meetings, stage loop, then what to approve and send. The older
+    # informational sections (KPIs, charts, status tiles, member cards, collaboration, readiness) are left out.
+    pick = lambda prefix: [x for x in h if x.startswith(prefix)]
+    command = (pick('<nav class="ctabar"') + [command_top]
+               + [x.replace('<h2>Today</h2>', '<h2>To approve and send</h2>', 1) for x in pick('<section id="today"')]
+               + pick("<footer"))
     h = ([nav, '<div class="page" data-page="company">', company_html, '</div>',
           '<div class="page" data-page="team">', team_html, '</div>',
-          '<div class="page" data-page="command">', command_top] + h + ['</div>'])
+          '<div class="page" data-page="command">'] + command + ['</div>'])
     page = (PAGE.replace("{{BODY}}", "\n".join(h)).replace("{{DATA}}", js_json(chart))
             .replace("{{DASH}}", js_json(dash)).replace("{{ACTION_JS}}", ACTION_JS).replace("{{CHART_JS}}", CHART_JS))
     return page, overall
@@ -2421,6 +2431,28 @@ ACTION_JS = r"""
         else { toast(j.message); s.value=s.dataset.current; }
       }).catch(function(){ toast('Could not reach the dashboard server.'); s.value=s.dataset.current; });
   });
+  /* Founder chat box in the top bar: POST /api/chat adds a "message" row on the team board. */
+  var cb=document.getElementById('chatbox'), cp=document.getElementById('chat-panel'), co=document.getElementById('chat-open');
+  if(cb){
+    var showThread=function(on){ cp.hidden=!on; co.setAttribute('aria-expanded', on?'true':'false'); };
+    co.addEventListener('click', function(){ showThread(cp.hidden); });
+    document.addEventListener('click', function(e){ if(!cp.hidden&&!cb.contains(e.target)) showThread(false); });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape'&&!cp.hidden){ showThread(false); co.focus(); } });
+    try{ if(sessionStorage.getItem('chat-open')){ sessionStorage.removeItem('chat-open'); showThread(true); } }catch(e){}
+    cb.addEventListener('submit', function(e){
+      e.preventDefault();
+      var msg=document.getElementById('chat-msg'), to=document.getElementById('chat-to'), b=cb.querySelector('button[type=submit]');
+      if(!msg.value.trim()){ msg.focus(); return; }
+      if(!LIVE){ toast('Start ./dash.sh to send messages.'); return; }
+      b.disabled=true;
+      fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','X-Dash-Token':TOKEN},
+        body:JSON.stringify({to:to.value,message:msg.value})})
+        .then(function(r){ return r.json(); }).then(function(j){
+          if(j.ok){ try{ sessionStorage.setItem('dash-toast', j.message); sessionStorage.setItem('chat-open','1'); }catch(e){} location.reload(); }
+          else { toast(j.message||'Failed.'); b.disabled=false; }
+        }).catch(function(){ toast('Could not reach the dashboard server. Is ./dash.sh running?'); b.disabled=false; });
+    });
+  }
   function fromHash(){
     if(location.hash.indexOf('#act=')!==0) return;
     var p={}; location.hash.slice(1).split('&').forEach(function(kv){ var i=kv.indexOf('='); if(i>0) p[decodeURIComponent(kv.slice(0,i))]=decodeURIComponent(kv.slice(i+1)); });
@@ -2504,7 +2536,15 @@ table.wf-mx td{text-align:center;color:var(--accent);font-size:16px}table.wf-mx 
 .loopstrip li:not(:last-child)::after{content:"→";position:absolute;right:-9px;top:50%;transform:translateY(-50%);color:var(--accent)}
 .sitenav{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 16px;
 background:var(--card);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
-.sitenav .brandlink{display:flex;gap:8px;align-items:center;color:var(--text);margin-right:auto}
+.sitenav .brandlink{display:flex;gap:8px;align-items:center;color:var(--text)}
+.chatbox{flex:1 1 320px;display:flex;gap:6px;align-items:center;position:relative;margin:0 10px;min-width:0}
+.chatbox select,.chatbox input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:6px 12px}
+.chatbox input{flex:1;min-width:0}.chatbox input:focus,.chatbox select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.chatbox .act{white-space:nowrap}
+.chatpanel{position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:30;max-height:60vh;overflow:auto}
+.chatpanel .turn.me div{background:#ffe3ee}
+@media (prefers-color-scheme: dark){.chatpanel .turn.me div{background:#3a1d33}}
+@media (max-width:700px){.chatbox{order:9;flex-basis:100%;margin:0;flex-wrap:wrap}.chatbox input{flex-basis:100%;order:-1}}
 .sitenav .logo{width:26px;height:26px;border-radius:8px}
 .sitenav .tab{padding:6px 12px;border-radius:99px;color:var(--text);font-weight:600}
 .sitenav .tab.on{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff}

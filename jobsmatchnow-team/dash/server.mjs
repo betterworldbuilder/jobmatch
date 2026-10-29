@@ -223,6 +223,14 @@ const ACTIONS = {
     return { msg: `Decided: ${subject}.`, task: `Decided meeting ${subject}`, output: "data/meetings.csv docs/decisions.md",
       handoff: "all agents" };
   },
+  async chat(b) {
+    const to = str(b.to, 20);
+    const stage = A.currentStage(await readText("data/timeline.csv"));
+    await writeAtomic("data/team_board.csv", A.addChat(await readText("data/team_board.csv"),
+      { date: A.today(), stage, to, message: str(b.message, 1500) }));
+    return { msg: `Sent to ${to === "Team" ? "the whole team" : to}. Replies come on their next run.`,
+      task: `Message to ${to}`, output: "data/team_board.csv", handoff: to === "Team" ? "all agents" : to };
+  },
   async feedback(b) {
     const date = A.today();
     const source = str(b.source), company = str(b.company, 200), role = str(b.role, 200);

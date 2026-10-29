@@ -25,3 +25,18 @@ date,agent,task,output,handoff_to
 2026-10-27,reviewer,"M1 review: 3 BLOCK then 9/9 PASS after re-review",outbox/2026-10-27_reviewer_daily.md,Founder
 2026-10-27,designer,"Command-center redesign spec and 4-option mockup",design/2026-10-27_command-center-spec.md design/2026-10-27_command-center-mockup.html,Founder
 2026-10-27,chief-of-staff,"M1 team meeting: 4 proposals agreed for the founder",plans/meetings/2026-10-27_M1.md,Founder
+2026-10-28,marketer,"News Radar: 5 items (none from last 24h) + Connecticut pay-transparency post",outbox/2026-10-28_marketer_news-post.md,seller
+2026-10-28,seller,"Lead Radar: 4 new leads (Resend, Zed Industries, Dub, Linear); no follow-ups",data/leads.csv,reviewer
+2026-10-28,reviewer,"Daily review: news-post BLOCK; YC/speedrun application and 4 openers PASS",outbox/2026-10-28_reviewer_daily.md,Founder
+2026-10-28,marketer,"Fixed BLOCKed news post: L15 reworded, CT claims cut to the verifiable minimum",outbox/2026-10-28_marketer_news-post.md,reviewer
+2026-10-28,reviewer,"Re-review news post: BLOCK, L17 fixed, CT claim unverified",outbox/2026-10-28_reviewer_daily.md,Founder
+2026-10-28,marketer,"Onboarding pack: hiring post + cold email, candidate post + dev-community post",outbox/2026-10-28_marketer_onboarding.md,reviewer
+2026-10-28,builder,"Prod-readiness check: 6/15 (tests 196 pass, build OK; no terms page, shared server)",docs/prod-readiness.md,Founder
+2026-10-28,reviewer,"Onboarding pack review: BLOCK x4 (features not live, sign-up not safe, postal address)",outbox/2026-10-28_reviewer_daily.md,marketer
+2026-10-28,builder,"Dashboard chat box: founder messages any member or the whole team via the team board; daily-run answers them","dash/server.mjs dash/actions.mjs scripts/build_dashboard.py",Founder
+2026-10-29,marketer,News Radar (5 items; none from last 24h) + news post,outbox/2026-10-29_marketer_news-post.md,reviewer
+2026-10-29,marketer,Onboarding draft (engineer candidates),outbox/2026-10-29_marketer_onboarding.md,reviewer
+2026-10-29,seller,"Lead Radar: 5 new leads (Mastra, Better Stack, NetBird, Coder, Buoyant)",data/leads.csv,reviewer
+2026-10-29,fundraiser,"Investor Radar: Scribble Ventures, SHRM Labs WorkplaceTech Accelerator",docs/investors.md,Founder
+2026-10-29,builder,Prod-readiness check 6/15 (no fix: no open feedback item),docs/prod-readiness.md,Founder
+2026-10-29,reviewer,Daily review: 4 PASS 0 BLOCK,outbox/2026-10-29_reviewer_daily.md,Founder

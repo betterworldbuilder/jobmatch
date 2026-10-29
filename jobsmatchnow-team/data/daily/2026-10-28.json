@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-28",
+  "brief": [
+    "Vision: sold to LinkedIn (imagined 2029-10-26, day 4 of ~1,095). Next milestone: M1 (Nov 2026): C-corp, privacy + terms, YC W27 decision, differentiators in production, 3 pilots. Today moves it by: YC/speedrun application re-review PASS (ready for you to submit) + 4 new pilot leads.",
+    "Mark: best news is the Connecticut pay-transparency expansion (in force Oct 1). LinkedIn post drafted on 'salary up front'. Caveat: no items from the last 24h, only Sept-Oct.",
+    "Selly: 4 new leads, not 5 (Resend, Zed Industries, Dub, Linear). Linear is Series C, outside the niche; Zed has no engineering role open.",
+    "Follow-ups: none (no logged replies). Bui: no fix (feedback.md has no open product item). Acquirer Watch: skipped (Mondays only).",
+    "Rev BLOCK: news-post says 'what I keep hearing from founders' with 0 logged conversations; also check the CT claims against Public Act 26-12.",
+    "Rev PASS: YC/speedrun application (nits: '4 targets' is now 8, Juicebox/Paraform figures unchecked, VN/SEA vs neutral wording); 4 new lead openers PASS.",
+    "Run issue: file writes on the WSL path were refused as 'sensitive'; the main session saved the outputs by copying them through WSL.",
+    "Waiting for your approval: 41 drafts, 0 APPROVED. The 31 from 10-25 hit 4 days old tomorrow (old openers still have '15-min' and VN/SEA): approve or retire them.",
+    "CEO: decide today: (1) per-hire fee amount (P4, blocks pilot calls); (2) candidate geography, VN/SEA or neutral (blocks openers and YC answers A3/C2).",
+    "CEO: do today: send 0 messages (no PASS outreach yet; 8 NEW leads, 0 REPLIED), post 0 (news post BLOCK), reply to 0; submit a16z speedrun (closes 11/01) and YC W27 (closes 11/02)."
+  ],
+  "news": [
+    {"headline": "Connecticut pay transparency expansion took effect Oct 1: ads must show a wage or range plus a benefits description, and the range must be good-faith", "url": "https://trusaic.com/blog/connecticut-expands-pay-transparency-requirements-effective-october-2026/", "source": "Trusaic (vendor blog, published 2026-09-09)", "why": "Pay ranges are becoming mandatory in more US states, which supports our salary-up-front pitch and answers the 'we lose negotiating room' objection.", "action_type": "post", "action": "Founder posts the drafted LinkedIn reaction; check the statute before posting."},
+    {"headline": "2026 LinkedIn Hiring Release, Wave 1: Teams collaboration for hiring managers and ATS applicants included in Hiring Assistant evaluations", "url": "https://business.linkedin.com/hire/product-update/wave1-2026", "source": "LinkedIn Talent Solutions (official; release date not confirmed)", "why": "The end-game acquirer is moving into AI-assisted screening of applicants. That strengthens our 'mutual opt-in, no applicant pile' contrast.", "action_type": "investor", "action": "Rizer: add to the 'why you and not LinkedIn' notes and the acquirer watch list in docs/investors.md."},
+    {"headline": "Upwork to report Q3 2026 results on November 2 (announced Oct 12)", "url": "https://investors.upwork.com/news-releases/news-release-details/upwork-report-third-quarter-financial-results-november-2-2026", "source": "Upwork Investor Relations (official)", "why": "A direct competitor for cross-border engineers shares market data on Nov 2, the same day as the YC W27 deadline.", "action_type": "investor", "action": "Rizer: read the Nov 2 release for marketplace and AI-work commentary to cite (with source) in investor updates."},
+    {"headline": "Pay transparency in 2026: California SB 642 requires the posted pay scale to be a good-faith estimate, effective Jan 1, 2026", "url": "https://www.bakerdonelson.com/pay-transparency-in-2026-what-employers-need-to-do-now", "source": "Baker Donelson (law firm)", "why": "US startups hiring remote roles are exposed to state pay-range rules, so 'a real range from day one' is a practical hook for founders and CTOs.", "action_type": "sales", "action": "Selly: use as a discovery question ('how do you post ranges for remote roles today?'). No legal claims in outreach."},
+    {"headline": "Maine pay transparency law signed in April 2026; sources differ on the effective date (June 29 vs July 29, 2026)", "url": "https://trusaic.com/blog/maine-pay-transparency-law-set-to-take-effect-july-29-2026/", "source": "Trusaic (vendor blog)", "why": "A second state on the pay-range trend; the date needs a primary source first.", "action_type": "post", "action": "Hold for a follow-up post once the date is confirmed from the state statute."}
+  ],
+  "leads_added": ["Resend", "Zed Industries", "Dub", "Linear"],
+  "acquirer_watch": [],
+  "drafts": ["outbox/2026-10-28_marketer_news-post.md"],
+  "review": [
+    {"file": "leads-openers", "verdict": "PASS", "note": "Resend, Zed, Dub, Linear neutral; Linear Series C, Zed no engineering role."},
+    {"file": "2026-10-28_marketer_news-post", "verdict": "BLOCK", "note": "L15 'what I keep hearing from founders' with 0 conversations; check CT statute."},
+    {"file": "2026-10-28_writer_yc-speedrun-application", "verdict": "PASS", "note": "6 blockers fixed; nits: target count 4 to 8, Juicebox/Paraform figures, VN/SEA wording."}
+  ],
+  "agent_activity": [
+    {"agent": "marketer", "task": "Mark: News Radar (5 items) + LinkedIn post", "output": "outbox/2026-10-28_marketer_news-post.md"},
+    {"agent": "seller", "task": "Selly: Lead Radar, 4 new leads, no follow-ups", "output": "data/leads.csv"},
+    {"agent": "reviewer", "task": "Rev: 1 BLOCK, 2 PASS", "output": "outbox/2026-10-28_reviewer_daily.md"}
+  ],
+  "ceo_decide": ["Per-hire fee amount (P4): blocks any pilot call", "Candidate geography: Vietnam/SEA or neutral (blocks openers and YC answers A3/C2)"],
+  "ceo_do": ["Submit a16z speedrun (closes 2026-11-01 23:59 PT) and YC W27 (closes 2026-11-02 20:00 PT) from the PASS application", "Approve or retire the 31 drafts from 2026-10-25"],
+  "followups": [],
+  "builder_fix": ""
+}

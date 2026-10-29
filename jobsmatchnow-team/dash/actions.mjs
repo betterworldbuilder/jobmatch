@@ -135,6 +135,24 @@ export function addCeoReview(reviews, board, { date, stage, member, decision, no
   return out;
 }
 
+// ---------- founder chat box (rows on data/team_board.csv; agents answer on their next run) ----------
+export const CHAT_TO = ["Team", "Bui", "Rev", "Mark", "Selly", "Rizer", "Desi", "Avi"];
+
+export function currentStage(timelineCsv) {
+  const rows = parseCsv(timelineCsv);
+  const h = rows[0] || [];
+  const si = h.indexOf("stage"), st = h.indexOf("status");
+  const row = rows.slice(1).find((r) => String(r[st] || "").trim().toUpperCase() === "IN PROGRESS");
+  return row ? row[si] : "";
+}
+
+export function addChat(board, { date, stage, to, message }) {
+  if (!CHAT_TO.includes(to)) fail("Pick who the message is for.");
+  const m = required(message, "Message");
+  assertNoPersonal(m);
+  return appendCsvRow(board, BOARD_HEADER, [date, stage, "Founder", to === "Team" ? "team" : AGENT_OF[to], "message", m, ""]);
+}
+
 export function decideMeeting(text, id, decision) {
   const d = required(decision, "Decision");
   assertNoPersonal(d);

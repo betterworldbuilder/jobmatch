@@ -45,7 +45,7 @@ stage moves to `DONE` only when the founder confirms the evidence.
 ## Daily and weekly rhythm
 | When | Command | What happens |
 |---|---|---|
-| Every morning | `/daily-run` | News, leads, fixes, review; brief opens with the **Vision line** (next milestone) |
+| Every morning, 07:00 (automatic) | `/daily-run` | News, leads, fixes, review; brief opens with the **Vision line** (next milestone). Runs unattended via the Windows task "JobsMatchNow daily-run" → `scripts/daily-run.ps1`; log in `logs/daily-run-DATE.log`. Drafts only, nothing is sent |
 | After a round of work | `/team-meeting` | Agents adapt to each other's feedback and agree proposals |
 | Something can't wait | `/urgent-meeting <subject> \| <problem> \| <desired output>` | Every member gives an opinion in order; you decide with `/urgent-meeting decide <file> <option>` |
 | When decisions pile up | `/ceo` | Max 5 founder decisions with a recommendation |

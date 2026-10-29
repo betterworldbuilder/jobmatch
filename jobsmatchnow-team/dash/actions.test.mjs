@@ -160,6 +160,18 @@ test("CEO review: YES/NO/DELAY per member, NO needs a note, agents get a board r
   assert.throws(() => A.addCeoReview("", "", { ...base, stage: "M99x" }), /Unknown stage/);
 });
 
+test("chat: founder message becomes a board row to one agent or the whole team", () => {
+  const tl = "stage,when,status\nM3,Jan 2027,NOT STARTED\nM1,Nov 2026,IN PROGRESS\n";
+  assert.equal(A.currentStage(tl), "M1");
+  assert.equal(A.currentStage("stage,when,status\n"), "");
+  const one = A.addChat("", { date: "2026-10-28", stage: "M1", to: "Bui", message: "Is the app\nready, | Bui?" });
+  assert.deepEqual(A.parseCsv(one), [A.BOARD_HEADER, ["2026-10-28", "M1", "Founder", "builder", "message", "Is the app ready, / Bui?", ""]]);
+  assert.equal(A.parseCsv(A.addChat(one, { date: "2026-10-28", stage: "M1", to: "Team", message: "hi" }))[2][3], "team");
+  assert.throws(() => A.addChat("", { date: "2026-10-28", stage: "M1", to: "Bob", message: "hi" }), /Pick who/);
+  assert.throws(() => A.addChat("", { date: "2026-10-28", stage: "M1", to: "Team", message: " " }), /Message is required/);
+  assert.throws(() => A.addChat("", { date: "2026-10-28", stage: "M1", to: "Team", message: "mail a@b.com" }), /email/);
+});
+
 // ---------- end to end: real server on a temp copy ----------
 async function startServer(root, port) {
   const child = spawn(process.execPath, [path.join(ROOT, "dash", "server.mjs")],

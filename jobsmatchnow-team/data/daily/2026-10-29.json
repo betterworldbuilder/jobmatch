@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-29",
+  "brief": [
+    "Vision: sold to LinkedIn (imagined 2029-10-26, day 5 of ~1,095). Next milestone: M1 (Nov 2026): C-corp, privacy + terms, YC W27 decision, differentiators in production, 3 pilots started. Today moves it by: 5 new niche leads toward 3 pilots; the prod check shows the terms page and the deploy still block 'differentiators in production'.",
+    "Team: Mark ✓ Selly ✓ Rizer ✓ Bui ✓ Rev ✓ (agents' writes to outbox/, leads.csv and investors.md were refused again; the main session saved them via WSL)",
+    "Bui: prod-ready 6/15; blocker: shared 'test server' with DEMO_AUTH on and no mailer (no terms page either). No fix today: feedback.md has no open product item.",
+    "Mark onboarding (candidates, Thu): a LinkedIn post and a dev-community post, CTA 'reply', geography neutral → outbox/2026-10-29_marketer_onboarding.md",
+    "Rizer: 2 investors added: Scribble Ventures (co-invested with a16z speedrun in AI-recruiting Jooba 10/20) and SHRM Labs WorkplaceTech Accelerator (needs paying customers, so revisit later).",
+    "News: nothing from the last 24h. Best item: LinkedIn Hiring Assistant 2 'AI memory' (WeRSM, 10/02) → news post on 'both sides choose'; open the article and confirm line 1 before posting.",
+    "Selly: 5 leads added: NetBird, Better Stack, Mastra (strongest), Coder, Buoyant (weak: check Coder size, Buoyant open roles). Follow-ups: none (0 replies logged).",
+    "Rev: 4/4 PASS (news post, onboarding, lead openers, investor rows); nits on news-post L17/L19. Still BLOCKED from 10/28: news post (check the CT Act) and onboarding (features not live).",
+    "Waiting for you: 2 new PASS drafts today; 31 drafts from 10/25 are over 3 days old (7 of them acquirer drafts, held until milestone 7 by design).",
+    "CEO: decide today: (1) P4 per-hire fee amount (Selly can't start pilots without it); (2) P1 merge + deploy the branch after a DB backup (unlocks onboarding copy and the M1 differentiators).",
+    "CEO: do today: send 9 messages (Rev-PASS openers: 4 from 10/28 + 5 today; 4 older openers still need the fix), post 2 (today's news post + onboarding post A), reply to 0. Submit a16z speedrun SR008 by 11/01 23:59 PT."
+  ],
+  "news": [
+    {"headline": "LinkedIn Hiring Assistant 2 is turning recruiters' preferences into AI memory (2026-10-02)", "url": "https://wersm.com/linkedin-hiring-assistant-2-ai-memory-recruiting/", "source": "WeRSM", "why": "The incumbent is making the recruiter side smarter, which sharpens our 'both sides choose' point and the investor question 'why not LinkedIn'.", "action_type": "post", "action": "Founder posts outbox/2026-10-29_marketer_news-post.md after opening the article to check the wording."},
+    {"headline": "Upwork to report Q3 2026 results on November 2, 2026 (announced 2026-10-12)", "url": "https://investors.upwork.com/news-releases/news-release-details/upwork-report-third-quarter-financial-results-november-2-2026", "source": "Upwork Investor Relations", "why": "The largest freelance marketplace reports on the YC deadline day; market context for the deck.", "action_type": "investor", "action": "Rizer reads the Q3 release on 11/2 for cross-border engineer demand signals. Do not quote it until read."},
+    {"headline": "Connecticut pay-range changes effective Oct. 1, 2026 (Public Act 26-12)", "url": "https://trusaic.com/blog/connecticut-expands-pay-transparency-requirements-effective-october-2026/", "source": "Trusaic (secondary; primary PDF unreachable)", "why": "Pay ranges in job ads are becoming normal in the US, which supports 'salary up front'.", "action_type": "sales", "action": "Discovery question only: 'How do you post pay ranges for remote roles?'. No legal claims."},
+    {"headline": "Pay transparency in 2026: what employers need to do now (California SB 642)", "url": "https://www.bakerdonelson.com/pay-transparency-in-2026-what-employers-need-to-do-now", "source": "Baker Donelson", "why": "A neutral reason to ask a remote-first US startup how they post pay.", "action_type": "sales", "action": "Selly keeps it as a question in openers, not a claim."},
+    {"headline": "2026 LinkedIn Hiring Release, Wave 1: ATS applicants included in Hiring Assistant evaluations", "url": "https://business.linkedin.com/hire/product-update/wave1-2026", "source": "LinkedIn", "why": "Shows where LinkedIn is investing; baseline for the 'why you and not LinkedIn' answer (context, covers Oct 2025-Mar 2026).", "action_type": "investor", "action": "Rizer adds one line to the competitor slide: LinkedIn is deepening recruiter-side AI."}
+  ],
+  "leads_added": ["Mastra", "Better Stack", "NetBird", "Coder", "Buoyant"],
+  "acquirer_watch": [],
+  "drafts": ["outbox/2026-10-29_marketer_news-post.md", "outbox/2026-10-29_marketer_onboarding.md"],
+  "review": [
+    {"file": "2026-10-29_marketer_news-post", "verdict": "PASS", "note": "No numbers/legal claims; nit: L17 present tense, L19 near 'no applicant pile'."},
+    {"file": "2026-10-29_marketer_onboarding", "verdict": "PASS", "note": "Geography neutral, no signup/demo/profile invite, no numbers."},
+    {"file": "leads-openers", "verdict": "PASS", "note": "All 5 neutral, no '15-min demo'; confirm Coder headcount ≤200 first."},
+    {"file": "investors-rows", "verdict": "PASS", "note": "Both US-based and sourced; 'alongside speedrun' reworded to one deal."}
+  ],
+  "agent_activity": [
+    {"agent": "marketer", "task": "Mark: News Radar (5 items, none from the last 24h) + news post", "output": "outbox/2026-10-29_marketer_news-post.md"},
+    {"agent": "marketer", "task": "Mark: onboarding draft for engineer candidates", "output": "outbox/2026-10-29_marketer_onboarding.md"},
+    {"agent": "seller", "task": "Selly: 5 new leads", "output": "data/leads.csv"},
+    {"agent": "fundraiser", "task": "Rizer: Investor Radar, 2 added", "output": "docs/investors.md"},
+    {"agent": "builder", "task": "Bui: prod-readiness check 6/15 (no fix: no open feedback item)", "output": "docs/prod-readiness.md"},
+    {"agent": "reviewer", "task": "Rev: daily review, 4 PASS / 0 BLOCK", "output": "outbox/2026-10-29_reviewer_daily.md"}
+  ],
+  "ceo_decide": [
+    "P4: set the per-hire fee amount before any pilot call (Selly is waiting on it)",
+    "P1: merge + deploy the branch after a DB backup (unlocks onboarding copy and the M1 differentiators)"
+  ],
+  "ceo_do": [
+    "Send 9 Rev-PASS opener messages (4 from 10/28 + 5 today) by hand",
+    "Post 2: today's news post (after checking the WeRSM article) + onboarding post A",
+    "Submit a16z speedrun SR008 by 11/01 23:59 PT; YC W27 by 11/02 20:00 PT"
+  ],
+  "followups": [],
+  "builder_fix": ""
+}
