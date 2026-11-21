@@ -119,6 +119,7 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
         <div className="tp-complete" aria-label={`Profile ${completeness}% complete`}><span style={{ width: `${completeness}%` }} /></div>
         <div className="tp-actions">
           <button type="button" className="tp-edit" onClick={() => onEditProfile(0)}><Pencil size={15} /> Edit info <small>({completeness}% complete)</small></button>
+          <button type="button" className="secondary-button small" onClick={() => navigate('profile')}><User size={14} /> My full profile</button>
           {candidate && onPreview && <button type="button" className="secondary-button small" onClick={onPreview}><Eye size={14} /> Preview as recruiter</button>}
           {candidate && <button type="button" className={hidden ? 'tp-visibility off' : 'tp-visibility'} onClick={() => void toggleVisibility()} disabled={saving} aria-pressed={!hidden}>
             {hidden ? <><EyeOff size={14} /> Hidden from recruiters</> : <><Eye size={14} /> Visible to recruiters</>}

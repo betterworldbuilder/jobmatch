@@ -1,5 +1,5 @@
 export type Role = 'candidate' | 'employer' | 'admin';
-export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback';
+export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match';
 export type EmployerKind = 'company' | 'headhunter';
 export type ProviderId = 'linkedin' | 'google' | 'email' | 'demo';
 

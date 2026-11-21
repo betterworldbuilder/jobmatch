@@ -208,10 +208,7 @@ export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMe
   return <main className="td-dashboard td-candidate">
     {/* Profile + today: summary, urgent, next interview, search settings. */}
     <TodayPanel data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onOpenMessages={onOpenMessages} onPreview={() => setPreviewing(true)} onScroll={scrollTo} />
-    {/* Then the swipe deck (sidebar "Look for new Matches"). */}
-    {featureOn('findMatches')
-      ? <FindMatches role="candidate" data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Look for new Matches" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
-      : <NewMatchesSection data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Look for new Matches" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />}
+    {/* The swipe deck has its own page now: "Find My Match" (the page the app opens on). */}
 
     <LaunchOffers offers={CANDIDATE_OFFERS} compact />
 
@@ -348,8 +345,6 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
       <button className="primary-button" onClick={onAddJobs}>+ Add New Job Offers</button>
     </header>
 
-    {/* Headhunting: the "Find your Matches" studio on candidates (preview: ?fm=1). */}
-    {featureOn('findMatches') && <FindMatches role="employer" data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Look for new Matches" subtitle="Swipe right on candidates you want to meet. A chat opens only if they like you back." />} />}
 
     <section className="td-section td-role-section" id="td-roles">
       <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet." action={bestMatchFirst ? 'Sort by: Best Match' : 'Sort by: Name'} onAction={() => setBestMatchFirst((value) => !value)} />

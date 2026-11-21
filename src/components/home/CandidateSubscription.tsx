@@ -22,7 +22,7 @@ export function usePremiumInterest(userId: string) {
 export function CandidateSubscription({ data, navigate }: { data: Bootstrap; navigate: (v: View) => void }) {
   const { state, ask } = usePremiumInterest(data.viewer.id);
   return <div className="page cs-page">
-    <div className="page-title"><div><span className="overline">Subscription</span><h1>Your plan</h1><p>The core of JobsMatchNow is free forever. Premium is optional, for people who want to search wider and reach teams first.</p></div></div>
+    <div className="page-title"><div><span className="overline">Premium options</span><h1>Premium options</h1><p>The core of JobsMatchNow is free forever. Premium is optional, for people who want to search wider and reach teams first.</p></div></div>
     <div className="cs-grid">
       <article className="cs-card free">
         <header><span>For candidates</span></header>

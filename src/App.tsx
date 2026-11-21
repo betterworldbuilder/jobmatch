@@ -5,7 +5,7 @@ import { ReportModal } from './components/ReportModal';
 import { ConductModal } from './components/ConductModal';
 import { AdminPasswordSetup } from './components/AdminPasswordSetup';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react';
-import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot, Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
 import { apiBase } from './api';
 import { Capacitor } from '@capacitor/core';
@@ -59,6 +59,8 @@ import { AiAnalyst, AiAnalystInline } from './components/home/AiAnalyst';
 import { CandidateSubscription } from './components/home/CandidateSubscription';
 import { ChatbotPage } from './components/home/ChatbotPage';
 import { FeedbackPage } from './components/home/FeedbackPage';
+import { NewMatchesSection } from './components/home/NewMatchesSection';
+import { FindMatches } from './components/findmatches/FindMatches';
 import type { Bootstrap, Job, JobMatch, Message, Person, Role, ScheduledCall, SessionUser, View } from './types';
 
 type NotificationItem = {
@@ -89,26 +91,26 @@ function billingNotificationIcon(billingKind?: string) {
 // home dashboard (`anchor`). `short` is the compact label for the mobile bar.
 type NavItem = { label: string; short?: string; icon: typeof Compass; view?: View; anchor?: string };
 const candidateNav: NavItem[] = [
-  // Home first: the profile card + Today panel sit at the top of the home page.
+  // "Find My Match" (the swipe deck + Recommended Roles) is the page the app opens on.
+  { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
+  // Home: my profile card + Today panel at the top, then matches, likes, conversations.
   { label: 'Home', icon: Compass, anchor: 'td-today' },
-  { label: 'Look for new Matches', short: 'Swipe', icon: Flame, anchor: 'td-new-matches' },
-  { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
-  { label: 'Recruiters that like you', short: 'Likes You', icon: Target, anchor: 'td-chasing' },
-  // "Recommended Roles" lives under the swipe deck in "Look for new Matches" (no separate menu item).
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'Saved', icon: BookmarkIcon, view: 'saved' },
+  { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
+  { label: 'Recruiters that like you', short: 'Likes You', icon: Target, anchor: 'td-chasing' },
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
   { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
-  { label: 'Subscription', icon: CreditCard, view: 'billing' },
   { label: 'Use your chatbot here', short: 'Chatbot', icon: Bot, view: 'assistant' },
   { label: 'Feedback', icon: Lightbulb, view: 'feedback' },
+  { label: 'Premium options', short: 'Premium', icon: Crown, view: 'billing' },
 ];
 // One colour per menu item, so each section is easy to spot.
 const NAV_COLORS: Record<string, string> = {
-  Home: '#ff6d9c', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
+  Home: '#ff6d9c', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
-  Subscription: '#fbbf24', 'Use your chatbot here': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
+  Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
   'Coffee Invitations': '#e0a96d',
 };
 const employerNav: NavItem[] = [
@@ -405,7 +407,8 @@ function AdminWorkspace({ session, onExit }: { session: SessionUser; onExit: () 
 }
 
 function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; onSwitchUser: (user: SessionUser) => void; onExit: () => void }) {
-  const [view, setView] = useState<View>('home');
+  // Candidates open the app on "Find My Match" (desktop and mobile); recruiters on Home.
+  const [view, setView] = useState<View>(session.role === 'candidate' ? 'match' : 'home');
   const [data, setData] = useState<Bootstrap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -420,7 +423,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const [jobImportOpen, setJobImportOpen] = useState(false);
   const [manualJobRequest, setManualJobRequest] = useState(0);
   // Candidates land on "Look for new Matches" (the top section of their home).
-  const [activeAnchor, setActiveAnchor] = useState(session.role === 'candidate' ? 'td-today' : featureOn('findMatches') ? 'td-new-matches' : '');
+  const [activeAnchor, setActiveAnchor] = useState(session.role === 'candidate' ? '' : featureOn('findMatches') ? 'td-new-matches' : '');
   const [openMatchId, setOpenMatchId] = useState<string | undefined>(undefined);
   const openMessages = (matchId: string) => { setOpenMatchId(matchId); setView('messages'); };
   const [editJobId, setEditJobId] = useState<string | undefined>(undefined);
@@ -466,7 +469,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   // Demo convenience: jump between the flagship candidate and recruiter personas.
   const changeRole = (next: Role) => { api.login(`${next}-demo`).then(({ user }) => onSwitchUser(user)); };
   // Headhunting swipe studio for recruiters, behind the findMatches flag (preview: ?fm=1).
-  const nav = role === 'candidate' ? candidateNav : featureOn('findMatches') ? [{ label: 'Look for new Matches', short: 'Swipe', icon: Flame, anchor: 'td-new-matches' }, ...employerNav] : employerNav;
+  const nav = role === 'candidate' ? candidateNav : featureOn('findMatches') ? [{ label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' as View }, ...employerNav] : employerNav;
   // Anchor items scroll to a home-dashboard section; view items open a page.
   const gotoNav = (item: NavItem) => {
     setMobileNav(false);
@@ -488,7 +491,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
 
   return <div className={`app-shell role-${role}`}>
     <aside className={mobileNav ? 'sidebar open' : 'sidebar'}><div className="sidebar-head"><Brand /><button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close menu"><X /></button></div>
-      <div className="workspace-switch"><span>Profile</span><button onClick={() => { setView('profile'); setMobileNav(false); }}>{data?.viewer.photo ? <img className="avatar-mini" src={data.viewer.photo} alt="" /> : <div className="avatar-mini">{initials}</div>}<div><strong>{data?.viewer.name || session.name}</strong><small>{role === 'candidate' ? 'Candidate' : 'Recruiter'}</small></div><ArrowRight size={15} /></button></div>
+      {/* The profile now lives at the top of Home (profile card + "My full profile"), not in the sidebar. */}
       <nav className="sidebar-nav">{nav.map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)} style={{ ['--c' as string]: NAV_COLORS[item.label] || '#9fb3d9' }}><i className="nav-ico"><Icon size={18} /></i><span>{item.label}</span>{item.view === 'messages' && notifications.length > 0 && <em>{Math.min(notifications.length, 9)}</em>}</button>; })}</nav>
       <div className="sidebar-bottom"><button onClick={() => setConductOpen(true)} style={{ ['--c' as string]: '#34d399' }}><i className="nav-ico"><ShieldCheck size={17} /></i>Code of Conduct</button><button onClick={() => setSupportOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><CircleHelp size={17} /></i>Help center</button><button onClick={() => setSettingsOpen(true)} style={{ ['--c' as string]: '#c4b5fd' }}><i className="nav-ico"><Settings size={17} /></i>Settings</button><button className="logout-button" onClick={onExit} style={{ ['--c' as string]: '#fb7185' }}><i className="nav-ico"><LogOut size={17} /></i>Log out</button></div>
     </aside>
@@ -508,7 +511,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
           : <ViewRouter view={view} role={role} data={data} setData={setData} navigate={setView} onEditProfile={setEditStep} profileCard={profileCard} onProfileCardChange={setProfileCard} reload={load} onAddJobs={() => setJobImportOpen(true)} manualJobRequest={manualJobRequest} openMatchId={openMatchId} onOpenMessages={openMessages} editJobId={editJobId} onEditJob={openJobEditor} paymentResult={vnpayResult} onDismissResult={() => setVnpayResult(null)} />
       )}
     </section>
-    {data && !data.viewer.onboarding && view !== 'analytics' && <AiAnalyst data={data} />}
+    {data && !data.viewer.onboarding && view !== 'analytics' && view !== 'match' && <AiAnalyst data={data} />}
     {profileSaved && <div className="profile-saved-toast" role="status"><Check size={15} /> Profile updated. Recruiter view refreshed.</div>}
     {jobImportOpen && data && <JobImportModal viewer={data.viewer} onClose={() => setJobImportOpen(false)} onImported={() => { setJobImportOpen(false); setView('jobs'); load(); }} onManual={() => { setJobImportOpen(false); setView('jobs'); setManualJobRequest((value) => value + 1); }} />}
     <nav className="mobile-bottom-nav" aria-label="Primary navigation">{nav.slice(0, 5).map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)}><Icon size={19} /><span>{item.short || item.label}</span></button>; })}</nav>
@@ -529,6 +532,9 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'analytics') return <Analytics role={role} data={data} />;
   if (view === 'jobs') return <Jobs data={data} reload={reload} onAddJobs={onAddJobs} manualJobRequest={manualJobRequest} onOpenMessages={onOpenMessages} editJobId={editJobId} />;
   if (view === 'matches') return <Matches data={data} navigate={navigate} onOpenMessages={onOpenMessages} />;
+  if (view === 'match') return <main className="td-dashboard td-candidate td-match-page">{featureOn('findMatches')
+    ? <FindMatches role={role === 'candidate' ? 'candidate' : 'employer'} data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Find My Match" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
+    : <NewMatchesSection data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Find My Match" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />}</main>;
   if (view === 'assistant') return <ChatbotPage data={data} navigate={navigate} />;
   if (view === 'feedback') return <FeedbackPage data={data} />;
   if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;
