@@ -1,4 +1,4 @@
-import type { AdminKpi, IntegrationStatus, WebAnalyticsReport } from './types';
+import type { AdminKpi, ConnectorKey, IntegrationStatus, WebAnalyticsReport } from './types';
 import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewKit, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
@@ -62,6 +62,9 @@ export const api = {
     return body;
   },
   registerInterest: (userId: string, feature: 'target-roles-plus' | 'direct-messages-plus' | 'candidate-premium') => request<{ ok: boolean }>('/api/me/interest', { method: 'POST', body: JSON.stringify({ userId, feature }) }),
+  connectorKeys: (userId: string) => request<{ keys: ConnectorKey[] }>(`/api/me/connector-keys?userId=${encodeURIComponent(userId)}`),
+  createConnectorKey: (userId: string, label: string) => request<{ key: string; record: ConnectorKey }>('/api/me/connector-keys', { method: 'POST', body: JSON.stringify({ userId, label }) }),
+  revokeConnectorKey: (userId: string, id: string) => request<{ ok: boolean }>(`/api/me/connector-keys/${encodeURIComponent(id)}?userId=${encodeURIComponent(userId)}`, { method: 'DELETE' }),
   adminKpis: () => request<Record<'registrations' | 'matches' | 'hires', AdminKpi>>('/api/admin/kpis'),
   adminWebAnalytics: (days: number) => request<WebAnalyticsReport>(`/api/admin/web-analytics?days=${days}`),
   adminIntegrations: () => request<{ integrations: Record<string, IntegrationStatus> }>('/api/admin/integrations'),

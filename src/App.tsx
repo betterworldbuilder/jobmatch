@@ -4,7 +4,7 @@ import { SupportModal } from './components/SupportModal';
 import { ReportModal } from './components/ReportModal';
 import { ConductModal } from './components/ConductModal';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react';
-import { Activity, ArrowLeft, ArrowRight, BadgeCheck, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
 import { apiBase } from './api';
 import { Capacitor } from '@capacitor/core';
@@ -56,6 +56,7 @@ import { scoreOf } from './lib/report';
 import { CandidateReport, RecruiterReport } from './components/home/ReportSections';
 import { AiAnalyst, AiAnalystInline } from './components/home/AiAnalyst';
 import { CandidateSubscription } from './components/home/CandidateSubscription';
+import { ChatbotPage } from './components/home/ChatbotPage';
 import type { Bootstrap, Job, JobMatch, Message, Person, Role, ScheduledCall, SessionUser, View } from './types';
 
 type NotificationItem = {
@@ -98,7 +99,15 @@ const candidateNav: NavItem[] = [
   { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: 'Subscription', icon: CreditCard, view: 'billing' },
+  { label: 'Use your chatbot here', short: 'Chatbot', icon: Bot, view: 'assistant' },
 ];
+// One colour per menu item, so each section is easy to spot.
+const NAV_COLORS: Record<string, string> = {
+  Home: '#ff6d9c', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
+  Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
+  Subscription: '#fbbf24', 'Use your chatbot here': '#c084fc', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
+  'Coffee Invitations': '#e0a96d',
+};
 const employerNav: NavItem[] = [
   { label: 'Home', icon: Compass, view: 'home' },
   { label: 'My JobMatches', icon: BriefcaseBusiness, anchor: 'td-roles' },
@@ -110,6 +119,7 @@ const employerNav: NavItem[] = [
   { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   { label: 'Subscription', icon: CreditCard, view: 'billing' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
+  { label: 'Use your chatbot here', short: 'Chatbot', icon: Bot, view: 'assistant' },
 ];
 
 async function connectLinkedIn() {
@@ -468,8 +478,8 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   return <div className={`app-shell role-${role}`}>
     <aside className={mobileNav ? 'sidebar open' : 'sidebar'}><div className="sidebar-head"><Brand /><button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close menu"><X /></button></div>
       <div className="workspace-switch"><span>Profile</span><button onClick={() => { setView('profile'); setMobileNav(false); }}>{data?.viewer.photo ? <img className="avatar-mini" src={data.viewer.photo} alt="" /> : <div className="avatar-mini">{initials}</div>}<div><strong>{data?.viewer.name || session.name}</strong><small>{role === 'candidate' ? 'Candidate' : 'Recruiter'}</small></div><ArrowRight size={15} /></button></div>
-      <nav className="sidebar-nav">{nav.map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)}><Icon size={19} /><span>{item.label}</span>{item.view === 'messages' && notifications.length > 0 && <em>{Math.min(notifications.length, 9)}</em>}</button>; })}</nav>
-      <div className="sidebar-bottom"><button onClick={() => setConductOpen(true)}><ShieldCheck size={18} />Code of Conduct</button><button onClick={() => setSupportOpen(true)}><CircleHelp size={18} />Help center</button><button onClick={() => setSettingsOpen(true)}><Settings size={18} />Settings</button><button className="logout-button" onClick={onExit}><LogOut size={18} />Log out</button></div>
+      <nav className="sidebar-nav">{nav.map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)} style={{ ['--c' as string]: NAV_COLORS[item.label] || '#9fb3d9' }}><i className="nav-ico"><Icon size={18} /></i><span>{item.label}</span>{item.view === 'messages' && notifications.length > 0 && <em>{Math.min(notifications.length, 9)}</em>}</button>; })}</nav>
+      <div className="sidebar-bottom"><button onClick={() => setConductOpen(true)} style={{ ['--c' as string]: '#34d399' }}><i className="nav-ico"><ShieldCheck size={17} /></i>Code of Conduct</button><button onClick={() => setSupportOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><CircleHelp size={17} /></i>Help center</button><button onClick={() => setSettingsOpen(true)} style={{ ['--c' as string]: '#c4b5fd' }}><i className="nav-ico"><Settings size={17} /></i>Settings</button><button className="logout-button" onClick={onExit} style={{ ['--c' as string]: '#fb7185' }}><i className="nav-ico"><LogOut size={17} /></i>Log out</button></div>
     </aside>
     <AnimatePresence>{supportOpen && <SupportModal viewer={data?.viewer} onClose={() => setSupportOpen(false)} />}</AnimatePresence>
     <AnimatePresence>{conductOpen && <ConductModal onClose={() => setConductOpen(false)} />}</AnimatePresence>
@@ -508,6 +518,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'analytics') return <Analytics role={role} data={data} />;
   if (view === 'jobs') return <Jobs data={data} reload={reload} onAddJobs={onAddJobs} manualJobRequest={manualJobRequest} onOpenMessages={onOpenMessages} editJobId={editJobId} />;
   if (view === 'matches') return <Matches data={data} navigate={navigate} onOpenMessages={onOpenMessages} />;
+  if (view === 'assistant') return <ChatbotPage data={data} navigate={navigate} />;
   if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'selected') return <SelectedCandidates data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'coffee') return <CoffeeInvitations data={data} onOpenMessages={onOpenMessages} />;

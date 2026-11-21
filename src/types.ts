@@ -1,5 +1,5 @@
 export type Role = 'candidate' | 'employer' | 'admin';
-export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages';
+export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant';
 export type EmployerKind = 'company' | 'headhunter';
 export type ProviderId = 'linkedin' | 'google' | 'email' | 'demo';
 
@@ -117,6 +117,7 @@ export type StepKind = 'match' | 'hr' | 'technical' | 'manager' | 'culture' | 'a
 export interface PipelineStep { id: string; name: string; owner: string; hidden?: boolean; kind?: StepKind; date?: string; format?: string }
 export interface JobMatch { id: string; candidateId: string; employerId: string; jobId: string; stage: string; createdAt: number; stageChangedAt?: number; candidate: Person; employer?: Person; job: Job; screeningAnswers?: ScreeningAnswer[]; pipeline?: PipelineStep[]; currentStepId?: string; feedback?: { text: string; at: number; from: string }[] }
 export interface Message { id: string; matchId: string; senderId: string; text: string; createdAt: number; firstImpression?: boolean }
+export interface ConnectorKey { id: string; userId: string; label: string; last4: string; createdAt: number; lastUsedAt: number | null }
 export interface AdminKpi { label: string; hint: string; total: number; thisWeek: number; lastWeek: number; last30d: number; weeks: { week: string; n: number }[] }
 export interface HeatClick { path: string; dev: 'desktop' | 'tablet' | 'mobile'; w: number; x: number; y: number; sel: string; ox: number; oy: number }
 export interface WebAnalyticsReport { days: number; totals: { visits: number; visitors: number; pageviews: number; avgDur: number }; daily: { day: string; n: number }[]; sources: { key: string; n: number }[]; devices: { key: string; n: number }[]; pages: { key: string; n: number }[]; clicks: HeatClick[] }

@@ -24,6 +24,7 @@ import { logBillingEvent } from './billing/audit.js';
 import { actorSide, involvesDemo, onTrack, track, untrack, weeklyCounts } from './analytics.js';
 import { BOT_UA, buildReport, parsePayload, readEvents, recordEvents } from './web-analytics.js';
 import { VENDORS, forwardEvent, maskedConfig, sendTo, setIntegrationConfig } from './integrations.js';
+import { handleRpc, hashKey, newConnectorKey } from './mcp.js';
 import {
   applyCredit, availableCredits, canUseRecruiterFeatures, computeEffectiveStatus, DAY_MS,
   findSubscription, getOrCreateTrialSubscription, isBillingExempt, PRICE_AMOUNT, PRICE_CURRENCY,
@@ -3078,6 +3079,72 @@ app.post('/api/me/interest', rateLimit({ windowMs: 3600000, max: 20, bucket: 'in
     });
     res.status(201).json({ ok: true });
   } catch (error) { next(error); }
+});
+
+// --- Read-only connector for the member's own AI assistant (MCP) ---------------
+// Members create a personal key in "Use your chatbot here"; their assistant calls
+// POST /api/mcp with it. Keys are stored hashed and can be revoked.
+app.get('/api/me/connector-keys', async (req, res, next) => {
+  try {
+    const userId = resolveActor(req, reqString(req.query, 'userId', { max: 128 }));
+    const db = await store.read();
+    res.json({ keys: (db.connectorKeys || []).filter((k) => k.userId === userId).map(({ hash, ...k }) => k) });
+  } catch (error) { next(error); }
+});
+app.post('/api/me/connector-keys', rateLimit({ windowMs: 3600000, max: 10, bucket: 'connector-key' }), async (req, res, next) => {
+  try {
+    const userId = resolveActor(req, reqString(req.body, 'userId', { max: 128 }));
+    const label = optString(req.body, 'label', { max: 60 }) || 'My assistant';
+    const key = newConnectorKey();
+    const record = await store.transaction((db) => {
+      assertDemoActor(req, db, userId);
+      if (!Array.isArray(db.connectorKeys)) db.connectorKeys = [];
+      if (db.connectorKeys.filter((k) => k.userId === userId).length >= 5) throw new ValidationError('label', 'You already have 5 keys — revoke one first');
+      const item = { id: crypto.randomUUID(), userId, label, hash: hashKey(key), last4: key.slice(-4), createdAt: Date.now(), lastUsedAt: null };
+      db.connectorKeys.push(item);
+      return item;
+    });
+    const { hash, ...shown } = record;
+    res.status(201).json({ key, record: shown }); // the key is shown once, never again
+  } catch (error) { next(error); }
+});
+app.delete('/api/me/connector-keys/:id', async (req, res, next) => {
+  try {
+    const userId = resolveActor(req, reqString(req.query, 'userId', { max: 128 }));
+    await store.transaction((db) => {
+      assertDemoActor(req, db, userId);
+      db.connectorKeys = (db.connectorKeys || []).filter((k) => !(k.id === req.params.id && k.userId === userId));
+    });
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+app.get('/api/mcp', (_req, res) => res.status(405).set('Allow', 'POST').json({ error: 'Use POST (MCP streamable HTTP, JSON responses)' }));
+app.post('/api/mcp', rateLimit({ windowMs: 60000, max: 60, bucket: 'mcp' }), async (req, res) => {
+  const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const db = await store.read();
+  const keyRec = token ? (db.connectorKeys || []).find((k) => k.hash === hashKey(token)) : null;
+  const user = keyRec && db.users.find((u) => u.id === keyRec.userId && !u.suspendedAt);
+  if (!user) return res.status(401).set('WWW-Authenticate', 'Bearer').json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Missing or invalid connector key' } });
+  store.transaction((d) => { const k = (d.connectorKeys || []).find((x) => x.id === keyRec.id); if (k) k.lastUsedAt = Date.now(); }).catch(() => undefined);
+  // The member's own bootstrap, fetched exactly as the app does with a short-lived session for them.
+  const loadBoot = async () => {
+    const cookie = `${AUTH_COOKIE}=${signedValue({ sub: user.id, role: user.role, expiresAt: Date.now() + 60000 }, sessionSecret)}`;
+    const r = await fetch(`http://127.0.0.1:${req.socket.localPort}/api/bootstrap?userId=${encodeURIComponent(user.id)}`, { headers: { Cookie: cookie } });
+    if (!r.ok) throw new Error(`bootstrap ${r.status}`);
+    return r.json();
+  };
+  try {
+    const body = req.body;
+    if (Array.isArray(body)) {
+      const out = (await Promise.all(body.map((m) => handleRpc(m, loadBoot)))).filter(Boolean);
+      return out.length ? res.json(out) : res.status(202).end();
+    }
+    const out = await handleRpc(body, loadBoot);
+    return out ? res.json(out) : res.status(202).end();
+  } catch (e) {
+    return res.status(500).json({ jsonrpc: '2.0', id: req.body?.id ?? null, error: { code: -32603, message: 'Internal error' } });
+  }
 });
 
 // --- Admin: the 3 KPIs that matter most for a hiring marketplace -------------
