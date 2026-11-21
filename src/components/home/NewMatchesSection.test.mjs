@@ -22,7 +22,7 @@ test('renders the section, the deck region with a real counter and the 4 deck bu
   assert.match(html, /role="region" aria-label="New matches deck"/);
   assert.match(html, /tabindex="0"/);
   assert.match(html, /1 \/ 3/);
-  for (const label of ['Undo last swipe', 'Pass', 'Super Like', 'Like']) assert.match(html, new RegExp(`aria-label="${label}"`));
+  for (const label of ['Undo last swipe', 'Rewind', 'Pass', 'Super Like', 'Like', 'Direct message \\(premium\\)']) assert.match(html, new RegExp(`aria-label="${label}"`));
   // JobsMatchNow logo at the top of the phone.
   assert.match(html, /nm-brand.*<b>Jobs<\/b><b>Match<\/b><b>Now<\/b>/);
   // Top card is the best score, with salary, fit reason from real skills + score, and distance.

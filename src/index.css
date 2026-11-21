@@ -3374,6 +3374,18 @@ img.avatar-mini { object-fit:cover; }
 .nm-btn.pass { width:64px; height:64px; color:#ff4458; }
 .nm-btn.super { width:52px; height:52px; color:#3ea6ff; }
 .nm-btn.like { width:64px; height:64px; color:#fff; background:linear-gradient(135deg,#fd267a,#ff6036); }
+.nm-actions { gap:14px; }
+.nm-btn.sm { width:44px; height:44px; }
+.nm-btn.rewind { color:#f5c518; }
+.nm-btn.dm { position:relative; color:#3ea6ff; }
+.nm-pro { position:absolute; top:-6px; right:-8px; padding:1px 5px; border-radius:6px; background:linear-gradient(135deg,#f5c518,#ff8a00); color:#111; font:900 8px 'Manrope'; font-style:normal; letter-spacing:.04em; }
+.nm-dm-input { width:100%; margin-top:6px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; font:500 14px 'Manrope'; resize:vertical; }
+.nm-dm-options { display:grid; gap:10px; margin-top:12px; }
+.nm-dm-opt { display:flex; flex-direction:column; gap:6px; padding:14px; border:2px solid #f5c518; border-radius:14px; background:#fffbea; }
+.nm-dm-opt.free { border-color:var(--line); background:#fff; }
+.nm-dm-opt strong { font-size:14px; color:var(--ink); }
+.nm-dm-opt strong span { display:block; font-size:12px; font-weight:700; color:#b85c00; }
+.nm-dm-opt small { font-size:12px; color:var(--muted); }
 .nm-no-likes { margin:-8px 0 6px; text-align:center; font-size:11px; color:#ffb3c4; }
 .nm-home-bar { display:block; width:124px; height:5px; margin:0 auto 9px; border-radius:3px; background:rgba(255,255,255,.4); flex:none; }
 .nm-hint { position:relative; }

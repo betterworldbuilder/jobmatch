@@ -3066,7 +3066,7 @@ app.get('/api/admin/analytics/events', async (req, res, next) => {
 
 // --- Paid-feature interest (no charge): e.g. "Target roles+" (3 roles, $5/month) ---
 // Candidates can't be charged yet; this records who wants a feature so the founder can decide.
-const INTEREST_FEATURES = ['target-roles-plus'];
+const INTEREST_FEATURES = ['target-roles-plus', 'direct-messages-plus'];
 app.post('/api/me/interest', rateLimit({ windowMs: 3600000, max: 20, bucket: 'interest' }), async (req, res, next) => {
   try {
     const userId = resolveActor(req, reqString(req.body, 'userId', { max: 128 }));

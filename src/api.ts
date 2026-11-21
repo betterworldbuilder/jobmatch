@@ -61,7 +61,7 @@ export const api = {
     if (!response.ok) throw new Error(body.error || 'Selfie upload failed');
     return body;
   },
-  registerInterest: (userId: string, feature: 'target-roles-plus') => request<{ ok: boolean }>('/api/me/interest', { method: 'POST', body: JSON.stringify({ userId, feature }) }),
+  registerInterest: (userId: string, feature: 'target-roles-plus' | 'direct-messages-plus') => request<{ ok: boolean }>('/api/me/interest', { method: 'POST', body: JSON.stringify({ userId, feature }) }),
   adminKpis: () => request<Record<'registrations' | 'matches' | 'hires', AdminKpi>>('/api/admin/kpis'),
   adminWebAnalytics: (days: number) => request<WebAnalyticsReport>(`/api/admin/web-analytics?days=${days}`),
   adminIntegrations: () => request<{ integrations: Record<string, IntegrationStatus> }>('/api/admin/integrations'),

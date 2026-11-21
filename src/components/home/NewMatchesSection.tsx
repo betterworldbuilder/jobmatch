@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
 import type { PanInfo } from 'motion/react';
-import { ArrowRight, ChevronsRight, Heart, MapPin, MessageCircle, RotateCcw, Star, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronsRight, Heart, MapPin, MessageCircle, RotateCcw, Send, Star, X } from 'lucide-react';
 import { api, apiBase } from '../../api';
 import type { Bootstrap, Job, JobMatch, Person, View } from '../../types';
 import { JobDetailModal, ScreeningModal } from '../coach/CoachModals';
@@ -140,6 +140,41 @@ export function PhoneMatch({ match, viewer, onTalk, onKeepSwiping }: { match: Jo
   </motion.div>;
 }
 
+/** Direct message (premium, $5/month for 10). Payments for candidates aren't open: the paid button
+ *  records interest; the free path sends the note with a Super Like (it opens the chat only on a match). */
+export function DirectMessageSheet({ job, viewerId, canLike, busy, onClose, onSendNote }: { job: Job; viewerId: string; canLike: boolean; busy: boolean; onClose: () => void; onSendNote: (note: string) => void }) {
+  const [note, setNote] = useState('');
+  const [interest, setInterest] = useState<'idle' | 'busy' | 'done'>('idle');
+  const ask = async () => {
+    setInterest('busy');
+    try { await api.registerInterest(viewerId, 'direct-messages-plus'); setInterest('done'); } catch { setInterest('idle'); }
+  };
+  return <div className="modal-scrim" onClick={onClose}>
+    <div className="ai-setup nm-dm" role="dialog" aria-modal="true" aria-label="Direct message" onClick={(e) => e.stopPropagation()}>
+      <button type="button" className="fm-x" aria-label="Close" onClick={onClose}><X size={18} /></button>
+      <span className="ai-badge">Premium</span>
+      <h2><Send size={20} /> Message {job.recruiter?.name || job.company}</h2>
+      <p>About <b>{job.title}</b> at {job.company}.</p>
+      <textarea className="nm-dm-input" rows={3} maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} placeholder="A short, specific note: why you and why this role." aria-label="Your message" />
+      <small className="tp-muted-small">{note.length}/280</small>
+      <div className="nm-dm-options">
+        <div className="nm-dm-opt">
+          <strong>Direct messages+ <span>$5 / month · 10 direct messages</span></strong>
+          <small>Your message reaches the team right away, before any match.</small>
+          {interest === 'done' ? <p className="tp-thanks"><Check size={15} /> Saved — we'll tell you when Direct messages+ opens. Nothing was charged.</p>
+            : <button type="button" className="fm-black" disabled={interest === 'busy'} onClick={() => void ask()}>{interest === 'busy' ? 'Saving…' : 'Get Direct messages+'}</button>}
+        </div>
+        <div className="nm-dm-opt free">
+          <strong>Free today: send it with a Super Like</strong>
+          <small>The team sees your Super Like now; your note opens the chat if they like you back.</small>
+          <button type="button" className="secondary-button" disabled={!note.trim() || !canLike || busy} onClick={() => onSendNote(note.trim())}><Star size={14} /> Super Like + note</button>
+        </div>
+      </div>
+      <p className="ai-privacy">Payments for candidates are not open yet: the premium button records your interest only.</p>
+    </div>
+  </div>;
+}
+
 export function NewMatchesSection({ data, setData, navigate, onOpenMessages, header }: Props) {
   const reducedMotion = Boolean(useReducedMotion());
   const [likedFromList, setLikedFromList] = useState<string[]>([]);
@@ -152,6 +187,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
   const [detail, setDetail] = useState<Job | null>(null);
   // A role picked from "Recommended Roles" is shown in the phone until it is swiped (or closed).
   const [picked, setPicked] = useState<Job | null>(null);
+  const [dmOpen, setDmOpen] = useState(false);
   const phoneRef = useRef<HTMLDivElement>(null);
   const canLike = data.likesRemaining > 0;
   const job = (picked || current) as Job | undefined;
@@ -220,9 +256,11 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
                 </AnimatePresence>
               </div>
               {job && <div className="nm-actions">
+                <button type="button" className="nm-btn sm rewind" onClick={() => run('undo')} disabled={busy || (index === 0 && !picked)} aria-label="Rewind"><RotateCcw size={18} /></button>
                 <button type="button" className="nm-btn pass" onClick={() => run('pass')} disabled={busy} aria-label="Pass"><X size={28} strokeWidth={3} /></button>
                 <button type="button" className="nm-btn super" onClick={() => run('super')} disabled={busy || !canLike} aria-label="Super Like"><Star size={22} fill="currentColor" /></button>
                 <button type="button" className="nm-btn like" onClick={() => run('like')} disabled={busy || !canLike} aria-label="Like"><Heart size={26} fill="currentColor" /></button>
+                <button type="button" className="nm-btn sm dm" onClick={() => setDmOpen(true)} disabled={busy} aria-label="Direct message (premium)"><Send size={18} /><i className="nm-pro" aria-hidden="true">PRO</i></button>
               </div>}
               {job && !canLike && <p className="nm-no-likes">No likes left today</p>}
             </div>
@@ -252,6 +290,8 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
       </aside>
     </div>
 
+    {dmOpen && job && <DirectMessageSheet job={job} viewerId={data.viewer.id} canLike={canLike} busy={busy} onClose={() => setDmOpen(false)}
+      onSendNote={(note) => { const target = job; setDmOpen(false); if (picked) { setPicked(null); setLikedFromList((ids) => [...ids, target.id]); } void commitSwipe('like', target, { superLike: true, note }); }} />}
     <AnimatePresence>{screeningFor && <ScreeningModal job={screeningFor} onCancel={() => setScreeningFor(null)} onSubmit={(answers) => { const target = screeningFor; setScreeningFor(null); if (target.id !== current?.id) setLikedFromList((ids) => [...ids, target.id]); void commitSwipe('like', target, { answers }); }} />}</AnimatePresence>
     {detail && <JobDetailModal job={detail} onClose={() => setDetail(null)} viewerId={data.viewer.id} notes={data.notes} onNoteSaved={(note) => setData({ ...data, notes: [...data.notes.filter((n) => n.id !== note.id), note] })} />}
   </section>;
