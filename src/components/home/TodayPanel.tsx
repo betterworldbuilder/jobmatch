@@ -2,12 +2,13 @@
 // Profile card (who teams see, completeness, visibility) + summary, urgent actions,
 // next interview and search settings. Every value comes from real records.
 import { useState } from 'react';
-import { AlertCircle, ArrowRight, BadgeCheck, Bot, Calendar, Check, Eye, EyeOff, Heart, MessageCircle, Pencil, Plus, SlidersHorizontal, Sparkles, Target, User, X } from 'lucide-react';
+import { AlertCircle, ArrowRight, BadgeCheck, Bot, Calendar, Check, Eye, EyeOff, Heart, Mail, MessageCircle, Pencil, Phone, Plus, SlidersHorizontal, Sparkles, Target, User, X } from 'lucide-react';
 import { AgentSettingsModal, PROVIDERS, readAgent } from './AiAnalyst';
 import { api } from '../../api';
 import type { Bootstrap, View } from '../../types';
 import { DemoBadge } from '../DemoBadge';
-import { interviewsThisWeek, likesWaiting, nextInterview, repliesWaiting, salaryLabel, urgentItems, workModeLabel } from '../../lib/today';
+import { contactLinks, interviewsThisWeek, likesWaiting, nextInterview, repliesWaiting, salaryLabel, urgentItems, workModeLabel } from '../../lib/today';
+import { googleCalendarUrl, icsDataUrl, outlookCalendarUrl } from '../../lib/calendar';
 
 type Props = {
   data: Bootstrap; setData: (d: Bootstrap) => void; navigate: (v: View) => void;
@@ -41,6 +42,9 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
   const verified = Boolean(v.photoVerified || v.verified || v.provider === 'google' || v.provider === 'linkedin' || completeness >= 80);
   const age = candidate && v.agePrivacy === 'public' ? ageOf(v.birthdate) : undefined;
   const next = nextInterview(data);
+  const thisWeek = next && next.at - Date.now() <= 7 * 86400000 ? next : null;
+  const calEvent = thisWeek ? { title: thisWeek.title, description: `JobsMatchNow — with ${thisWeek.who}`, startAt: thisWeek.at, durationMinutes: thisWeek.durationMinutes } : null;
+  const contacts = contactLinks(v);
   const urgent = urgentItems(data);
   const myJobs = data.jobs.filter((j) => j.employerId === v.id);
   const openRoles = myJobs.filter((j) => !/draft|closed|expired|paused/i.test(String(j.status))).length;
@@ -105,6 +109,31 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
             {hidden ? <><EyeOff size={14} /> Hidden from recruiters</> : <><Eye size={14} /> Visible to recruiters</>}
           </button>}
         </div>
+
+        {/* My next meeting this week + add to my calendar */}
+        <div className="tp-meeting">
+          <p className="tp-meeting-label"><Calendar size={13} /> My next meeting this week</p>
+          {thisWeek ? <>
+            <strong>{thisWeek.title}</strong>
+            <span>{new Date(thisWeek.at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}{thisWeek.source === 'call' ? ` · ${new Date(thisWeek.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''} · with {thisWeek.who}</span>
+            <div className="tp-cal">
+              <span>Add to my calendar:</span>
+              <a href={googleCalendarUrl(calEvent!)} target="_blank" rel="noopener noreferrer">Google</a>
+              <a href={outlookCalendarUrl(calEvent!)} target="_blank" rel="noopener noreferrer">Outlook</a>
+              <a href={icsDataUrl(calEvent!)} download="jobsmatchnow-meeting.ics">Apple / .ics</a>
+            </div>
+          </> : <small>No meeting planned this week.</small>}
+        </div>
+
+        {/* Contact bar */}
+        {contacts.length > 0 && <div className="tp-contact">
+          <p className="tp-meeting-label">{candidate ? 'How teams reach you after a match' : 'How candidates reach you'}</p>
+          <div className="tp-contact-bar">{contacts.map((c) => <a key={c.kind + c.href} className={`tp-c tp-c-${c.kind}`} href={c.href} target={c.kind === 'email' || c.kind === 'phone' ? undefined : '_blank'} rel="noopener noreferrer">
+            {c.kind === 'book' ? <Calendar size={15} /> : c.kind === 'email' ? <Mail size={15} /> : c.kind === 'phone' ? <Phone size={15} /> : c.kind === 'zalo' ? <b className="tp-zalo">Zalo</b> : <MessageCircle size={15} />}
+            {c.kind === 'zalo' ? null : c.label}
+          </a>)}</div>
+          {candidate && <small className="tp-muted-small">Your contact details stay hidden until a team matches with you.</small>}
+        </div>}
       </div>
     </article>
 

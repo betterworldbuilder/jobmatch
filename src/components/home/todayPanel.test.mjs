@@ -47,11 +47,21 @@ test('recruiter: likes come from role lists; pipeline columns follow the current
   assert.equal(rs.columnOf({ pipeline: steps, currentStepId: 'hire' }), 'hired');
 });
 
+test('contact bar: booking, WhatsApp, Zalo and email links from the member\'s own channels', async () => {
+  const { mod: t } = await loadTsx(new URL('../../lib/today.ts', import.meta.url));
+  const links = t.contactLinks({ calendarLink: 'https://cal.com/me', email: 'me@x.com', contactChannels: [{ type: 'whatsapp', value: '+84 908 000 111' }, { type: 'zalo', value: '0908 000 111' }] });
+  assert.deepEqual(links.map((l) => l.kind), ['book', 'whatsapp', 'zalo', 'email']);
+  assert.equal(links[1].href, 'https://wa.me/84908000111');
+  assert.equal(links[2].href, 'https://zalo.me/0908000111');
+  assert.equal(links[3].href, 'mailto:me@x.com');
+  assert.deepEqual(t.contactLinks({ calendarLink: 'javascript:alert(1)' }).map((l) => l.kind), [], 'only https booking links');
+});
+
 test('Today panel renders the profile first with completeness, visibility and the four blocks', async () => {
   const { React, renderToStaticMarkup, mod } = await loadTsx(new URL('./TodayPanel.tsx', import.meta.url));
   const html = renderToStaticMarkup(React.createElement(mod.TodayPanel, { data: base(), setData: () => undefined, navigate: () => undefined, onEditProfile: () => undefined, onPreview: () => undefined }));
   assert.ok(html.indexOf('tp-profile') < html.indexOf('tp-summary'), 'profile comes first');
-  for (const text of ['Lan Tran', 'Looking for', 'Edit info', '60% complete', 'Visible to recruiters', 'Urgent', 'Next interview', 'My search settings', 'Replies waiting', 'Interviews this week', 'Not set'])
+  for (const text of ['My next meeting this week', 'Add to my calendar', 'calendar.google.com', 'Lan Tran', 'Looking for', 'Edit info', '60% complete', 'Visible to recruiters', 'Urgent', 'Next interview', 'My search settings', 'Replies waiting', 'Interviews this week', 'Not set'])
     assert.ok(html.includes(text), `shows ${text}`);
   assert.doesNotMatch(html, /profile views/, 'no invented view counts');
 });

@@ -6,7 +6,7 @@ import { timeline } from './hiringStages';
 const DAY = 86400000;
 
 export type UrgentItem = { id: string; kind: 'reply' | 'interview' | 'likes' | 'profile' | 'salary'; text: string; action: string; matchId?: string };
-export type NextInterview = { matchId: string; title: string; who: string; withName: string; at: number; source: 'call' | 'round' };
+export type NextInterview = { matchId: string; title: string; who: string; withName: string; at: number; source: 'call' | 'round'; durationMinutes: number };
 
 const isCandidate = (data: Pick<Bootstrap, 'viewer'>) => data.viewer.role === 'candidate';
 
@@ -51,7 +51,7 @@ export function nextInterview(data: Pick<Bootstrap, 'viewer' | 'matches' | 'call
     if (call.startAt < now) continue;
     const m = data.matches.find((x) => x.id === call.matchId);
     // Call titles name the guest ("Coffee chat - Lan Tran"); show the kind of call + the role instead.
-    if (m) items.push({ matchId: m.id, title: `${call.title.split(' - ')[0]}${m.job ? ` · ${m.job.title}` : ''}`, who: otherName(m, data), withName: otherName(m, data), at: call.startAt, source: 'call' });
+    if (m) items.push({ matchId: m.id, title: `${call.title.split(' - ')[0]}${m.job ? ` · ${m.job.title}` : ''}`, who: otherName(m, data), withName: otherName(m, data), at: call.startAt, source: 'call', durationMinutes: call.durationMinutes || 30 });
   }
   for (const m of data.matches) {
     const t = timeline(m);
@@ -59,7 +59,7 @@ export function nextInterview(data: Pick<Bootstrap, 'viewer' | 'matches' | 'call
     if (!cur?.round || !cur.date) continue;
     const at = dayStart(cur.date);
     if (at + DAY < now) continue;
-    items.push({ matchId: m.id, title: `Round ${cur.round}: ${cur.name}${m.job ? ` · ${m.job.title}` : ''}`, who: cur.owner || otherName(m, data), withName: otherName(m, data), at, source: 'round' });
+    items.push({ matchId: m.id, title: `Round ${cur.round}: ${cur.name}${m.job ? ` · ${m.job.title}` : ''}`, who: cur.owner || otherName(m, data), withName: otherName(m, data), at, source: 'round', durationMinutes: Number(cur.format?.match(/(\d+)\s*min/)?.[1]) || 45 });
   }
   return items.sort((a, b) => a.at - b.at)[0] || null;
 }
@@ -84,6 +84,27 @@ export function urgentItems(data: Bootstrap, now = Date.now()): UrgentItem[] {
   if (completeness < 80) out.push({ id: 'profile', kind: 'profile', text: `Your profile is ${completeness}% complete — teams see complete profiles first`, action: 'Finish it' });
   if (isCandidate(data) && data.viewer.preferences?.salary?.min === undefined) out.push({ id: 'salary', kind: 'salary', text: 'Add your salary range so the fit score can use it', action: 'Add' });
   return out.slice(0, 3);
+}
+
+export type ContactLink = { kind: 'book' | 'whatsapp' | 'zalo' | 'telegram' | 'phone' | 'email'; label: string; href: string };
+
+/** Contact bar: booking link + the member's own channels (WhatsApp, Zalo, Telegram, phone, email). */
+export function contactLinks(v: Bootstrap['viewer']): ContactLink[] {
+  const out: ContactLink[] = [];
+  const digits = (s: string) => s.replace(/[^\d]/g, '');
+  if (v.calendarLink && /^https:\/\//.test(v.calendarLink)) out.push({ kind: 'book', label: 'Book an interview', href: v.calendarLink });
+  for (const c of v.contactChannels || []) {
+    const val = String(c.value || '').trim();
+    if (!val) continue;
+    if (c.type === 'whatsapp' && digits(val)) out.push({ kind: 'whatsapp', label: `WhatsApp ${val}`, href: `https://wa.me/${digits(val)}` });
+    else if (c.type === 'zalo' && digits(val)) out.push({ kind: 'zalo', label: 'Zalo', href: `https://zalo.me/${digits(val)}` });
+    else if (c.type === 'telegram') out.push({ kind: 'telegram', label: 'Telegram', href: `https://t.me/${val.replace(/^@/, '')}` });
+    else if (c.type === 'phone' && digits(val)) out.push({ kind: 'phone', label: val, href: `tel:+${digits(val)}` });
+    else if (c.type === 'email' && val.includes('@')) out.push({ kind: 'email', label: val, href: `mailto:${val}` });
+  }
+  const email = v.contactEmail || v.email;
+  if (email && !out.some((l) => l.kind === 'email')) out.push({ kind: 'email', label: email, href: `mailto:${email}` });
+  return out;
 }
 
 /** "Remote" / "Hybrid · 2 days" / "On-site". */
