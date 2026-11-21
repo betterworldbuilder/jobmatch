@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Check, Eye, Loader2, Lock, Pencil, ShieldCheck, Sparkles, Trash2, X } from 'lucide-react';
 import type { Job, JobMatch, Person } from '../../types';
 import { JobStatusPicker } from '../JobStatusPicker';
+import { ContactBarEditor } from '../ContactBarEditor';
 import { CandidateCards } from './CandidateCards';
 import { DemoBadge } from '../DemoBadge';
 import { ContactBar } from '../home/TodayPanel';
@@ -60,7 +61,7 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
         <CandidateCards person={viewer} match={comparisonJob?.match} onEdit={onEdit} visibilityInspector={inspector} initialCard={initialCard} onActiveChange={changeCard} order={ORDER} />
         <p className="rp-privacy-note"><Lock size={14} /> Private contact values remain hidden in owner preview exactly as they are before a mutual match.</p>
         {/* Contact bar: what teams can use once you match. */}
-        <div className="rp-contact-wrap"><ContactBar person={viewer} onAdd={() => onEdit(0)} /></div>
+        <div className="rp-contact-wrap">{onViewerSaved ? <ContactBarEditor key={viewer.id} viewer={viewer} onSaved={onViewerSaved} /> : <ContactBar person={viewer} onAdd={() => onEdit(0)} />}</div>
       </div>
       <aside className="rp-context">
         <div className="rp-completion-head"><div className="mh-ring" style={{ '--value': `${completion * 3.6}deg` } as React.CSSProperties}><strong>{completion}%</strong></div><div><span className="overline">Profile strength</span><h2>Make recruiters fall in love with your profile</h2></div></div>

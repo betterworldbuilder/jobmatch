@@ -61,6 +61,12 @@ export function applyCandidateProfile(user, body) {
       value: (v) => str(v, 120),
     }, 6)?.filter((channel) => channel.type && channel.value) || [];
   }
+  // Booking link (e.g. a Google Calendar appointment page): https only; '' clears it. Hidden until a match.
+  if (body.calendarLink !== undefined) {
+    const link = String(body.calendarLink || '').trim();
+    if (link && !/^https:\/\/\S{4,300}$/.test(link)) throw new ValidationError('calendarLink', 'Booking link must start with https://');
+    if (link) user.calendarLink = link; else delete user.calendarLink;
+  }
   set('distanceRangeKm', num(body.distanceRangeKm, 5, 100));
   setGeo(user, body.geo);
   set('title', str(body.title, 120));

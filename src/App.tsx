@@ -47,7 +47,9 @@ import { GapCoach, JobDetailModal, MatchDetailModal, ScreeningModal } from './co
 import { CandidateStarters, RecruiterStarters } from './components/messages/ConversationStarters';
 import { ScheduleCallModal } from './components/messages/ScheduleCallModal';
 import { FeedbackEmailModal, RecommendationEmailModal } from './components/messages/FeedbackModals';
-import { googleCalendarUrl, icsDataUrl, outlookCalendarUrl } from './lib/calendar';
+import { googleCalendarUrl, icsDataUrl, meetingMailto, outlookCalendarUrl } from './lib/calendar';
+import { CalendarSync } from './components/CalendarSync';
+import { Mail as MailIcon } from 'lucide-react';
 import type { ScreeningAnswer } from './types';
 import { comparisonRows } from './content/landingContent';
 import { loadSession, saveSession } from './lib/auth';
@@ -924,18 +926,21 @@ function Meetings({ role, data, setData, onOpenMessages }: { role: Role; data: B
       <section><span>{other?.name}{other?.sub ? ` · ${other.sub}` : ''}</span><strong>{call.title}</strong>
         <p>{new Date(call.startAt).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {call.durationMinutes} min</p>
       </section>
-      {!isPast && <div className="schedule-card-links">
-        <a href={googleCalendarUrl(event)} target="_blank" rel="noreferrer" title="Add to Google Calendar"><ExternalLink size={14} /> Google</a>
-        <a href={outlookCalendarUrl(event)} target="_blank" rel="noreferrer" title="Add to Outlook"><ExternalLink size={14} /> Outlook</a>
-        <a href={icsDataUrl(event)} download={`${call.title}.ics`} title="Download .ics"><Download size={14} /> .ics</a>
-      </div>}
-      {other?.email && <a className="meeting-btn" href={`mailto:${other.email}`}>Email To</a>}
-      <button className="meeting-btn" onClick={() => onOpenMessages(call.matchId)}>Open chat</button>
+      <div className="schedule-card-actions">
+        {!isPast && <>
+          <a className="meeting-chip" href={googleCalendarUrl(event)} target="_blank" rel="noreferrer" title="Add to Google Calendar"><ExternalLink size={13} /> Google</a>
+          <a className="meeting-chip" href={outlookCalendarUrl(event)} target="_blank" rel="noreferrer" title="Add to Outlook"><ExternalLink size={13} /> Outlook</a>
+          <a className="meeting-chip" href={icsDataUrl(event)} download={`${call.title}.ics`} title="Calendar file with alarms 1 hour and 15 minutes before — open it on your phone"><Download size={13} /> Phone alarm</a>
+        </>}
+        {other?.email && <a className="meeting-chip" href={meetingMailto(other.email, event)} title={`Email the meeting details to ${other.name}`}><MailIcon size={13} /> Email to</a>}
+        <button className="meeting-btn" onClick={() => onOpenMessages(call.matchId)}>Open chat</button>
+      </div>
     </div>;
   };
 
   return <div className="page meetings-page">
     <div className="page-title"><div><span className="overline">Calendar</span><h1>Meetings</h1><p>Every scheduled call across your matches, with one-click add to Google, Outlook, or Apple Calendar.</p></div></div>
+    <CalendarSync userId={data.viewer.id} />
 
     <section className="td-section" id="meetings-upcoming">
       <DashboardTitle icon={Calendar} title="Upcoming" subtitle={`${upcoming.length} scheduled`} />

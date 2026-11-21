@@ -30,7 +30,18 @@ export function outlookCalendarUrl(event: CalendarEvent): string {
   return `https://outlook.office.com/calendar/0/deeplink/compose?${params.toString()}`;
 }
 
-/** A downloadable .ics — works with Apple Calendar, Outlook desktop, and any other calendar app. */
+/** Phone reminders added to every .ics: 1 hour and 15 minutes before. */
+export const REMINDER_MINUTES = [60, 15];
+
+/** "Email to": a ready-to-send email with the meeting details. */
+export function meetingMailto(to: string, event: CalendarEvent): string {
+  const when = new Date(event.startAt).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+  const body = `Hi,\n\nConfirming our meeting: ${event.title}\nWhen: ${when} (${event.durationMinutes} min)\n${event.description ? `\n${event.description}\n` : ''}\nAdd it to your calendar: ${googleCalendarUrl(event)}\n\nSee you then!`;
+  return `mailto:${to}?subject=${encodeURIComponent(`Meeting: ${event.title}`)}&body=${encodeURIComponent(body)}`;
+}
+
+/** A downloadable .ics — works with Apple Calendar, Outlook desktop, and any other calendar app.
+ *  Carries phone alarms (VALARM), so opening it on a phone sets the reminders too. */
 export function icsDataUrl(event: CalendarEvent): string {
   const end = event.startAt + event.durationMinutes * 60000;
   const escape = (s: string) => s.replace(/[\\,;]/g, (m) => `\\${m}`).replace(/\n/g, '\\n');
@@ -40,6 +51,7 @@ export function icsDataUrl(event: CalendarEvent): string {
     `DTSTART:${toUtcStamp(event.startAt)}`, `DTEND:${toUtcStamp(end)}`,
     `SUMMARY:${escape(event.title)}`,
     ...(event.description ? [`DESCRIPTION:${escape(event.description)}`] : []),
+    ...REMINDER_MINUTES.flatMap((m) => ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escape(event.title)}`, `TRIGGER:-PT${m}M`, 'END:VALARM']),
     'END:VEVENT', 'END:VCALENDAR',
   ];
   return `data:text/calendar;charset=utf8,${encodeURIComponent(lines.join('\r\n'))}`;

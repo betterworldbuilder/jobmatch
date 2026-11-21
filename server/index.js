@@ -6,6 +6,7 @@ import { JsonStore } from './store.js';
 import { PgStore } from './store-pg.js';
 import { createSeed } from './seed.js';
 import { matchingPool, targetIsInMatchingPool } from './matching-pool.js';
+import { buildIcs, meetingsFor, newFeedToken, validFeedToken, REMINDER_MINUTES } from './calendar-feed.js';
 import { importMetadata, normalizeLinkedInImports, parseJobImportFile } from './job-import.js';
 import { detectMutualMatch, isStrongRoleMatch, likesRemainingToday, scoreCandidateForJob, ValidationError, reqString, optString, optStringArray, oneOf } from './matching.js';
 import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, recruiterCompleteness } from './profile.js';
@@ -125,7 +126,8 @@ function otherPartyView(user) {
   if (!user) return user;
   // `verification` is the member's own review record (status, admin reason): never shown to others.
   // `jobStatus` (hired / pending signing, with role and recruiter name) is private to the member too.
-  const { geo, verification, jobStatus, ...rest } = selfView(user);
+  // `calendarFeedToken` is the secret in the member's private calendar feed URL.
+  const { geo, verification, jobStatus, calendarFeedToken, ...rest } = selfView(user);
   return rest;
 }
 
@@ -1893,8 +1895,8 @@ app.get('/api/bootstrap', async (req, res, next) => {
     const jobGeo = referenceJob?.geo || viewer.geo;
     // passwordHash/authSubject/geo never leave the server for another user.
     const scoredCandidates = candidates.filter((candidate) => candidate.id !== viewer.id).map((source) => {
-      const { email, phone, contactChannels, geo } = source;
-      const { email: _e, phone: _p, contactChannels: _c, ...candidate } = otherPartyView(source);
+      const { email, phone, contactChannels, calendarLink, geo } = source;
+      const { email: _e, phone: _p, contactChannels: _c, calendarLink: _b, ...candidate } = otherPartyView(source);
       if (candidate.agePrivacy !== 'public' && !candidate.discloseAge) delete candidate.birthdate; // age shown in deck only if public
       const realDist = haversineKm(jobGeo, geo);
       const withDistance = { ...candidate, distanceKm: realDist ?? candidate.distanceKm ?? demoDistances[candidate.id] };
@@ -1903,7 +1905,7 @@ app.get('/api/bootstrap', async (req, res, next) => {
         withDistance.preferences = { ...withDistance.preferences, salary: undefined };
         withDistance.salaryHidden = true;
       }
-      const unlockedContacts = matchedCandidateIds.has(candidate.id) ? { email, phone, contactChannels } : {};
+      const unlockedContacts = matchedCandidateIds.has(candidate.id) ? { email, phone, contactChannels, calendarLink } : {};
       return { ...withDistance, ...unlockedContacts, match, superLikedYou: candidatesWhoSuperLikedMyJobs.has(candidate.id), verified: verifiedUser(candidate), promoted: boostedCandidateIds.has(candidate.id) };
     });
     sortPromotedFirst(scoredCandidates);
@@ -3942,6 +3944,35 @@ app.post('/api/calls', async (req, res, next) => {
       return item;
     });
     res.status(201).json(call);
+  } catch (error) { next(error); }
+});
+
+// Private calendar feed (Google / Apple / Outlook "subscribe from URL"), see calendar-feed.js.
+// POST creates the member's secret feed URL, or a new one with { reset: true } (the old URL stops working).
+app.post('/api/users/:id/calendar-feed', authLimiter, async (req, res, next) => {
+  try {
+    requireSelf(req, req.params.id);
+    const token = await store.transaction((db) => {
+      const user = db.users.find((u) => u.id === req.params.id);
+      if (!user) { const error = new Error('User not found'); error.status = 404; throw error; }
+      assertDemoActor(req, db, user.id);
+      if (!validFeedToken(user.calendarFeedToken) || req.body?.reset === true) user.calendarFeedToken = newFeedToken();
+      return user.calendarFeedToken;
+    });
+    const base = (process.env.WEB_APP_URL || 'https://jobsmatchnow.com').replace(/\/$/, '');
+    res.json({ url: `${base}/api/calendar/${token}.ics`, webcal: `${base.replace(/^https?:/, 'webcal:')}/api/calendar/${token}.ics`, reminders: REMINDER_MINUTES });
+  } catch (error) { next(error); }
+});
+app.get('/api/calendar/:file', async (req, res, next) => {
+  try {
+    const token = String(req.params.file || '').replace(/\.ics$/, '');
+    if (!validFeedToken(token)) return res.status(404).type('text/plain').send('Not found');
+    const db = await store.read();
+    const user = db.users.find((u) => u.calendarFeedToken === token && !u.suspendedAt);
+    if (!user) return res.status(404).type('text/plain').send('Not found');
+    const appUrl = `${(process.env.WEB_APP_URL || 'https://jobsmatchnow.com').replace(/\/$/, '')}/app/`;
+    res.set('Cache-Control', 'private, max-age=900').type('text/calendar; charset=utf-8')
+      .send(buildIcs(meetingsFor(db, user.id), { appUrl }));
   } catch (error) { next(error); }
 });
 

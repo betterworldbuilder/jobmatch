@@ -164,7 +164,8 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
             <div className="tcard-contacts">
               {unlocked
                 ? (p.contactChannels?.length || p.email)
-                  ? <>{p.email && <a href={`mailto:${p.email}`} className="tcard-contact"><Send size={13} /> {p.email}</a>}
+                  ? <>{p.calendarLink && /^https:\/\//.test(p.calendarLink) && <a href={p.calendarLink} target="_blank" rel="noopener noreferrer" className="tcard-contact"><CalendarClock size={13} /> Book an interview</a>}
+                    {p.email && <a href={`mailto:${p.email}`} className="tcard-contact"><Send size={13} /> {p.email}</a>}
                     {(p.contactChannels || []).map((c, i) => { const Meta = CONTACT_META[c.type] || CONTACT_META.other; return <span key={i} className="tcard-contact"><Meta.icon size={13} /> {Meta.label}: {c.value}</span>; })}</>
                   : <span className="tcard-contact muted"><Phone size={13} /> No contact details added</span>
                 : <span className="tcard-contact locked"><Lock size={13} /> Contact details available after mutual match {visibilityInspector && <b className="visibility-tag">After mutual match</b>}</span>}
