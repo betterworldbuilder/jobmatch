@@ -1,6 +1,9 @@
 export type Role = 'candidate' | 'employer' | 'admin';
 export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match';
 export type EmployerKind = 'company' | 'headhunter';
+/** The member's own job status (never sent to other members). */
+export type JobStatusKind = 'open' | 'waiting' | 'signing' | 'hired' | 'contract';
+export interface JobStatus { kind: JobStatusKind; until?: string; role?: string; company?: string; recruiter?: string; matchId?: string; updatedAt?: number }
 export type ProviderId = 'linkedin' | 'google' | 'email' | 'demo';
 
 export interface FitFactor { factor: string; label: string; weight: number; score: number; evidence: string }
@@ -36,7 +39,7 @@ export interface Person {
   /** Paid placement. Moves the card up the deck; the match score is untouched. */
   promoted?: boolean;
   /** Job status shown under the profile (candidates). */
-  jobStatus?: { kind: 'open' | 'waiting' | 'hired' | 'contract'; until?: string; updatedAt?: number };
+  jobStatus?: JobStatus;
   /** "Get verified": set only when an admin approves the member's live selfie. */
   photoVerified?: boolean;
   /** The viewer's own selfie-verification request (self view only). */

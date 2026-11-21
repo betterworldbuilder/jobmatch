@@ -28,6 +28,20 @@ test('job status saves, keeps openToWork in sync, and needs an end date for "und
   const contract = await call('PATCH', `/api/users/${id}`, { jobStatus: { kind: 'contract', until: '2027-03-31' } }, h);
   assert.equal(contract.body.user.jobStatus.until, '2027-03-31');
   assert.equal((await call('PATCH', `/api/users/${id}`, { jobStatus: { kind: 'retired' } }, h)).status, 400);
-  const open = await call('PATCH', `/api/users/${id}`, { jobStatus: { kind: 'open' } }, h);
+  const open = await call('PATCH', `/api/users/${id}`, { jobStatus: { kind: 'open', role: 'ignored' } }, h);
   assert.equal(open.body.user.privacy.openToWork, true);
+  assert.equal(open.body.user.jobStatus.role, undefined, 'open to work carries no role');
+});
+
+test('"pending signing" and "hired" name the role and recruiter, and only the member sees them', async () => {
+  const reg = await call('POST', '/api/auth/register', { role: 'candidate', name: 'Real Hired', email: `hi-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+  const id = reg.body.user.id; const h = { Cookie: reg.session };
+  const signing = await call('PATCH', `/api/users/${id}`, { jobStatus: { kind: 'signing', role: 'Lead AI Engineer', company: 'Acme', recruiter: 'David Chen', matchId: 'm-123' } }, h);
+  assert.equal(signing.status, 200, JSON.stringify(signing.body));
+  assert.deepEqual({ ...signing.body.user.jobStatus, updatedAt: 0 }, { kind: 'signing', role: 'Lead AI Engineer', company: 'Acme', recruiter: 'David Chen', matchId: 'm-123', updatedAt: 0 });
+  const bad = await call('PATCH', `/api/users/${id}`, { jobStatus: { kind: 'hired', role: 'x'.repeat(200), matchId: '../../etc' } }, h);
+  assert.equal(bad.body.user.jobStatus.role, undefined, 'over-long text dropped');
+  assert.equal(bad.body.user.jobStatus.matchId, undefined, 'odd match ids dropped');
+  const deck = await call('GET', '/api/bootstrap?userId=employer-demo');
+  for (const candidate of deck.body.candidates) assert.equal(candidate.jobStatus, undefined, 'recruiters never see a candidate\'s job status');
 });

@@ -33,7 +33,7 @@ function objArray(value, shape, maxItems = 20) {
 
 const SENIORITIES = ['junior', 'mid', 'senior', 'lead', 'exec'];
 const VISIBILITIES = ['all', 'after-swipe', 'paused'];
-export const JOB_STATUSES = ['open', 'waiting', 'hired', 'contract'];
+export const JOB_STATUSES = ['open', 'waiting', 'signing', 'hired', 'contract'];
 const WORK_MODES = ['remote', 'hybrid', 'onsite'];
 const CONTACT_TYPES = ['whatsapp', 'telegram', 'phone', 'signal', 'wechat', 'zalo', 'email', 'other'];
 const AGE_PRIVACY = ['public', 'after-match', 'private'];
@@ -157,7 +157,15 @@ export function applyCandidateProfile(user, body) {
     if (!JOB_STATUSES.includes(kind)) throw new ValidationError('jobStatus', `status must be one of ${JOB_STATUSES.join(', ')}`);
     const until = kind === 'contract' && /^\d{4}-\d{2}-\d{2}$/.test(String(body.jobStatus.until || '')) ? body.jobStatus.until : undefined;
     if (kind === 'contract' && !until) throw new ValidationError('jobStatus', 'Pick the date your contract ends');
-    user.jobStatus = { kind, ...(until ? { until } : {}), updatedAt: Date.now() };
+    // Signing / hired / under contract can name the role and the recruiter (owner-only; see otherPartyView).
+    const withJob = kind === 'signing' || kind === 'hired' || kind === 'contract';
+    const job = {};
+    if (withJob) {
+      for (const f of ['role', 'company', 'recruiter']) { const v = str(body.jobStatus[f], 80); if (v) job[f] = v; }
+      const matchId = String(body.jobStatus.matchId || '');
+      if (/^[\w-]{1,64}$/.test(matchId)) job.matchId = matchId;
+    }
+    user.jobStatus = { kind, ...(until ? { until } : {}), ...job, updatedAt: Date.now() };
     user.privacy = { ...(user.privacy || {}), openToWork: kind === 'open' };
   }
   if (body.onboarding !== undefined) user.onboarding = Boolean(body.onboarding);

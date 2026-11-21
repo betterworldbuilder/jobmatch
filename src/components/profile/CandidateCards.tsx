@@ -58,7 +58,10 @@ const LAST_CARD = NAV.length - 1;
  * a recruiter viewing a candidate (match set → skill split + %, unlocked only
  * after a mutual match, so name and contacts stay masked until then).
  */
-export function CandidateCards({ person: p, match, onEdit, unlocked = false, visibilityInspector = false, initialCard = 0, onActiveChange }: { person: Person; match?: MatchEvidence; onEdit?: (step: number) => void; unlocked?: boolean; visibilityInspector?: boolean; initialCard?: number; onActiveChange?: (card: number) => void }) {
+const DEFAULT_ORDER = NAV.map((_, i) => i);
+
+/** `order` lists card numbers (NAV indexes) in display order; positions (initialCard, onActiveChange) follow that order. */
+export function CandidateCards({ person: p, match, onEdit, unlocked = false, visibilityInspector = false, initialCard = 0, onActiveChange, order = DEFAULT_ORDER }: { person: Person; match?: MatchEvidence; onEdit?: (step: number) => void; unlocked?: boolean; visibilityInspector?: boolean; initialCard?: number; onActiveChange?: (card: number) => void; order?: number[] }) {
   const m = match || p.match;
   const deckRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(initialCard);
@@ -138,8 +141,9 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
   return <div className="tcards">
     {visibilityInspector && <div className="tcards-inspector" role="status"><span>Public</span><span>After mutual match</span><span>Private</span></div>}
     <div className="tcards-deck" ref={deckRef} tabIndex={0} onKeyDown={onDeckKeyDown} aria-label={`Candidate profile card ${active + 1} of ${NAV.length}`}>
-      {/* ---------- Card 1 — Snapshot ---------- */}
-      <div className="tcard-slide">
+      {order.map((i) => [
+      /* ---------- Card 1 — Snapshot ---------- */
+      <div className="tcard-slide" key="who">
         <div className="tcard tcard-hero" style={p.photo ? { backgroundImage: `url(${p.photo})` } : undefined}>
           {onEdit && <button className="tcard-edit on-photo" onClick={() => onEdit(0)} aria-label="Edit identity"><Pencil size={14} /></button>}
           {m && <span className="tcard-matchpct"><Sparkles size={13} /> {m.score}% match{requiredCount ? <b>{m.matchedSkills.length} of {requiredCount} skills</b> : null}</span>}
@@ -167,10 +171,10 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
             </div>
           </div>
         </div>
-      </div>
+      </div>,
 
-      {/* ---------- Card 2 — Human stack ---------- */}
-      <div className="tcard-slide"><Card label="My Human Stack" icon={Brain} step={3} onEdit={onEdit} tone="human">
+      /* ---------- Card 2 — Human stack ---------- */
+      <div className="tcard-slide" key="human"><Card label="My Human Stack" icon={Brain} step={3} onEdit={onEdit} tone="human">
         {p.presentation ? <p className="tcard-presentation">{p.presentation}</p> : onEdit ? <p className="tcard-empty">Add a short personal introduction — who you are beyond the CV.</p> : null}
         {p.motto ? <p className="tcard-motto"><Quote size={13} /> {p.motto}</p> : null}
         {p.mindset?.length ? <><span className="tcard-sub">Mindset</span><div className="skill-list soft">{p.mindset.map((s) => <span key={s}>{s}</span>)}</div></> : null}
@@ -181,10 +185,10 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
         </div> : null}
         {p.interests?.length ? <><span className="tcard-sub">Interests</span><div className="skill-list soft">{p.interests.map((s) => <span key={s}>{s}</span>)}</div></> : null}
         {song ? <a className="tdoc-btn ghost tcard-song" href={p.favoriteSong} target="_blank" rel="noreferrer"><Music2 size={13} /> Soundtrack — {song}</a> : null}
-      </Card></div>
+      </Card></div>,
 
-      {/* ---------- Card 3 — Technical stack & documents ---------- */}
-      <div className="tcard-slide"><Card label="My Skills" icon={Code2} step={1} onEdit={onEdit}>
+      /* ---------- Card 3 — Technical stack & documents ---------- */
+      <div className="tcard-slide" key="skills"><Card label="My Skills" icon={Code2} step={1} onEdit={onEdit}>
         {m && <div className="tcard-counts"><span className="ok">{m.matchedSkills.length} matching</span><span className="miss">{m.missingSkills?.length ?? 0} missing</span><span className="extra">{m.extraSkills?.length ?? 0} extra</span></div>}
         {m ? <div className="tcard-skillsplit">
           <div className="tskill-group ok"><span className="tskill-h"><CheckCircle2 size={13} /> Matching</span><ul className="tskill-rows">{m.matchedSkills.length ? m.matchedSkills.map((s) => { const d = skill(s); return <li key={s}><b>{s}</b>{d?.years ? <em>{d.years}y</em> : null}{d?.level ? <i>{'●'.repeat(d.level)}{'○'.repeat(5 - d.level)}</i> : null}</li>; }) : <li><em>None yet</em></li>}</ul></div>
@@ -196,10 +200,10 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
           <a className="tdoc-btn ghost" href={p.documents.resume.url} download><Download size={14} /> PDF</a>
         </div>}
         {p.documents?.coverLetter && <p className="tcard-cover"><Quote size={13} /> {p.documents.coverLetter}</p>}
-      </Card></div>
+      </Card></div>,
 
-      {/* ---------- Card 4 — What I Have Built ---------- */}
-      <div className="tcard-slide"><Card label="What I Have Built" icon={Hammer} step={6} onEdit={onEdit}>
+      /* ---------- Card 4 — What I Have Built ---------- */
+      <div className="tcard-slide" key="built"><Card label="What I Have Built" icon={Hammer} step={6} onEdit={onEdit}>
         {hasBuiltLinks ? <div className="tcard-docs">
           {p.links?.github && <a className="tdoc-btn ghost" href={normalizeUrl(p.links.github)} target="_blank" rel="noreferrer"><Github size={13} /> GitHub</a>}
           {p.links?.website && <a className="tdoc-btn ghost" href={normalizeUrl(p.links.website)} target="_blank" rel="noreferrer"><Globe size={13} /> Website</a>}
@@ -208,10 +212,10 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
           {p.links?.playStore && <a className="tdoc-btn ghost" href={normalizeUrl(p.links.playStore)} target="_blank" rel="noreferrer"><Smartphone size={13} /> Play Store</a>}
         </div> : <p className="tcard-empty">{onEdit ? 'Add links to things you\'ve shipped — GitHub, an app, a website, a publication.' : 'Nothing shared yet.'}</p>}
         {p.publications?.length ? <><span className="tcard-sub">Publications</span><div className="tcard-docs">{p.publications.map((url, i) => <a key={i} className="tdoc-btn ghost" href={normalizeUrl(url)} target="_blank" rel="noreferrer"><FileText size={13} /> {url.replace(/^https?:\/\//, '').slice(0, 40)}</a>)}</div></> : null}
-      </Card></div>
+      </Card></div>,
 
-      {/* ---------- Card 5 — My Dream Job (career & preferences) ---------- */}
-      <div className="tcard-slide"><Card label="My Dream Job" icon={Target} step={2} onEdit={onEdit}>
+      /* ---------- Card 5 — My Dream Job (career & preferences) ---------- */
+      <div className="tcard-slide" key="dream"><Card label="My Dream Job" icon={Target} step={2} onEdit={onEdit}>
         {p.preferences?.desiredRoles?.length ? <><span className="tcard-sub">Target roles</span><div className="skill-list soft">{p.preferences.desiredRoles.map((r) => <span key={r}>{r}</span>)}</div></> : null}
         <dl className="tcard-dl">
           {p.preferences?.employmentTypes?.length ? <div><dt><Briefcase size={12} /> Employment</dt><dd>{p.preferences.employmentTypes.join(' · ')}</dd></div> : null}
@@ -225,10 +229,10 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
         </dl>
         {(p.preferences?.industries?.length || p.industries?.length) ? <><span className="tcard-sub">Industries</span><div className="skill-list soft">{(p.preferences?.industries || p.industries || []).map((s) => <span key={s}>{s}</span>)}</div></> : null}
         {p.preferences?.workStyle?.length ? <><span className="tcard-sub">Work style</span><div className="skill-list soft">{p.preferences.workStyle.map((s) => <span key={s}>{s}</span>)}</div></> : null}
-      </Card></div>
+      </Card></div>,
 
-      {/* ---------- Card 6 — What People Think About Me ---------- */}
-      <div className="tcard-slide"><Card label="What People Think About Me" icon={Star} step={5} onEdit={onEdit}>
+      /* ---------- Card 6 — What People Think About Me ---------- */
+      <div className="tcard-slide" key="people"><Card label="What People Think About Me" icon={Star} step={5} onEdit={onEdit}>
         {avgRating !== undefined && <div className="tcard-rating"><strong>{avgRating.toFixed(1)}</strong><div className="tcard-stars">{[1, 2, 3, 4, 5].map((n) => <Star key={n} size={14} className={n <= Math.round(avgRating) ? 'on' : ''} />)}</div><small>{p.recommendations!.length} recommendation{p.recommendations!.length > 1 ? 's' : ''}</small></div>}
         {p.recommendations?.length ? <ul className="tcard-recs">{p.recommendations.map((r, i) => <li key={i}>
           <div className="trec-head">{r.photo && <img src={r.photo} alt="" />}<div><strong>{r.recruiterName}{r.verified && <BadgeCheck size={13} className="verified-mark" />}</strong>{(r.role || r.company) && <small>{[r.role, r.company].filter(Boolean).join(' · ')}</small>}{r.relationship && <em className="trec-rel">{r.relationship}</em>}</div></div>
@@ -246,12 +250,13 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
           {inviteError && <p className="tcard-invite-error">{inviteError}</p>}
           {pendingRequests.length > 0 && <ul className="tcard-invite-list">{pendingRequests.map((r) => <li key={r.id}><span>{r.contact}</span><button type="button" onClick={() => void cancelInvite(r.id)} aria-label={`Cancel request to ${r.contact}`}><X size={12} /></button></li>)}</ul>}
         </div>}
-      </Card></div>
+      </Card></div>,
+      ][i])}
     </div>
 
-    {/* ---------- Navigator ---------- */}
+    {/* ---------- Navigator (same order as the deck) ---------- */}
     <nav className="tcards-nav" aria-label="Profile cards">
-      {NAV.map((item, i) => { const Icon = item.icon; return <button key={item.label} className={i === active ? 'on' : ''} style={{ ['--nav-c' as string]: item.color }} onClick={() => goTo(i)} aria-label={item.label} aria-current={i === active ? 'page' : undefined}><Icon size={16} /><span>{item.label}</span><i /></button>; })}
+      {order.map((card) => NAV[card]).map((item, i) => { const Icon = item.icon; return <button key={item.label} className={i === active ? 'on' : ''} style={{ ['--nav-c' as string]: item.color }} onClick={() => goTo(i)} aria-label={item.label} aria-current={i === active ? 'page' : undefined}><Icon size={16} /><span>{item.label}</span><i /></button>; })}
     </nav>
   </div>;
 }

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { AlertCircle, ArrowRight, BadgeCheck, Bot, Calendar, Check, Eye, EyeOff, Heart, Mail, MessageCircle, Pencil, Phone, Plus, SlidersHorizontal, Sparkles, Target, User, X } from 'lucide-react';
 import { AgentSettingsModal, PROVIDERS, readAgent } from './AiAnalyst';
-import { jobStatusText } from '../JobStatusPicker';
+import { JobStatusLine } from '../JobStatusPicker';
 import { api } from '../../api';
 import type { Bootstrap, View } from '../../types';
 import { DemoBadge } from '../DemoBadge';
@@ -116,7 +116,7 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
         <p className="tp-hello">{greeting()}, {v.name.split(' ')[0]}{(v.demo || v.sample) && <DemoBadge label={v.sample ? 'Starter sample account' : 'Demo account — not a real user'} />}</p>
         <h2>{candidate ? v.name : v.company || v.name}{age !== undefined && <span className="tp-age">{age}</span>}{verified && <BadgeCheck size={22} className="tp-verified" aria-label="Verified" />}</h2>
         <p className="tp-headline">{candidate ? (v.headline || v.title) : `${v.name}${v.title ? ` · ${v.title}` : ''}`}</p>
-        {candidate && <p className={`tp-status st-${v.jobStatus?.kind || 'open'}`}><i aria-hidden="true" />{jobStatusText(v.jobStatus)}</p>}
+        {candidate && <p className="tp-status-line"><JobStatusLine s={v.jobStatus} matches={data.matches} onOpen={onOpenMessages} /></p>}
         {lookingFor.length > 0 && <p className="tp-looking"><b>{candidate ? 'Looking for' : 'Hiring'}</b>{lookingFor.join(' · ')}</p>}
         <div className="tp-complete" aria-label={`Profile ${completeness}% complete`}><span style={{ width: `${completeness}%` }} /></div>
         <div className="tp-actions">

@@ -124,7 +124,8 @@ function verifiedUser(user) {
 function otherPartyView(user) {
   if (!user) return user;
   // `verification` is the member's own review record (status, admin reason): never shown to others.
-  const { geo, verification, ...rest } = selfView(user);
+  // `jobStatus` (hired / pending signing, with role and recruiter name) is private to the member too.
+  const { geo, verification, jobStatus, ...rest } = selfView(user);
   return rest;
 }
 

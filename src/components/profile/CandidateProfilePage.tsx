@@ -1,15 +1,19 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Check, Eye, Loader2, Lock, Pencil, ShieldCheck, Sparkles, Trash2, X } from 'lucide-react';
-import type { Job, Person } from '../../types';
+import type { Job, JobMatch, Person } from '../../types';
+import { JobStatusPicker } from '../JobStatusPicker';
 import { CandidateCards } from './CandidateCards';
 import { DemoBadge } from '../DemoBadge';
 import { ContactBar } from '../home/TodayPanel';
 
-// Card index (0-5, matches CandidateCards' NAV order) -> wizard step. Must
-// stay in sync with the step= props on each <Card> in CandidateCards.tsx.
-const EDIT_STEPS = [0, 3, 1, 6, 2, 5];
+// On your own profile page "My Dream Job" comes first (founder request), then the usual cards.
+// ORDER lists CandidateCards' card numbers (0 Who I am, 1 Human Stack, 2 Skills, 3 Built, 4 Dream Job, 5 People).
+const ORDER = [4, 0, 1, 2, 3, 5];
+// Card number -> wizard step. Must stay in sync with the step= props on each <Card> in CandidateCards.tsx.
+const CARD_STEP = [0, 3, 1, 6, 2, 5];
+const EDIT_STEPS = ORDER.map((card) => CARD_STEP[card]);
 
-export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, onCardChange, onDeleteProfile }: { viewer: Person; jobs: Job[]; onEdit: (step: number) => void; initialCard?: number; onCardChange?: (card: number) => void; onDeleteProfile?: () => Promise<void> }) {
+export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, onCardChange, onDeleteProfile, matches = [], onViewerSaved, onOpenMessages }: { viewer: Person; jobs: Job[]; onEdit: (step: number) => void; initialCard?: number; onCardChange?: (card: number) => void; onDeleteProfile?: () => Promise<void>; matches?: JobMatch[]; onViewerSaved?: (viewer: Person) => void; onOpenMessages?: (matchId: string) => void }) {
   const [jobId, setJobId] = useState('');
   const [inspector, setInspector] = useState(false);
   const [activeCard, setActiveCard] = useState(initialCard);
@@ -51,7 +55,7 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
 
     <section className="rp-layout">
       <div className="rp-deck-wrap">
-        <CandidateCards person={viewer} match={comparisonJob?.match} onEdit={onEdit} visibilityInspector={inspector} initialCard={initialCard} onActiveChange={changeCard} />
+        <CandidateCards person={viewer} match={comparisonJob?.match} onEdit={onEdit} visibilityInspector={inspector} initialCard={initialCard} onActiveChange={changeCard} order={ORDER} />
         <p className="rp-privacy-note"><Lock size={14} /> Private contact values remain hidden in owner preview exactly as they are before a mutual match.</p>
         {/* Contact bar: what teams can use once you match. */}
         <div className="rp-contact-wrap"><ContactBar person={viewer} onAdd={() => onEdit(0)} /></div>
@@ -69,6 +73,7 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
         {comparisonJob ? <div className="rp-comparison"><span className="overline">Personalized view</span><strong>{comparisonJob.match.score}% match with {comparisonJob.title}</strong><p>{comparisonJob.match.matchedSkills.length} matching skills · {comparisonJob.match.missingSkills?.length || 0} development gaps · {comparisonJob.match.salaryStatus || 'salary pending'} salary fit</p></div>
           : <div className="rp-comparison neutral"><span className="overline">General recruiter view</span><strong>No fabricated match score</strong><p>Select a matched role to inspect skills, salary, work-mode, and availability compatibility.</p></div>}
         <button className="primary-button wide" onClick={() => onEdit(EDIT_STEPS[activeCard])}>Edit This Card</button>
+        {onViewerSaved && <JobStatusPicker key={`${viewer.id}-${viewer.jobStatus?.kind}-${viewer.jobStatus?.matchId || ''}`} variant="card" viewer={viewer} matches={matches} onSaved={onViewerSaved} onOpen={onOpenMessages} />}
       </aside>
     </section>
   </main>;

@@ -41,6 +41,7 @@ function baseSeed(now) {
         demo: true,
         name: 'Sofia Okafor',
         email: 'sofia.okafor@demo.jobsmatchnow.app',
+        jobStatus: { kind: 'hired', role: 'Technical Product Manager', company: 'AWS', recruiter: 'Sarah Thompson', matchId: 'm-sofia-aws-tpm' },
         title: 'Senior AI Product Manager',
         location: 'Ho Chi Minh City',
         city: 'Ho Chi Minh City',
@@ -961,6 +962,8 @@ function baseSeed(now) {
       { id: 'm-sofia-aws', demoTemplate: true, candidateId: 'candidate-demo', employerId: 'employer-demo', jobId: 'j-1', stage: 'Matched', createdAt: now - 86400000 },
       { id: 'm-sofia-microsoft', demoTemplate: true, candidateId: 'candidate-demo', employerId: 'e-2', jobId: 'j-2', stage: 'Matched', createdAt: now - 86400000 * 2 },
       { id: 'm-sofia-rackspace', demoTemplate: true, candidateId: 'candidate-demo', employerId: 'hh-1', jobId: 'j-6', stage: 'Matched', createdAt: now - 86400000 * 3 },
+      // Demo "I just got hired!": Sofia was hired for Sarah Thompson's Technical Product Manager role at AWS.
+      { id: 'm-sofia-aws-tpm', demoTemplate: true, candidateId: 'candidate-demo', employerId: 'employer-demo', jobId: 'j-sarah-product', stage: 'Hired', createdAt: now - 86400000 * 21, stageChangedAt: now - 86400000 * 2 },
       { id: 'm-david-aws', demoTemplate: true, candidateId: 'c-1', employerId: 'employer-demo', jobId: 'j-1', stage: 'Interview', createdAt: now - 86400000 * 2 },
       { id: 'm-maria-aws', demoTemplate: true, candidateId: 'c-2', employerId: 'employer-demo', jobId: 'j-1', stage: 'Matched', createdAt: now - 86400000 * 3 },
       { id: 'm-john-aws', demoTemplate: true, candidateId: 'c-3', employerId: 'employer-demo', jobId: 'j-1', stage: 'Matched', createdAt: now - 86400000 * 4 },
