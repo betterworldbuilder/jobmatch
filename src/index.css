@@ -3442,6 +3442,82 @@ img.avatar-mini { object-fit:cover; }
   .nm-btn { transition:none; }
 }
 
+/* ---- Target roles upsell + personal AI agent + AI analyst chat (mockup) ---- */
+.tp-locked { margin:8px 0 0; font-size:12px; color:var(--muted); }
+.tp-setting-actions { display:flex; align-items:center; gap:12px; margin-top:10px; }
+.tp-setting-actions .tp-link { margin-top:0; }
+.tp-add-roles { display:inline-flex; align-items:center; gap:5px; padding:7px 12px; border:0; border-radius:999px; background:linear-gradient(135deg,#fd267a,#ff6036); color:#fff; font-weight:800; font-size:12px; }
+.tp-agent { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; padding-top:12px; border-top:1px solid #f0f1f5; }
+.tp-agent span { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:13px; color:var(--ink); }
+.tp-agent small { width:100%; padding-left:21px; font-size:12px; color:var(--muted); }
+.tp-price { display:flex; align-items:baseline; gap:8px; margin:6px 0 16px; }
+.tp-price strong { font:800 40px 'Manrope'; color:var(--ink); }
+.tp-price span { font-size:14px; color:var(--muted); }
+.tp-thanks { display:flex; gap:8px; align-items:flex-start; padding:12px; border-radius:12px; background:#e9f9f0; color:#16794a; font-weight:700; }
+.ai-setup { position:relative; width:min(460px, calc(100vw - 32px)); max-height:calc(100svh - 40px); overflow:auto; padding:28px 24px 22px; border-radius:18px; background:#fff; box-shadow:0 30px 70px rgba(0,0,0,.3); }
+.ai-setup h2 { display:flex; align-items:center; gap:8px; margin:8px 0 10px; font:800 22px 'Manrope'; color:var(--ink); }
+.ai-setup p { font-size:14px; line-height:1.5; color:#4a5265; }
+.ai-badge { display:inline-block; padding:3px 10px; border-radius:999px; background:#fff4e5; color:#b85c00; font-size:11px; font-weight:800; }
+.ai-providers { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.ai-providers button { display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:14px; border:2px solid var(--line); border-radius:14px; background:#fff; text-align:left; }
+.ai-providers button.on { border-color:#fd267a; background:#fff5f8; }
+.ai-providers strong { font-size:15px; color:var(--ink); } .ai-providers small { font-size:12px; color:var(--muted); }
+.ai-setup .int-field { margin-bottom:14px; }
+.ai-connected { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:14px; border-radius:14px; background:#e9f9f0; margin:12px 0; }
+.ai-connected strong { color:#16794a; } .ai-connected small { color:#4a5265; }
+.ai-privacy { margin:14px 0 0 !important; font-size:12px !important; color:var(--muted) !important; }
+.ai-fab { position:fixed; right:22px; bottom:22px; z-index:60; display:inline-flex; align-items:center; gap:8px; height:50px; padding:0 18px; border:0; border-radius:999px; background:linear-gradient(135deg,#fd267a,#ff6036); color:#fff; font:800 14px 'Manrope'; box-shadow:0 12px 28px rgba(253,38,122,.4); }
+.ai-panel { position:fixed; right:22px; bottom:84px; z-index:61; width:min(380px, calc(100vw - 32px)); height:min(520px, calc(100svh - 120px)); display:flex; flex-direction:column; border-radius:18px; background:#fff; box-shadow:0 24px 60px rgba(0,0,0,.25); overflow:hidden; }
+.ai-panel>header { display:flex; align-items:center; gap:10px; padding:14px 14px 12px; background:#111; color:#fff; }
+.ai-panel>header div { flex:1; display:flex; flex-direction:column; }
+.ai-panel>header small { font-size:11px; opacity:.75; }
+.ai-panel>header .fm-x { color:#fff; }
+.ai-msgs { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:8px; background:#f7f7f9; }
+.ai-hello { margin:0; font-size:13px; color:#4a5265; line-height:1.5; }
+.ai-msg { margin:0; max-width:86%; padding:10px 12px; border-radius:14px; font-size:13px; line-height:1.45; }
+.ai-msg.you { align-self:flex-end; background:#fd267a; color:#fff; border-bottom-right-radius:4px; }
+.ai-msg.ai { align-self:flex-start; background:#fff; color:var(--ink); border:1px solid #eceef3; border-bottom-left-radius:4px; }
+.ai-suggest { display:flex; gap:6px; overflow-x:auto; padding:8px 12px; border-top:1px solid #f0f1f5; }
+.ai-suggest button { flex:none; padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:#fff; font-size:12px; font-weight:700; color:var(--ink); }
+.ai-input { display:flex; gap:8px; padding:10px 12px 12px; }
+.ai-input input { flex:1; height:40px; padding:0 12px; border:1px solid var(--line); border-radius:999px; font-size:13px; }
+.ai-input button { width:40px; height:40px; display:grid; place-items:center; border:0; border-radius:50%; background:#111; color:#fff; }
+.ai-input button:disabled { opacity:.4; }
+.ai-inline { margin-top:18px; padding:18px; border:2px solid #fd267a; border-radius:18px; background:#fff; }
+.ai-inline>header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.ai-inline>header svg { color:#fd267a; }
+.ai-inline>header div { flex:1; display:flex; flex-direction:column; }
+.ai-inline>header strong { font:800 17px 'Manrope'; color:var(--ink); }
+.ai-inline>header small { font-size:12px; color:var(--muted); }
+.ai-suggest.wrap { flex-wrap:wrap; overflow:visible; border-top:0; padding:12px 0 4px; }
+.ai-suggest.wrap button { font-size:13px; padding:8px 12px; }
+.ai-suggest.wrap button:hover { border-color:#fd267a; color:#fd267a; }
+.ai-msgs.inline { max-height:340px; margin:8px 0; border-radius:12px; }
+.ai-msg a { color:#0056d2; font-weight:700; word-break:break-all; }
+.ai-inline .ai-input { padding:8px 0 0; }
+@media (max-width:639px) { .ai-fab { bottom:80px; right:14px; } .ai-fab span { display:none; } .ai-panel { right:16px; bottom:140px; } }
+
+/* ---- Reports: KPIs per role, skill gaps (+ Coursera), recruiter feedback ---- */
+.rp-card { margin-top:18px; padding:18px; border:1px solid var(--line); border-radius:18px; background:#fff; }
+.rp-card>header { display:flex; align-items:flex-start; gap:10px; margin-bottom:12px; }
+.rp-card>header svg { color:#fd267a; margin-top:2px; }
+.rp-card>header strong { display:block; font:800 16px 'Manrope'; color:var(--ink); }
+.rp-card>header small { font-size:13px; color:var(--muted); }
+.rp-table-wrap { overflow-x:auto; }
+.rp-table { width:100%; border-collapse:collapse; min-width:720px; font-size:13px; }
+.rp-table th { text-align:left; padding:8px 10px; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:#9aa1b2; border-bottom:1px solid var(--line); }
+.rp-table td { padding:10px; border-bottom:1px solid #f1f2f6; color:var(--ink); }
+.rp-table td small { color:var(--muted); margin-left:4px; }
+.rp-gaps,.rp-feedback { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+.rp-gaps li { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:12px; background:#fbfbfd; border:1px solid #f0f1f5; }
+.rp-gaps strong { display:block; font-size:14px; color:var(--ink); }
+.rp-gaps small { font-size:12px; color:var(--muted); }
+.rp-course { flex:none; display:inline-flex; align-items:center; gap:5px; padding:7px 12px; border-radius:999px; background:#eaf2ff; color:#0056d2; font-weight:800; font-size:12px; text-decoration:none; }
+.rp-note { margin:10px 0 0; font-size:12px; color:var(--muted); }
+.rp-feedback blockquote { margin:0 0 4px; font-size:14px; line-height:1.5; color:var(--ink); }
+.rp-feedback li { padding:12px 14px; border-left:3px solid #fd267a; background:#fff7fa; border-radius:0 12px 12px 0; }
+.rp-feedback small { font-size:12px; color:var(--muted); }
+
 /* ---- Recruiter home template: hiring pipeline board + candidates to review ---- */
 .rs-section { background:#fff; }
 .rs-board { display:grid; gap:8px; margin-top:12px; }

@@ -2,7 +2,8 @@
 // Profile card (who teams see, completeness, visibility) + summary, urgent actions,
 // next interview and search settings. Every value comes from real records.
 import { useState } from 'react';
-import { AlertCircle, ArrowRight, BadgeCheck, Calendar, Eye, EyeOff, Heart, MessageCircle, Pencil, SlidersHorizontal, Sparkles, User } from 'lucide-react';
+import { AlertCircle, ArrowRight, BadgeCheck, Bot, Calendar, Check, Eye, EyeOff, Heart, MessageCircle, Pencil, Plus, SlidersHorizontal, Sparkles, Target, User, X } from 'lucide-react';
+import { AgentSettingsModal, PROVIDERS, readAgent } from './AiAnalyst';
 import { api } from '../../api';
 import type { Bootstrap, View } from '../../types';
 import { DemoBadge } from '../DemoBadge';
@@ -26,6 +27,15 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
   const v = data.viewer;
   const candidate = v.role === 'candidate';
   const [saving, setSaving] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
+  const [agent, setAgent] = useState(readAgent);
+  const [rolesOpen, setRolesOpen] = useState(false);
+  const [interest, setInterest] = useState<'idle' | 'busy' | 'done'>('idle');
+  const askInterest = async () => {
+    setInterest('busy');
+    try { await api.registerInterest(v.id, 'target-roles-plus'); setInterest('done'); }
+    catch (e) { setInterest('idle'); alert(e instanceof Error ? e.message : 'Could not save'); }
+  };
   const completeness = v.completeness ?? 0;
   const hidden = v.privacy?.visibility === 'paused';
   const verified = Boolean(v.photoVerified || v.verified || v.provider === 'google' || v.provider === 'linkedin' || completeness >= 80);
@@ -64,7 +74,7 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
 
   const settings: [string, string][] = candidate
     ? [
-      ['Roles', v.preferences?.desiredRoles?.join(', ') || ''],
+      ['Target role (1 free)', v.preferences?.desiredRoles?.[0] || ''],
       ['Work mode', workModeLabel(v.preferences?.workMode)],
       ['Salary', salaryLabel(v.preferences?.salary)],
       ['Job type', v.preferences?.employmentTypes?.join(', ') || ''],
@@ -125,9 +135,29 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
         <div className="tp-card">
           <h3><SlidersHorizontal size={16} /> My search settings</h3>
           <dl className="tp-settings">{settings.map(([k, val]) => <div key={k}><dt>{k}</dt><dd>{val || <em>Not set</em>}</dd></div>)}</dl>
-          <button type="button" className="tp-link" onClick={() => (candidate ? onEditProfile(2) : navigate('profile'))}>Edit settings <ArrowRight size={13} /></button>
+          {candidate && (v.preferences?.desiredRoles?.length || 0) > 1 && <p className="tp-locked">{(v.preferences?.desiredRoles?.length || 1) - 1} more saved {(v.preferences?.desiredRoles?.length || 1) - 1 === 1 ? 'role' : 'roles'}: {v.preferences!.desiredRoles!.slice(1).join(', ')}</p>}
+          <div className="tp-setting-actions">
+            {candidate && <button type="button" className="tp-add-roles" onClick={() => setRolesOpen(true)}><Plus size={14} /> Add roles</button>}
+            <button type="button" className="tp-link" onClick={() => (candidate ? onEditProfile(2) : navigate('profile'))}>Edit settings <ArrowRight size={13} /></button>
+          </div>
+          <div className="tp-agent">
+            <span><Bot size={15} /> <b>Use personal AI agent</b><small>{agent ? `Connected: ${PROVIDERS[agent.provider].label}` : 'ChatGPT or Claude — preview'}</small></span>
+            <button type="button" className="secondary-button small" onClick={() => setAgentOpen(true)}>{agent ? 'Manage' : 'Set up'}</button>
+          </div>
         </div>
       </div>
     </div>
+    {agentOpen && <AgentSettingsModal onClose={() => setAgentOpen(false)} onChange={setAgent} />}
+    {rolesOpen && <div className="modal-scrim" onClick={() => setRolesOpen(false)}>
+      <div className="ai-setup" role="dialog" aria-modal="true" aria-label="Add target roles" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="fm-x" aria-label="Close" onClick={() => setRolesOpen(false)}><X size={18} /></button>
+        <h2><Target size={22} /> Target more roles</h2>
+        <p>Your first target role is free. <b>Target roles+</b> lets you search up to <b>3 roles at once</b> (for example Backend Engineer, Platform Engineer and Tech Lead), each with its own matches and report.</p>
+        <div className="tp-price"><strong>$5</strong><span>/ month · up to 3 target roles · cancel any time</span></div>
+        {interest === 'done' ? <p className="tp-thanks"><Check size={16} /> Thanks — we saved your interest and will tell you when Target roles+ opens. Nothing was charged.</p>
+          : <button type="button" className="fm-black" disabled={interest === 'busy'} onClick={() => void askInterest()}>{interest === 'busy' ? 'Saving…' : 'Get Target roles+'}</button>}
+        <p className="ai-privacy">Payments for candidates are not open yet: this records your interest only.</p>
+      </div>
+    </div>}
   </section>;
 }

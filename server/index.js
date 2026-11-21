@@ -3064,6 +3064,22 @@ app.get('/api/admin/analytics/events', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// --- Paid-feature interest (no charge): e.g. "Target roles+" (3 roles, $5/month) ---
+// Candidates can't be charged yet; this records who wants a feature so the founder can decide.
+const INTEREST_FEATURES = ['target-roles-plus'];
+app.post('/api/me/interest', rateLimit({ windowMs: 3600000, max: 20, bucket: 'interest' }), async (req, res, next) => {
+  try {
+    const userId = resolveActor(req, reqString(req.body, 'userId', { max: 128 }));
+    const feature = oneOf(req.body, 'feature', INTEREST_FEATURES);
+    await store.transaction((db) => {
+      assertDemoActor(req, db, userId);
+      if (!Array.isArray(db.featureInterest)) db.featureInterest = [];
+      if (!db.featureInterest.some((x) => x.userId === userId && x.feature === feature)) db.featureInterest.push({ userId, feature, at: Date.now() });
+    });
+    res.status(201).json({ ok: true });
+  } catch (error) { next(error); }
+});
+
 // --- Admin: the 3 KPIs that matter most for a hiring marketplace -------------
 // 1. New registrations (real candidates + hiring teams), 2. mutual matches, 3. hires.
 // Real accounts only; each with this week, last week, last 30 days and an 8-week series.
@@ -3947,13 +3963,15 @@ app.post('/api/matches/:id/feedback-email', async (req, res, next) => {
       if (!item) { const error = new Error('Match not found'); error.status = 404; throw error; }
       if (session && item.employerId !== session.sub) { const error = new Error('Only the hiring recruiter can send this feedback'); error.status = 403; throw error; }
       assertDemoActor(req, db, item.employerId);
+      // Kept on the match too, so the candidate sees it in Reports (not only by email).
+      item.feedback = [...(item.feedback || []), { text: message, at: Date.now(), from: item.employerId }].slice(-10);
       return {
         candidate: db.users.find((user) => user.id === item.candidateId),
         employer: db.users.find((user) => user.id === item.employerId),
         job: db.jobs.find((entry) => entry.id === item.jobId),
       };
     });
-    if (!candidate?.email) throw new ValidationError('message', 'This candidate has no email on file');
+    if (!candidate?.email) return res.json({ ok: true, mailer: false, saved: true });
     const sent = mailerConfigured();
     if (sent) {
       await sendMail({
