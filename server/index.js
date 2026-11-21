@@ -134,7 +134,7 @@ function otherPartyView(user) {
  */
 function selfView(user) {
   if (!user) return user;
-  const { passwordHash, authSubject, ...rest } = user;
+  const { passwordHash, authSubject, adminPasswordReset, ...rest } = user;
   return rest;
 }
 function jobPublicView(job) {
@@ -649,17 +649,19 @@ app.post('/api/auth/login', authLimiter, async (req, res, next) => {
       const email = reqString(req.body, 'email', { max: 200 }).toLowerCase();
       const password = reqString(req.body, 'password', { max: 200 });
       user = db.users.find((item) => item.email && item.email.toLowerCase() === email);
-      // Admin accounts never accept a password — Google SSO only, so admin
-      // access always goes through Google's own sign-in (and whatever MFA
-      // the admin has enabled there) rather than an app-local password.
-      if (user?.role === 'admin') {
+      // Admin accounts sign in with Google, or with an admin password that was set
+      // through a one-time setup link only someone with server access can create
+      // (POST /api/admin/password-link). Without that password, password login is refused.
+      if (user?.role === 'admin' && !user.passwordHash) {
         await store.transaction((db2) => logBillingEvent(db2, user.id, 'admin_login_blocked_password_attempt', 'user', user.id, {}));
-        const error = new Error('Admin accounts must sign in with Google'); error.status = 403; throw error;
+        const error = new Error('Set your admin password with the setup link first (or sign in with Google)'); error.status = 403; throw error;
       }
       // Same error for wrong email and wrong password — no account probing.
       if (!user?.passwordHash || !verifyPassword(password, user.passwordHash)) {
+        if (user?.role === 'admin') await store.transaction((db2) => logBillingEvent(db2, user.id, 'admin_login_failed', 'user', user.id, {}));
         const error = new Error('Email or password is incorrect'); error.status = 401; throw error;
       }
+      if (user.role === 'admin') await store.transaction((db2) => logBillingEvent(db2, user.id, 'admin_login_success', 'user', user.id, { provider: 'password' }));
     }
     if (user.suspendedAt) { const error = new Error('This account has been suspended. Contact support if you believe this is a mistake.'); error.status = 403; throw error; }
     issueSession(res, user);
@@ -3838,6 +3840,44 @@ app.post('/api/admin/bootstrap-admin', authLimiter, async (req, res, next) => {
       return { user: item, created: true };
     });
     res.json({ ok: true, userId: user.id, created });
+  } catch (error) { next(error); }
+});
+
+// Admin password setup. Step 1 (server access only, same secret as bootstrap-admin):
+// create a one-time 30-minute link. Step 2 (the admin, in the browser): choose a password.
+const ADMIN_PASSWORD_MIN = 12;
+app.post('/api/admin/password-link', authLimiter, async (req, res, next) => {
+  try {
+    const secret = process.env.ADMIN_PROMOTE_SECRET;
+    if (!secret || req.headers['x-admin-promote-secret'] !== secret) { const error = new Error('Not authorized'); error.status = 403; throw error; }
+    const email = reqString(req.body, 'email', { max: 200 }).toLowerCase();
+    const token = crypto.randomBytes(32).toString('base64url');
+    const expiresAt = Date.now() + 30 * 60 * 1000;
+    await store.transaction((db) => {
+      const user = db.users.find((u) => u.role === 'admin' && u.email && u.email.toLowerCase() === email);
+      if (!user) { const error = new Error('No admin account with that email'); error.status = 404; throw error; }
+      user.adminPasswordReset = { sha256: crypto.createHash('sha256').update(token).digest('hex'), expiresAt };
+      logBillingEvent(db, user.id, 'admin_password_link_created', 'user', user.id, {});
+    });
+    const base = (process.env.WEB_APP_URL || 'https://jobsmatchnow.com').replace(/\/$/, '');
+    res.json({ link: `${base}${APP_PATH}?admin-reset=${token}`, expiresAt });
+  } catch (error) { next(error); }
+});
+app.post('/api/admin/password-reset', authLimiter, async (req, res, next) => {
+  try {
+    const token = reqString(req.body, 'token', { max: 200 });
+    const password = reqString(req.body, 'password', { max: 200 });
+    if (password.length < ADMIN_PASSWORD_MIN) throw new ValidationError('password', `Use at least ${ADMIN_PASSWORD_MIN} characters for an admin password`);
+    const sha = crypto.createHash('sha256').update(token).digest('hex');
+    const email = await store.transaction((db) => {
+      const user = db.users.find((u) => u.role === 'admin' && u.adminPasswordReset?.sha256 === sha && u.adminPasswordReset.expiresAt > Date.now());
+      if (!user) { const error = new Error('This setup link is invalid or has expired — ask for a new one'); error.status = 400; throw error; }
+      user.passwordHash = hashPassword(password);
+      delete user.adminPasswordReset;
+      logBillingEvent(db, user.id, 'admin_password_set', 'user', user.id, {});
+      return user.email;
+    });
+    res.json({ ok: true, email });
   } catch (error) { next(error); }
 });
 

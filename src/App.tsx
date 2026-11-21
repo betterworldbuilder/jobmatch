@@ -3,6 +3,7 @@ import { DemoBadge } from './components/DemoBadge';
 import { SupportModal } from './components/SupportModal';
 import { ReportModal } from './components/ReportModal';
 import { ConductModal } from './components/ConductModal';
+import { AdminPasswordSetup } from './components/AdminPasswordSetup';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react';
 import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
@@ -164,6 +165,12 @@ export default function App() {
     if (session) return;
     window.location.href = `${window.location.pathname}?admin=1`;
   }), [session]);
+  // One-time admin password setup link (?admin-reset=<token>), created on the server.
+  const [adminReset, setAdminReset] = useState(() => new URLSearchParams(window.location.search).get('admin-reset') || '');
+  const closeAdminReset = (signIn = false) => {
+    setAdminReset(''); clearQuery('admin-reset');
+    if (signIn) window.location.href = `${window.location.pathname}?admin=1`;
+  };
   // The admin heatmap loads the public landing page in an iframe with ?heatmap=1.
   const heatmapPreview = new URLSearchParams(window.location.search).get('heatmap') === '1';
 
@@ -171,6 +178,7 @@ export default function App() {
     {!session || heatmapPreview ? <Landing onLogin={signIn} />
       : session.role === 'admin' ? <AdminWorkspace session={session} onExit={signOut} />
       : <Workspace key={session.id} session={session} onSwitchUser={signIn} onExit={signOut} />}
+    {adminReset && <AdminPasswordSetup token={adminReset} onClose={() => closeAdminReset()} onSignIn={() => closeAdminReset(true)} />}
     <AnimatePresence>{resetToken && <ResetPasswordModal token={resetToken} onClose={() => finishReset()} onComplete={finishReset} />}</AnimatePresence>
   </>;
 }
