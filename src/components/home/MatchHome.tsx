@@ -12,6 +12,8 @@ import { NotesBox } from '../NotesBox';
 import { DemoBadge } from '../DemoBadge';
 import { CANDIDATE_OFFERS, LaunchOffers } from '../LaunchOffers';
 import { NewMatchesSection } from './NewMatchesSection';
+import { FindMatches } from '../findmatches/FindMatches';
+import { featureOn } from '../../lib/flags';
 
 type HomeProps = {
   data: Bootstrap;
@@ -132,7 +134,7 @@ function ProfilePreviewModal({ viewer, onClose }: { viewer: Person; onClose: () 
   </div>;
 }
 
-export function CandidateHome({ data, setData, navigate, onEditProfile }: HomeProps) {
+export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMessages }: HomeProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const jobs = useMemo(() => [...data.jobs].sort((a, b) => (b.match?.score || 0) - (a.match?.score || 0)), [data.jobs]);
@@ -207,6 +209,11 @@ export function CandidateHome({ data, setData, navigate, onEditProfile }: HomePr
   </div>;
 
   return <main className="td-dashboard td-candidate">
+    {/* First thing a candidate sees: the default landing view (sidebar "Look for new Matches"). */}
+    {featureOn('findMatches')
+      ? <FindMatches role="candidate" data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Look for new Matches" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
+      : <NewMatchesSection data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Look for new Matches" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />}
+
     <section className="td-candidate-hero">
       <div>
         <div className="td-hero-greeting-row"><h1>Good morning, {firstName(data.viewer.name)} <span>👋</span></h1>{(data.viewer.demo || data.viewer.sample) && <DemoBadge label={data.viewer.sample ? 'Starter sample account' : 'Demo account — not a real user'} />}</div>
@@ -280,8 +287,6 @@ export function CandidateHome({ data, setData, navigate, onEditProfile }: HomePr
       </button>)}
     </section>
 
-    <NewMatchesSection data={data} setData={setData} navigate={navigate} header={<DashboardTitle icon={Sparkles} title="Look for new matches" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
-
     <section className="td-section" id="td-matches">
       <DashboardTitle icon={Heart} title="Job Matches" subtitle="You and these teams both said yes — start the conversation." action={`See all (${matchedJobs.length})`} onAction={() => navigate('matches')} />
       {matchedJobs.length
@@ -313,12 +318,12 @@ export function CandidateHome({ data, setData, navigate, onEditProfile }: HomePr
       </article>
       <article className="td-list-panel td-improve">
         <DashboardTitle icon={Sparkles} title="Make Your Profile Stronger" />
-        {[['Add salary expectations', '+15% match improvement', 2], ['Record a 60-sec introduction', '+27% recruiter response rate', 3], ['Add a recommendation', '+20% trust score', 5]].map(([title, note, step]) => <button key={title as string} onClick={() => onEditProfile(step as number)}><span><Pencil size={13} /></span><span><strong>{title}</strong><small>{note}</small></span></button>)}
+        {[['Add salary expectations', 'Used by the match score', 2], ['Record a 60-sec introduction', 'Lets teams hear you before a call', 3], ['Add a recommendation', 'Verified by a colleague’s email', 5]].map(([title, note, step]) => <button key={title as string} onClick={() => onEditProfile(step as number)}><span><Pencil size={13} /></span><span><strong>{title}</strong><small>{note}</small></span></button>)}
         <button className="secondary-button" onClick={() => onEditProfile(0)}>Complete My Profile</button>
       </article>
     </section>
 
-    <div className="td-tip"><Sparkles size={13} /> Tip: Profiles with salary and work-mode preferences get 3× more matches.</div>
+    <div className="td-tip"><Sparkles size={13} /> Tip: Add your salary and work-mode preferences so the match score can use them.</div>
 
     {selectedJob && <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} viewerId={data.viewer.id} notes={data.notes} onNoteSaved={(note) => setData({ ...data, notes: [...data.notes.filter((n) => n.id !== note.id), note] })} />}
     {previewing && <ProfilePreviewModal viewer={data.viewer} onClose={() => setPreviewing(false)} />}
@@ -368,6 +373,9 @@ export function RecruiterHome({ data, setData, navigate, onAddJobs, onOpenMessag
       <div><div className="td-hero-greeting-row"><h1>Good morning, {firstName(data.viewer.name)} <span>👋</span></h1>{(data.viewer.demo || data.viewer.sample) && <DemoBadge label={data.viewer.sample ? 'Starter sample account' : 'Demo account — not a real recruiter'} />}</div><p>Here’s who loves your jobs today.</p></div>
       <button className="primary-button" onClick={onAddJobs}>+ Add New Job Offers</button>
     </header>
+
+    {/* Headhunting: the "Find your Matches" studio on candidates (preview: ?fm=1). */}
+    {featureOn('findMatches') && <FindMatches role="employer" data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Look for new Matches" subtitle="Swipe right on candidates you want to meet. A chat opens only if they like you back." />} />}
 
     <section className="td-section" id="td-company-profile">
       <DashboardTitle icon={Building2} title="Company Profile" subtitle="How candidates see your company." action="Edit profile" onAction={() => navigate('profile')} />

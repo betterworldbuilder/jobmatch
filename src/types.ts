@@ -35,6 +35,10 @@ export interface Person {
   experienceLevel: string; completeness?: number; availability?: string; match?: MatchEvidence; onboarding?: boolean; salaryHidden?: boolean; demo?: boolean; sample?: boolean; invitesSent?: number; superLikedYou?: boolean; likedYou?: boolean; viewedYou?: boolean; verified?: boolean;
   /** Paid placement. Moves the card up the deck; the match score is untouched. */
   promoted?: boolean;
+  /** "Get verified": set only when an admin approves the member's live selfie. */
+  photoVerified?: boolean;
+  /** The viewer's own selfie-verification request (self view only). */
+  verification?: { status: 'pending' | 'approved' | 'rejected'; submittedAt: number; reviewedAt?: number; reason?: string };
   // Candidate profile model (item 4)
   headline?: string; phone?: string; city?: string; country?: string; distanceRangeKm?: number;
   birthdate?: string; discloseAge?: boolean; agePrivacy?: AgePrivacy; nationality?: string; contactChannels?: ContactChannel[];
@@ -110,7 +114,8 @@ export type JobDraft = Partial<Omit<Job, 'id' | 'match'>>;
 export interface JobImportResult { jobs: Job[]; found: number; skipped: number }
 export interface PipelineStep { id: string; name: string; owner: string; hidden?: boolean }
 export interface JobMatch { id: string; candidateId: string; employerId: string; jobId: string; stage: string; createdAt: number; stageChangedAt?: number; candidate: Person; employer?: Person; job: Job; screeningAnswers?: ScreeningAnswer[]; pipeline?: PipelineStep[]; currentStepId?: string }
-export interface Message { id: string; matchId: string; senderId: string; text: string; createdAt: number }
+export interface Message { id: string; matchId: string; senderId: string; text: string; createdAt: number; firstImpression?: boolean }
+export interface PendingVerification { userId: string; name: string; role: Role; photo?: string; submittedAt: number }
 export interface ScheduledCall { id: string; matchId: string; createdBy: string; title: string; startAt: number; durationMinutes: number; notes?: string; createdAt: number }
 export interface RoleMatchGroup { job: Job; candidates: Person[]; matchingCandidates?: Person[]; interestedCount: number; newCount: number }
 /** A viewer's private note about a specific job or candidate — visible only to its author. */

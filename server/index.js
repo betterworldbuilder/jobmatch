@@ -86,6 +86,8 @@ await store.transaction((db) => {
   // Merge seed reviews by id and backfill `approved` on them, so the starter
   // reviews stay visible after the moderation field was introduced.
   if (!Array.isArray(db.feedback)) db.feedback = [];
+  // fb-1 and fb-2 were invented starter reviews; drop them from stores created before they were removed.
+  db.feedback = db.feedback.filter((entry) => entry.id !== 'fb-1' && entry.id !== 'fb-2');
   for (const f of seed.feedback || []) {
     const existing = db.feedback.find((entry) => entry.id === f.id);
     if (!existing) db.feedback.push(f);
@@ -109,7 +111,7 @@ const demoDistances = { 'j-1': 7, 'j-2': 18, 'j-3': 42, 'j-4': 75, 'c-1': 5, 'c-
 
 /** A profile counts as verified once it's SSO-authenticated or well filled in. */
 function verifiedUser(user) {
-  return Boolean(user && (user.authProvider || user.provider === 'google' || user.provider === 'linkedin' || (user.completeness ?? 0) >= 80));
+  return Boolean(user && (user.photoVerified === true || user.authProvider || user.provider === 'google' || user.provider === 'linkedin' || (user.completeness ?? 0) >= 80));
 }
 
 /**
@@ -1023,6 +1025,74 @@ app.get('/api/users/:id/photo', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// --- Photo verification ("Get verified") ------------------------------------
+// A member sends a live selfie; an admin compares it with the profile photo and
+// approves or rejects it. Only an approved selfie sets photoVerified. Selfies are
+// private: served to admins only, never to other members.
+const VERIFY_DIR = path.join(UPLOADS_ROOT, 'verification');
+fs.mkdirSync(VERIFY_DIR, { recursive: true });
+
+app.post('/api/users/:id/verification-selfie', uploadLimiter, express.raw({ type: () => true, limit: '5mb' }), async (req, res, next) => {
+  try {
+    requireSelf(req, req.params.id);
+    const ext = PHOTO_TYPES[req.headers['content-type']];
+    if (!ext) { const error = new Error('Only PNG, JPEG, or WEBP images are accepted'); error.status = 415; throw error; }
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) throw new ValidationError('file', 'Empty upload');
+    const file = path.join(VERIFY_DIR, `${req.params.id}.${ext}`);
+    await fs.promises.writeFile(file, req.body);
+    await mirror(file);
+    const verification = await store.transaction((db) => {
+      const item = db.users.find((entry) => entry.id === req.params.id);
+      if (!item) { const error = new Error('User not found'); error.status = 404; throw error; }
+      assertDemoActor(req, db, item.id);
+      item.verification = { status: 'pending', submittedAt: Date.now(), ext };
+      return item.verification;
+    });
+    res.status(201).json({ verification });
+  } catch (error) { next(error); }
+});
+
+app.get('/api/admin/verifications', async (req, res, next) => {
+  try {
+    requireAdminRole(authSession(req));
+    const db = await store.read();
+    const pending = db.users.filter((user) => user.verification?.status === 'pending')
+      .sort((a, b) => a.verification.submittedAt - b.verification.submittedAt)
+      .map((user) => ({ userId: user.id, name: user.name, role: user.role, photo: user.photo, submittedAt: user.verification.submittedAt }));
+    res.json({ verifications: pending });
+  } catch (error) { next(error); }
+});
+
+app.get('/api/admin/verifications/:userId/selfie', async (req, res, next) => {
+  try {
+    requireAdminRole(authSession(req));
+    const db = await store.read();
+    const user = db.users.find((item) => item.id === req.params.userId);
+    if (!user?.verification?.ext) { const error = new Error('No selfie on file'); error.status = 404; throw error; }
+    res.setHeader('Content-Type', `image/${user.verification.ext === 'jpg' ? 'jpeg' : user.verification.ext}`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(path.join(VERIFY_DIR, `${user.id}.${user.verification.ext}`));
+  } catch (error) { next(error); }
+});
+
+app.post('/api/admin/verifications/:userId/:decision', async (req, res, next) => {
+  try {
+    const session = requireAdminRole(authSession(req));
+    const decision = req.params.decision;
+    if (decision !== 'approve' && decision !== 'reject') { const error = new Error('Unknown decision'); error.status = 404; throw error; }
+    const reason = optString(req.body || {}, 'reason', { max: 300 });
+    const verification = await store.transaction((db) => {
+      const user = db.users.find((item) => item.id === req.params.userId);
+      if (!user?.verification) { const error = new Error('No verification request'); error.status = 404; throw error; }
+      user.verification = { ...user.verification, status: decision === 'approve' ? 'approved' : 'rejected', reviewedAt: Date.now(), ...(reason ? { reason } : {}) };
+      user.photoVerified = decision === 'approve';
+      logBillingEvent(db, session.sub, `verification_${decision === 'approve' ? 'approved' : 'rejected'}`, 'user', user.id, reason ? { reason } : {});
+      return user.verification;
+    });
+    res.json({ verification });
+  } catch (error) { next(error); }
+});
+
 // Give every seed candidate a realistic on-disk resume (with contact details,
 // so the pre-match anonymization is demonstrable). Idempotent.
 await (async () => {
@@ -1882,6 +1952,9 @@ app.post('/api/swipes', async (req, res, next) => {
     const answers = Array.isArray(req.body.answers)
       ? req.body.answers.map((item) => ({ question: String(item?.question || '').slice(0, 300), answer: String(item?.answer || '').slice(0, 600) })).filter((item) => item.question && item.answer).slice(0, 5)
       : undefined;
+    // "First impression": a short note that rides on a Super Like. Mutual opt-in still holds:
+    // the other side never sees the text before a match; it becomes the first message when one forms.
+    const note = direction === 'like' && superLike ? (optString(req.body, 'note', { max: 280 }) || '').trim() || undefined : undefined;
     const result = await store.transaction((db) => {
       const actor = db.users.find((user) => user.id === actorId);
       if (!actor) throw new ValidationError('actorId', 'Unknown user');
@@ -1910,7 +1983,7 @@ app.post('/api/swipes', async (req, res, next) => {
       }
       const existing = db.swipes.find((swipe) => swipe.actorId === actorId && swipe.targetType === targetType && swipe.targetId === targetId);
       if (existing) return { swipe: existing, match: null, duplicate: true };
-      const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}) };
+      const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}), ...(note ? { note } : {}) };
       const mutual = detectMutualMatch(swipe, db);
       db.swipes.push(swipe);
       // Demo if ANY party is demo/sample — starter sample accounts pre-like
@@ -1930,6 +2003,13 @@ app.post('/api/swipes', async (req, res, next) => {
         // dim = which side's swipe closed the mutual match.
         match.tracked = track(db, 'match_created', { demo: involvesDemo(...parties), dim: actorSide(actor), at: match.createdAt });
         db.matches.push(match);
+        // Notes from either side's Super Like open the conversation, oldest first.
+        const pairSwipes = db.swipes.filter((s) => s.note && ((s.actorId === match.candidateId && s.targetType === 'job' && s.targetId === match.jobId)
+          || (s.actorId === match.employerId && s.targetType === 'candidate' && s.targetId === match.candidateId)));
+        pairSwipes.sort((a, b) => a.createdAt - b.createdAt).forEach((s, i) => {
+          db.messages.push({ id: crypto.randomUUID(), matchId: match.id, senderId: s.actorId, text: s.note, createdAt: match.createdAt + i, firstImpression: true });
+        });
+        if (pairSwipes.length) match.firstMessageTracked = track(db, 'first_message', { demo: involvesDemo(...parties), dim: actorSide(db.users.find((u) => u.id === pairSwipes[0].actorId)), at: match.createdAt });
         // Expand for the match screen: names, photos, and the mutual salary reveal.
         match = { ...match, candidate: otherPartyView(db.users.find((user) => user.id === match.candidateId)), employer: otherPartyView(db.users.find((user) => user.id === match.employerId)), job: jobPublicView(db.jobs.find((job) => job.id === match.jobId)) };
       }

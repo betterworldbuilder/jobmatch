@@ -68,7 +68,6 @@ export function MobileLanding({ onRegister, onLogin }: { onRegister: () => void;
           <div className="m-stats">
             {stats.items.map((item) => <div key={item.value}><strong>{item.value}</strong><span>{item.label}</span></div>)}
           </div>
-          <small className="m-stats-note">{stats.note}</small>
         </div>
       </div>}
     </section>

@@ -974,9 +974,7 @@ export function createSeed() {
       { id: 'call-maria-aws', demoTemplate: true, matchId: 'm-maria-aws', createdBy: 'employer-demo', title: 'Coffee chat - Maria Garcia', startAt: now + 86400000 * 2, durationMinutes: 25, notes: 'AI platform conversation.', createdAt: now - 4200000 },
     ],
     bookmarks: [],
-    feedback: [
-      { id: 'fb-1', type: 'review', approved: true, name: 'Mai N.', role: 'Product Designer', rating: 5, message: 'Matched with two companies in my city in a week. The salary-up-front part is a game changer.', createdAt: now - 86400000 * 2 },
-      { id: 'fb-2', type: 'review', approved: true, name: 'David O.', role: 'Head of Talent', rating: 5, message: 'Mutual intent means every conversation is worth having.', createdAt: now - 86400000 * 4 },
-    ],
+    // No starter reviews: the public review wall shows only real, approved reviews.
+    feedback: [],
   };
 }

@@ -2,7 +2,7 @@
 // Run: npm test (node --test). The hook is bundled with esbuild and rendered with react-dom/server.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDeck, considerList, filtersActive, needsScreening, showsCommute, swipeFromDrag, swipeFromKey } from './deckLogic.ts';
+import { buildDeck, considerList, filtersActive, needsScreening, showsCommute, swipeFromDrag, swipeFromKey, withoutSkipped } from './deckLogic.ts';
 import { loadTsx } from '../../test-utils/loadTsx.mjs';
 
 const job = (id, score, extra = {}) => ({ id, title: `Role ${id}`, company: `Co ${id}`, location: 'Ho Chi Minh City', workMode: 'Hybrid', type: 'Full-time', experienceLevel: 'Mid', salary: '$3k', requiredSkills: ['React'], match: { score, matchedSkills: ['React'], matchedLanguages: [], experienceFit: true }, ...extra });
@@ -66,8 +66,22 @@ test('arrow keys and Backspace map to deck actions; other keys are ignored', () 
 
 test('consider list drops the current card and keeps at most 5', () => {
   const items = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((id, i) => job(id, 90 - i));
-  assert.deepEqual(considerList(items, items[0]).map((j) => j.id), ['b', 'c', 'd', 'e', 'f']);
-  assert.deepEqual(considerList(items, undefined, 2).map((j) => j.id), ['a', 'b']);
+  const deck = items.slice(0, 3);
+  assert.deepEqual(considerList(items, deck, 0).map((j) => j.id), ['b', 'c', 'd', 'e', 'f']);
+  assert.deepEqual(considerList(items, [], 0, 2).map((j) => j.id), ['a', 'b']);
+});
+
+test('consider list also drops deck cards already swiped', () => {
+  const items = ['a', 'b', 'c', 'd', 'e'].map((id, i) => job(id, 90 - i));
+  assert.deepEqual(considerList(items, items.slice(0, 3), 1).map((j) => j.id), ['c', 'd', 'e']);
+  // Deck finished: nothing seen comes back.
+  assert.deepEqual(considerList(items, items.slice(0, 3), 3).map((j) => j.id), ['d', 'e']);
+});
+
+test('withoutSkipped removes cards liked from the list and keeps the order', () => {
+  const deck = ['a', 'b', 'c'].map((id, i) => job(id, 90 - i));
+  assert.deepEqual(withoutSkipped(deck, ['b']).map((j) => j.id), ['a', 'c']);
+  assert.equal(withoutSkipped(deck, []), deck);
 });
 
 test('commute shows only for non-remote roles with a distance', () => {
@@ -99,4 +113,17 @@ test('useDiscoverDeck: recruiters default to an 80%+ fit filter', async () => {
   renderToStaticMarkup(React.createElement(Probe));
   assert.equal(state.minScore, 80);
   assert.deepEqual(state.deck.map((p) => p.id), ['p1']);
+});
+
+test('useDiscoverDeck: a card liked from the list is not shown again later in the deck', async () => {
+  const { React, renderToStaticMarkup, mod } = await loadTsx(new URL('./useDiscoverDeck.ts', import.meta.url));
+  const data = { viewer: { id: 'me' }, jobs: [job('a', 50), job('b', 90), job('c', 70), job('d', 80)], candidates: [], likesRemaining: 5 };
+  let state;
+  function Probe() { state = mod.useDiscoverDeck('candidate', data, () => undefined, { skipIds: ['d'] }); return null; }
+  renderToStaticMarkup(React.createElement(Probe));
+  // Same top 3 (b, d, c) minus d; no fourth card is pulled in.
+  assert.deepEqual(state.deck.map((j) => j.id), ['b', 'c']);
+  assert.equal(state.current.id, 'b');
+  assert.equal(state.next.id, 'c');
+  assert.equal(state.filtered.length, 4);
 });

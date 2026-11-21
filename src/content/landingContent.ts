@@ -49,11 +49,11 @@ export const trust = {
   body: 'Every recommendation carries its reason. Every connection starts with consent. Every candidate gets control over what employers can see.',
 } as const;
 
+// How the product works, not measured results: no outcome numbers until they come from real usage data.
 export const stats = {
   items: [
-    { value: '3.2×', label: 'more qualified conversations' },
-    { value: '48h', label: 'median time to first response' },
-    { value: '42%', label: 'fewer screening steps' },
+    { value: '2 yes', label: 'needed before any chat opens' },
+    { value: '$', label: 'salary range shown on every role' },
+    { value: 'Why', label: 'every match explains its fit' },
   ],
-  note: 'Illustrative product targets for the demo experience.',
 } as const;

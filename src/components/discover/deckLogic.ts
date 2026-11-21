@@ -58,7 +58,14 @@ export function swipeFromKey(key: string): 'like' | 'pass' | 'super' | 'undo' | 
   return null;
 }
 
-/** "Jobs you should consider": the same sorted list minus the current card, max 5. */
-export function considerList(filtered: DeckItem[], current: DeckItem | undefined, max = 5) {
-  return filtered.filter((item) => item.id !== current?.id).slice(0, max);
+/** "Recommended Roles": the same sorted list minus the deck cards already seen and the current one, max 5. */
+export function considerList(filtered: DeckItem[], deck: DeckItem[], index: number, max = 5) {
+  const seen = new Set(deck.slice(0, index + 1).map((item) => item.id));
+  return filtered.filter((item) => !seen.has(item.id)).slice(0, max);
+}
+
+/** Drop cards already liked from the side list. Only upcoming cards can be in `skipIds`
+ *  (the list never shows seen cards), so the current index stays on the same card. */
+export function withoutSkipped<T extends DeckItem>(deck: T[], skipIds: readonly string[]) {
+  return skipIds.length ? deck.filter((item) => !skipIds.includes(item.id)) : deck;
 }

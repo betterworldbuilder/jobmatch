@@ -1,4 +1,4 @@
-import type { ActionQueueItem, AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewKit, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
+import type { ActionQueueItem, AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewKit, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -53,6 +53,16 @@ export const api = {
     if (!response.ok) throw new Error(body.error || 'Photo upload failed');
     return body;
   },
+  // "Get verified": a live selfie an admin compares with the profile photo.
+  submitVerificationSelfie: async (userId: string, blob: Blob): Promise<{ verification: NonNullable<Person['verification']> }> => {
+    const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/verification-selfie`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': blob.type || 'image/jpeg' }, body: blob });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'Selfie upload failed');
+    return body;
+  },
+  adminVerifications: () => request<{ verifications: PendingVerification[] }>('/api/admin/verifications'),
+  adminDecideVerification: (userId: string, decision: 'approve' | 'reject', reason?: string) => request<{ verification: NonNullable<Person['verification']> }>(`/api/admin/verifications/${encodeURIComponent(userId)}/${decision}`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  adminVerificationSelfieUrl: (userId: string) => `${apiBase}/api/admin/verifications/${encodeURIComponent(userId)}/selfie`,
   createJob: (payload: JobDraft & { employerId: string; postSource?: 'editor' | 'quick_post' }) => request<{ job: Job }>('/api/jobs', { method: 'POST', body: JSON.stringify(payload) }),
   importJobFile: async (employerId: string, sourceSystem: string, file: File): Promise<JobImportResult> => {
     const params = new URLSearchParams({ employerId, sourceSystem });
@@ -81,7 +91,7 @@ export const api = {
   suggestScreening: (requiredSkillsDetail: WeightedSkill[]) => request<{ questions: string[] }>('/api/coach/screening', { method: 'POST', body: JSON.stringify({ requiredSkillsDetail }) }),
   matchKit: (matchId: string) => request<InterviewKit>(`/api/matches/${encodeURIComponent(matchId)}/kit`),
   matchIcebreakers: (matchId: string) => request<{ icebreakers: string[]; generator: string }>(`/api/matches/${encodeURIComponent(matchId)}/icebreakers`),
-  swipe: (payload: { actorId: string; targetId: string; targetType: 'job' | 'candidate'; direction: 'like' | 'pass'; superLike?: boolean; answers?: ScreeningAnswer[] }) => request<{ match: JobMatch | null; likesRemaining: number; duplicate: boolean }>('/api/swipes', { method: 'POST', body: JSON.stringify(payload) }),
+  swipe: (payload: { actorId: string; targetId: string; targetType: 'job' | 'candidate'; direction: 'like' | 'pass'; superLike?: boolean; answers?: ScreeningAnswer[]; note?: string }) => request<{ match: JobMatch | null; likesRemaining: number; duplicate: boolean }>('/api/swipes', { method: 'POST', body: JSON.stringify(payload) }),
   undoSwipe: (actorId: string) => request<{ undone: { targetId: string; targetType: string; direction: string } | null; likesRemaining?: number }>('/api/swipes/undo', { method: 'POST', body: JSON.stringify({ actorId }) }),
   updateStage: (id: string, stage: string) => request<JobMatch>(`/api/matches/${id}`, { method: 'PATCH', body: JSON.stringify({ stage }) }),
   updateMatchPipeline: (id: string, pipeline: PipelineStep[], currentStepId: string) => request<JobMatch>(`/api/matches/${id}/pipeline`, { method: 'PATCH', body: JSON.stringify({ pipeline, currentStepId }) }),

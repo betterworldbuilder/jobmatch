@@ -4,7 +4,7 @@ import { SupportModal } from './components/SupportModal';
 import { ReportModal } from './components/ReportModal';
 import { ConductModal } from './components/ConductModal';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react';
-import { Activity, ArrowLeft, ArrowRight, BadgeCheck, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Gift, Handshake, Heart, Inbox, Layers3, Linkedin, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, BadgeCheck, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Linkedin, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
 import { apiBase } from './api';
 import { Capacitor } from '@capacitor/core';
@@ -48,6 +48,7 @@ import { googleCalendarUrl, icsDataUrl, outlookCalendarUrl } from './lib/calenda
 import type { ScreeningAnswer } from './types';
 import { comparisonRows } from './content/landingContent';
 import { loadSession, saveSession } from './lib/auth';
+import { featureOn } from './lib/flags';
 import type { Bootstrap, Job, JobMatch, Message, Person, Role, ScheduledCall, SessionUser, View } from './types';
 
 type NotificationItem = {
@@ -78,10 +79,13 @@ function billingNotificationIcon(billingKind?: string) {
 // home dashboard (`anchor`). `short` is the compact label for the mobile bar.
 type NavItem = { label: string; short?: string; icon: typeof Compass; view?: View; anchor?: string };
 const candidateNav: NavItem[] = [
+  // Default landing view for candidates (see Workspace's initial activeAnchor).
+  { label: 'Look for new Matches', short: 'Swipe', icon: Flame, anchor: 'td-new-matches' },
   { label: 'Home', icon: Compass, view: 'home' },
   { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
   { label: 'Jobs that like you', short: 'Likes You', icon: Target, anchor: 'td-chasing' },
-  { label: 'Jobs You Should Consider', short: 'Swipe', icon: Sparkles, view: 'discover' },
+  // The list lives inside "Look for new Matches"; the full Discover page stays one click away there.
+  { label: 'Recommended Roles', short: 'Roles', icon: Sparkles, anchor: 'td-recommended' },
   { label: 'Saved', icon: BookmarkIcon, view: 'saved' },
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
@@ -172,38 +176,27 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
   };
   const trustPipeline: TrustPipelineRow[] = [
     { label: 'Steps to hire', classic: 9, jobsmatch: 6, unit: ' steps', color: '#FF3B30', feature: 'Mutual Matching + Automated Resume and Job Analysis', note: 'JobsMatchNow combines application, application receipt, resume screening, job-description comparison, and mutual-interest confirmation into one connected step.' },
-    { label: 'Base processing time', classic: 14.5, jobsmatch: 5.5, unit: ' days', classicDisplay: '8–21 days', jobsmatchDisplay: '3–8 days', deltaText: '5–13 days saved', color: '#FF9500', feature: 'Instant Mutual Matching + Faster First Contact', note: 'JobsMatchNow removes approximately 5–13 days of administrative delay before and around the human decision stages.' },
-    { label: 'Interviews + negotiation', classic: 19, jobsmatch: 19, unit: ' days', classicDisplay: '10–28 days', jobsmatchDisplay: '10–28 days', deltaText: 'Varies by role', color: '#AF52DE', feature: 'Same Essential Hiring Standards', note: 'Interview rounds and offer negotiation depend on the role, employer, candidate availability, approvals, and negotiation complexity.' },
-    { label: 'Full hiring journey', classic: 33.5, jobsmatch: 24.5, unit: ' days', classicDisplay: '18–49 days', jobsmatchDisplay: '13–36 days', deltaText: '5–13 days saved', color: '#FF9500', feature: 'A Faster Base Process', note: 'The full range includes interviews, assessments, checks, 3–7 days of offer negotiation, acceptance, and hire.' },
-    { label: 'Match-to-interview rate', classic: 18, jobsmatch: 61, unit: '%', color: '#34C759', feature: 'Explainable Match Score', note: 'Skills, experience, salary expectations, location, preferences, resume content, and job requirements are analyzed before both sides connect, helping better-aligned candidates reach interviews.' },
-    { label: 'Feedback ratio', classic: 22, jobsmatch: 89, unit: '%', color: '#32ADE6', feature: 'Built-In Feedback Exchange', note: 'Candidates and recruiters can share structured feedback after conversations and interview stages, reducing silence, uncertainty, and ghosting.' },
-    { label: 'Candidate satisfaction', classic: 58, jobsmatch: 96, unit: '%', color: '#AF52DE', feature: 'Salary Transparency + Mutual Choice + Recruiter Feedback', note: 'Candidates understand the role, salary range, match reasoning, and what recruiters can see before deciding whether to connect.' },
-    { label: 'Recruiter success rate', classic: 34, jobsmatch: 78, unit: '%', color: '#FF2D55', feature: 'Qualified Mutual Matches + Hiring Insights + Candidate Feedback', note: 'Recruiters spend their time on candidates who already match the role and have actively confirmed their interest, supported by clear compatibility and pipeline data.' },
   ];
+  // Steps only: how the product is built. No day counts or "time saved" until real usage data exists.
   const traditionalSteps = [
-    ['Candidate sends a job application', 'Same day–1 day'],
-    ['Recruiter receives and processes applications', '1–3 days'],
-    ['Resume screening', '2–5 days'],
-    ['Resume compared with the job description', '1–2 days'],
-    ['Recruiter screening call and scheduling', '2–5 days'],
-    ['Interview and assessment rounds', '7–21 days'],
-    ['Reference and background checks', '1–3 days'],
-    ['Offer negotiation', '3–7 days'],
-    ['Offer acceptance and hire', '1–2 days'],
+    'Candidate sends a job application',
+    'Recruiter receives and processes applications',
+    'Resume screening',
+    'Resume compared with the job description',
+    'Recruiter screening call and scheduling',
+    'Interview and assessment rounds',
+    'Reference and background checks',
+    'Offer negotiation',
+    'Offer acceptance and hire',
   ];
   const jobsmatchNowSteps = [
-    ['Application receipt, profile/resume screening, job-description analysis, and mutual matching combined', 'Same day–1 day'],
-    ['Recruiter screening call or direct local meetup', '1–2 days'],
-    ['Interview and assessment rounds', '7–21 days'],
-    ['Reference and background checks', '1–3 days'],
-    ['Offer negotiation', '3–7 days'],
-    ['Offer acceptance and hire', '1–2 days'],
+    'Application receipt, profile/resume screening, job-description analysis, and mutual matching combined',
+    'Recruiter screening call or direct local meetup',
+    'Interview and assessment rounds',
+    'Reference and background checks',
+    'Offer negotiation',
+    'Offer acceptance and hire',
   ];
-  const timeColor = (t: string) => {
-    if (/same day/i.test(t)) return '#34C759';
-    const maxDays = Math.max(...(t.match(/\d+/g) || ['0']).map(Number));
-    return maxDays <= 2 ? '#32ADE6' : maxDays <= 7 ? '#FF9500' : '#FF3B30';
-  };
   const modals = <AnimatePresence>
     {authModal === 'login' && <LoginModal onClose={() => setAuthModal(null)} onComplete={complete} />}
     {authModal === 'register' && <RegisterModal onClose={() => setAuthModal(null)} onComplete={complete} />}
@@ -214,7 +207,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
   return <main className="landing">
     <header className="landing-header">
       {banner !== 'image' && <nav className="landing-nav"><Brand /></nav>}
-      {banner !== 'image' && <nav className="landing-subnav"><a href="#how">How it works</a><a href="#compare">Why JobsMatchNow</a><a href="#trust">More, Better and Faster</a></nav>}
+      {banner !== 'image' && <nav className="landing-subnav"><a href="#how">How it works</a><a href="#compare">Why JobsMatchNow</a><a href="#trust">Fewer steps</a></nav>}
     </header>
     {linkedinState && <div className="integration-notice">{linkedinState === 'connected' ? 'LinkedIn connected. Your professional identity is ready to use.' : 'Add LinkedIn app credentials to enable live account connection. The demo remains available.'}<button onClick={() => history.replaceState({}, '', '/')}>×</button></div>}
     {banner === 'alt' ? <HeroAlt onRegister={openRegister} onLogin={openLogin} />
@@ -225,7 +218,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
       <a href="#features">Features</a>
       <a href="#journey">The journey</a>
       <a href="#how">How it works</a>
-      <a href="#trust">More, Better and Faster</a>
+      <a href="#trust">Fewer steps</a>
       <a href="#latest">Live now</a>
       <a href="#feedback">Reviews</a>
       <a href="#pricing">Pricing</a>
@@ -243,50 +236,15 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
     <FeaturesTable />
     <JourneyPipeline />
     <section className="value-section" id="how"><div className="section-heading centered"><span className="eyebrow"><Sparkles size={14} /> A better signal</span><h2>Hiring works better when<br />both sides choose.</h2></div><div className="value-grid"><Feature icon={BarChart3} title="Fit, explained" text="Go beyond keywords with transparent skill, experience, and preference signals." /><Feature icon={Handshake} title="Intent, confirmed" text="A conversation opens only after both sides express interest. No cold outreach." /><Feature icon={MapIcon} title="Geolocation of Opportunities" text="Choose a city and private distance range, then meet for coffee only when both sides agree." /><Feature icon={ShieldCheck} title="People, respected" text="Salary and work style are clear up front. Candidate controls stay at the center." /></div></section>
-    <section className="trust-section" id="trust"><div className="trust-copy"><span className="section-kicker light">Better Results</span><h2>More, better, faster hiring — with human mutual job matching.</h2><p>Every recommendation carries its reason. Every connection starts with consent. Every candidate gets control over what employers can see.</p><button className="primary-button trust-try-button" onClick={openLogin}>LET ME TRY NOW!</button></div><div className="gauge-grid">
-      <Gauge pct={100} classicPct={73} value="13–36 days" classicValue="18–49 days" label="Full hiring journey" classicNum={33.5} newNum={24.5} lowerIsBetter badgeText="5–13 days saved" />
-      <Gauge pct={100} classicPct={38} value="3–8 days" classicValue="8–21 days" label="Base processing time" classicNum={14.5} newNum={5.5} lowerIsBetter badgeText="5–13 days saved" />
-      <Gauge pct={46} classicPct={18} value="46%" classicValue="18%" label="Match-to-hire conversion" classicNum={18} newNum={46} />
-      <Gauge pct={94} classicPct={58} value="94%" classicValue="58%" label="Candidate satisfaction rate" classicNum={58} newNum={94} />
-      <Gauge pct={89} classicPct={34} value="89%" classicValue="34%" label="Recruiter satisfaction rate" classicNum={34} newNum={89} />
-      <Gauge pct={92} classicPct={41} value="92%" classicValue="41%" label="Would recommend JobsMatchNow" classicNum={41} newNum={92} />
-      <small>Illustrative product targets for the demo experience.</small>
-    </div><div className="trust-pipeline"><h3>Classic Hiring vs. New JobsMatchNow Process</h3><p>Base processing time is shown separately from interviews and negotiation because those stages vary by employer, role, and candidate.</p><div className="pipeline-rows">{trustPipeline.map((row) => { const max = Math.max(row.classic, row.jobsmatch) || 1; const deltaPct = row.classic ? Math.round(Math.abs(row.jobsmatch - row.classic) / row.classic * 100) : 0; return <Fragment key={row.label}><div className="pipeline-row"><span className="pipeline-row-label">{row.label}</span><div className="pipeline-bar-track classic"><i style={{ width: `${(row.classic / max) * 100}%` }} /><b>{row.classicDisplay || `${row.classic}${row.unit}`}</b></div><div className="pipeline-bar-track jobsmatch"><i style={{ width: `${(row.jobsmatch / max) * 100}%`, background: row.color }} /><b>{row.jobsmatchDisplay || `${row.jobsmatch}${row.unit}`}</b></div><span className="pipeline-delta" style={{ color: row.color }}>{row.deltaText || `${deltaPct}% better`}</span></div><p className="pipeline-feature-note">Powered by <b>{row.feature}</b> — {row.note}</p></Fragment>; })}<div className="pipeline-legend"><span><i className="classic" /> Classic hiring</span><span><i className="jobsmatch" /> JobsMatchNow</span></div><div className="pipeline-popularity"><Star size={16} fill="currentColor" /><div><strong>4.8/5 popularity</strong><span>Average candidate rating from verified reviews, powered by our built-in recommendation &amp; review feature.</span></div></div></div>
+    <section className="trust-section" id="trust"><div className="trust-copy"><span className="section-kicker light">Fewer steps</span><h2>Hiring where both sides choose — with a human touch.</h2><p>Every recommendation carries its reason. Every connection starts with consent. Every candidate gets control over what employers can see.</p><button className="primary-button trust-try-button" onClick={openLogin}>LET ME TRY NOW!</button></div><div className="trust-pipeline"><h3>Classic Hiring vs. New JobsMatchNow Process</h3><p>The first four steps of classic hiring happen in one connected step. Interviews, checks and offers stay the same.</p><div className="pipeline-rows">{trustPipeline.map((row) => { const max = Math.max(row.classic, row.jobsmatch) || 1; const deltaPct = row.classic ? Math.round(Math.abs(row.jobsmatch - row.classic) / row.classic * 100) : 0; return <Fragment key={row.label}><div className="pipeline-row"><span className="pipeline-row-label">{row.label}</span><div className="pipeline-bar-track classic"><i style={{ width: `${(row.classic / max) * 100}%` }} /><b>{row.classicDisplay || `${row.classic}${row.unit}`}</b></div><div className="pipeline-bar-track jobsmatch"><i style={{ width: `${(row.jobsmatch / max) * 100}%`, background: row.color }} /><b>{row.jobsmatchDisplay || `${row.jobsmatch}${row.unit}`}</b></div><span className="pipeline-delta" style={{ color: row.color }}>{row.deltaText || `${deltaPct}% better`}</span></div><p className="pipeline-feature-note">Powered by <b>{row.feature}</b> — {row.note}</p></Fragment>; })}<div className="pipeline-legend"><span><i className="classic" /> Classic hiring</span><span><i className="jobsmatch" /> JobsMatchNow</span></div></div>
       <div className="trust-detail">
         <h4>Traditional Hiring vs. JobsMatchNow Steps</h4>
         <div className="trust-detail-table-wrap">
           <table className="trust-detail-table colorful">
-            <thead><tr><th colSpan={2} className="trad-head">Traditional Hiring</th><th colSpan={2} className="new-head">JobsMatchNow</th></tr></thead>
-            <tbody>{traditionalSteps.map((row, i) => { const jm = jobsmatchNowSteps[i]; return <tr key={row[0]} className={i === 0 ? 'combined-row' : undefined}><td className="step-cell"><span className="step-num trad">{i + 1}</span>{row[0]}</td><td><span className="time-pill" style={{ background: timeColor(row[1]) }}>{row[1]}</span></td><td className="step-cell">{jm && <><span className="step-num new">{i + 1}</span>{jm[0]}{i === 0 && <b className="combo-badge">4-in-1 ⚡</b>}</>}</td><td>{jm && <span className="time-pill" style={{ background: timeColor(jm[1]) }}>{jm[1]}</span>}</td></tr>; })}</tbody>
-            <tfoot>
-              <tr><td><b>Full journey — all steps</b></td><td><b className="total-pill trad">18–49 days</b></td><td><b>Full journey — all steps</b></td><td><b className="total-pill new">13–36 days</b></td></tr>
-              <tr><td><b>Base process — excluding interviews and negotiation</b></td><td><b className="total-pill trad">8–21 days</b></td><td><b>Base process — excluding interviews and negotiation</b></td><td><b className="total-pill new">3–8 days</b></td></tr>
-            </tfoot>
+            <thead><tr><th className="trad-head">Traditional Hiring</th><th className="new-head">JobsMatchNow</th></tr></thead>
+            <tbody>{traditionalSteps.map((step, i) => { const jm = jobsmatchNowSteps[i]; return <tr key={step} className={i === 0 ? 'combined-row' : undefined}><td className="step-cell"><span className="step-num trad">{i + 1}</span>{step}</td><td className="step-cell">{jm && <><span className="step-num new">{i + 1}</span>{jm}{i === 0 && <b className="combo-badge">4-in-1 ⚡</b>}</>}</td></tr>; })}</tbody>
           </table>
         </div>
-        <div className="time-legend"><span><i style={{ background: '#34C759' }} /> Same day–1 day</span><span><i style={{ background: '#32ADE6' }} /> Up to 2 days</span><span><i style={{ background: '#FF9500' }} /> 3–7 days</span><span><i style={{ background: '#FF3B30' }} /> 7–21 days</span></div>
-        <section className="time-saving-summary">
-          <div className="time-saving-heading">
-            <span>Time-Saving Insight</span>
-            <h4>Save 5–13 days without removing essential hiring checks.</h4>
-            <p>JobsMatchNow reduces administrative delay. Interview and negotiation time remains case-dependent.</p>
-          </div>
-          <div className="time-saving-table-wrap">
-            <table className="time-saving-table">
-              <thead><tr><th>Process</th><th>Base processing time</th><th>Interviews and negotiation</th><th>Full estimated journey</th></tr></thead>
-              <tbody>
-                <tr><th>Traditional Hiring</th><td>8–21 days</td><td>10–28 days</td><td>18–49 days</td></tr>
-                <tr className="jobsmatch-row"><th>JobsMatchNow</th><td>3–8 days</td><td>10–28 days</td><td>13–36 days</td></tr>
-                <tr className="saving-row"><th>Potential time saved</th><td>5–13 days</td><td>Depends on each employer and role</td><td>5–13 days</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div className="time-saving-cards">
-            <article><span>Traditional Hiring</span><strong>9 steps</strong><p>Base: <b>8–21 days</b></p><p>Full journey: <b>18–49 days</b></p></article>
-            <article className="jobsmatch"><span>JobsMatchNow</span><strong>6 internal steps</strong><p>Presented as 5 simple candidate steps</p><p>Base: <b>3–8 days</b> · Full journey: <b>13–36 days</b></p></article>
-          </div>
-          <div className="time-saving-callout"><Clock3 size={22} /><p><strong>Approximately 5–13 days saved</strong><span>by removing administrative friction before and around the human decision stages.</span></p></div>
-        </section>
       </div>
     </div></section>
     <section className="section pricing-section" id="pricing">
@@ -366,20 +324,6 @@ function Feature({ icon: Icon, title, text }: { icon: typeof Target; title: stri
   return <article><div className="feature-icon"><Icon size={32} /></div><h3>{title}</h3><p>{text}</p></article>;
 }
 
-function Gauge({ pct, classicPct, value, classicValue, label, classicNum, newNum, lowerIsBetter, badgeText }: { pct: number; classicPct: number; value: string; classicValue: string; label: string; classicNum: number; newNum: number; lowerIsBetter?: boolean; badgeText?: string }) {
-  const deg = Math.max(0, Math.min(100, pct)) * 3.6;
-  const classicDeg = Math.min(Math.max(0, Math.min(100, classicPct)) * 3.6, deg);
-  const multiplier = lowerIsBetter ? classicNum / newNum : newNum / classicNum;
-  return <div className="gauge-tile">
-    <div className="gauge-ring" style={{ background: `conic-gradient(#FF3B30 0deg ${classicDeg}deg, #0A84FF ${classicDeg}deg ${deg}deg, rgba(255,255,255,.12) ${deg}deg 360deg)` }}>
-      <div className="gauge-inner"><strong className="gauge-new">{value}</strong></div>
-    </div>
-    <span>{label}</span>
-    <div className="gauge-compare"><em className="gauge-classic">Classic: {classicValue}</em><em className="gauge-new-line">New: {value}</em></div>
-    <b className="gauge-multiplier">{badgeText || `${multiplier.toFixed(1)}× ${lowerIsBetter ? 'faster' : 'increase'}`}</b>
-  </div>;
-}
-
 /** Admins get a dedicated, minimal shell — not the candidate/recruiter
  * Bootstrap dashboard (jobs/matches/swipes make no sense for an admin
  * account), just the billing moderation dashboard and a way to log out. */
@@ -428,7 +372,8 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const [conductOpen, setConductOpen] = useState(false);
   const [jobImportOpen, setJobImportOpen] = useState(false);
   const [manualJobRequest, setManualJobRequest] = useState(0);
-  const [activeAnchor, setActiveAnchor] = useState('');
+  // Candidates land on "Look for new Matches" (the top section of their home).
+  const [activeAnchor, setActiveAnchor] = useState(session.role === 'candidate' || featureOn('findMatches') ? 'td-new-matches' : '');
   const [openMatchId, setOpenMatchId] = useState<string | undefined>(undefined);
   const openMessages = (matchId: string) => { setOpenMatchId(matchId); setView('messages'); };
   const [editJobId, setEditJobId] = useState<string | undefined>(undefined);
@@ -472,7 +417,8 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   }, []);
   // Demo convenience: jump between the flagship candidate and recruiter personas.
   const changeRole = (next: Role) => { api.login(`${next}-demo`).then(({ user }) => onSwitchUser(user)); };
-  const nav = role === 'candidate' ? candidateNav : employerNav;
+  // Headhunting swipe studio for recruiters, behind the findMatches flag (preview: ?fm=1).
+  const nav = role === 'candidate' ? candidateNav : featureOn('findMatches') ? [{ label: 'Look for new Matches', short: 'Swipe', icon: Flame, anchor: 'td-new-matches' }, ...employerNav] : employerNav;
   // Anchor items scroll to a home-dashboard section; view items open a page.
   const gotoNav = (item: NavItem) => {
     setMobileNav(false);
@@ -523,7 +469,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
 
 function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profileCard, onProfileCardChange, reload, onAddJobs, manualJobRequest, openMatchId, onOpenMessages, editJobId, onEditJob, paymentResult, onDismissResult }: { view: View; role: Role; data: Bootstrap; setData: (d: Bootstrap) => void; navigate: (v: View) => void; onEditProfile: (step: number) => void; profileCard: number; onProfileCardChange: (card: number) => void; reload: () => void; onAddJobs: () => void; manualJobRequest: number; openMatchId?: string; onOpenMessages: (matchId: string) => void; editJobId?: string; onEditJob: (jobId: string) => void; paymentResult?: 'success' | 'failed' | null; onDismissResult?: () => void }) {
   if (view === 'home') return role === 'candidate'
-    ? <CandidateHome key={data.viewer.activeVariantId || 'base'} data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} />
+    ? <CandidateHome key={data.viewer.activeVariantId || 'base'} data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onOpenMessages={onOpenMessages} />
     : <RecruiterHome data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onAddJobs={onAddJobs} onOpenMessages={onOpenMessages} onEditJob={onEditJob} />;
   if (view === 'discover') return <Discover role={role} data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} />;
   if (view === 'companies') return <Companies data={data} navigate={navigate} />;
@@ -584,7 +530,7 @@ function Discover({ role, data, setData, navigate, onEditProfile }: { role: Role
     void commitSwipe('like', current, { answers: [{ question: 'A quick question before we match', answer: text }] });
   };
 
-  return <div className="page discover-page"><div className="page-title"><div><span className="overline">{role === 'candidate' ? 'For Candidates' : 'For Recruiters'}</span><h1>{role === 'candidate' ? 'Jobs You Should Consider' : 'Candidates to be considered'}</h1><p>{role === 'candidate' ? 'Swipe roles that fit you — like to signal interest.' : 'Find the perfect talent for your team.'}</p></div>
+  return <div className="page discover-page"><div className="page-title"><div><span className="overline">{role === 'candidate' ? 'For Candidates' : 'For Recruiters'}</span><h1>{role === 'candidate' ? 'Recommended Roles' : 'Candidates to be considered'}</h1><p>{role === 'candidate' ? 'Swipe roles that fit you — like to signal interest.' : 'Find the perfect talent for your team.'}</p></div>
     <div className="preference-chip"><small>{role === 'candidate' ? 'Your preferences' : "You're hiring for"}</small><strong>{role === 'candidate' ? [data.viewer.preferences?.desiredRoles?.[0], data.viewer.preferences?.workMode?.mode].filter(Boolean).join(' · ') || 'Any role' : data.jobs.find((j) => j.employerId === data.viewer.id)?.title || 'Open roles'}</strong><button onClick={() => role === 'candidate' ? onEditProfile(2) : navigate('jobs')} aria-label="Edit preferences"><ChevronDown size={13} style={{ transform: 'rotate(-90deg)' }} /></button></div>
     <div className="title-actions"><button className={filtersOpen ? 'ghost-button active' : 'ghost-button'} onClick={() => setFiltersOpen((v) => !v)}><SlidersHorizontal size={17} />Filters{filtersActive && <span>{[query.trim(), filterMode, filterType, minScore > 0].filter(Boolean).length}</span>}</button></div></div>
     {role === 'candidate' && <ReadyChecklist viewer={data.viewer} onEditProfile={onEditProfile} />}
@@ -607,7 +553,7 @@ function Discover({ role, data, setData, navigate, onEditProfile }: { role: Role
       <div className="card-stack">{next && <div className="stack-card"><CardSummary item={next} role={role} /></div>}{current ? <SwipeCard key={current.id} item={current} role={role} resumeUnlocked={role === 'employer' && matchedCandidateIds.has(current.id)} /> : <EmptyDeck role={role} onReset={() => setIndex(0)} />}</div>
       {current && <div className="action-row five"><button onClick={() => act('pass')} disabled={busy} className="pass-action" aria-label="Pass"><X /></button><button onClick={() => act('like', true)} disabled={busy} className="superlike-action" aria-label="Super Like" title="Super Like — a stronger signal"><Star fill="currentColor" /></button><button onClick={() => setAsking(true)} disabled={busy} className="ask-action" aria-label="Ask" title="Ask a quick question"><MessageCircleQuestion /></button><button onClick={() => toggleBookmark(current)} disabled={busy} className={data.bookmarkedIds.includes(current.id) ? 'save-action active' : 'save-action'} aria-label="Save for later" title="Save for later"><BookmarkIcon fill={data.bookmarkedIds.includes(current.id) ? 'currentColor' : 'none'} /></button><button onClick={() => act('like')} disabled={busy} className="like-action" aria-label="Like"><Heart fill="currentColor" /></button></div>}
       <div className="keyboard-hint"><span><kbd>←</kbd> Pass</span><span>Swipe left or right</span><span><kbd>→</kbd> Like</span></div>
-    </section><aside className="insight-panel"><div className="daily-card"><div><span>Today’s activity</span><strong>{data.likesRemaining}</strong><small>likes remaining</small></div><div className="ring" style={{ '--progress': `${data.likesRemaining * 2}%` } as React.CSSProperties}><Heart size={18} /></div></div><div className="tip-card"><div className="tip-icon"><Zap size={17} /></div><strong>{role === 'candidate' ? 'Complete your preferences' : 'Calibrate your search'}</strong><p>{role === 'candidate' ? 'Add your preferred team size to improve recommendations by up to 18%.' : 'Review five profiles to help JobsMatchNow learn what great looks like for this role.'}</p><button>{role === 'candidate' ? 'Update preferences' : 'View calibration'} <ArrowRight size={14} /></button></div><div className="quality-card"><div className="quality-head"><span>Match quality</span><strong>Excellent</strong></div><div className="quality-bar"><i /></div><p>Your recommendations use 12 verified profile signals.</p></div></aside></div>
+    </section><aside className="insight-panel"><div className="daily-card"><div><span>Today’s activity</span><strong>{data.likesRemaining}</strong><small>likes remaining</small></div><div className="ring" style={{ '--progress': `${data.likesRemaining * 2}%` } as React.CSSProperties}><Heart size={18} /></div></div><div className="tip-card"><div className="tip-icon"><Zap size={17} /></div><strong>{role === 'candidate' ? 'Complete your preferences' : 'Calibrate your search'}</strong><p>{role === 'candidate' ? 'Add your preferred team size to improve recommendations.' : 'Review five profiles to help JobsMatchNow learn what great looks like for this role.'}</p><button>{role === 'candidate' ? 'Update preferences' : 'View calibration'} <ArrowRight size={14} /></button></div><div className="quality-card"><div className="quality-head"><span>Match quality</span><strong>Excellent</strong></div><div className="quality-bar"><i /></div><p>Your recommendations use 12 verified profile signals.</p></div></aside></div>
     <AnimatePresence>{match && <MatchModal match={match} viewer={data.viewer} onClose={() => setMatch(null)} onMessage={() => { setMatch(null); navigate('messages'); }} />}</AnimatePresence>
     <AnimatePresence>{resumeFor && <Suspense fallback={null}><ResumeViewerModal person={resumeFor} viewerId={data.viewer.id} onClose={() => setResumeFor(null)} /></Suspense>}</AnimatePresence>
     <AnimatePresence>{jobDetail && <JobDetailModal job={jobDetail} onClose={() => setJobDetail(null)} />}</AnimatePresence>
@@ -766,7 +712,13 @@ function Pipeline({ data, setData }: { data: Bootstrap; setData: (d: Bootstrap) 
     setData({ ...data, messages: [...data.messages, message] });
     setNudged((current) => new Set(current).add(match.id));
   };
-  return <div className="page"><div className="page-title"><div><span className="overline">Senior Product Designer</span><h1>Hiring pipeline</h1><p>Move mutual matches from first hello to signed offer.</p></div><div className="title-actions"><button className="ghost-button"><Users size={17} />Share</button><button className="primary-button small">Add candidate</button></div></div><div className="pipeline-summary"><Metric label="Active candidates" value="18" change="+4 this week" /><Metric label="Median response" value="19h" change="Top 12%" /><Metric label="Interview rate" value="38%" change="+8.4%" /><Metric label="Time to hire" value="21d" change="6d faster" /></div><div className="pipeline-board">{stages.map((stage, stageIndex) => <section key={stage} className="pipeline-column"><header><span>{stage}</span><em>{data.matches.filter((m) => m.stage === stage).length}</em><button><MoreHorizontal /></button></header><div>{data.matches.filter((m) => m.stage === stage).map((match) => <article className="candidate-tile" key={match.id}><button className="candidate-head tile-open" onClick={() => setDetail(match)} title="Screening answers & interview kit"><img src={match.candidate?.photo} /><div><strong>{match.candidate?.name}</strong><small>{match.candidate?.title}</small></div><span>{match.candidate?.match?.score || 91}%</span></button><div className="tile-skills">{match.candidate?.skills?.slice(0, 2).map((skill) => <span key={skill}>{skill}</span>)}{match.screeningAnswers?.length ? <span className="tile-screening">✓ screening</span> : null}</div>{idleDays(match) > 5 && !nudged.has(match.id) && <div className="tile-nudge"><span><Clock3 size={11} /> Idle {idleDays(match)}d in {stage}</span><button onClick={() => nudge(match)}>Send follow-up</button></div>}{nudged.has(match.id) && <div className="tile-nudge sent"><Check size={11} /> Follow-up sent</div>}<div className="tile-foot"><span><Clock3 size={13} />{stage === 'Interview' ? 'Thu, 2:30 PM' : `Updated ${idleDays(match) === 0 ? 'today' : `${idleDays(match)}d ago`}`}</span>{stageIndex < stages.length - 1 && <button onClick={() => move(match, stages[stageIndex + 1])} aria-label={`Move to ${stages[stageIndex + 1]}`}><ArrowRight size={15} /></button>}</div></article>)}<button className="add-tile">+ Add candidate</button></div></section>)}</div>
+  // Summary from this team's real matches only.
+  const inStage = (stage: string) => data.matches.filter((m) => m.stage === stage).length;
+  const total = data.matches.length;
+  const interviewRate = total ? Math.round(((inStage('Interview') + inStage('Offer')) / total) * 100) : 0;
+  const weekAgo = Date.now() - 7 * 86400000;
+  const newThisWeek = data.matches.filter((m) => m.createdAt >= weekAgo).length;
+  return <div className="page"><div className="page-title"><div><span className="overline">Your roles</span><h1>Hiring pipeline</h1><p>Move mutual matches from first hello to signed offer.</p></div><div className="title-actions"><button className="ghost-button"><Users size={17} />Share</button><button className="primary-button small">Add candidate</button></div></div><div className="pipeline-summary"><Metric label="Active candidates" value={String(total)} change={`+${newThisWeek} this week`} /><Metric label="In screening" value={String(inStage('Screen'))} change="Screen stage" /><Metric label="Interview rate" value={`${interviewRate}%`} change="Interview & offer" /><Metric label="Offers" value={String(inStage('Offer'))} change="Offer stage" /></div><div className="pipeline-board">{stages.map((stage, stageIndex) => <section key={stage} className="pipeline-column"><header><span>{stage}</span><em>{data.matches.filter((m) => m.stage === stage).length}</em><button><MoreHorizontal /></button></header><div>{data.matches.filter((m) => m.stage === stage).map((match) => <article className="candidate-tile" key={match.id}><button className="candidate-head tile-open" onClick={() => setDetail(match)} title="Screening answers & interview kit"><img src={match.candidate?.photo} /><div><strong>{match.candidate?.name}</strong><small>{match.candidate?.title}</small></div><span>{match.candidate?.match?.score != null ? `${match.candidate.match.score}%` : '–'}</span></button><div className="tile-skills">{match.candidate?.skills?.slice(0, 2).map((skill) => <span key={skill}>{skill}</span>)}{match.screeningAnswers?.length ? <span className="tile-screening">✓ screening</span> : null}</div>{idleDays(match) > 5 && !nudged.has(match.id) && <div className="tile-nudge"><span><Clock3 size={11} /> Idle {idleDays(match)}d in {stage}</span><button onClick={() => nudge(match)}>Send follow-up</button></div>}{nudged.has(match.id) && <div className="tile-nudge sent"><Check size={11} /> Follow-up sent</div>}<div className="tile-foot"><span><Clock3 size={13} />{`Updated ${idleDays(match) === 0 ? 'today' : `${idleDays(match)}d ago`}`}</span>{stageIndex < stages.length - 1 && <button onClick={() => move(match, stages[stageIndex + 1])} aria-label={`Move to ${stages[stageIndex + 1]}`}><ArrowRight size={15} /></button>}</div></article>)}<button className="add-tile">+ Add candidate</button></div></section>)}</div>
     <AnimatePresence>{detail && <MatchDetailModal match={detail} onClose={() => setDetail(null)} />}</AnimatePresence></div>;
 }
 
@@ -1122,7 +1074,12 @@ function Analytics({ role, data }: { role: Role; data: Bootstrap }) {
   const inConversation = data.matches.filter((m) => data.messages.some((msg) => msg.matchId === m.id)).length;
   const otherReplied = data.matches.filter((m) => data.messages.some((msg) => msg.matchId === m.id && (role === 'candidate' ? msg.senderId !== data.viewer.id : msg.senderId === m.candidateId))).length;
   const responseRate = inConversation ? Math.round((otherReplied / inConversation) * 100) : 0;
-  const avgScore = totalMatches ? Math.round(data.matches.reduce((sum, m) => sum + ((role === 'candidate' ? m.job?.match?.score : m.candidate?.match?.score) ?? 80), 0) / totalMatches) : 0;
+  const scores = data.matches.map((m) => (role === 'candidate' ? m.job?.match?.score : m.candidate?.match?.score)).filter((s): s is number => typeof s === 'number');
+  const avgScore = scores.length ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length) : 0;
+  const pctOf = (n: number) => scores.length ? Math.round((n / scores.length) * 100) : 0;
+  const excellentPct = pctOf(scores.filter((s) => s >= 85).length);
+  const goodPct = pctOf(scores.filter((s) => s >= 70 && s < 85).length);
+  const fairPct = scores.length ? 100 - excellentPct - goodPct : 0;
   const interviewing = data.matches.filter((m) => m.stage === 'Interview' || m.stage === 'Offer').length;
   const copy = role === 'candidate'
     ? {
@@ -1131,7 +1088,7 @@ function Analytics({ role, data }: { role: Role; data: Bootstrap }) {
       responseLabel: 'Recruiter response', funnelTitle: 'Application funnel', funnelSubtitle: 'From profile view to qualified conversation',
       qualityTitle: 'Role fit quality', qualitySubtitle: 'Your job matches',
       insightTitle: 'Add your salary expectations to your profile.',
-      insightBody: 'Candidates with a salary range set get 3× more recruiter replies, and your top-matching roles all list one.',
+      insightBody: 'Every role here shows its salary range, so adding yours helps teams see quickly whether you fit.',
       insightAction: 'Update preferences',
     }
     : {
@@ -1139,19 +1096,18 @@ function Analytics({ role, data }: { role: Role; data: Bootstrap }) {
       subtitle: 'Signals that help your team improve quality, speed, and candidate experience.',
       responseLabel: 'Candidate response', funnelTitle: 'Matching funnel', funnelSubtitle: 'From recommendation to qualified conversation',
       qualityTitle: 'Match quality', qualitySubtitle: 'Recommended candidates',
-      insightTitle: 'Add “Design systems” to the role’s must-have skills.',
-      insightBody: 'High-performing matches mention it 2.4× more often, and your strongest current candidates all have verified experience.',
-      insightAction: 'Review suggestion',
+      insightTitle: 'Keep must-have skills short and specific.',
+      insightBody: 'The match score explains each fit using the skills you list, so a clear must-have list gives clearer reasons.',
+      insightAction: 'Review roles',
     };
-  // Illustrative comparison vs. a classic recruitment pipeline — response
-  // rate blends in this viewer's own real number so it's not pure fiction.
-  const pipelineCompare = [
-    { label: 'Steps to hire', classic: 9, jobsmatch: 6, classicLabel: '9 steps', jobsmatchLabel: '6 steps', color: '#FF3B30', deltaText: '3 steps simplified' },
-    { label: 'Base processing time', classic: 14.5, jobsmatch: 5.5, classicLabel: '8–21 days', jobsmatchLabel: '3–8 days', color: '#FF9500', deltaText: '5–13 days saved' },
-    { label: 'Full hiring journey', classic: 33.5, jobsmatch: 24.5, classicLabel: '18–49 days', jobsmatchLabel: '13–36 days', color: '#AF52DE', deltaText: '5–13 days saved' },
-    { label: copy.responseLabel, classic: 18, jobsmatch: Math.max(responseRate, 61), classicLabel: '18%', jobsmatchLabel: `${Math.max(responseRate, 61)}%`, color: '#34C759', higherIsBetter: true },
+  // Funnel from this viewer's own data only; no sample or benchmark numbers.
+  const funnel = [
+    { label: 'Matches', value: totalMatches },
+    { label: 'In conversation', value: inConversation },
+    { label: 'Replied', value: otherReplied },
+    { label: 'Interview +', value: interviewing },
   ];
-  return <div className="page"><div className="page-title"><div><span className="overline">{copy.overline}</span><h1>{copy.title}</h1><p>{copy.subtitle}</p></div><button className="ghost-button">All time <ChevronDown size={15} /></button></div><div className="analytics-grid"><Metric label="Mutual matches" value={String(totalMatches)} change="live" /><Metric label="In conversation" value={String(inConversation)} change={`${totalMatches ? Math.round((inConversation / totalMatches) * 100) : 0}% of matches`} /><Metric label={copy.responseLabel} value={`${responseRate}%`} change={`${otherReplied}/${inConversation} replied`} /><Metric label="Interviewing +" value={String(interviewing)} change="Interview & offer" /></div><div className="chart-grid"><section className="chart-card wide"><header><div><strong>{copy.funnelTitle}</strong><p>{copy.funnelSubtitle}</p></div><button><MoreHorizontal /></button></header><div className="bar-chart">{[62, 78, 49, 86, 72, 94, 81, 68, 90, 76, 88, 96].map((height, i) => <div key={i}><i style={{ height: `${height}%` }} /><span>{i % 2 === 0 ? ['Jul 1', '5', '9', '13', '17', '21'][i / 2] : ''}</span></div>)}</div></section><section className="chart-card"><header><div><strong>{copy.qualityTitle}</strong><p>{copy.qualitySubtitle}</p></div></header><div className="donut"><div><strong>{avgScore || 86}</strong><span>avg. score</span></div></div><div className="legend"><span><i className="excellent" />Excellent <b>54%</b></span><span><i className="good" />Good <b>32%</b></span><span><i className="fair" />Developing <b>14%</b></span></div></section></div><section className="chart-card wide pipeline-compare"><header><div><strong>Classic recruitment vs. JobsMatchNow</strong><p>Base time excludes interviews and offer negotiation; those 10–28 days vary by case.</p></div></header><div className="pipeline-rows">{pipelineCompare.map((row) => { const max = Math.max(row.classic, row.jobsmatch) || 1; const better = row.higherIsBetter ? row.jobsmatch > row.classic : row.jobsmatch < row.classic; const deltaPct = row.classic ? Math.round(Math.abs(row.jobsmatch - row.classic) / row.classic * 100) : 0; return <div className="pipeline-row" key={row.label}><span className="pipeline-row-label">{row.label}</span><div className="pipeline-bar-track classic"><i style={{ width: `${(row.classic / max) * 100}%` }} /><b>{row.classicLabel}</b></div><div className="pipeline-bar-track jobsmatch"><i style={{ width: `${(row.jobsmatch / max) * 100}%`, background: row.color }} /><b>{row.jobsmatchLabel}</b></div>{(better || row.deltaText) && <span className="pipeline-delta" style={{ color: row.color }}>{row.deltaText || `${deltaPct}% better`}</span>}</div>; })}<div className="pipeline-legend"><span><i className="classic" /> Classic recruitment</span><span><i className="jobsmatch" /> JobsMatchNow</span></div></div></section><section className="insight-callout"><div><Sparkles /></div><section><span>Opportunity insight</span><h3>{copy.insightTitle}</h3><p>{copy.insightBody}</p></section><button className="secondary-button">{copy.insightAction}</button></section></div>; }
+  return <div className="page"><div className="page-title"><div><span className="overline">{copy.overline}</span><h1>{copy.title}</h1><p>{copy.subtitle}</p></div><button className="ghost-button">All time <ChevronDown size={15} /></button></div><div className="analytics-grid"><Metric label="Mutual matches" value={String(totalMatches)} change="live" /><Metric label="In conversation" value={String(inConversation)} change={`${totalMatches ? Math.round((inConversation / totalMatches) * 100) : 0}% of matches`} /><Metric label={copy.responseLabel} value={`${responseRate}%`} change={`${otherReplied}/${inConversation} replied`} /><Metric label="Interviewing +" value={String(interviewing)} change="Interview & offer" /></div><div className="chart-grid"><section className="chart-card wide"><header><div><strong>{copy.funnelTitle}</strong><p>{copy.funnelSubtitle}</p></div><button><MoreHorizontal /></button></header><div className="bar-chart">{funnel.map((step) => <div key={step.label}><i style={{ height: `${totalMatches ? Math.max(2, (step.value / totalMatches) * 100) : 2}%` }} title={`${step.label}: ${step.value}`} /><span>{step.label} ({step.value})</span></div>)}</div></section><section className="chart-card"><header><div><strong>{copy.qualityTitle}</strong><p>{copy.qualitySubtitle}</p></div></header><div className="donut" style={{ background: scores.length ? `conic-gradient(var(--green) 0 ${excellentPct}%, #93c960 ${excellentPct}% ${excellentPct + goodPct}%, #dce9c6 ${excellentPct + goodPct}%)` : '#eef2ea' }}><div><strong>{scores.length ? avgScore : '–'}</strong><span>{scores.length ? 'avg. score' : 'no matches yet'}</span></div></div><div className="legend"><span><i className="excellent" />Excellent (85+) <b>{excellentPct}%</b></span><span><i className="good" />Good (70–84) <b>{goodPct}%</b></span><span><i className="fair" />Developing <b>{fairPct}%</b></span></div></section></div><section className="insight-callout"><div><Sparkles /></div><section><span>Opportunity insight</span><h3>{copy.insightTitle}</h3><p>{copy.insightBody}</p></section><button className="secondary-button">{copy.insightAction}</button></section></div>; }
 
 function timeAgo(ts: number) {
   const s = Math.floor((Date.now() - ts) / 1000);

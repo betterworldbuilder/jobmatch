@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { api } from '../../api';
-import type { Report, SupportRequest } from '../../types';
+import type { PendingVerification, Report, SupportRequest } from '../../types';
 
 function fmt(ts?: number | null) { return ts ? new Date(ts).toLocaleString() : '—'; }
 
@@ -11,7 +11,9 @@ export function AdminSafetyPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [resolutionDrafts, setResolutionDrafts] = useState<Record<string, string>>({});
 
+  const [verifications, setVerifications] = useState<PendingVerification[]>([]);
   const reload = () => {
+    api.adminVerifications().then((res) => setVerifications(res.verifications)).catch(() => undefined);
     api.adminReports('open').then((res) => setReports(res.reports)).catch(() => undefined);
     api.adminSupportRequests('open').then((res) => setRequests(res.requests)).catch(() => undefined);
   };
@@ -34,10 +36,35 @@ export function AdminSafetyPage() {
     finally { setBusyId(null); }
   };
 
+  const decide = async (userId: string, decision: 'approve' | 'reject') => {
+    const reason = decision === 'reject' ? (resolutionDrafts[`v-${userId}`] || 'Selfie does not match the profile photo') : undefined;
+    setBusyId(userId);
+    try { await api.adminDecideVerification(userId, decision, reason); reload(); } catch (e) { alert(e instanceof Error ? e.message : 'Could not save this decision'); }
+    finally { setBusyId(null); }
+  };
+
   if (!reports || !requests) return <div className="page"><Loader2 className="spin" size={20} /></div>;
 
   return <div className="page admin-safety-page">
     <div className="page-title"><div><span className="overline">Admin</span><h1>Safety &amp; Support</h1><p>Fraud/scam reports and customer support requests — open items only.</p></div></div>
+
+    <section className="admin-section">
+      <h3>Photo verification requests ({verifications.length})</h3>
+      {verifications.length === 0 ? <p className="muted">Nothing waiting.</p> : <table className="admin-table">
+        <thead><tr><th>Member</th><th>Profile photo</th><th>Live selfie</th><th>Sent</th><th></th></tr></thead>
+        <tbody>{verifications.map((v) => <tr key={v.userId}>
+          <td>{v.name}<br /><small className="muted">{v.role === 'candidate' ? 'Candidate' : 'Recruiter'} · {v.userId}</small></td>
+          <td>{v.photo ? <img className="admin-verify-img" src={v.photo} alt={`${v.name} profile`} /> : '—'}</td>
+          <td><img className="admin-verify-img" src={api.adminVerificationSelfieUrl(v.userId)} alt={`${v.name} selfie`} /></td>
+          <td>{fmt(v.submittedAt)}</td>
+          <td className="admin-actions">
+            <button type="button" className="primary-button small" disabled={busyId === v.userId} onClick={() => decide(v.userId, 'approve')}>Approve</button>
+            <input className="admin-reason-input" placeholder="Reason if rejected" value={resolutionDrafts[`v-${v.userId}`] || ''} onChange={(event) => setResolutionDrafts((prev) => ({ ...prev, [`v-${v.userId}`]: event.target.value }))} />
+            <button type="button" className="secondary-button small" disabled={busyId === v.userId} onClick={() => decide(v.userId, 'reject')}>Reject</button>
+          </td>
+        </tr>)}</tbody>
+      </table>}
+    </section>
 
     <section className="admin-section">
       <h3>Open reports ({reports.length})</h3>
