@@ -1,5 +1,5 @@
 export type Role = 'candidate' | 'employer' | 'admin';
-export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing';
+export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages';
 export type EmployerKind = 'company' | 'headhunter';
 export type ProviderId = 'linkedin' | 'google' | 'email' | 'demo';
 
@@ -112,7 +112,9 @@ export interface InterviewKit { generator: string; skillQuestions: SkillQuestion
 export interface ScreeningAnswer { question: string; answer: string }
 export type JobDraft = Partial<Omit<Job, 'id' | 'match'>>;
 export interface JobImportResult { jobs: Job[]; found: number; skipped: number }
-export interface PipelineStep { id: string; name: string; owner: string; hidden?: boolean }
+export type StepKind = 'match' | 'hr' | 'technical' | 'manager' | 'culture' | 'assignment' | 'offer' | 'hired' | 'other';
+/** One hiring step (a round). `owner` = who runs it (e.g. "Priya Nair, Talent Partner"); `date` = YYYY-MM-DD. */
+export interface PipelineStep { id: string; name: string; owner: string; hidden?: boolean; kind?: StepKind; date?: string; format?: string }
 export interface JobMatch { id: string; candidateId: string; employerId: string; jobId: string; stage: string; createdAt: number; stageChangedAt?: number; candidate: Person; employer?: Person; job: Job; screeningAnswers?: ScreeningAnswer[]; pipeline?: PipelineStep[]; currentStepId?: string }
 export interface Message { id: string; matchId: string; senderId: string; text: string; createdAt: number; firstImpression?: boolean }
 export interface PendingVerification { userId: string; name: string; role: Role; photo?: string; submittedAt: number }

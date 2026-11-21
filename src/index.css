@@ -3322,7 +3322,10 @@ img.avatar-mini { object-fit:cover; }
 /* ---- Home: "Look for new Matches" big dark phone swipe deck (spec design/2026-11-21_new-matches-phone-swipe.md) ---- */
 #td-new-matches { --nm-phone-h:clamp(560px, calc(100svh - 190px), 860px); padding:28px; border-radius:24px; background:color-mix(in srgb, #fd267a 8%, white); border-color:color-mix(in srgb, #fd267a 24%, white); border-left-color:#fd267a; }
 #td-new-matches .td-section-title>div>svg { color:#fd267a; }
-.nm-layout { display:grid; grid-template-columns:auto minmax(280px,1fr); gap:32px; align-items:start; margin-top:16px; }
+/* "Recommended Roles" sits UNDER the phone; picking a role loads it into the phone deck. */
+.nm-layout { display:grid; grid-template-columns:1fr; gap:24px; align-items:start; margin-top:16px; }
+.nm-layout .nm-list { width:100%; max-width:720px; justify-self:center; }
+.nm-row.on { border-color:#fd267a; box-shadow:0 0 0 2px rgba(253,38,122,.18); }
 .nm-phone-col { position:relative; display:flex; flex-direction:column; align-items:center; }
 .nm-glow { position:absolute; top:45%; left:50%; width:min(560px, 130%); aspect-ratio:1; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle, rgba(253,38,122,.22) 0%, rgba(255,96,54,.12) 45%, transparent 70%); pointer-events:none; }
 .nm-phone { position:relative; height:var(--nm-phone-h); aspect-ratio:1 / 2.05; padding:11px; border-radius:56px; background:#111; box-shadow:0 0 0 1px #2a2a2e, 0 30px 60px rgba(11,27,63,.28); }
@@ -3412,10 +3415,6 @@ img.avatar-mini { object-fit:cover; }
 .nm-see-all { margin-top:12px; display:inline-flex; align-items:center; gap:6px; border:0; background:none; color:#fd267a; font-weight:800; font-size:13px; padding:0; }
 
 /* Phone and list side by side only when both fit; otherwise the list goes under the phone. */
-@media (max-width:1179px) {
-  .nm-layout { grid-template-columns:1fr; gap:24px; }
-  .nm-list { width:100%; max-width:640px; justify-self:center; }
-}
 @media (max-width:1023px) {
   #td-new-matches { --nm-phone-h:clamp(540px, calc(100svh - 200px), 780px); padding:20px; }
   .nm-row { grid-template-columns:40px minmax(0,1fr); row-gap:4px; }
@@ -3438,11 +3437,99 @@ img.avatar-mini { object-fit:cover; }
   .nm-match { padding:48px 20px 24px; }
   .nm-match .nm-brand { top:16px; }
   .nm-list { padding:0 11px; }
-  .nm-list li:nth-child(n+4) { display:none; }
 }
 @media (prefers-reduced-motion:reduce) {
   .nm-btn { transition:none; }
 }
+
+/* ---- Hiring Stages: per job, a milestone timeline per candidate (Mutual match → rounds → Offer → Hired) ---- */
+.hs-page { max-width:1180px; }
+.hs-job { margin-top:22px; padding:18px; border:1px solid var(--line); border-radius:20px; background:#fff; }
+.hs-job-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.hs-job-meta { padding:5px 12px; border-radius:999px; background:#fff0f5; color:#d81b67; font-weight:800; font-size:13px; }
+.hs-card { margin-top:14px; padding:16px; border:1px solid #eef0f4; border-radius:16px; background:#fbfbfd; }
+.hs-card-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.hs-card-head img,.hs-avatar { width:44px; height:44px; border-radius:50%; object-fit:cover; display:grid; place-items:center; background:linear-gradient(135deg,#fd267a,#ff6036); color:#fff; font-weight:800; }
+.hs-who { min-width:0; display:flex; flex-direction:column; flex:1; }
+.hs-who strong { font-size:15px; color:var(--ink); }
+.hs-who small { font-size:13px; color:var(--muted); }
+.hs-summary { padding:6px 12px; border-radius:999px; background:#eef6ff; color:#1d4f91; font-weight:800; font-size:13px; }
+.hs-edit { width:36px; height:36px; display:grid; place-items:center; border:1px solid var(--line); border-radius:50%; background:#fff; color:var(--ink); }
+.hs-edit.on { background:#111; color:#fff; }
+.hs-track { --hs-progress:0%; position:relative; margin-top:18px; overflow-x:auto; padding-bottom:6px; }
+.hs-steps { position:relative; list-style:none; margin:0; padding:0; display:grid; grid-auto-flow:column; grid-auto-columns:minmax(150px,1fr); gap:0; }
+.hs-steps::before,.hs-steps::after { content:''; position:absolute; top:17px; left:75px; height:4px; border-radius:2px; }
+.hs-steps::before { right:75px; background:#e6e8ef; }
+.hs-steps::after { width:calc((100% - 150px) * var(--hs-progress) / 100); background:linear-gradient(90deg,#fd267a,#ff6036); }
+.hs-step { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; text-align:center; padding:0 8px; }
+.hs-dot { width:38px; height:38px; display:grid; place-items:center; border-radius:50%; border:3px solid #e6e8ef; background:#fff; color:#8a92a4; font:800 14px 'Manrope'; }
+.hs-dot:disabled { cursor:default; }
+.hs-step.done .hs-dot { border-color:#fd267a; background:#fd267a; color:#fff; }
+.hs-step.current .hs-dot { border-color:#fd267a; color:#fd267a; box-shadow:0 0 0 6px rgba(253,38,122,.15); }
+.hs-step.finish .hs-dot { border-color:#20b46a; color:#20b46a; }
+.hs-step.finish.current .hs-dot,.hs-step.finish.done .hs-dot { background:#20b46a; color:#fff; box-shadow:0 0 0 6px rgba(32,180,106,.18); }
+.hs-copy { margin-top:10px; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.hs-label { font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#9aa1b2; }
+.hs-step.current .hs-label { color:#fd267a; }
+.hs-copy strong { font-size:14px; line-height:1.25; color:var(--ink); }
+.hs-copy small { display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#5f687c; }
+.hs-kind { padding:2px 9px; border-radius:999px; font-style:normal; font-size:11px; font-weight:800; background:#f1f3f8; color:#4a5568; }
+.hs-kind.kind-hr { background:#eaf6ff; color:#1565c0; }
+.hs-kind.kind-technical { background:#f1ecff; color:#5b3cc4; }
+.hs-kind.kind-manager { background:#fff4e5; color:#b85c00; }
+.hs-kind.kind-culture { background:#e9f9f0; color:#16794a; }
+.hs-kind.kind-assignment { background:#fdeef3; color:#c2185b; }
+.hs-editor { margin-top:14px; display:grid; gap:8px; overflow-x:auto; }
+.hs-editor-head,.hs-editor-row { display:grid; grid-template-columns:minmax(160px,1.4fr) 130px minmax(170px,1.3fr) 150px minmax(110px,.8fr) 38px; gap:8px; align-items:center; min-width:780px; }
+.hs-editor-head span { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#9aa1b2; }
+.hs-editor-row input,.hs-editor-row select { height:38px; padding:0 10px; border:1px solid var(--line); border-radius:10px; font-size:13px; background:#fff; }
+.hs-editor-row button { height:38px; border:1px solid var(--line); border-radius:10px; background:#fff; display:grid; place-items:center; }
+.hs-editor-row.hidden { opacity:.5; }
+.hs-editor-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:4px; }
+@media (max-width:719px) {
+  .hs-steps { grid-auto-flow:row; grid-auto-columns:auto; gap:14px; }
+  .hs-steps::before,.hs-steps::after { top:19px; left:19px; width:4px; }
+  .hs-steps::before { right:auto; bottom:19px; height:auto; }
+  .hs-steps::after { height:calc((100% - 38px) * var(--hs-progress) / 100); width:4px; }
+  .hs-step { flex-direction:row; align-items:flex-start; text-align:left; gap:12px; padding:0; }
+  .hs-copy { margin-top:0; align-items:flex-start; }
+  .hs-summary { order:5; width:100%; text-align:center; }
+}
+
+/* ---- Home readability pass (2026-11-21): nothing on the home dashboard below 12px; clearer titles. ---- */
+.td-section-title strong { font-size:18px; }
+.td-section-title small { margin-top:4px; font-size:13px; line-height:1.4; }
+.td-candidate-hero p,.td-recruiter-head p { font-size:14px; line-height:1.5; }
+.td-candidate-hero .primary-button,.td-candidate-hero .secondary-button,.td-recruiter-head .primary-button { min-height:42px; font-size:13px; }
+.td-profile-strength>b { font-size:13px; }
+.td-profile-strength>span,.td-profile-strength>small { font-size:12px; }
+.td-metrics>button small { max-width:none; font-size:12px; }
+.td-metrics>button strong { font-size:26px; }
+.td-metrics>button p,.td-metrics>button b { font-size:12px; }
+.td-profile-card-meta span { font-size:12px; }
+.td-job-identity strong { font-size:14px; }
+.td-job-identity small,.td-job-facts span { font-size:12px; }
+.td-recruiter-line strong { font-size:12px; }
+.td-recruiter-line small { font-size:12px; }
+.td-job-actions button { min-height:34px; padding:0 12px; font-size:12px; }
+.td-job-placeholder>strong,.td-person-placeholder>strong { font-size:14px; }
+.td-job-placeholder>small,.td-person-placeholder>small { max-width:260px; font-size:12px; }
+.td-empty { font-size:13px; }
+.td-list-panel>button strong { font-size:13px; }
+.td-list-panel>button small { font-size:12px; }
+.td-role-head>.job-header-badge .job-header-copy h2 { font-size:15px; }
+.td-role-head>.job-header-badge .job-header-copy strong { font-size:12px; }
+.td-role-head>button { font-size:12px; }
+.td-sublabel { font-size:12px; }
+.td-cand-row-info small { font-size:12px; }
+.td-cand-row-talk { font-size:12px; }
+.td-role-create>strong { font-size:14px; }
+.td-role-create>small { font-size:12px; }
+.td-person-card>strong { font-size:14px; }
+.td-person-card>small,.td-person-card>b,.td-person-card>p { font-size:12px; }
+.td-person-skills span { padding:3px 8px; font-size:11px; }
+.td-matching-toggle>span { font-size:13px; }
+.td-matching-toggle>small { font-size:12px; }
 
 /* ---- "Find your Matches" studio (flag findMatches, preview ?fm=1): sidebar + big card + safety ---- */
 #td-new-matches.fm-section { --fm-h:clamp(640px, calc(100svh - 170px), 900px); --fm-pink:#fd267a; --fm-orange:#ff6036; padding:20px; background:#fff; }
@@ -3565,6 +3652,17 @@ img.avatar-mini { object-fit:cover; }
 .fm-btn.like { color:#e0262f; }
 .fm-btn.impression { color:#2f8cff; }
 .fm-no-likes { margin:8px 0 0; font-size:12px; color:var(--fm-pink); font-weight:700; }
+.fm-recs { width:min(560px,100%); margin-top:14px; }
+.fm-recs-title { display:flex; align-items:baseline; gap:8px; margin:0 0 8px; font:800 14px 'Manrope'; color:var(--ink); }
+.fm-recs-title small { font:600 12px 'Manrope'; color:var(--muted); }
+.fm-recs-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; scroll-snap-type:x mandatory; }
+.fm-rec { flex:0 0 200px; scroll-snap-align:start; display:flex; align-items:center; gap:10px; padding:8px; border:1px solid var(--line); border-radius:14px; background:#fff; text-align:left; }
+.fm-rec:hover { border-color:var(--fm-pink); }
+.fm-rec-photo { flex:none; width:42px; height:42px; border-radius:10px; display:grid; place-items:center; color:#fff; font:800 14px 'Manrope'; background:linear-gradient(150deg,var(--fm-pink),var(--fm-orange)) center/cover no-repeat; }
+.fm-rec-text { min-width:0; display:flex; flex-direction:column; }
+.fm-rec-text strong,.fm-rec-text small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fm-rec-text strong { font-size:13px; color:var(--ink); }
+.fm-rec-text small { font-size:11px; color:var(--muted); }
 .fm-keys { margin-top:auto; padding-top:14px; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px 16px; font-weight:800; font-size:13px; color:#3a3a3a; }
 .fm-keys span { display:inline-flex; align-items:center; gap:6px; }
 .fm-keys kbd { display:inline-grid; place-items:center; min-width:22px; height:22px; border:2px solid #555; border-radius:5px; color:#333; }

@@ -120,7 +120,8 @@ function verifiedUser(user) {
  */
 function otherPartyView(user) {
   if (!user) return user;
-  const { geo, ...rest } = selfView(user);
+  // `verification` is the member's own review record (status, admin reason): never shown to others.
+  const { geo, verification, ...rest } = selfView(user);
   return rest;
 }
 
@@ -996,6 +997,7 @@ app.post('/api/users/:id/photo', uploadLimiter, express.raw({ type: () => true, 
     const ext = PHOTO_TYPES[req.headers['content-type']];
     if (!ext) { const error = new Error('Only PNG, JPEG, or WEBP images are accepted'); error.status = 415; throw error; }
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) throw new ValidationError('file', 'Empty upload');
+    await assertUploadAllowed(req, req.params.id); // before touching any file
     for (const otherExt of new Set(Object.values(PHOTO_TYPES))) {
       if (otherExt !== ext) await fs.promises.unlink(path.join(PHOTOS_DIR, `${req.params.id}.${otherExt}`)).catch(() => {});
     }
@@ -1008,6 +1010,8 @@ app.post('/api/users/:id/photo', uploadLimiter, express.raw({ type: () => true, 
       assertDemoActor(req, db, item.id);
       item.photo = photoUrl;
       item.photoExt = ext;
+      // A new face means the old selfie check no longer applies.
+      if (item.photoVerified || item.verification?.status === 'approved') { item.photoVerified = false; delete item.verification; }
       return item;
     });
     res.status(201).json({ photo: user.photo });
@@ -1032,12 +1036,25 @@ app.get('/api/users/:id/photo', async (req, res, next) => {
 const VERIFY_DIR = path.join(UPLOADS_ROOT, 'verification');
 fs.mkdirSync(VERIFY_DIR, { recursive: true });
 
+/** Same checks the write transaction makes, run BEFORE a file is written, so a refused call changes nothing on disk. */
+async function assertUploadAllowed(req, userId) {
+  const db = await store.read();
+  const item = db.users.find((entry) => entry.id === userId);
+  if (!item) { const error = new Error('User not found'); error.status = 404; throw error; }
+  assertDemoActor(req, db, item.id);
+}
+async function removeSelfies(userId) {
+  for (const ext of new Set(Object.values(PHOTO_TYPES))) await fs.promises.unlink(path.join(VERIFY_DIR, `${userId}.${ext}`)).catch(() => {});
+}
+
 app.post('/api/users/:id/verification-selfie', uploadLimiter, express.raw({ type: () => true, limit: '5mb' }), async (req, res, next) => {
   try {
     requireSelf(req, req.params.id);
     const ext = PHOTO_TYPES[req.headers['content-type']];
     if (!ext) { const error = new Error('Only PNG, JPEG, or WEBP images are accepted'); error.status = 415; throw error; }
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) throw new ValidationError('file', 'Empty upload');
+    await assertUploadAllowed(req, req.params.id);
+    await removeSelfies(req.params.id); // one selfie on file, whatever its type
     const file = path.join(VERIFY_DIR, `${req.params.id}.${ext}`);
     await fs.promises.writeFile(file, req.body);
     await mirror(file);
@@ -1089,6 +1106,7 @@ app.post('/api/admin/verifications/:userId/:decision', async (req, res, next) =>
       logBillingEvent(db, session.sub, `verification_${decision === 'approve' ? 'approved' : 'rejected'}`, 'user', user.id, reason ? { reason } : {});
       return user.verification;
     });
+    if (decision === 'reject') await removeSelfies(req.params.userId); // not kept once reviewed
     res.json({ verification });
   } catch (error) { next(error); }
 });
@@ -2004,8 +2022,10 @@ app.post('/api/swipes', async (req, res, next) => {
         match.tracked = track(db, 'match_created', { demo: involvesDemo(...parties), dim: actorSide(actor), at: match.createdAt });
         db.matches.push(match);
         // Notes from either side's Super Like open the conversation, oldest first.
+        // A recruiter's note rides on a candidate swipe (not a job), so it opens only their FIRST match with that candidate.
+        const firstWithCandidate = !db.matches.some((m) => m.id !== match.id && m.employerId === match.employerId && m.candidateId === match.candidateId);
         const pairSwipes = db.swipes.filter((s) => s.note && ((s.actorId === match.candidateId && s.targetType === 'job' && s.targetId === match.jobId)
-          || (s.actorId === match.employerId && s.targetType === 'candidate' && s.targetId === match.candidateId)));
+          || (firstWithCandidate && s.actorId === match.employerId && s.targetType === 'candidate' && s.targetId === match.candidateId)));
         pairSwipes.sort((a, b) => a.createdAt - b.createdAt).forEach((s, i) => {
           db.messages.push({ id: crypto.randomUUID(), matchId: match.id, senderId: s.actorId, text: s.note, createdAt: match.createdAt + i, firstImpression: true });
         });
@@ -2062,6 +2082,7 @@ app.patch('/api/matches/:id', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+const STEP_KINDS = ['match', 'hr', 'technical', 'manager', 'culture', 'assignment', 'offer', 'hired', 'other'];
 app.patch('/api/matches/:id/pipeline', async (req, res, next) => {
   try {
     if (!Array.isArray(req.body.pipeline)) { const error = new Error('pipeline must be an array'); error.status = 400; throw error; }
@@ -2070,6 +2091,9 @@ app.patch('/api/matches/:id/pipeline', async (req, res, next) => {
       name: String(step.name || '').slice(0, 120),
       owner: String(step.owner || '').slice(0, 80),
       hidden: step.hidden === true,
+      ...(STEP_KINDS.includes(step.kind) ? { kind: step.kind } : {}),
+      ...(/^\d{4}-\d{2}-\d{2}$/.test(String(step.date || '')) ? { date: step.date } : {}),
+      ...(step.format ? { format: String(step.format).slice(0, 40) } : {}),
     })).filter((step) => step.id && step.name);
     const currentStepId = req.body.currentStepId ? String(req.body.currentStepId).slice(0, 60) : undefined;
     const session = authSession(req);

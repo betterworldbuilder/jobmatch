@@ -4,7 +4,7 @@ import { SupportModal } from './components/SupportModal';
 import { ReportModal } from './components/ReportModal';
 import { ConductModal } from './components/ConductModal';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react';
-import { Activity, ArrowLeft, ArrowRight, BadgeCheck, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Linkedin, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, BadgeCheck, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
 import { apiBase } from './api';
 import { Capacitor } from '@capacitor/core';
@@ -24,6 +24,7 @@ import { CandidateCards } from './components/profile/CandidateCards';
 import { JobCards } from './components/jobs/JobCards';
 import { CandidateHome, CandidateProfileModal, DashboardTitle, EmptyRow, RecruiterHome } from './components/home/MatchHome';
 import { SelectedCandidates } from './components/home/SelectedCandidates';
+import { HiringStages } from './components/home/HiringStages';
 import { BillingPage } from './components/billing/BillingPage';
 import { AdminBillingPage } from './components/billing/AdminBillingPage';
 import { AdminAnalyticsPage } from './components/billing/AdminAnalyticsPage';
@@ -83,12 +84,12 @@ const candidateNav: NavItem[] = [
   { label: 'Look for new Matches', short: 'Swipe', icon: Flame, anchor: 'td-new-matches' },
   { label: 'Home', icon: Compass, view: 'home' },
   { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
-  { label: 'Jobs that like you', short: 'Likes You', icon: Target, anchor: 'td-chasing' },
-  // The list lives inside "Look for new Matches"; the full Discover page stays one click away there.
-  { label: 'Recommended Roles', short: 'Roles', icon: Sparkles, anchor: 'td-recommended' },
-  { label: 'Saved', icon: BookmarkIcon, view: 'saved' },
+  { label: 'Recruiters that like you', short: 'Likes You', icon: Target, anchor: 'td-chasing' },
+  // "Recommended Roles" lives under the swipe deck in "Look for new Matches" (no separate menu item).
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
+  { label: 'Saved', icon: BookmarkIcon, view: 'saved' },
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
+  { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
 ];
 const employerNav: NavItem[] = [
@@ -98,6 +99,7 @@ const employerNav: NavItem[] = [
   { label: 'Saved', icon: BookmarkIcon, view: 'saved' },
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
+  { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
   { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   { label: 'Subscription', icon: CreditCard, view: 'billing' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
@@ -480,6 +482,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'analytics') return <Analytics role={role} data={data} />;
   if (view === 'jobs') return <Jobs data={data} reload={reload} onAddJobs={onAddJobs} manualJobRequest={manualJobRequest} onOpenMessages={onOpenMessages} editJobId={editJobId} />;
   if (view === 'matches') return <Matches data={data} navigate={navigate} onOpenMessages={onOpenMessages} />;
+  if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'selected') return <SelectedCandidates data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'coffee') return <CoffeeInvitations data={data} onOpenMessages={onOpenMessages} />;
   if (view === 'billing') return <BillingPage data={data} setData={setData} paymentResult={paymentResult} onDismissResult={onDismissResult} />;

@@ -1,5 +1,11 @@
+import { withDemoFill } from './demo-fill.js';
+
 export function createSeed() {
   const now = Date.now();
+  return withDemoFill(baseSeed(now), now);
+}
+
+function baseSeed(now) {
   const fullTimeHybrid = {
     employmentTypes: ['Full-time'],
     workMode: { mode: 'hybrid', hybridDays: 2 },

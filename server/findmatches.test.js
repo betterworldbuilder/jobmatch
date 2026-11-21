@@ -1,6 +1,8 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { unlinkSync } from 'node:fs';
+import { existsSync, unlinkSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /* "Find your Matches" server parts: the first-impression note on a Super Like,
  * and photo verification (selfie upload, admin-only review). Same dynamic-import
@@ -82,12 +84,20 @@ test('verification: a member sends a selfie (pending, no badge yet); review is a
   const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000000020001e221bc330000000049454e44ae426082', 'hex');
   const anon = await call('POST', `/api/users/${real.id}/verification-selfie`, undefined, undefined, png);
   assert.ok(anon.status === 401 || anon.status === 403, `anonymous upload refused (${anon.status})`);
+  const selfieFile = path.join(process.env.UPLOADS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), 'uploads'), 'verification', `${real.id}.png`);
+  assert.equal(existsSync(selfieFile), false, 'a refused upload writes nothing to disk');
   const sent = await call('POST', `/api/users/${real.id}/verification-selfie`, undefined, real.cookie, png);
   assert.equal(sent.status, 201, JSON.stringify(sent.body));
   assert.equal(sent.body.verification.status, 'pending');
   const boot = await call('GET', `/api/bootstrap?userId=${real.id}`, undefined, real.cookie);
   assert.equal(boot.body.viewer.verification.status, 'pending');
   assert.notEqual(boot.body.viewer.photoVerified, true, 'no badge before an admin approves');
+  assert.equal(existsSync(selfieFile), true);
+  // Another member never sees the review record.
+  const other = await registerReal('viewer');
+  const seen = await call('GET', `/api/bootstrap?userId=${other.id}`, undefined, other.cookie);
+  const leaked = JSON.stringify(seen.body).includes('"verification"');
+  assert.equal(leaked, false, 'verification is not in other members\' views');
   for (const [method, path] of [['GET', '/api/admin/verifications'], ['GET', `/api/admin/verifications/${real.id}/selfie`], ['POST', `/api/admin/verifications/${real.id}/approve`]]) {
     const res = await call(method, path, method === 'POST' ? {} : undefined, real.cookie);
     assert.ok(res.status === 401 || res.status === 403, `${method} ${path} is admin-only (${res.status})`);

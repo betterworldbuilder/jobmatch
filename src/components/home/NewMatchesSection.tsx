@@ -150,21 +150,37 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
   });
   const { deck, filtered, index, setIndex, current, next, busy, match, setMatch, screeningFor, setScreeningFor, commitSwipe, act, undo } = deckState;
   const [detail, setDetail] = useState<Job | null>(null);
+  // A role picked from "Recommended Roles" is shown in the phone until it is swiped (or closed).
+  const [picked, setPicked] = useState<Job | null>(null);
+  const phoneRef = useRef<HTMLDivElement>(null);
   const canLike = data.likesRemaining > 0;
-  const job = current as Job | undefined;
+  const job = (picked || current) as Job | undefined;
   const list = considerList(filtered, deck, index).filter((item) => !likedFromList.includes(item.id)) as Job[];
 
+  const swipePicked = (target: Job, action: 'like' | 'pass' | 'super') => {
+    if (action !== 'pass' && !canLike) return;
+    setPicked(null);
+    setLikedFromList((ids) => [...ids, target.id]); // done with it: not shown again in the list or deck
+    if (action === 'like' && needsScreening('candidate', target, 'like', false)) { setScreeningFor(target); return; }
+    void commitSwipe(action === 'pass' ? 'pass' : 'like', target, { superLike: action === 'super' });
+  };
   const run = (action: 'like' | 'pass' | 'super' | 'undo') => {
+    if (picked) { if (action === 'undo') setPicked(null); else swipePicked(picked, action); return; }
     if (action === 'undo') { void undo(); return; }
     if (action !== 'pass' && !canLike) return;
     if (action === 'super') act('like', true);
     else act(action);
   };
+  const showInPhone = (item: Job) => {
+    setPicked(item);
+    // On a phone the list sits under the deck: bring the deck back into view.
+    window.setTimeout(() => phoneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  };
   const onKeyDown = (event: React.KeyboardEvent) => {
     const target = event.target as HTMLElement;
     if (target.closest('input, textarea, select')) return;
     const action = swipeFromKey(event.key);
-    if (!action || (action !== 'undo' && !current)) return;
+    if (!action || (action !== 'undo' && !job)) return;
     event.preventDefault();
     run(action);
   };
@@ -182,17 +198,19 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
     <div className="nm-layout">
       <div className="nm-phone-col">
         <div className="nm-glow" aria-hidden="true" />
-        <div className="nm-phone">
+        <div className="nm-phone" ref={phoneRef}>
           <span className="nm-island" aria-hidden="true" />
           <div className="nm-screen">
             <div className="nm-deck" role="region" aria-label="New matches deck" tabIndex={0} onKeyDown={onKeyDown}>
               <header className="nm-head">
-                <button type="button" className="nm-undo-top" onClick={() => void undo()} disabled={busy || index === 0} aria-label="Undo last swipe"><RotateCcw size={15} /></button>
+                {picked
+                  ? <button type="button" className="nm-undo-top" onClick={() => setPicked(null)} aria-label="Back to the deck"><X size={15} /></button>
+                  : <button type="button" className="nm-undo-top" onClick={() => void undo()} disabled={busy || index === 0} aria-label="Undo last swipe"><RotateCcw size={15} /></button>}
                 <PhoneBrand />
-                <span className="nm-count" aria-live="polite">{counter}</span>
+                <span className="nm-count" aria-live="polite">{picked ? 'Picked' : counter}</span>
               </header>
               <div className="nm-stack">
-                {next && job && <div className="nm-card nm-peek" aria-hidden="true" />}
+                {(next || picked) && job && <div className="nm-card nm-peek" aria-hidden="true" />}
                 <AnimatePresence mode="popLayout">
                   {job
                     ? <PhoneJobCard key={job.id} job={job} reducedMotion={reducedMotion} canLike={canLike} onSwipe={run} onOpen={() => setDetail(job)} />
@@ -218,7 +236,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
         <h3>Recommended Roles</h3>
         {list.length
           ? <ul>{list.map((item) => <li key={item.id}>
-            <button type="button" className="nm-row" onClick={() => setDetail(item)}>
+            <button type="button" className={picked?.id === item.id ? 'nm-row on' : 'nm-row'} onClick={() => showInPhone(item)} aria-label={`Show ${item.title} in the swipe deck`} aria-pressed={picked?.id === item.id}>
               <CompanyLogoMark job={ownLogo(item)} small />
               <span className="nm-row-main"><strong>{item.title}</strong><small>{item.company}</small></span>
               <span className="nm-row-facts">
@@ -227,7 +245,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
                 {showsCommute(item) && <small><MapPin size={10} /> {item.distanceKm} km</small>}
               </span>
             </button>
-            <button type="button" className="nm-row-like" onClick={() => likeFromList(item)} disabled={busy || !canLike} aria-label={`Like ${item.title}`}><Heart size={15} /></button>
+            <button type="button" className="nm-row-like" onClick={() => { if (picked?.id === item.id) setPicked(null); likeFromList(item); }} disabled={busy || !canLike} aria-label={`Like ${item.title}`}><Heart size={15} /></button>
           </li>)}</ul>
           : <p className="nm-list-empty">No more roles right now. Your profile stays visible to matching teams.</p>}
         <button type="button" className="nm-see-all" onClick={() => navigate('discover')}>See all in Discover <ArrowRight size={13} /></button>

@@ -16,7 +16,7 @@ import type { Bootstrap, Job, Person, Role, View } from '../../types';
 import { JobDetailModal, ScreeningModal } from '../coach/CoachModals';
 import { CandidateProfileModal } from '../home/MatchHome';
 import { EmptyDeck, MatchModal } from '../discover/DeckParts';
-import { swipeFromDrag } from '../discover/deckLogic';
+import { considerList, needsScreening, swipeFromDrag } from '../discover/deckLogic';
 import { useDiscoverDeck } from '../discover/useDiscoverDeck';
 import { ReportModal } from '../ReportModal';
 import { CameraCaptureModal } from '../CameraCaptureModal';
@@ -211,7 +211,12 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
   const deck = useDiscoverDeck(deckRole, data, setData, {
     onSwiped: (result) => { if (result.match) api.bootstrap(data.viewer.id).then(setData).catch(() => undefined); },
   });
-  const { deck: cards, index, setIndex, current, next, busy, match, setMatch, screeningFor, setScreeningFor, commitSwipe, act, undo } = deck;
+  const { deck: cards, filtered, index, setIndex, current: deckCurrent, next, busy, match, setMatch, screeningFor, setScreeningFor, commitSwipe, act, undo } = deck;
+  // A role picked from "Recommended Roles" (under the card) takes the card's place until it is swiped.
+  const [picked, setPicked] = useState<Job | Person | null>(null);
+  const [done, setDone] = useState<string[]>([]);
+  const current = picked || deckCurrent;
+  const recommended = considerList(filtered, cards, index).filter((item) => !done.includes(item.id) && item.id !== picked?.id);
   const [panel, setPanel] = useState<Panel>('matches');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [tab, setTab] = useState<'matches' | 'messages'>('matches');
@@ -236,6 +241,15 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
   useEffect(() => { setSlide(0); setProfileOpen(false); }, [current?.id]);
 
   const run = (action: 'like' | 'pass' | 'super' | 'undo') => {
+    if (picked) {
+      if (action === 'undo') { setPicked(null); return; }
+      if (busy || (action !== 'pass' && !canLike)) return;
+      const target = picked;
+      setPicked(null); setDone((ids) => [...ids, target.id]);
+      if (action === 'like' && needsScreening(deckRole, target, 'like', false)) { setScreeningFor(target as Job); return; }
+      void commitSwipe(action === 'pass' ? 'pass' : 'like', target, { superLike: action === 'super' });
+      return;
+    }
     if (action === 'undo') { void undo(); return; }
     if (!current || busy) return;
     if (action !== 'pass' && !canLike) return;
@@ -284,6 +298,7 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
   const sendImpression = async (note: string) => {
     if (!current) return;
     setImpression(false);
+    if (picked) { setPicked(null); setDone((ids) => [...ids, current.id]); }
     await commitSwipe('like', current, { superLike: true, note });
   };
   const toggleHints = () => { setHintsHidden((h) => { writeHintsHidden(!h); return !h; }); };
@@ -346,12 +361,12 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
             <div className={`fm-verify-card ${vstate}`}>
               <BadgeCheck size={26} />
               <div><strong>{vstate === 'verified' ? 'You are verified' : vstate === 'pending' ? 'Selfie in review' : 'Get Verified'}</strong>
-                <small>{vstate === 'verified' ? 'Your badge shows on every card.' : vstate === 'pending' ? 'Your badge appears once a person approves it.' : 'A live selfie proves you are real.'}</small></div>
+                <small>{vstate === 'verified' ? 'Your badge shows on every card.' : vstate === 'pending' ? 'Your badge appears once a person approves it.' : 'Send a live selfie for a person on our team to check.'}</small></div>
               {(vstate === 'none' || vstate === 'rejected') && <button type="button" onClick={() => setVerify(true)}>Start</button>}
             </div>
             <button type="button" className="fm-safety-row" onClick={() => setTips(true)}><ShieldCheck size={18} />Safety tips</button>
             <button type="button" className="fm-safety-row" onClick={() => current ? setReporting(true) : setTips(true)} disabled={!current}><Flag size={18} />Report the card on screen</button>
-            <p className="fm-safety-note">Look for <BadgeCheck size={13} /> on cards: it means the person or team passed a check.</p>
+            <p className="fm-safety-note"><BadgeCheck size={13} /> Verified means one of these: signed in with Google or LinkedIn, a profile at least 80% complete, or a selfie approved by our team. It is not a background check.</p>
           </div>}
         </div>
       </aside>
@@ -362,7 +377,9 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
         <div className="fm-stage-head">
           <h3>Find your Matches</h3>
           {activeGoal && <button type="button" className="fm-goal-pill" onClick={clearGoal}>{activeGoal.label}<X size={13} /></button>}
-          <span className="fm-count" aria-live="polite">{counter}</span>
+          {picked
+            ? <button type="button" className="fm-goal-pill" onClick={() => setPicked(null)}>Back to deck<X size={13} /></button>
+            : <span className="fm-count" aria-live="polite">{counter}</span>}
         </div>
         <div className="fm-stack">
           {next && card && <div className="fm-card fm-peek" aria-hidden="true" />}
@@ -379,13 +396,20 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
           </AnimatePresence>
         </div>
         {card && <div className="fm-actions">
-          <button type="button" className="fm-btn sm rewind" onClick={() => run('undo')} disabled={busy || index === 0} aria-label="Rewind"><RotateCcw size={20} /></button>
+          <button type="button" className="fm-btn sm rewind" onClick={() => run('undo')} disabled={busy || (index === 0 && !picked)} aria-label="Rewind"><RotateCcw size={20} /></button>
           <button type="button" className="fm-btn lg nope" onClick={() => run('pass')} disabled={busy} aria-label="Nope"><X size={30} strokeWidth={2.4} /></button>
           <button type="button" className="fm-btn sm super" onClick={() => run('super')} disabled={busy || !canLike} aria-label="Super Like"><Star size={20} /></button>
           <button type="button" className="fm-btn lg like" onClick={() => run('like')} disabled={busy || !canLike} aria-label="Like"><Heart size={28} /></button>
           <button type="button" className="fm-btn sm impression" onClick={() => setImpression(true)} disabled={busy || !canLike} aria-label="First impression: Super Like with a note"><Send size={19} /></button>
         </div>}
         {card && !canLike && <p className="fm-no-likes">No likes left today. Nope still works.</p>}
+        {recommended.length > 0 && <div className="fm-recs" id="td-recommended" aria-label={role === 'candidate' ? 'Recommended Roles' : 'Recommended Candidates'}>
+          <p className="fm-recs-title">{role === 'candidate' ? 'Recommended Roles' : 'Recommended Candidates'}<small>Tap one to see it on the card</small></p>
+          <div className="fm-recs-row">{recommended.map((item) => { const c = toCard(item); return <button type="button" key={item.id} className="fm-rec" onClick={() => setPicked(item)} aria-label={`Show ${c.name} on the card`}>
+            <span className="fm-rec-photo" style={c.photo ? { backgroundImage: `url(${assetUrl(c.photo)})` } : undefined}>{!c.photo && c.initials}</span>
+            <span className="fm-rec-text"><strong>{c.name}</strong><small>{c.subtitle}{typeof item.match?.score === 'number' ? ` · ${item.match.score}%` : ''}</small></span>
+          </button>; })}</div>
+        </div>}
         <div className={hintsHidden ? 'fm-keys hidden' : 'fm-keys'}>
           <button type="button" className="fm-keys-toggle" onClick={toggleHints}>{hintsHidden ? 'Show keys' : 'Hide'}</button>
           {!hintsHidden && <>

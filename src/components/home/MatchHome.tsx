@@ -199,7 +199,7 @@ export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMe
 
   const metrics = [
     { icon: Heart, label: 'Matches', value: matchedJobs.length, note: 'both said yes', action: 'View all', target: 'td-matches' },
-    { icon: Target, label: 'Jobs that like you', value: likesYou.length, note: 'liked your profile', action: 'See who', target: 'td-chasing' },
+    { icon: Target, label: 'Recruiters that like you', value: likesYou.length, note: 'liked your profile', action: 'See who', target: 'td-chasing' },
     { icon: Coffee, label: 'Let’s Talk Invitations', value: upcomingCalls.length, note: 'invitations', action: 'View invites', target: 'messages' },
   ];
 
@@ -295,7 +295,7 @@ export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMe
     </section>
 
     <section className="td-section" id="td-chasing">
-      <DashboardTitle icon={Target} title="Jobs that like you" subtitle="Recruiters who liked your profile — like back to match." action={`See all (${likesYou.length})`} onAction={() => navigate('discover')} />
+      <DashboardTitle icon={Target} title="Recruiters that like you" subtitle="Recruiters who liked your profile — like back to match." action={`See all (${likesYou.length})`} onAction={() => navigate('discover')} />
       {jobCards(likesYou)}
     </section>
 
