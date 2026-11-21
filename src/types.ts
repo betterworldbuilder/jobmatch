@@ -35,6 +35,8 @@ export interface Person {
   experienceLevel: string; completeness?: number; availability?: string; match?: MatchEvidence; onboarding?: boolean; salaryHidden?: boolean; demo?: boolean; sample?: boolean; invitesSent?: number; superLikedYou?: boolean; likedYou?: boolean; viewedYou?: boolean; verified?: boolean;
   /** Paid placement. Moves the card up the deck; the match score is untouched. */
   promoted?: boolean;
+  /** Job status shown under the profile (candidates). */
+  jobStatus?: { kind: 'open' | 'waiting' | 'hired' | 'contract'; until?: string; updatedAt?: number };
   /** "Get verified": set only when an admin approves the member's live selfie. */
   photoVerified?: boolean;
   /** The viewer's own selfie-verification request (self view only). */

@@ -33,6 +33,7 @@ function objArray(value, shape, maxItems = 20) {
 
 const SENIORITIES = ['junior', 'mid', 'senior', 'lead', 'exec'];
 const VISIBILITIES = ['all', 'after-swipe', 'paused'];
+export const JOB_STATUSES = ['open', 'waiting', 'hired', 'contract'];
 const WORK_MODES = ['remote', 'hybrid', 'onsite'];
 const CONTACT_TYPES = ['whatsapp', 'telegram', 'phone', 'signal', 'wechat', 'zalo', 'email', 'other'];
 const AGE_PRIVACY = ['public', 'after-match', 'private'];
@@ -149,6 +150,15 @@ export function applyCandidateProfile(user, body) {
     if (body.privacy.blockedCompanies !== undefined) privacy.blockedCompanies = strArray(body.privacy.blockedCompanies, 30, 80) || [];
     if (body.privacy.openToWork !== undefined) privacy.openToWork = Boolean(body.privacy.openToWork);
     user.privacy = privacy;
+  }
+  // Job status shown under the profile: open to work, waiting for an offer, hired, or under contract until a date.
+  if (body.jobStatus !== undefined && body.jobStatus !== null && typeof body.jobStatus === 'object') {
+    const kind = body.jobStatus.kind;
+    if (!JOB_STATUSES.includes(kind)) throw new ValidationError('jobStatus', `status must be one of ${JOB_STATUSES.join(', ')}`);
+    const until = kind === 'contract' && /^\d{4}-\d{2}-\d{2}$/.test(String(body.jobStatus.until || '')) ? body.jobStatus.until : undefined;
+    if (kind === 'contract' && !until) throw new ValidationError('jobStatus', 'Pick the date your contract ends');
+    user.jobStatus = { kind, ...(until ? { until } : {}), updatedAt: Date.now() };
+    user.privacy = { ...(user.privacy || {}), openToWork: kind === 'open' };
   }
   if (body.onboarding !== undefined) user.onboarding = Boolean(body.onboarding);
   if (body.availability !== undefined) user.availability = str(body.availability, 40);
