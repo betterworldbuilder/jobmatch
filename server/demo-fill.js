@@ -81,8 +81,12 @@ function applyMissing(target, fill) {
   }
 }
 
-/** Mutates and returns the seed with demo fields and demo relationships added. */
-export function withDemoFill(seed, now = Date.now()) {
+/**
+ * Mutates and returns the seed with demo fields and demo relationships added.
+ * `crowd` = the generated demo crowd (demo-crowd.js): its jobs each get `perJob`
+ * matches spread across its candidates, so every generated profile has data too.
+ */
+export function withDemoFill(seed, now = Date.now(), crowd = { candidateIds: [], jobIds: [] }) {
   const users = new Map(seed.users.map((u) => [u.id, u]));
   const jobs = new Map(seed.jobs.map((j) => [j.id, j]));
 
@@ -98,36 +102,43 @@ export function withDemoFill(seed, now = Date.now()) {
   //    E also likes candidates i+3, i+4 ("recruiters that like you"), candidates i+2, i+5 like the job.
   const has = (collection, id) => seed[collection].some((item) => item.id === id);
   const push = (collection, item) => { if (!has(collection, item.id)) seed[collection].push({ demoTemplate: true, ...item }); };
-  const n = DEMO_CANDIDATES.length;
-  DEMO_JOBS.forEach((jobId, i) => {
-    const job = jobs.get(jobId);
-    if (!job) return;
-    const employer = users.get(job.employerId);
-    if (!employer) return;
-    const cand = (k) => users.get(DEMO_CANDIDATES[(i + k) % n]);
-    [0, 1].forEach((k) => {
-      const c = cand(k);
-      if (!c) return;
+  // One mutual match (two likes, 3 messages, feedback + coffee chat on the first) between candidate c and job i.
+  const addMatch = (jobId, i, c, k) => {
+      const job = jobs.get(jobId); const employer = job && users.get(job.employerId);
+      if (!job || !employer || !c) return;
       const matchId = `dm-${jobId}-${c.id}`;
       const at = now - (i * 2 + k + 1) * DAY;
       push('swipes', { id: `ds-${c.id}-${jobId}`, actorId: c.id, targetType: 'job', targetId: jobId, direction: 'like', createdAt: at - 2 * HOUR });
       push('swipes', { id: `ds-${employer.id}-${c.id}-${jobId}`, actorId: employer.id, targetType: 'candidate', targetId: c.id, jobId, direction: 'like', createdAt: at - HOUR });
-      push('matches', { id: matchId, candidateId: c.id, employerId: employer.id, jobId, stage: k === 0 ? 'Interview' : 'Matched', createdAt: at,
+      push('matches', { id: matchId, candidateId: c.id, employerId: employer.id, jobId, stage: k === 0 ? 'Interview' : k === 2 ? 'Offer' : 'Matched', createdAt: at,
         ...(k === 0 ? { feedback: [{ text: `Strong first round: clear communication and solid ${(c.skills || [])[0] || 'technical'} depth. To move to the final round, show more ${(job.requiredSkills || []).find((s) => !(c.skills || []).includes(s)) || 'system design'} experience with a concrete project example.`, at: at + 2 * DAY, from: employer.id }] } : {}) });
       const skill = (job.requiredSkills || c.skills || [])[0] || 'engineering';
       push('messages', { id: `dmsg-${matchId}-1`, matchId, senderId: employer.id, text: `Hi ${first(c.name)}, your ${skill} experience fits our ${job.title} role. Open to a 20-minute call this week?`, createdAt: at + HOUR });
       push('messages', { id: `dmsg-${matchId}-2`, matchId, senderId: c.id, text: `Thanks ${first(employer.name)}! Yes, Tuesday or Wednesday afternoon works for me (US morning).`, createdAt: at + 3 * HOUR });
       push('messages', { id: `dmsg-${matchId}-3`, matchId, senderId: employer.id, text: k === 0 ? 'Great, I sent a coffee chat invite for Wednesday. Talk soon!' : 'Perfect. I will share the interview steps before we talk.', createdAt: at + 5 * HOUR });
       if (k === 0) push('calls', { id: `dcall-${matchId}`, matchId, createdBy: employer.id, title: `Coffee chat - ${c.name}`, startAt: now + (i + 1) * DAY, durationMinutes: 25, notes: `Intro call about the ${job.title} role.`, createdAt: at + 5 * HOUR });
-    });
-    [3, 4].forEach((k) => {
-      const c = cand(k);
-      if (c) push('swipes', { id: `ds-${employer.id}-${c.id}-${jobId}`, actorId: employer.id, targetType: 'candidate', targetId: c.id, jobId, direction: 'like', ...(k === 3 ? { superLike: true } : {}), createdAt: now - (k + i) * HOUR });
-    });
-    [2, 5].forEach((k) => {
-      const c = cand(k);
-      if (c) push('swipes', { id: `ds-${c.id}-${jobId}`, actorId: c.id, targetType: 'job', targetId: jobId, direction: 'like', createdAt: now - (k + i + 1) * HOUR });
-    });
+  };
+  // The recruiter behind job i likes candidate c ("Recruiters that like you").
+  const recruiterLike = (jobId, i, c, k, superLike) => { const employer = users.get(jobs.get(jobId)?.employerId); if (employer && c) push('swipes', { id: `ds-${employer.id}-${c.id}-${jobId}`, actorId: employer.id, targetType: 'candidate', targetId: c.id, jobId, direction: 'like', ...(superLike ? { superLike: true } : {}), createdAt: now - (k + i) * HOUR }); };
+  // Candidate c likes job i (shows on the recruiter side as an incoming like).
+  const candidateLike = (jobId, i, c, k) => { if (c && jobs.has(jobId)) push('swipes', { id: `ds-${c.id}-${jobId}`, actorId: c.id, targetType: 'job', targetId: jobId, direction: 'like', createdAt: now - (k + i + 1) * HOUR }); };
+
+  // Hand-written cast (ids unchanged): job i matches candidates i, i+1; its recruiter likes i+3 (super) and i+4; i+2 and i+5 like the job.
+  DEMO_JOBS.forEach((jobId, i) => {
+    const cand = (k) => users.get(DEMO_CANDIDATES[(i + k) % DEMO_CANDIDATES.length]);
+    [0, 1].forEach((k) => addMatch(jobId, i, cand(k), k));
+    [3, 4].forEach((k) => recruiterLike(jobId, i, cand(k), k, k === 3));
+    [2, 5].forEach((k) => candidateLike(jobId, i, cand(k), k));
+  });
+  // Generated crowd, candidate by candidate so nobody is left out: 2 matches (two different
+  // recruiters), a like from a third recruiter, and a fourth role they like.
+  const J = crowd.jobIds.length;
+  if (J >= 4) crowd.candidateIds.forEach((cid, ci) => {
+    const c = users.get(cid); const at = (off) => (ci + off) % J;
+    addMatch(crowd.jobIds[at(0)], at(0), c, 0);
+    addMatch(crowd.jobIds[at(5)], at(5), c, ci % 3 === 0 ? 2 : 1);
+    recruiterLike(crowd.jobIds[at(11)], at(11), c, 3, ci % 2 === 0);
+    candidateLike(crowd.jobIds[at(8)], at(8), c, 2);
   });
   // 3. Hiring Stages: every demo match gets a timeline of rounds (2–4 per job) with who interviews and dates.
   const day = (t) => new Date(t).toISOString().slice(0, 10);

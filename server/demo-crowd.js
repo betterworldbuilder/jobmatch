@@ -1,0 +1,225 @@
+// A larger demo crowd for testing: tops the hand-written demo cast up to
+// DEMO_CANDIDATE_TARGET candidates and DEMO_RECRUITER_TARGET recruiters, every
+// field filled. Generated deterministically (same ids and values on every start),
+// so the seed merge in index.js updates them in place instead of adding copies.
+//
+// Everything here is a mock entry: made-up people and made-up US startups
+// (no real companies), emails on the .demo / demo.jobsmatchnow.app domains,
+// and every record is `demo: true`, so analytics never counts it.
+
+export const DEMO_CANDIDATE_TARGET = 50;
+export const DEMO_RECRUITER_TARGET = 25;
+
+const portrait = (gender, n) => `https://randomuser.me/api/portraits/${gender === 'f' ? 'women' : 'men'}/${n}.jpg`;
+
+// Vietnam / Southeast Asia software engineers (our Phase B candidate pool).
+const CANDIDATE_NAMES = [
+  ['Nguyen Minh Anh', 'f'], ['Tran Quoc Bao', 'm'], ['Le Thu Ha', 'f'], ['Pham Duc Huy', 'm'], ['Vo Ngoc Lan', 'f'],
+  ['Hoang Gia Khang', 'm'], ['Dang Mai Phuong', 'f'], ['Bui Thanh Tung', 'm'], ['Do Khanh Linh', 'f'], ['Ngo Hai Nam', 'm'],
+  ['Maria Santos', 'f'], ['Joshua Reyes', 'm'], ['Angelica Cruz', 'f'], ['Mark Villanueva', 'm'], ['Bea Mendoza', 'f'],
+  ['Putri Lestari', 'f'], ['Rizky Pratama', 'm'], ['Dewi Anggraini', 'f'], ['Budi Santoso', 'm'], ['Ayu Wulandari', 'f'],
+  ['Nattaya Srisuk', 'f'], ['Kittipong Chaiyaporn', 'm'], ['Siriporn Wongsa', 'f'], ['Thanawat Boonmee', 'm'],
+  ['Nurul Aisyah', 'f'], ['Hafiz Rahman', 'm'], ['Mei Ling Tan', 'f'], ['Wei Jie Lim', 'm'], ['Priya Menon', 'f'], ['Arjun Pillai', 'm'],
+  ['Truong Bich Ngoc', 'f'], ['Ly Van Phuc', 'm'], ['Phan Thao Vy', 'f'], ['Huynh Tan Loc', 'm'], ['Mai Quynh Chi', 'f'],
+  ['Carlo Bautista', 'm'], ['Kristine Navarro', 'f'], ['Agus Setiawan', 'm'], ['Somchai Rattana', 'm'], ['Farah Iskandar', 'f'],
+  ['Dinh Hoang Long', 'm'], ['Vu Thi Hoa', 'f'],
+];
+
+const PLACES = [
+  { city: 'Ho Chi Minh City', country: 'Vietnam', lang: 'Vietnamese', school: 'Ho Chi Minh City University of Technology', local: ['FPT Software', 'Tiki', 'MoMo'] },
+  { city: 'Hanoi', country: 'Vietnam', lang: 'Vietnamese', school: 'Hanoi University of Science and Technology', local: ['VNG', 'Viettel Digital', 'Got It'] },
+  { city: 'Da Nang', country: 'Vietnam', lang: 'Vietnamese', school: 'University of Danang', local: ['Axon Active', 'Enclave', 'Rikkeisoft'] },
+  { city: 'Manila', country: 'Philippines', lang: 'Filipino', school: 'University of the Philippines Diliman', local: ['Thinking Machines', 'Kalibrr', 'PayMongo'] },
+  { city: 'Cebu', country: 'Philippines', lang: 'Filipino', school: 'University of San Carlos', local: ['Accenture Cebu', 'Lexmark Cebu', 'Sprout Solutions'] },
+  { city: 'Jakarta', country: 'Indonesia', lang: 'Indonesian', school: 'Universitas Indonesia', local: ['Tokopedia', 'Traveloka', 'Xendit'] },
+  { city: 'Bandung', country: 'Indonesia', lang: 'Indonesian', school: 'Bandung Institute of Technology', local: ['eFishery', 'Bukalapak', 'Mekari'] },
+  { city: 'Bangkok', country: 'Thailand', lang: 'Thai', school: 'Chulalongkorn University', local: ['LINE MAN Wongnai', 'Agoda', 'Omise'] },
+  { city: 'Kuala Lumpur', country: 'Malaysia', lang: 'Malay', school: 'University of Malaya', local: ['Grab', 'Carsome', 'iPay88'] },
+  { city: 'Singapore', country: 'Singapore', lang: 'Mandarin', school: 'National University of Singapore', local: ['Shopee', 'Ninja Van', 'Carousell'] },
+];
+
+// Engineering tracks: candidate title + skills, and the matching job a recruiter posts.
+const TRACKS = [
+  { title: 'Frontend Engineer', job: 'Senior Frontend Engineer', skills: ['React', 'TypeScript', 'Next.js', 'CSS', 'Testing Library'], industry: 'SaaS' },
+  { title: 'Backend Engineer', job: 'Senior Backend Engineer (Node.js)', skills: ['Node.js', 'TypeScript', 'PostgreSQL', 'AWS', 'Redis'], industry: 'Fintech' },
+  { title: 'Full-Stack Engineer', job: 'Full-Stack Engineer', skills: ['React', 'Node.js', 'TypeScript', 'PostgreSQL', 'GraphQL'], industry: 'SaaS' },
+  { title: 'Mobile Engineer', job: 'React Native Engineer', skills: ['React Native', 'TypeScript', 'iOS', 'Android', 'Expo'], industry: 'Consumer apps' },
+  { title: 'Go Backend Engineer', job: 'Backend Engineer (Go)', skills: ['Go', 'gRPC', 'Kubernetes', 'PostgreSQL', 'Kafka'], industry: 'Infrastructure' },
+  { title: 'Data Engineer', job: 'Data Engineer', skills: ['Python', 'SQL', 'Spark', 'Airflow', 'dbt'], industry: 'Data / analytics' },
+  { title: 'Machine Learning Engineer', job: 'Machine Learning Engineer', skills: ['Python', 'PyTorch', 'MLOps', 'AWS', 'LLMs'], industry: 'AI / Machine learning' },
+  { title: 'DevOps Engineer', job: 'DevOps / Platform Engineer', skills: ['Kubernetes', 'Terraform', 'AWS', 'CI/CD', 'Prometheus'], industry: 'Infrastructure' },
+  { title: 'QA Automation Engineer', job: 'QA Automation Engineer', skills: ['Playwright', 'Cypress', 'TypeScript', 'API testing', 'CI/CD'], industry: 'SaaS' },
+  { title: 'Python Backend Engineer', job: 'Senior Python Engineer', skills: ['Python', 'Django', 'FastAPI', 'PostgreSQL', 'Celery'], industry: 'Healthtech' },
+];
+
+const LEVELS = [
+  { level: 'mid', prefix: '', years: 4, min: 36000, max: 54000 },
+  { level: 'senior', prefix: 'Senior ', years: 7, min: 54000, max: 84000 },
+  { level: 'senior', prefix: 'Lead ', years: 10, min: 72000, max: 108000 },
+];
+
+const RECOMMENDERS = ['Alex Morgan', 'Jordan Lee', 'Sam Patel', 'Taylor Brooks', 'Chris Nguyen', 'Jamie Rivera', 'Morgan Ellis', 'Casey Wong'];
+const RECO_ROLES = ['Engineering Manager', 'Staff Engineer', 'CTO', 'Tech Lead', 'Head of Engineering'];
+const RECO_TEXT = [
+  (n, s) => `${n} owned our ${s} work end to end and shipped on time, every sprint. Clear written updates, which mattered a lot with our US team.`,
+  (n, s) => `${n} is the person the team asks when ${s} gets hard. Calm under pressure and great at explaining trade-offs.`,
+  (n, s) => `${n} cut our ${s} incidents by half in one quarter and mentored two junior engineers along the way.`,
+];
+
+// Made-up US startups (seed to Series B, 10–200 people) hiring remote engineers in Vietnam / SEA.
+const STARTUPS = [
+  ['Lumenpay', 'Fintech', 'Series A', '51–200', 'San Francisco, CA', 'Payments infrastructure for online marketplaces.'],
+  ['Northwind Health', 'Healthtech', 'Seed', '11–50', 'Boston, MA', 'Care coordination software for small clinics.'],
+  ['Brightloop', 'SaaS', 'Series A', '51–200', 'Austin, TX', 'Workflow automation for operations teams.'],
+  ['Cobalt Labs', 'AI / Machine learning', 'Seed', '11–50', 'New York, NY', 'AI copilots for customer support teams.'],
+  ['Fieldnote', 'SaaS', 'Series B', '51–200', 'Seattle, WA', 'Field service scheduling for trades businesses.'],
+  ['Harborline', 'Logistics', 'Series A', '51–200', 'Chicago, IL', 'Freight visibility for mid-size shippers.'],
+  ['Quillstack', 'Developer tools', 'Seed', '11–50', 'San Francisco, CA', 'Docs-as-code tooling for API teams.'],
+  ['Mosaic Grid', 'Climate tech', 'Series A', '51–200', 'Denver, CO', 'Energy data platform for solar installers.'],
+  ['Tandem Learn', 'Edtech', 'Seed', '11–50', 'Los Angeles, CA', 'Live cohort courses for software teams.'],
+  ['Parcelbird', 'E-commerce', 'Series A', '51–200', 'Miami, FL', 'Returns and exchanges for online stores.'],
+  ['Signalcraft', 'Data / analytics', 'Series B', '51–200', 'New York, NY', 'Product analytics for B2B apps.'],
+  ['Kitewire', 'Infrastructure', 'Seed', '11–50', 'Portland, OR', 'Managed Kafka for growing startups.'],
+  ['Evergreen Rx', 'Healthtech', 'Series A', '51–200', 'Nashville, TN', 'Pharmacy inventory software.'],
+  ['Opal Ledger', 'Fintech', 'Seed', '11–50', 'Salt Lake City, UT', 'Bookkeeping automation for freelancers.'],
+  ['Relay Robotics', 'Robotics', 'Series A', '51–200', 'Pittsburgh, PA', 'Fleet software for warehouse robots.'],
+];
+// Specialist recruiting agencies (headhunters) placing SEA engineers with US startups.
+const AGENCIES = [
+  ['Bridgeway Talent', 'Recruiting', 'Bootstrapped', '11–50', 'San Jose, CA', 'Places senior Southeast Asian engineers with US startups.'],
+  ['Meridian Search', 'Recruiting', 'Bootstrapped', '1–10', 'Remote (US)', 'Technical headhunting for remote-first engineering teams.'],
+];
+const RECRUITER_PEOPLE = [
+  ['Rachel Moore', 'f', 'Head of Talent'], ['Kevin Brooks', 'm', 'CTO & Co-founder'], ['Olivia Grant', 'f', 'Technical Recruiter'],
+  ['Ethan Park', 'm', 'Engineering Manager'], ['Sophia Diaz', 'f', 'Founder & CEO'], ['Noah Bennett', 'm', 'VP Engineering'],
+  ['Ava Collins', 'f', 'Talent Partner'], ['Lucas Ward', 'm', 'Head of Engineering'], ['Mia Foster', 'f', 'People Operations Lead'],
+  ['Henry Cole', 'm', 'CTO'], ['Chloe Hayes', 'f', 'Technical Recruiter'], ['Owen Price', 'm', 'Founder'],
+  ['Grace Turner', 'f', 'Head of People'], ['Jack Rivera', 'm', 'Engineering Director'], ['Lily Chen', 'f', 'Recruiting Lead'],
+  ['Daniel Ross', 'm', 'Senior Headhunter'], ['Natalie Kim', 'f', 'Managing Partner'],
+];
+const ACCENTS = ['#007AFF', '#AF52DE', '#FF9500', '#34C759', '#FF2D55', '#5856D6', '#00C7BE', '#FF3B30'];
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+const monthly = (yearly) => `$${Math.round(yearly / 12 / 100) * 100}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+function makeCandidate(i, now) {
+  const [name, gender] = CANDIDATE_NAMES[i % CANDIDATE_NAMES.length];
+  const place = PLACES[i % PLACES.length];
+  const track = TRACKS[i % TRACKS.length];
+  const lv = LEVELS[i % LEVELS.length];
+  const title = `${lv.prefix}${track.title}`.replace('Senior Go', 'Senior Go').trim();
+  const first = name.split(' ').slice(-1)[0];
+  const id = `candidate-demo-${i + 5}`;
+  const remote = i % 3 !== 2;
+  const availability = ['Now', '2 weeks', '1 month'][i % 3];
+  const s = track.skills;
+  const recoBy = RECOMMENDERS[i % RECOMMENDERS.length];
+  const [cur, prev] = [place.local[i % 3], place.local[(i + 1) % 3]];
+  return {
+    id, demoTemplate: true, role: 'candidate', demo: true,
+    name, email: `${slug(name)}@demo.jobsmatchnow.app`,
+    title, company: cur, headline: `${title} · ${s.slice(0, 3).join(', ')}`,
+    location: `${place.city}, ${place.country}`, city: place.city, country: place.country, nationality: place.country,
+    distanceKm: 3 + (i % 25), distanceRangeKm: 20 + (i % 4) * 10,
+    photo: portrait(gender, 10 + i), photoVerified: i % 4 !== 3,
+    skills: s, skillsDetail: s.map((n, k) => ({ name: n, level: Math.max(3, 5 - (k % 3)), years: Math.max(1, lv.years - k) })),
+    languages: ['English', place.lang], languageDetail: [{ name: 'English', level: i % 4 === 0 ? 'Native-like' : 'Fluent' }, { name: place.lang, level: 'Native' }],
+    experienceLevel: lv.level, seniority: lv.level, yearsExperience: lv.years, availability,
+    preferences: {
+      employmentTypes: i % 5 === 4 ? ['Full-time', 'Contract'] : ['Full-time'],
+      workMode: remote ? { mode: 'remote' } : { mode: 'hybrid', hybridDays: 2 },
+      desiredRoles: [track.job, `${lv.prefix}${track.title}`.trim()].filter((v, k, a) => a.indexOf(v) === k),
+      salary: { min: lv.min, max: lv.max, currency: 'USD', period: 'year', negotiable: i % 2 === 0 },
+      availability, noticePeriod: availability === 'Now' ? 'none' : availability,
+      relocate: { open: i % 6 === 0, locations: i % 6 === 0 ? ['Singapore', 'United States'] : [] },
+      companySize: ['11–50', '51–200', '10–200'][i % 3], workStyle: ['Remote-friendly', 'Async', 'Small teams'].slice(0, 2 + (i % 2)),
+      industries: ['Software', track.industry], travel: 'Rarely',
+    },
+    industries: ['Software', track.industry],
+    workExperience: [
+      { title, company: cur, from: `${now.getFullYear() - 3 + (i % 2)}`, to: 'Present', description: `Owns ${s[0]} and ${s[1]} work for a product with a remote US team; mentors junior engineers.` },
+      { title: track.title.replace(/^Senior |^Lead /, ''), company: prev, from: `${now.getFullYear() - lv.years}`, to: `${now.getFullYear() - 3 + (i % 2)}`, description: `Built and shipped ${s[2]} features end to end, from design to on-call.` },
+    ],
+    education: [{ school: place.school, degree: i % 4 === 1 ? 'B.Eng. Software Engineering' : 'B.Sc. Computer Science', from: `${now.getFullYear() - lv.years - 4}`, to: `${now.getFullYear() - lv.years}` }],
+    certifications: s.includes('AWS') ? ['AWS Certified Developer – Associate'] : s.includes('Kubernetes') ? ['Certified Kubernetes Administrator (CKA)'] : ['Meta Front-End Developer Certificate'],
+    links: { github: `https://github.com/demo-${id}`, portfolio: `https://demo.jobsmatchnow.app/portfolio/${id}`, website: `https://demo.jobsmatchnow.app/blog/${id}` },
+    publications: i % 5 === 0 ? [`https://demo.jobsmatchnow.app/posts/${id}-lessons-from-${slug(s[0])}`] : [],
+    documents: { coverLetter: `Hi! I'm ${first}, a ${title.toLowerCase()} in ${place.city}. I've spent ${lv.years} years shipping ${s[0]} products and I work best with US teams that write things down. I can overlap 4+ hours with US time zones.` },
+    presentation: `I build ${s[0]} products people actually use. I like small teams, clear goals and shipping every week. Looking for a ${remote ? 'remote' : 'hybrid'} role with a US startup and at least 4 hours of overlap with US time zones.`,
+    motto: ['Ship small, learn fast.', 'Write it down.', 'Make it work, then make it better.'][i % 3],
+    mindset: ['Ownership', 'Clear writing', 'Bias for action', 'Curiosity'].slice(i % 2, (i % 2) + 3),
+    humanSkills: ['Communication', 'Mentoring', 'Problem solving', 'Async collaboration'].slice(0, 3 + (i % 2)),
+    workingPrefer: ['Async updates', 'Small teams', 'Clear goals', 'Code review culture'].slice(0, 3),
+    workingAvoid: ['Endless meetings', 'Unclear ownership'].slice(0, 1 + (i % 2)),
+    interests: [['Running', 'Coffee', 'Open source'], ['Photography', 'Travel', 'Board games'], ['Cycling', 'Cooking', 'Podcasts'], ['Football', 'Guitar', 'Hiking']][i % 4],
+    favoriteSong: ['https://open.spotify.com/track/1mea3bSkSGXuIRvnydlB5b', 'https://www.youtube.com/watch?v=4NRXx6U8ABQ'][i % 2],
+    contactChannels: [{ type: 'email', value: `${slug(name)}@demo.jobsmatchnow.app` }],
+    privacy: { visibility: 'all', openToWork: true },
+    jobStatus: i % 10 === 3 ? { kind: 'waiting' } : { kind: 'open' },
+    agePrivacy: 'private',
+    recommendations: [{
+      recruiterName: recoBy, recommenderEmail: `${slug(recoBy)}@demo.jobsmatchnow.app`, company: prev, role: RECO_ROLES[i % RECO_ROLES.length],
+      relationship: 'Managed directly', text: RECO_TEXT[i % RECO_TEXT.length](first, s[0]), date: ['Jan 2026', 'Mar 2026', 'Jun 2026'][i % 3],
+      verified: true, wouldWorkAgain: true, ratings: { technical: 5, communication: 4 + (i % 2), reliability: 5, collaboration: 4 + ((i + 1) % 2) },
+    }],
+  };
+}
+
+function makeRecruiter(i) {
+  const agency = i >= STARTUPS.length;
+  const [company, industry, stage, size, hq, about] = agency ? AGENCIES[i - STARTUPS.length] : STARTUPS[i];
+  const [name, gender, title] = RECRUITER_PEOPLE[i % RECRUITER_PEOPLE.length];
+  const id = `employer-demo-${i + 7}`;
+  const domain = `${slug(company)}.demo`;
+  const track = TRACKS[i % TRACKS.length];
+  return {
+    id, demoTemplate: true, role: 'employer', demo: true, kind: agency ? 'headhunter' : 'company',
+    name, email: `${slug(name)}@${domain}`, title, company,
+    photo: portrait(gender, 60 + i), photoVerified: true,
+    skills: ['Technical recruiting', 'Remote hiring'], languages: ['English'], experienceLevel: 'senior',
+    website: `https://demo.jobsmatchnow.app/company/${slug(company)}`, industry, companySize: size, headquarters: hq,
+    officeLocations: ['Remote', hq], fundingStage: stage,
+    about: `${about} ${agency ? 'We match vetted engineers with funded startups.' : `${stage} startup, fully remote engineering team across US and Southeast Asia time zones.`}`,
+    benefits: ['Remote work', 'Health insurance stipend', 'Learning budget', 'New laptop', agency ? 'Fast feedback' : 'Stock options'],
+    techStack: track.skills, contactName: name, contactEmail: `${slug(name)}@${domain}`,
+    foundedYear: 2016 + (i % 9), calendarLink: `https://demo.jobsmatchnow.app/book/${id}`,
+    linkedinUrl: `https://demo.jobsmatchnow.app/linkedin/${slug(company)}`,
+    specializations: agency ? ['Senior engineers', 'Remote teams', 'Southeast Asia'] : [track.title.replace(/ Engineer$/, ''), 'Remote teams'],
+    regions: ['United States', 'Vietnam', 'Southeast Asia'],
+  };
+}
+
+function makeJob(recruiter, i) {
+  const track = TRACKS[i % TRACKS.length];
+  const lv = LEVELS[1 + (i % 2)];
+  const remote = i % 4 !== 3;
+  const accent = ACCENTS[i % ACCENTS.length];
+  return {
+    id: `j-demo-${i + 1}`, demoTemplate: true, demo: true, employerId: recruiter.id,
+    title: track.job, company: recruiter.company, logo: recruiter.company[0], accent,
+    location: remote ? 'Remote (Southeast Asia)' : 'Ho Chi Minh City', distanceKm: remote ? 0 : 6 + (i % 10),
+    workMode: remote ? 'Remote' : 'Hybrid', ...(remote ? { remoteScope: 'Southeast Asia' } : { hybridDays: 2 }),
+    salary: `${monthly(lv.min)}-${monthly(lv.max)} / month`, salaryRange: { min: lv.min, max: lv.max, currency: 'USD' },
+    type: i % 5 === 4 ? 'Contract' : 'Full-time', experienceLevel: lv.level, seniority: lv.level,
+    requiredSkills: track.skills.slice(0, 4), requiredSkillsDetail: track.skills.slice(0, 4).map((n, k) => ({ name: n, weight: k < 2 ? 3 : 2 })),
+    requiredLanguages: ['English'],
+    description: `Join ${recruiter.company} as a ${track.job.toLowerCase()}. You will own ${track.skills[0]} and ${track.skills[1]} work, ship weekly, and work 4 hours a day with our US team.`,
+    mission: recruiter.about.split('.')[0] + '.',
+    culture: ['Remote first', 'Write it down', 'Ownership'],
+    responseTime: ['< 2 days', '2 days', '< 3 days'][i % 3],
+    applicants: 12 + ((i * 7) % 40), status: 'Active', hiringRadiusKm: 40,
+  };
+}
+
+/** Adds the generated crowd to the seed (users + one job per new recruiter). */
+export function withDemoCrowd(seed, nowMs = Date.now()) {
+  const now = new Date(nowMs);
+  const have = (role) => seed.users.filter((u) => u.role === role && u.demo).length;
+  const newCandidates = [];
+  for (let i = 0; have('candidate') < DEMO_CANDIDATE_TARGET; i += 1) { const c = makeCandidate(i, now); seed.users.push(c); newCandidates.push(c.id); }
+  const newJobs = [];
+  for (let i = 0; have('employer') < DEMO_RECRUITER_TARGET; i += 1) {
+    const r = makeRecruiter(i); seed.users.push(r);
+    const job = makeJob(r, i); seed.jobs.push(job); newJobs.push(job.id);
+  }
+  return { candidateIds: newCandidates, jobIds: newJobs };
+}

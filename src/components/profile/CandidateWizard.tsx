@@ -237,7 +237,9 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
   const skipRest = async () => {
     setSaving(true); setError('');
     try {
-      const payload = { ...stepPayload(4, form, false), ...stepPayload(5, form, true) };
+      // Includes the last step's payload so `onboarding: false` is sent — without it the
+      // wizard reopened at step 1 after "Skip & finish" (found by the sign-up browser test).
+      const payload = { ...stepPayload(4, form, false), ...stepPayload(5, form, false), ...stepPayload(CANDIDATE_STEPS.length - 1, form, true) };
       const { user } = await api.updateProfile(viewer.id, payload as Partial<Person>);
       onDone(user);
     } catch (e) { setError(e instanceof Error ? e.message : 'Save failed'); }

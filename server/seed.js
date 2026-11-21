@@ -1,8 +1,11 @@
 import { withDemoFill } from './demo-fill.js';
+import { withDemoCrowd } from './demo-crowd.js';
 
 export function createSeed() {
   const now = Date.now();
-  return withDemoFill(baseSeed(now), now);
+  const seed = baseSeed(now);
+  const crowd = withDemoCrowd(seed, now); // tops demo profiles up to 50 candidates / 25 recruiters
+  return withDemoFill(seed, now, crowd);
 }
 
 function baseSeed(now) {

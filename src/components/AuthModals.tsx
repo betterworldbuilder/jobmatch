@@ -116,7 +116,9 @@ export function LoginModal({ onClose, onComplete }: { onClose: () => void; onCom
       <div className="auth-divider"><span>test the matching experience</span></div>
       <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!selected) return; setSubmitting('demo'); run(() => authProviders.demo.signIn({ userId: selected })); }}>
         <select className="auth-select" value={selected} onChange={(event) => setSelected(event.target.value)} aria-label="Demo profile">
-          {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} — {profile.role === 'candidate' ? 'Candidate' : 'Recruiter'} (demo)</option>)}
+          {(['candidate', 'employer'] as const).map((r) => <optgroup key={r} label={r === 'candidate' ? 'Candidates' : 'Recruiters'}>
+            {profiles.filter((profile) => (profile.role === 'candidate') === (r === 'candidate')).map((profile) => <option key={profile.id} value={profile.id}>{profile.name}{profile.title ? ` · ${profile.title}` : ''}{profile.company ? `, ${profile.company}` : ''} (demo)</option>)}
+          </optgroup>)}
         </select>
         <button type="submit" className="secondary-button auth-submit" disabled={submitting !== null || !selected}>{submitting === 'demo' ? <Loader2 size={16} className="spin" /> : <>Test demo matching <ArrowRight size={16} /></>}</button>
       </form>

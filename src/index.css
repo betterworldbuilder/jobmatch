@@ -3516,7 +3516,19 @@ img.avatar-mini { object-fit:cover; }
 .js-typed { display:flex; flex-direction:column; gap:6px; }
 .job-status .js-typed input { height:30px; padding:0 8px; border:1px solid rgba(255,255,255,.14); border-radius:8px; background:#0f1d40; color:#fff; font:600 12px 'Manrope'; }
 /* Profile-page card variant (light) */
-.job-status.js-card { margin:14px 0 0; padding:14px 16px; gap:10px; background:#fff; border:1px solid #ece6f2; border-radius:16px; box-shadow:0 6px 18px rgba(20,20,60,.05); }
+.job-status.js-card { margin:0 0 14px; padding:14px 16px; gap:10px; background:#fff; border:1px solid #ece6f2; border-radius:16px; box-shadow:0 6px 18px rgba(20,20,60,.05); }
+/* In the profile page header, between the title and the action buttons. */
+.rp-page-head .job-status.js-card { margin:0 0 0 auto; flex:0 1 400px; min-width:280px; padding:10px 14px; gap:7px; }
+.rp-page-head .job-status.js-card label { flex-direction:row; align-items:center; gap:8px; }
+.rp-page-head .job-status.js-card label > .js-label { width:44px; flex:none; }
+.rp-page-head .job-status.js-card .js-row { flex:1; }
+.rp-page-head .job-status.js-card .js-field select { flex:1; min-width:0; }
+.rp-page-head .job-status.js-card select { height:32px; }
+.rp-page-head .job-status.js-card .js-preview .jsl-kind { display:none; } /* the select already says it */
+.rp-page-head .job-status.js-card .js-preview .jsl { gap:4px 12px; }
+.rp-page-head .job-status.js-card .js-preview:not(:has(.jsl-link, .jsl-text)) { display:none; }
+.rp-head-actions button { white-space:nowrap; }
+@media (max-width: 900px) { .rp-page-head .job-status.js-card { margin:0; width:100%; flex:none; min-width:0; } }
 .js-card-head { display:flex; justify-content:space-between; align-items:center; }
 .js-card-head small { display:inline-flex; align-items:center; gap:4px; color:#7a8296; font-size:11px; font-weight:700; }
 .job-status.js-card .js-label { color:#7a8296; }

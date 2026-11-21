@@ -38,6 +38,8 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
   return <main className="page recruiter-preview-page">
     <header className="rp-page-head">
       <div><span className="overline">Your published candidate profile</span><h1>How Recruiters See You</h1><p>Review the same five-card profile, field visibility, and job-specific match evidence recruiters receive.</p></div>
+      {/* Job status in the page header, next to the actions (private to the member). */}
+      {onViewerSaved && <JobStatusPicker key={`${viewer.id}-${viewer.jobStatus?.kind}-${viewer.jobStatus?.matchId || ''}`} variant="card" viewer={viewer} matches={matches} onSaved={onViewerSaved} onOpen={onOpenMessages} />}
       <div className="rp-head-actions">
         {onDeleteProfile && (confirmingDelete
           ? <span className="settings-confirm"><button className="danger-button" disabled={deleting} onClick={() => void doDelete()}>{deleting ? <Loader2 size={14} className="spin" /> : 'Confirm delete'}</button><button className="text-button" onClick={() => setConfirmingDelete(false)}><X size={14} /></button></span>
@@ -73,7 +75,6 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
         {comparisonJob ? <div className="rp-comparison"><span className="overline">Personalized view</span><strong>{comparisonJob.match.score}% match with {comparisonJob.title}</strong><p>{comparisonJob.match.matchedSkills.length} matching skills · {comparisonJob.match.missingSkills?.length || 0} development gaps · {comparisonJob.match.salaryStatus || 'salary pending'} salary fit</p></div>
           : <div className="rp-comparison neutral"><span className="overline">General recruiter view</span><strong>No fabricated match score</strong><p>Select a matched role to inspect skills, salary, work-mode, and availability compatibility.</p></div>}
         <button className="primary-button wide" onClick={() => onEdit(EDIT_STEPS[activeCard])}>Edit This Card</button>
-        {onViewerSaved && <JobStatusPicker key={`${viewer.id}-${viewer.jobStatus?.kind}-${viewer.jobStatus?.matchId || ''}`} variant="card" viewer={viewer} matches={matches} onSaved={onViewerSaved} onOpen={onOpenMessages} />}
       </aside>
     </section>
   </main>;
