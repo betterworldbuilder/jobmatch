@@ -12,7 +12,9 @@ export function AdminSafetyPage() {
   const [resolutionDrafts, setResolutionDrafts] = useState<Record<string, string>>({});
 
   const [verifications, setVerifications] = useState<PendingVerification[]>([]);
+  const [suggestions, setSuggestions] = useState<Awaited<ReturnType<typeof api.adminSuggestions>>['suggestions']>([]);
   const reload = () => {
+    api.adminSuggestions().then((res) => setSuggestions(res.suggestions)).catch(() => undefined);
     api.adminVerifications().then((res) => setVerifications(res.verifications)).catch(() => undefined);
     api.adminReports('open').then((res) => setReports(res.reports)).catch(() => undefined);
     api.adminSupportRequests('open').then((res) => setRequests(res.requests)).catch(() => undefined);
@@ -47,6 +49,20 @@ export function AdminSafetyPage() {
 
   return <div className="page admin-safety-page">
     <div className="page-title"><div><span className="overline">Admin</span><h1>Safety &amp; Support</h1><p>Fraud/scam reports and customer support requests — open items only.</p></div></div>
+
+    <section className="admin-section">
+      <h3>Improvement suggestions ({suggestions.length})</h3>
+      {suggestions.length === 0 ? <p className="muted">No suggestions yet.</p> : <table className="admin-table">
+        <thead><tr><th>From</th><th>Area</th><th>Importance</th><th>Suggestion</th><th>Sent</th></tr></thead>
+        <tbody>{suggestions.map((s) => <tr key={s.id}>
+          <td>{s.name}<br /><small className="muted">{s.role || ''}{s.email ? ` · ${s.email}` : ''}</small></td>
+          <td>{s.area || '—'}</td>
+          <td>{s.importance === 'blocking' ? 'Blocks them' : s.importance === 'important' ? 'Important' : s.importance === 'nice' ? 'Nice to have' : '—'}</td>
+          <td>{s.message}</td>
+          <td>{fmt(s.createdAt)}</td>
+        </tr>)}</tbody>
+      </table>}
+    </section>
 
     <section className="admin-section">
       <h3>Photo verification requests ({verifications.length})</h3>

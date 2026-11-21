@@ -3502,6 +3502,32 @@ img.avatar-mini { object-fit:cover; }
 .rp-contact-wrap .tp-contact { margin-top:0; padding-top:0; border-top:0; align-items:center; text-align:center; }
 .rp-contact-wrap .tp-contact-bar { justify-content:center; }
 
+/* ---- Feedback page ---- */
+.fb-page { max-width:760px; }
+.fb-card { margin-top:18px; padding:24px; border:1px solid var(--line); border-radius:20px; background:#fff; }
+.fb-card form { display:flex; flex-direction:column; gap:16px; }
+.fb-card h2 { margin:0; display:flex; align-items:center; gap:8px; font:800 18px 'Manrope'; color:var(--ink); }
+.fb-card h2 svg { color:#eab308; }
+.fb-field { display:flex; flex-direction:column; align-items:stretch; gap:6px; border:0; padding:0; margin:0; width:100%; text-align:left; }
+.fb-field select,.fb-field textarea { width:100%; box-sizing:border-box; }
+.fb-chips { justify-content:flex-start; }
+.fb-field>span,.fb-field legend { font-weight:800; font-size:14px; color:var(--ink); }
+.fb-field small { font-weight:500; color:var(--muted); }
+.fb-field select,.fb-field textarea { padding:10px 12px; border:1px solid var(--line); border-radius:12px; font:500 14px 'Manrope'; background:#fff; }
+.fb-field textarea { resize:vertical; min-height:120px; }
+.fb-field select:focus,.fb-field textarea:focus { outline:2px solid #fd267a; outline-offset:1px; }
+.fb-count { align-self:flex-end; }
+.fb-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+.fb-chips button { padding:8px 14px; border:1px solid var(--line); border-radius:999px; background:#fff; font-weight:800; font-size:13px; color:var(--ink); }
+.fb-chips button.on { border-color:#fd267a; background:#fff0f5; color:#d81b67; }
+.fb-check { display:flex; align-items:center; gap:8px; font-size:14px; color:#4a5265; }
+.fb-check input { width:18px; height:18px; accent-color:#fd267a; }
+.fb-submit { align-self:flex-start; width:auto; padding:0 24px; }
+.fb-done { display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; padding:20px 0; }
+.fb-done>span { width:52px; height:52px; display:grid; place-items:center; border-radius:50%; background:#e9f9f0; color:#16794a; }
+.fb-done h2 { margin:0; font:800 22px 'Manrope'; }
+.fb-done p { margin:0 0 8px; color:#4a5265; }
+
 /* ---- "Use your chatbot here" page ---- */
 .cb-page { max-width:1060px; }
 .cb-card { margin-top:18px; padding:20px; border:1px solid var(--line); border-radius:20px; background:#fff; }

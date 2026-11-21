@@ -26,7 +26,8 @@ export const api = {
     if (!response.ok) throw new Error(body.error || 'Banner image upload failed');
     return body;
   },
-  submitFeedback: (payload: { type: 'review' | 'suggestion'; message: string; name?: string; role?: string; rating?: number }) => request<{ ok: boolean; pending?: boolean }>('/api/feedback', { method: 'POST', body: JSON.stringify(payload) }),
+  adminSuggestions: () => request<{ suggestions: { id: string; message: string; area: string | null; importance: string | null; createdAt: number; name: string; role: string | null; email: string | null }[] }>('/api/admin/suggestions'),
+  submitFeedback: (payload: { type: 'review' | 'suggestion'; message: string; name?: string; role?: string; rating?: number; area?: string; importance?: 'nice' | 'important' | 'blocking'; contactOk?: boolean }) => request<{ ok: boolean; pending?: boolean }>('/api/feedback', { method: 'POST', body: JSON.stringify(payload) }),
   authProfiles: () => request<{ profiles: SessionUser[] }>('/api/auth/profiles'),
   login: (userId: string) => request<{ user: SessionUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ userId }) }),
   loginPassword: (email: string, password: string) => request<{ user: SessionUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),

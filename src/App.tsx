@@ -4,7 +4,7 @@ import { SupportModal } from './components/SupportModal';
 import { ReportModal } from './components/ReportModal';
 import { ConductModal } from './components/ConductModal';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react';
-import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
 import { apiBase } from './api';
 import { Capacitor } from '@capacitor/core';
@@ -57,6 +57,7 @@ import { CandidateReport, RecruiterReport } from './components/home/ReportSectio
 import { AiAnalyst, AiAnalystInline } from './components/home/AiAnalyst';
 import { CandidateSubscription } from './components/home/CandidateSubscription';
 import { ChatbotPage } from './components/home/ChatbotPage';
+import { FeedbackPage } from './components/home/FeedbackPage';
 import type { Bootstrap, Job, JobMatch, Message, Person, Role, ScheduledCall, SessionUser, View } from './types';
 
 type NotificationItem = {
@@ -100,12 +101,13 @@ const candidateNav: NavItem[] = [
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: 'Subscription', icon: CreditCard, view: 'billing' },
   { label: 'Use your chatbot here', short: 'Chatbot', icon: Bot, view: 'assistant' },
+  { label: 'Feedback', icon: Lightbulb, view: 'feedback' },
 ];
 // One colour per menu item, so each section is easy to spot.
 const NAV_COLORS: Record<string, string> = {
   Home: '#ff6d9c', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
-  Subscription: '#fbbf24', 'Use your chatbot here': '#c084fc', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
+  Subscription: '#fbbf24', 'Use your chatbot here': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
   'Coffee Invitations': '#e0a96d',
 };
 const employerNav: NavItem[] = [
@@ -120,6 +122,7 @@ const employerNav: NavItem[] = [
   { label: 'Subscription', icon: CreditCard, view: 'billing' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: 'Use your chatbot here', short: 'Chatbot', icon: Bot, view: 'assistant' },
+  { label: 'Feedback', icon: Lightbulb, view: 'feedback' },
 ];
 
 async function connectLinkedIn() {
@@ -519,6 +522,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'jobs') return <Jobs data={data} reload={reload} onAddJobs={onAddJobs} manualJobRequest={manualJobRequest} onOpenMessages={onOpenMessages} editJobId={editJobId} />;
   if (view === 'matches') return <Matches data={data} navigate={navigate} onOpenMessages={onOpenMessages} />;
   if (view === 'assistant') return <ChatbotPage data={data} navigate={navigate} />;
+  if (view === 'feedback') return <FeedbackPage data={data} />;
   if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'selected') return <SelectedCandidates data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'coffee') return <CoffeeInvitations data={data} onOpenMessages={onOpenMessages} />;

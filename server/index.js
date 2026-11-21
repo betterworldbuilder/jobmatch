@@ -435,10 +435,30 @@ app.post('/api/feedback', feedbackLimiter, async (req, res, next) => {
     const name = optString(req.body, 'name', { max: 80 });
     const role = optString(req.body, 'role', { max: 80 });
     const rating = type === 'review' ? Math.max(1, Math.min(5, Math.round(Number(req.body.rating) || 5))) : undefined;
+    // In-app suggestion form: area, importance, and (when signed in) who sent it + consent to be contacted.
+    const area = type === 'suggestion' ? optString(req.body, 'area', { max: 60 }) : undefined;
+    const importance = type === 'suggestion' && ['nice', 'important', 'blocking'].includes(req.body.importance) ? req.body.importance : undefined;
+    const session = authSession(req);
+    const fromUserId = type === 'suggestion' && session ? session.sub : undefined;
+    const contactOk = type === 'suggestion' && req.body.contactOk === true && Boolean(fromUserId);
     // New submissions are held for moderation — never shown until approved.
-    const entry = { id: `fb-${crypto.randomUUID().slice(0, 8)}`, type, name: name || 'Anonymous', role, rating, message, approved: false, createdAt: Date.now() };
+    const entry = { id: `fb-${crypto.randomUUID().slice(0, 8)}`, type, name: name || 'Anonymous', role, rating, message, approved: false, createdAt: Date.now(),
+      ...(area ? { area } : {}), ...(importance ? { importance } : {}), ...(fromUserId ? { fromUserId, contactOk } : {}) };
     await store.transaction((db) => { db.feedback = Array.isArray(db.feedback) ? db.feedback : []; db.feedback.push(entry); });
     res.status(201).json({ ok: true, pending: true });
+  } catch (error) { next(error); }
+});
+
+// Admin (signed-in admin role): improvement suggestions from the in-app Feedback page, newest first.
+app.get('/api/admin/suggestions', async (req, res, next) => {
+  try {
+    requireAdminRole(authSession(req));
+    const db = await store.read();
+    const items = (db.feedback || []).filter((f) => f.type === 'suggestion').slice().reverse().map((f) => {
+      const u = f.fromUserId ? db.users.find((x) => x.id === f.fromUserId) : null;
+      return { id: f.id, message: f.message, area: f.area || null, importance: f.importance || null, createdAt: f.createdAt, name: u?.name || f.name, role: u?.role || f.role || null, email: f.contactOk ? u?.email || null : null };
+    });
+    res.json({ suggestions: items });
   } catch (error) { next(error); }
 });
 
