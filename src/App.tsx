@@ -95,7 +95,7 @@ const candidateNav: NavItem[] = [
   // "Find My Match" (the swipe deck + Recommended Roles) is the page the app opens on.
   { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
   // Home: my profile card + Today panel at the top, then matches, likes, conversations.
-  { label: 'Home', icon: Compass, anchor: 'td-today' },
+  { label: 'Things to do', short: 'To do', icon: Compass, anchor: 'td-today' },
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'Saved', icon: BookmarkIcon, view: 'saved' },
   { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
@@ -109,13 +109,13 @@ const candidateNav: NavItem[] = [
 ];
 // One colour per menu item, so each section is easy to spot.
 const NAV_COLORS: Record<string, string> = {
-  Home: '#ff6d9c', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
+  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
   Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
   'Coffee Invitations': '#e0a96d',
 };
 const employerNav: NavItem[] = [
-  { label: 'Home', icon: Compass, view: 'home' },
+  { label: 'Things to do', short: 'To do', icon: Compass, view: 'home' },
   { label: 'My JobMatches', icon: BriefcaseBusiness, anchor: 'td-roles' },
   { label: 'Selected Candidates', short: 'Candidates', icon: Users, view: 'selected' },
   { label: 'Saved', icon: BookmarkIcon, view: 'saved' },
