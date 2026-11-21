@@ -32,6 +32,8 @@ import { AdminSafetyPage } from './components/billing/AdminSafetyPage';
 import { AdminJobsPage } from './components/billing/AdminJobsPage';
 import { AdminActionQueuePage } from './components/billing/AdminActionQueuePage';
 import { NotesBox } from './components/NotesBox';
+import { useDiscoverDeck } from './components/discover/useDiscoverDeck';
+import { EmptyDeck, MatchModal, SalaryBadge } from './components/discover/DeckParts';
 // Lazy-loaded: pulls in pdf.js only when a resume is actually opened.
 const ResumeViewerModal = lazy(() => import('./components/ResumeViewerModal').then((m) => ({ default: m.ResumeViewerModal })));
 import { JobEditor } from './components/jobs/JobEditor';
@@ -562,73 +564,12 @@ function ReadyChecklist({ viewer, onEditProfile }: { viewer: Person; onEditProfi
 }
 
 function Discover({ role, data, setData, navigate, onEditProfile }: { role: Role; data: Bootstrap; setData: (d: Bootstrap) => void; navigate: (v: View) => void; onEditProfile: (step: number) => void }) {
-  const [index, setIndex] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [match, setMatch] = useState<JobMatch | null>(null);
+  const { deck, index, setIndex, current, next, busy, match, setMatch, screeningFor, setScreeningFor, commitSwipe, act, undo, radius, setRadius, query, setQuery, filterMode, setFilterMode, filterType, setFilterType, minScore, setMinScore, filtersActive } = useDiscoverDeck(role, data, setData);
   const [resumeFor, setResumeFor] = useState<Person | null>(null);
   const [jobDetail, setJobDetail] = useState<Job | null>(null);
-  const [screeningFor, setScreeningFor] = useState<Job | null>(null);
   const matchedCandidateIds = useMemo(() => new Set(data.matches.map((item) => item.candidateId)), [data.matches]);
-  const [radius, setRadius] = useState(25);
-  const [query, setQuery] = useState('');
-  const [filterMode, setFilterMode] = useState('');
-  const [filterType, setFilterType] = useState('');
-  // Recruiters only see candidates worth considering by default — 80%+ fit.
-  const [minScore, setMinScore] = useState(role === 'employer' ? 80 : 0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const scoreOptions = role === 'employer' ? [0, 50, 70, 80] : [0, 50, 70, 85];
-  const filtersActive = Boolean(query.trim() || filterMode || filterType || minScore > 0);
-  const rawDeck = role === 'candidate' ? data.jobs : data.candidates;
-  // Remote roles are never gated by the distance slider — only place-based ones.
-  const inRadius = rawDeck.filter((item) => ('workMode' in item && (item as Job).workMode === 'Remote') || item.distanceKm === undefined || item.distanceKm <= radius);
-  const matchesSearch = (item: Job | Person) => {
-    if (!query.trim()) return true;
-    const q = query.toLowerCase();
-    const hay = role === 'candidate'
-      ? [(item as Job).title, (item as Job).company, (item as Job).location, ...((item as Job).requiredSkills || [])]
-      : [(item as Person).name, (item as Person).title, (item as Person).location, ...((item as Person).skills || [])];
-    return hay.filter(Boolean).join(' ').toLowerCase().includes(q);
-  };
-  const passesFilters = (item: Job | Person) => {
-    if ((item.match?.score ?? 0) < minScore) return false;
-    if (role === 'candidate') { const j = item as Job; if (filterMode && j.workMode !== filterMode) return false; if (filterType && j.type !== filterType) return false; }
-    return true;
-  };
-  const filtered = inRadius.filter(matchesSearch).filter(passesFilters).sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
-  // Candidates get a curated Top 3 daily — unless they're actively searching/filtering.
-  const deck = role === 'candidate' && !filtersActive ? filtered.slice(0, 3) : filtered;
-  useEffect(() => setIndex(0), [radius, role, query, filterMode, filterType, minScore]);
-  const current = deck[index];
-  const next = deck[index + 1];
-  const commitSwipe = async (direction: 'like' | 'pass', target: Job | Person, opts?: { superLike?: boolean; answers?: ScreeningAnswer[] }) => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const result = await api.swipe({ actorId: data.viewer.id, targetId: target.id, targetType: role === 'candidate' ? 'job' : 'candidate', direction, superLike: opts?.superLike || undefined, answers: opts?.answers?.length ? opts.answers : undefined });
-      if (result.match) setMatch(result.match);
-      setData({ ...data, likesRemaining: result.likesRemaining ?? data.likesRemaining - (direction === 'like' ? 1 : 0) });
-      setIndex((value) => value + 1);
-    } catch (e) { alert(e instanceof Error ? e.message : 'Swipe failed'); }
-    finally { setBusy(false); }
-  };
-  const act = (direction: 'like' | 'pass', superLike = false) => {
-    if (!current || busy) return;
-    // Item 11: a plain right-swipe on a job with screening questions pauses for the 30-second form.
-    if (direction === 'like' && !superLike && role === 'candidate' && (current as Job).screeningQuestions?.length) { setScreeningFor(current as Job); return; }
-    void commitSwipe(direction, current, { superLike });
-  };
-  // Rewind/Undo: take back the last swipe (removes it server-side, incl. any match).
-  const undo = async () => {
-    if (index === 0 || busy) return;
-    setBusy(true);
-    try {
-      await api.undoSwipe(data.viewer.id);
-      const fresh = await api.bootstrap(data.viewer.id);
-      setData(fresh);
-      setIndex((value) => Math.max(0, value - 1));
-    } catch (e) { alert(e instanceof Error ? e.message : 'Undo failed'); }
-    finally { setBusy(false); }
-  };
   // Item 10: after a gap skill is added, re-bootstrap so every fit score recalculates live.
   const refreshScores = () => api.bootstrap(data.viewer.id).then(setData).catch(() => undefined);
   const [asking, setAsking] = useState(false);
@@ -694,35 +635,6 @@ function SwipeCard({ item, role, resumeUnlocked }: { item: Job | Person; role: R
   </motion.article>;
 }
 
-const SALARY_BADGES: Record<string, { label: string; tone: string }> = {
-  within: { label: 'Within your expected range', tone: 'good' },
-  above: { label: 'Above your expected range', tone: 'info' },
-  below: { label: 'Below your minimum', tone: 'bad' },
-  unknown: { label: 'Salary revealed after match', tone: 'muted' },
-};
-
-function SalaryBadge({ status }: { status?: string }) {
-  const badge = SALARY_BADGES[status || 'unknown'] || SALARY_BADGES.unknown;
-  return <span className={`salary-badge salary-${badge.tone}`}>{badge.label}</span>;
-}
-
-const CONFETTI_COLORS = ['#fd267a', '#ff4458', '#ff6036', '#0a66c2', '#00a0dc', '#f5c518', '#20b46a'];
-
-/** Item 16: dependency-free confetti burst behind the "It's a Match" modal. */
-function Confetti() {
-  const pieces = useMemo(() => Array.from({ length: 60 }, (_, index) => ({
-    left: Math.random() * 100,
-    delay: Math.random() * 0.7,
-    duration: 2.4 + Math.random() * 1.6,
-    size: 6 + Math.random() * 7,
-    color: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
-    spin: Math.random() > 0.5 ? 1 : -1,
-  })), []);
-  return <div className="confetti" aria-hidden="true">
-    {pieces.map((piece, index) => <i key={index} style={{ left: `${piece.left}%`, width: piece.size, height: piece.size * 0.45, background: piece.color, animationDelay: `${piece.delay}s`, animationDuration: `${piece.duration}s`, ['--spin' as string]: piece.spin }} />)}
-  </div>;
-}
-
 /** Item 14: straight-line distance → motorbike commute estimate (~30 km/h city average). */
 function motorbikeMinutes(distanceKm: number) { return Math.max(3, Math.round(distanceKm * 2)); }
 
@@ -732,15 +644,6 @@ function workModeLabel(job: Job) {
   if (job.workMode === 'Hybrid') return job.hiringRadiusKm ? `Hybrid · within ${job.hiringRadiusKm} km` : 'Hybrid';
   return job.workMode; // On-site, Flexible
 }
-/** Distance/commute only makes sense when the role needs physical presence. */
-function showsCommute(job: Job) { return job.workMode !== 'Remote' && job.distanceKm !== undefined; }
-
-function formatRange(range?: { min: number; max: number; currency: string }) {
-  if (!range) return null;
-  const compact = (value: number) => (value >= 1000 && value % 1000 === 0 ? `${value / 1000}k` : value.toLocaleString());
-  return `${compact(range.min)}–${compact(range.max)} ${range.currency}`;
-}
-
 /** Back of the flip card: per-factor score breakdown with evidence lines. */
 function FitBreakdown({ item, role, onBack }: { item: Job | Person; role: Role; onBack: () => void }) {
   const match = item.match;
@@ -847,64 +750,6 @@ function CardSummary({ item, role, detailed = false, onOpenResume, resumeUnlocke
       </>}
     </div>
   </>;
-}
-
-function EmptyDeck({ role, onReset }: { role: Role; onReset: () => void }) {
-  if (role === 'candidate') return <div className="empty-deck"><div><Check /></div><h2>That’s your Top 3 for today</h2><p>Quality over volume: a fresh, curated batch of matches lands tomorrow.</p><button className="primary-button" onClick={onReset}><RotateCcw size={16} />Review again (demo)</button></div>;
-  return <div className="empty-deck"><div><Check /></div><h2>You’re all caught up</h2><p>We’ll bring you fresh recommendations as soon as the fit is strong enough.</p><button className="primary-button" onClick={onReset}><RotateCcw size={16} />Review again</button></div>;
-}
-
-function MatchModal({ match, viewer, onClose, onMessage }: { match: JobMatch; viewer: Person; onClose: () => void; onMessage: () => void }) {
-  const counterpart = viewer.role === 'candidate' ? (match.employer?.name || match.job?.company || 'The team') : (match.candidate?.name || 'The candidate');
-  const jobRange = formatRange(match.job?.salaryRange);
-  const candidateRange = formatRange(viewer.role === 'candidate' ? viewer.preferences?.salary as { min: number; max: number; currency: string } | undefined : match.candidate?.preferences?.salary as { min: number; max: number; currency: string } | undefined);
-  // Item 13: tailored conversation starters from the profile/job overlap.
-  const [icebreakers, setIcebreakers] = useState<string[]>([]);
-  const [sendingIdx, setSendingIdx] = useState(-1);
-  useEffect(() => { api.matchIcebreakers(match.id).then((result) => setIcebreakers(result.icebreakers)).catch(() => undefined); }, [match.id]);
-  const sendIcebreaker = async (text: string, index: number) => {
-    setSendingIdx(index);
-    try { await api.message({ matchId: match.id, senderId: viewer.id, text }); onMessage(); }
-    catch { setSendingIdx(-1); }
-  };
-  // Item 16: celebrate the moment — haptics on native builds.
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    import('@capacitor/haptics').then(({ Haptics, ImpactStyle }) => Haptics.impact({ style: ImpactStyle.Heavy })).catch(() => undefined);
-  }, []);
-  const candidateName = match.candidate?.name || viewer.name;
-  return <motion.div className="modal-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><Confetti /><motion.div className="match-modal" initial={{ y: 30, scale: .96 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: .96 }}><button className="modal-close on-dark" onClick={onClose}><X /></button>
-    <div className="match-hero">
-      <div className="match-script">It&rsquo;s a Match!</div>
-      <p className="match-sub">You and {counterpart.split(' ')[0]} have mutually matched.</p>
-      <div className="match-faces">
-        <div className="match-face"><img src={match.candidate?.photo || viewer.photo} alt="" /><strong>{candidateName}</strong><span>{match.candidate?.title || viewer.title}</span></div>
-        <span className="match-heart-mid"><Heart size={20} fill="currentColor" /></span>
-        <div className="match-face">
-          {match.employer?.photo ? <img src={match.employer.photo} alt="" /> : match.job ? <CompanyLogoMark job={match.job} /> : <div className="match-face-logo"><BriefcaseBusiness /></div>}
-          <strong>{match.employer?.name || match.job?.company || counterpart}</strong>
-          {match.employer && match.job ? <div className="match-badge job-match-badge"><CompanyLogoMark job={match.job} small /><span>{match.employer.title || `Recruiter at ${match.job.company}`}</span></div> : match.job?.title && <span>{match.job.title}</span>}
-          {match.employer && <em className="match-tag"><b>Role</b> &middot; Recruiter</em>}
-        </div>
-      </div>
-    </div>
-    <div className="match-body">
-      {(jobRange || candidateRange) && <div className="salary-reveal">
-        <span className="overline">Mutual salary reveal</span>
-        <div className="salary-reveal-rows">
-          {jobRange && <div><small>{match.job?.title || 'Role'} offers</small><strong>{jobRange}</strong></div>}
-          {candidateRange && <div><small>{viewer.role === 'candidate' ? 'Your expectation' : `${match.candidate?.name?.split(' ')[0]}'s expectation`}</small><strong>{candidateRange}</strong></div>}
-        </div>
-        <p>Both ranges are now visible to both sides — at the same time.</p>
-      </div>}
-      {icebreakers.length > 0 && <div className="icebreakers">
-        <span className="overline">Break the ice</span>
-        {icebreakers.map((text, index) => <button key={text} className="icebreaker" disabled={sendingIdx >= 0} onClick={() => sendIcebreaker(text, index)}>{sendingIdx === index ? <Loader2 size={13} className="spin" /> : <Send size={13} />}<span>{text}</span></button>)}
-      </div>}
-      <button className="primary-button" onClick={onMessage}><MessageCircle size={17} />Let&rsquo;s Talk</button>
-      <button className="secondary-button match-keep-swiping" onClick={onClose}>Keep Swiping</button>
-    </div>
-  </motion.div></motion.div>;
 }
 
 function Pipeline({ data, setData }: { data: Bootstrap; setData: (d: Bootstrap) => void }) {

@@ -11,6 +11,7 @@ import { CompanyLogoMark, JobHeaderBadge } from '../jobs/JobHeaderBadge';
 import { NotesBox } from '../NotesBox';
 import { DemoBadge } from '../DemoBadge';
 import { CANDIDATE_OFFERS, LaunchOffers } from '../LaunchOffers';
+import { NewMatchesSection } from './NewMatchesSection';
 
 type HomeProps = {
   data: Bootstrap;
@@ -278,6 +279,8 @@ export function CandidateHome({ data, setData, navigate, onEditProfile }: HomePr
         <span><metric.icon size={15} /></span><small>{metric.label}</small><strong>{metric.value}</strong><p>{metric.note}</p><b>{metric.action}<ArrowRight size={10} /></b>
       </button>)}
     </section>
+
+    <NewMatchesSection data={data} setData={setData} navigate={navigate} header={<DashboardTitle icon={Sparkles} title="Look for new matches" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
 
     <section className="td-section" id="td-matches">
       <DashboardTitle icon={Heart} title="Job Matches" subtitle="You and these teams both said yes — start the conversation." action={`See all (${matchedJobs.length})`} onAction={() => navigate('matches')} />

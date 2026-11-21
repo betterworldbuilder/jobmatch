@@ -13,7 +13,7 @@
     "start": "NODE_ENV=production node server/index.js",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "node --test server/*.test.js",
+    "test": "node --test server/*.test.js src/components/*/*.test.mjs",
     "seed:reset": "rm -f data/db.json && echo 'Database reset. It will be re-seeded on next server start.'",
     "mobile:sync": "npm run build && npx cap sync",
     "mobile:ios": "npm run mobile:sync && npx cap open ios",
