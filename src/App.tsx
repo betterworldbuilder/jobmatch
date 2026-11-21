@@ -55,6 +55,7 @@ import { installAdminHotkey, trackView } from './lib/tracker';
 import { scoreOf } from './lib/report';
 import { CandidateReport, RecruiterReport } from './components/home/ReportSections';
 import { AiAnalyst, AiAnalystInline } from './components/home/AiAnalyst';
+import { CandidateSubscription } from './components/home/CandidateSubscription';
 import type { Bootstrap, Job, JobMatch, Message, Person, Role, ScheduledCall, SessionUser, View } from './types';
 
 type NotificationItem = {
@@ -96,6 +97,7 @@ const candidateNav: NavItem[] = [
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
   { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
+  { label: 'Subscription', icon: CreditCard, view: 'billing' },
 ];
 const employerNav: NavItem[] = [
   { label: 'Home', icon: Compass, view: 'home' },
@@ -274,7 +276,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
         <header>
           <h2 className="pricing-side-tag">For candidates</h2>
           <h3>Free forever</h3>
-          <p>Everything below is free, with no paid tier waiting to appear. We are paid by the companies doing the hiring — never by the people looking for work.</p>
+          <p>Everything below is free forever — the core never goes behind a paywall. We are paid by the companies doing the hiring. An optional Premium for candidates (3 target roles + 10 direct messages, $10/month) is coming soon.</p>
         </header>
         <ul className="pricing-side-perks">
           <li><Check size={15} /> Full profile and resume</li>
@@ -509,6 +511,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'selected') return <SelectedCandidates data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'coffee') return <CoffeeInvitations data={data} onOpenMessages={onOpenMessages} />;
+  if (view === 'billing' && role === 'candidate') return <CandidateSubscription data={data} navigate={navigate} />;
   if (view === 'billing') return <BillingPage data={data} setData={setData} paymentResult={paymentResult} onDismissResult={onDismissResult} />;
   if (role === 'candidate') return <CandidateProfilePage
     viewer={data.viewer} jobs={data.jobs} onEdit={onEditProfile} initialCard={profileCard} onCardChange={onProfileCardChange}

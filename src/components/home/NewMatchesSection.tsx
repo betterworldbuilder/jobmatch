@@ -147,7 +147,7 @@ export function DirectMessageSheet({ job, viewerId, canLike, busy, onClose, onSe
   const [interest, setInterest] = useState<'idle' | 'busy' | 'done'>('idle');
   const ask = async () => {
     setInterest('busy');
-    try { await api.registerInterest(viewerId, 'direct-messages-plus'); setInterest('done'); } catch { setInterest('idle'); }
+    try { await api.registerInterest(viewerId, 'candidate-premium'); setInterest('done'); } catch { setInterest('idle'); }
   };
   return <div className="modal-scrim" onClick={onClose}>
     <div className="ai-setup nm-dm" role="dialog" aria-modal="true" aria-label="Direct message" onClick={(e) => e.stopPropagation()}>
@@ -159,10 +159,10 @@ export function DirectMessageSheet({ job, viewerId, canLike, busy, onClose, onSe
       <small className="tp-muted-small">{note.length}/280</small>
       <div className="nm-dm-options">
         <div className="nm-dm-opt">
-          <strong>Direct messages+ <span>$5 / month · 10 direct messages</span></strong>
+          <strong>Premium <span>$10 / month · 10 direct messages + 3 target roles</span></strong>
           <small>Your message reaches the team right away, before any match.</small>
-          {interest === 'done' ? <p className="tp-thanks"><Check size={15} /> Saved — we'll tell you when Direct messages+ opens. Nothing was charged.</p>
-            : <button type="button" className="fm-black" disabled={interest === 'busy'} onClick={() => void ask()}>{interest === 'busy' ? 'Saving…' : 'Get Direct messages+'}</button>}
+          {interest === 'done' ? <p className="tp-thanks"><Check size={15} /> Saved — we'll tell you when Premium opens. Nothing was charged.</p>
+            : <button type="button" className="fm-black" disabled={interest === 'busy'} onClick={() => void ask()}>{interest === 'busy' ? 'Saving…' : 'Get Premium — notify me'}</button>}
         </div>
         <div className="nm-dm-opt free">
           <strong>Free today: send it with a Super Like</strong>

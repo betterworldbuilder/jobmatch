@@ -49,7 +49,7 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
   const [interest, setInterest] = useState<'idle' | 'busy' | 'done'>('idle');
   const askInterest = async () => {
     setInterest('busy');
-    try { await api.registerInterest(v.id, 'target-roles-plus'); setInterest('done'); }
+    try { await api.registerInterest(v.id, 'candidate-premium'); setInterest('done'); }
     catch (e) { setInterest('idle'); alert(e instanceof Error ? e.message : 'Could not save'); }
   };
   const completeness = v.completeness ?? 0;
@@ -189,10 +189,11 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
       <div className="ai-setup" role="dialog" aria-modal="true" aria-label="Add target roles" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="fm-x" aria-label="Close" onClick={() => setRolesOpen(false)}><X size={18} /></button>
         <h2><Target size={22} /> Target more roles</h2>
-        <p>Your first target role is free. <b>Target roles+</b> lets you search up to <b>3 roles at once</b> (for example Backend Engineer, Platform Engineer and Tech Lead), each with its own matches and report.</p>
-        <div className="tp-price"><strong>$5</strong><span>/ month · up to 3 target roles · cancel any time</span></div>
-        {interest === 'done' ? <p className="tp-thanks"><Check size={16} /> Thanks — we saved your interest and will tell you when Target roles+ opens. Nothing was charged.</p>
-          : <button type="button" className="fm-black" disabled={interest === 'busy'} onClick={() => void askInterest()}>{interest === 'busy' ? 'Saving…' : 'Get Target roles+'}</button>}
+        <p>Your first target role is free. <b>Premium</b> lets you search up to <b>3 roles at once</b> (for example Backend Engineer, Platform Engineer and Tech Lead), each with its own matches and report — plus <b>10 direct messages</b> a month.</p>
+        <div className="tp-price"><strong>$10</strong><span>/ month · 3 target roles + 10 direct messages · cancel any time</span></div>
+        {interest === 'done' ? <p className="tp-thanks"><Check size={16} /> Thanks — we saved your interest and will tell you when Premium opens. Nothing was charged.</p>
+          : <button type="button" className="fm-black" disabled={interest === 'busy'} onClick={() => void askInterest()}>{interest === 'busy' ? 'Saving…' : 'Get Premium — notify me'}</button>}
+        <button type="button" className="tp-link" onClick={() => { setRolesOpen(false); navigate('billing'); }}>See plans <ArrowRight size={13} /></button>
         <p className="ai-privacy">Payments for candidates are not open yet: this records your interest only.</p>
       </div>
     </div>}

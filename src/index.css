@@ -3477,6 +3477,31 @@ img.avatar-mini { object-fit:cover; }
 .rp-contact-wrap .tp-contact { margin-top:0; padding-top:0; border-top:0; align-items:center; text-align:center; }
 .rp-contact-wrap .tp-contact-bar { justify-content:center; }
 
+/* ---- Candidate subscription: Free forever + Premium ($10/month) ---- */
+.cs-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
+.cs-card { border:1px solid var(--line); border-radius:22px; overflow:hidden; background:#f4f6fb; display:flex; flex-direction:column; }
+.cs-card>header { display:flex; align-items:center; justify-content:space-between; padding:18px 22px; background:#0a78ff; color:#fff; font:800 20px 'Manrope'; letter-spacing:.02em; text-transform:uppercase; }
+.cs-card>header span { display:inline-flex; align-items:center; gap:8px; }
+.cs-card.premium>header { background:linear-gradient(110deg,#fd267a,#ff6036); }
+.cs-card>header em { font-style:normal; font-size:12px; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,.25); text-transform:none; letter-spacing:0; }
+.cs-body { padding:22px; display:flex; flex-direction:column; gap:12px; flex:1; }
+.cs-body h2 { margin:0; display:flex; align-items:baseline; gap:10px; font:800 30px 'Manrope'; color:var(--ink); }
+.cs-body h2 small { font-size:15px; color:var(--muted); font-weight:700; }
+.cs-current { font-style:normal; font-size:12px; padding:3px 10px; border-radius:999px; background:#e9f9f0; color:#16794a; }
+.cs-body>p { margin:0; font-size:14px; color:#4a5265; line-height:1.5; }
+.cs-body ul { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; }
+.cs-body li { display:flex; gap:8px; align-items:flex-start; font-size:14px; color:var(--ink); }
+.cs-body li svg { flex:none; color:#0a78ff; margin-top:2px; }
+.cs-card.premium li svg { color:#fd267a; }
+.cs-highlights { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.cs-highlights div { display:flex; flex-direction:column; gap:2px; padding:12px; border-radius:14px; background:#fff; border:1px solid #f3d3df; }
+.cs-highlights svg { color:#fd267a; }
+.cs-highlights strong { font-size:15px; color:var(--ink); }
+.cs-highlights small { font-size:12px; color:var(--muted); }
+.cs-body .secondary-button,.cs-body .fm-black { margin-top:auto; align-self:flex-start; }
+.cs-body .fm-black { align-self:stretch; }
+@media (max-width:900px) { .cs-grid { grid-template-columns:1fr; } .cs-body ul { grid-template-columns:1fr; } }
+
 /* ---- Target roles upsell + personal AI agent + AI analyst chat (mockup) ---- */
 .tp-locked { margin:8px 0 0; font-size:12px; color:var(--muted); }
 .tp-setting-actions { display:flex; align-items:center; gap:12px; margin-top:10px; }
