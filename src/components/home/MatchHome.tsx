@@ -14,6 +14,7 @@ import { CANDIDATE_OFFERS, LaunchOffers } from '../LaunchOffers';
 import { NewMatchesSection } from './NewMatchesSection';
 import { FindMatches } from '../findmatches/FindMatches';
 import { featureOn } from '../../lib/flags';
+import { TodayPanel } from './TodayPanel';
 
 type HomeProps = {
   data: Bootstrap;
@@ -209,27 +210,12 @@ export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMe
   </div>;
 
   return <main className="td-dashboard td-candidate">
-    {/* First thing a candidate sees: the default landing view (sidebar "Look for new Matches"). */}
+    {/* Profile + today: summary, urgent, next interview, search settings. */}
+    <TodayPanel data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onOpenMessages={onOpenMessages} onPreview={() => setPreviewing(true)} onScroll={scrollTo} />
+    {/* Then the swipe deck (sidebar "Look for new Matches"). */}
     {featureOn('findMatches')
       ? <FindMatches role="candidate" data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Look for new Matches" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
       : <NewMatchesSection data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Look for new Matches" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />}
-
-    <section className="td-candidate-hero">
-      <div>
-        <div className="td-hero-greeting-row"><h1>Good morning, {firstName(data.viewer.name)} <span>👋</span></h1>{(data.viewer.demo || data.viewer.sample) && <DemoBadge label={data.viewer.sample ? 'Starter sample account' : 'Demo account — not a real user'} />}</div>
-        <h2>The right roles are already looking for you.</h2>
-        <p>Your profile is {completion}% complete and already matching with {precise.length} relevant opportunities.</p>
-        <div><button className="primary-button" onClick={() => navigate('discover')}>Explore Matches</button><button className="secondary-button" onClick={() => setPreviewing(true)}>Preview as Recruiter</button></div>
-      </div>
-      <aside className="td-profile-strength">
-        <div className="mh-ring" style={{ '--value': `${completion * 3.6}deg` } as React.CSSProperties}><strong>{completion}%</strong></div>
-        <b>Profile strength</b>
-        <span><Eye size={11} /> {Math.max(likesYou.length * 3, 1)} profile views this week</span>
-        <span><Heart size={11} /> {likesYou.length} recruiters interested</span>
-        <small>● Visible to recruiters</small>
-      </aside>
-      <div className="td-hero-faces">{conversations.slice(0, 3).map((match) => <img key={match.id} src={match.employer?.photo || data.viewer.photo} alt="" />)}{conversations.length > 2 && <span>+{conversations.length}</span>}</div>
-    </section>
 
     <LaunchOffers offers={CANDIDATE_OFFERS} compact />
 
@@ -330,7 +316,7 @@ export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMe
   </main>;
 }
 
-export function RecruiterHome({ data, setData, navigate, onAddJobs, onOpenMessages, onEditJob }: HomeProps) {
+export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJobs, onOpenMessages, onEditJob }: HomeProps) {
   const [selected, setSelected] = useState<Person | null>(null);
   const [expandedId, setExpandedId] = useState('');
   const [bestMatchFirst, setBestMatchFirst] = useState(true);
@@ -369,8 +355,9 @@ export function RecruiterHome({ data, setData, navigate, onAddJobs, onOpenMessag
   ];
 
   return <main className="td-dashboard td-recruiter">
+    <TodayPanel data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onOpenMessages={onOpenMessages} onScroll={scrollTo} />
     <header className="td-recruiter-head">
-      <div><div className="td-hero-greeting-row"><h1>Good morning, {firstName(data.viewer.name)} <span>👋</span></h1>{(data.viewer.demo || data.viewer.sample) && <DemoBadge label={data.viewer.sample ? 'Starter sample account' : 'Demo account — not a real recruiter'} />}</div><p>Here’s who loves your jobs today.</p></div>
+      <div><h1 className="td-recruiter-title">Your roles today</h1><p>Here’s who loves your jobs today.</p></div>
       <button className="primary-button" onClick={onAddJobs}>+ Add New Job Offers</button>
     </header>
 

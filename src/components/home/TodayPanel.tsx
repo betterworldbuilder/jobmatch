@@ -1,0 +1,133 @@
+// Home "Today": the first section of the home page for candidates and recruiters.
+// Profile card (who teams see, completeness, visibility) + summary, urgent actions,
+// next interview and search settings. Every value comes from real records.
+import { useState } from 'react';
+import { AlertCircle, ArrowRight, BadgeCheck, Calendar, Eye, EyeOff, Heart, MessageCircle, Pencil, SlidersHorizontal, Sparkles, User } from 'lucide-react';
+import { api } from '../../api';
+import type { Bootstrap, View } from '../../types';
+import { DemoBadge } from '../DemoBadge';
+import { interviewsThisWeek, likesWaiting, nextInterview, repliesWaiting, salaryLabel, urgentItems, workModeLabel } from '../../lib/today';
+
+type Props = {
+  data: Bootstrap; setData: (d: Bootstrap) => void; navigate: (v: View) => void;
+  onEditProfile: (step: number) => void; onOpenMessages?: (matchId: string) => void;
+  onPreview?: () => void; onScroll?: (id: string) => void;
+};
+
+function greeting(now = new Date()) { const h = now.getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
+
+function ageOf(birthdate?: string) {
+  if (!birthdate) return undefined;
+  const t = new Date(birthdate).getTime();
+  return Number.isNaN(t) ? undefined : Math.floor((Date.now() - t) / (365.25 * 86400000));
+}
+
+export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessages, onPreview, onScroll }: Props) {
+  const v = data.viewer;
+  const candidate = v.role === 'candidate';
+  const [saving, setSaving] = useState(false);
+  const completeness = v.completeness ?? 0;
+  const hidden = v.privacy?.visibility === 'paused';
+  const verified = Boolean(v.photoVerified || v.verified || v.provider === 'google' || v.provider === 'linkedin' || completeness >= 80);
+  const age = candidate && v.agePrivacy === 'public' ? ageOf(v.birthdate) : undefined;
+  const next = nextInterview(data);
+  const urgent = urgentItems(data);
+  const myJobs = data.jobs.filter((j) => j.employerId === v.id);
+  const openRoles = myJobs.filter((j) => !/draft|closed|expired|paused/i.test(String(j.status))).length;
+
+  const toggleVisibility = async () => {
+    setSaving(true);
+    const privacy = { ...(v.privacy || {}), visibility: hidden ? 'all' as const : 'paused' as const };
+    try { await api.updateProfile(v.id, { privacy }); setData({ ...data, viewer: { ...v, privacy } }); }
+    catch (e) { alert(e instanceof Error ? e.message : 'Could not change visibility'); }
+    finally { setSaving(false); }
+  };
+  const openThread = (matchId?: string) => { if (matchId && onOpenMessages) onOpenMessages(matchId); else navigate('messages'); };
+  const doUrgent = (kind: string, matchId?: string) => {
+    if (kind === 'reply') openThread(matchId);
+    else if (kind === 'interview') navigate('stages');
+    else if (kind === 'likes') (candidate ? onScroll?.('td-chasing') : navigate('selected'));
+    else if (kind === 'salary') onEditProfile(2);
+    else onEditProfile(0);
+  };
+
+  const summary = [
+    { icon: Heart, label: 'Matches', value: data.matches.length, onClick: () => (candidate ? onScroll?.('td-matches') : navigate('selected')) },
+    { icon: Sparkles, label: candidate ? 'Recruiters like you' : 'Candidates like you', value: likesWaiting(data), onClick: () => (candidate ? onScroll?.('td-chasing') : navigate('selected')) },
+    { icon: MessageCircle, label: 'Replies waiting', value: repliesWaiting(data).length, onClick: () => navigate('messages') },
+    { icon: Calendar, label: 'Interviews this week', value: interviewsThisWeek(data), onClick: () => navigate('stages') },
+  ];
+
+  const lookingFor = candidate
+    ? [v.preferences?.desiredRoles?.slice(0, 2).join(', '), workModeLabel(v.preferences?.workMode), salaryLabel(v.preferences?.salary)].filter(Boolean)
+    : [`${openRoles} open ${openRoles === 1 ? 'role' : 'roles'}`, (v.regions || []).slice(0, 2).join(', '), (v.specializations || []).slice(0, 2).join(', ')].filter(Boolean);
+
+  const settings: [string, string][] = candidate
+    ? [
+      ['Roles', v.preferences?.desiredRoles?.join(', ') || ''],
+      ['Work mode', workModeLabel(v.preferences?.workMode)],
+      ['Salary', salaryLabel(v.preferences?.salary)],
+      ['Job type', v.preferences?.employmentTypes?.join(', ') || ''],
+      ['Distance (on-site roles)', v.distanceRangeKm ? `${v.distanceRangeKm} km` : ''],
+      ['Available', v.preferences?.availability || v.availability || ''],
+    ]
+    : [
+      ['Open roles', String(openRoles)],
+      ['Hiring regions', (v.regions || v.officeLocations || []).join(', ')],
+      ['Focus', (v.specializations || v.techStack || []).slice(0, 4).join(', ')],
+      ['Candidate filter', '80%+ fit by default'],
+    ];
+
+  return <section className="td-section tp-section" id="td-today" aria-label="Today">
+    {/* Profile: who the other side sees */}
+    <article className="tp-profile">
+      <div className="tp-photo" style={v.photo ? { backgroundImage: `url(${v.photo})` } : undefined}>{!v.photo && <User size={42} />}</div>
+      <div className="tp-profile-body">
+        <p className="tp-hello">{greeting()}, {v.name.split(' ')[0]}{(v.demo || v.sample) && <DemoBadge label={v.sample ? 'Starter sample account' : 'Demo account — not a real user'} />}</p>
+        <h2>{candidate ? v.name : v.company || v.name}{age !== undefined && <span className="tp-age">{age}</span>}{verified && <BadgeCheck size={22} className="tp-verified" aria-label="Verified" />}</h2>
+        <p className="tp-headline">{candidate ? (v.headline || v.title) : `${v.name}${v.title ? ` · ${v.title}` : ''}`}</p>
+        {lookingFor.length > 0 && <p className="tp-looking"><b>{candidate ? 'Looking for' : 'Hiring'}</b>{lookingFor.join(' · ')}</p>}
+        <div className="tp-complete" aria-label={`Profile ${completeness}% complete`}><span style={{ width: `${completeness}%` }} /></div>
+        <div className="tp-actions">
+          <button type="button" className="tp-edit" onClick={() => onEditProfile(0)}><Pencil size={15} /> Edit info <small>({completeness}% complete)</small></button>
+          {candidate && onPreview && <button type="button" className="secondary-button small" onClick={onPreview}><Eye size={14} /> Preview as recruiter</button>}
+          {candidate && <button type="button" className={hidden ? 'tp-visibility off' : 'tp-visibility'} onClick={() => void toggleVisibility()} disabled={saving} aria-pressed={!hidden}>
+            {hidden ? <><EyeOff size={14} /> Hidden from recruiters</> : <><Eye size={14} /> Visible to recruiters</>}
+          </button>}
+        </div>
+      </div>
+    </article>
+
+    <div className="tp-side">
+      {/* Summary */}
+      <div className="tp-summary">{summary.map((s) => { const Icon = s.icon; return <button type="button" key={s.label} onClick={s.onClick}><Icon size={16} /><strong>{s.value}</strong><small>{s.label}</small></button>; })}</div>
+
+      {/* Urgent */}
+      <div className="tp-card">
+        <h3><AlertCircle size={16} /> Urgent</h3>
+        {urgent.length ? <ul className="tp-urgent">{urgent.map((u) => <li key={u.id}><span>{u.text}</span><button type="button" onClick={() => doUrgent(u.kind, u.matchId)}>{u.action}<ArrowRight size={13} /></button></li>)}</ul>
+          : <p className="tp-muted">Nothing urgent. You are all caught up.</p>}
+      </div>
+
+      <div className="tp-row">
+        {/* Next interview */}
+        <div className="tp-card">
+          <h3><Calendar size={16} /> Next interview</h3>
+          {next ? <div className="tp-next">
+            <strong>{next.title}</strong>
+            <span>{new Date(next.at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}{next.source === 'call' ? ` · ${new Date(next.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''}</span>
+            <small>With {next.who}</small>
+            <button type="button" className="tp-link" onClick={() => navigate('stages')}>See all stages <ArrowRight size={13} /></button>
+          </div> : <p className="tp-muted">No interview planned yet. It shows here once a round has a date.</p>}
+        </div>
+
+        {/* Search settings */}
+        <div className="tp-card">
+          <h3><SlidersHorizontal size={16} /> My search settings</h3>
+          <dl className="tp-settings">{settings.map(([k, val]) => <div key={k}><dt>{k}</dt><dd>{val || <em>Not set</em>}</dd></div>)}</dl>
+          <button type="button" className="tp-link" onClick={() => (candidate ? onEditProfile(2) : navigate('profile'))}>Edit settings <ArrowRight size={13} /></button>
+        </div>
+      </div>
+    </div>
+  </section>;
+}
