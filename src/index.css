@@ -3442,6 +3442,70 @@ img.avatar-mini { object-fit:cover; }
   .nm-btn { transition:none; }
 }
 
+/* ---- Recruiter home template: hiring pipeline board + candidates to review ---- */
+.rs-section { background:#fff; }
+.rs-board { display:grid; gap:8px; margin-top:12px; }
+.rs-row { display:grid; grid-template-columns:minmax(180px,1.4fr) repeat(4,minmax(110px,1fr)); gap:10px; align-items:center; padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:#fbfbfd; text-align:left; }
+button.rs-row:hover { border-color:#fd267a; }
+.rs-head { border:0; background:none; padding:0 14px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#9aa1b2; }
+.rs-role { display:flex; flex-direction:column; min-width:0; }
+.rs-role strong { font-size:14px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rs-role small { font-size:12px; color:var(--muted); }
+.rs-cell { display:flex; align-items:center; gap:8px; }
+.rs-cell b { min-width:28px; height:28px; display:grid; place-items:center; border-radius:8px; background:#f1f3f8; font:800 14px 'Manrope'; color:var(--ink); }
+.rs-cell.col-interviewing b { background:#f1ecff; color:#5b3cc4; }
+.rs-cell.col-offer b { background:#fff4e5; color:#b85c00; }
+.rs-cell.col-hired b { background:#e9f9f0; color:#16794a; }
+.rs-faces { display:flex; }
+.rs-faces img,.rs-faces b { width:24px; height:24px; margin-left:-6px; border-radius:50%; border:2px solid #fff; object-fit:cover; display:grid; place-items:center; background:#fd267a; color:#fff; font-size:10px; }
+.rs-faces img:first-child,.rs-faces b:first-child { margin-left:0; }
+.rs-faces em { margin-left:4px; font-style:normal; font-size:11px; color:var(--muted); }
+.rs-cands { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:12px; }
+.rs-cand { display:grid; grid-template-columns:52px minmax(0,1fr); gap:12px; padding:14px; border:1px solid var(--line); border-radius:16px; background:#fbfbfd; }
+.rs-cand img,.rs-avatar { width:52px; height:52px; border-radius:50%; object-fit:cover; display:grid; place-items:center; background:linear-gradient(135deg,#fd267a,#ff6036); color:#fff; font-weight:800; }
+.rs-cand-body { min-width:0; display:flex; flex-direction:column; gap:3px; }
+.rs-cand-body strong { font-size:15px; color:var(--ink); }
+.rs-cand-body small { font-size:12px; color:var(--muted); }
+.rs-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:2px; }
+.rs-tags em { font-style:normal; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:800; }
+.rs-fit { background:#fff0f5; color:#d81b67; }
+.rs-likes { display:inline-flex; align-items:center; gap:3px; background:#e9f9f0; color:#16794a; }
+.rs-cand-actions { grid-column:1 / -1; display:flex; gap:8px; justify-content:flex-end; }
+@media (max-width:1023px) { .rs-cands { grid-template-columns:1fr 1fr; } .rs-row { grid-template-columns:1fr 1fr; } .rs-head { display:none; } }
+@media (max-width:639px) { .rs-cands { grid-template-columns:1fr; } }
+
+/* ---- Admin: KPI dashboard, traffic + heatmap, integrations ---- */
+.kpi-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:18px; }
+.kpi-card { padding:20px; border:1px solid var(--line); border-radius:20px; background:#fff; display:flex; flex-direction:column; gap:8px; }
+.kpi-card header { display:flex; align-items:center; gap:8px; font:800 16px 'Manrope'; color:var(--ink); }
+.kpi-card header svg { color:#fd267a; }
+.kpi-value { font:800 46px/1 'Manrope'; color:var(--ink); display:flex; align-items:baseline; gap:8px; }
+.kpi-value small { font-size:14px; font-weight:700; color:var(--muted); }
+.kpi-delta { margin:0; font-size:13px; font-weight:800; color:#16794a; }
+.kpi-bars { height:70px; display:flex; align-items:flex-end; gap:5px; padding:6px 0; }
+.kpi-bars span { flex:1; min-width:4px; border-radius:4px 4px 0 0; background:linear-gradient(180deg,#ff6036,#fd267a); }
+.kpi-card dl { margin:0; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.kpi-card dt { font-size:12px; color:var(--muted); }
+.kpi-card dd { margin:0; font:800 18px 'Manrope'; color:var(--ink); }
+.kpi-hint { margin:0; font-size:12px; color:var(--muted); }
+.traffic-tables { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.heatmap-controls { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:10px; }
+.heatmap-page { font-weight:800; font-size:13px; }
+.heatmap-layouts { display:flex; gap:6px; }
+.heatmap-status { margin:0; font-size:13px; color:var(--muted); }
+.heatmap-legend { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+.heatmap-legend span { width:90px; height:8px; border-radius:4px; background:linear-gradient(90deg,#ffeda0,#feb24c,#f03b20,#800026); }
+.heatmap-box { position:relative; overflow:auto; border:1px solid var(--line); border-radius:14px; background:#fff; }
+.integration-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:16px; }
+.integration-card { padding:18px; border:1px solid var(--line); border-radius:18px; background:#fff; display:flex; flex-direction:column; gap:10px; }
+.integration-card header { display:flex; justify-content:space-between; align-items:center; font:800 17px 'Manrope'; }
+.int-on,.int-off { padding:3px 10px; border-radius:999px; font-size:12px; font-weight:800; }
+.int-on { background:#e9f9f0; color:#16794a; } .int-off { background:#f1f3f8; color:#5f687c; }
+.int-field { display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--muted); }
+.int-field input { height:38px; padding:0 10px; border:1px solid var(--line); border-radius:10px; font-size:13px; }
+.int-actions { display:flex; flex-wrap:wrap; gap:6px; }
+@media (max-width:1023px) { .kpi-grid,.traffic-tables,.integration-grid { grid-template-columns:1fr; } }
+
 /* ---- Home "Today": profile card + summary, urgent, next interview, search settings ---- */
 .tp-section { display:grid; grid-template-columns:minmax(300px,380px) minmax(0,1fr); gap:18px; padding:20px; border-radius:24px; background:#fff; }
 .tp-profile { display:flex; flex-direction:column; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:#f7f6f7; }

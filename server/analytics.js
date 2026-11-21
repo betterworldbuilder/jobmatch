@@ -55,9 +55,15 @@ function bump(db, name, { demo = false, dim = '', at = Date.now() }, delta) {
   return { name, demo: flag, dim, at };
 }
 
+// Optional listener (server/integrations.js forwards real events to Mixpanel/Amplitude/Heap).
+let trackListener = null;
+export function onTrack(fn) { trackListener = fn; }
+
 /** Count one event. Returns a stamp to store on the record for later retraction. */
 export function track(db, name, options = {}) {
-  return bump(db, name, options, 1);
+  const stamp = bump(db, name, options, 1);
+  try { trackListener?.(name, options); } catch { /* forwarding never breaks the action */ }
+  return stamp;
 }
 
 /** Retract a previously counted event (no-op for records that were never counted). */

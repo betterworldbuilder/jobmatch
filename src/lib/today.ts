@@ -24,14 +24,22 @@ export function repliesWaiting(data: Pick<Bootstrap, 'viewer' | 'matches' | 'mes
   });
 }
 
+/** Recruiter side: ids of candidates who liked one of the viewer's roles (role lists) or the viewer. */
+export function likerIds(data: Pick<Bootstrap, 'candidates' | 'roleMatches'>) {
+  const ids = new Set<string>();
+  for (const g of data.roleMatches || []) for (const c of g.candidates) ids.add(c.id);
+  for (const c of data.candidates) if (c.likedYou || c.superLikedYou) ids.add(c.id);
+  return ids;
+}
+
 /** People who liked the viewer and are not matched yet. */
-export function likesWaiting(data: Pick<Bootstrap, 'viewer' | 'jobs' | 'candidates' | 'matches'>) {
+export function likesWaiting(data: Pick<Bootstrap, 'viewer' | 'jobs' | 'candidates' | 'matches' | 'roleMatches'>) {
   if (isCandidate(data)) {
     const matchedJobs = new Set(data.matches.map((m) => m.jobId));
     return data.jobs.filter((j) => (j.likedYou || j.superLikedYou) && !matchedJobs.has(j.id)).length;
   }
   const matched = new Set(data.matches.map((m) => m.candidateId));
-  return data.candidates.filter((c) => (c.likedYou || c.superLikedYou) && !matched.has(c.id)).length;
+  return [...likerIds(data)].filter((id) => !matched.has(id)).length;
 }
 
 function dayStart(date: string) { const [y, m, d] = date.split('-').map(Number); return new Date(y, m - 1, d, 9).getTime(); }

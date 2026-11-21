@@ -32,6 +32,7 @@ import { AdminUsersPage } from './components/billing/AdminUsersPage';
 import { AdminSafetyPage } from './components/billing/AdminSafetyPage';
 import { AdminJobsPage } from './components/billing/AdminJobsPage';
 import { AdminActionQueuePage } from './components/billing/AdminActionQueuePage';
+import { AdminIntegrationsPage, AdminKpisPage, AdminTrafficPage } from './components/billing/AdminInsightsPages';
 import { NotesBox } from './components/NotesBox';
 import { useDiscoverDeck } from './components/discover/useDiscoverDeck';
 import { EmptyDeck, MatchModal, SalaryBadge } from './components/discover/DeckParts';
@@ -50,6 +51,7 @@ import type { ScreeningAnswer } from './types';
 import { comparisonRows } from './content/landingContent';
 import { loadSession, saveSession } from './lib/auth';
 import { featureOn } from './lib/flags';
+import { installAdminHotkey, trackView } from './lib/tracker';
 import type { Bootstrap, Job, JobMatch, Message, Person, Role, ScheduledCall, SessionUser, View } from './types';
 
 type NotificationItem = {
@@ -80,9 +82,9 @@ function billingNotificationIcon(billingKind?: string) {
 // home dashboard (`anchor`). `short` is the compact label for the mobile bar.
 type NavItem = { label: string; short?: string; icon: typeof Compass; view?: View; anchor?: string };
 const candidateNav: NavItem[] = [
-  // Default landing view for candidates (see Workspace's initial activeAnchor).
+  // Home first: the profile card + Today panel sit at the top of the home page.
+  { label: 'Home', icon: Compass, anchor: 'td-today' },
   { label: 'Look for new Matches', short: 'Swipe', icon: Flame, anchor: 'td-new-matches' },
-  { label: 'Home', icon: Compass, view: 'home' },
   { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
   { label: 'Recruiters that like you', short: 'Likes You', icon: Target, anchor: 'td-chasing' },
   // "Recommended Roles" lives under the swipe deck in "Look for new Matches" (no separate menu item).
@@ -138,8 +140,17 @@ export default function App() {
   const clearQuery = (key: string) => { const url = new URL(window.location.href); url.searchParams.delete(key); window.history.replaceState({}, '', url.pathname + url.search); };
   const finishReset = (user?: SessionUser) => { setResetToken(''); clearQuery('reset'); if (user) signIn(user); };
 
+  // Owner shortcut: Left Shift + A opens the admin sign-in (Google SSO; checked on the server).
+  // Only when signed out, so a stray key press never signs a member out.
+  useEffect(() => installAdminHotkey(() => {
+    if (session) return;
+    window.location.href = `${window.location.pathname}?admin=1`;
+  }), [session]);
+  // The admin heatmap loads the public landing page in an iframe with ?heatmap=1.
+  const heatmapPreview = new URLSearchParams(window.location.search).get('heatmap') === '1';
+
   return <>
-    {!session ? <Landing onLogin={signIn} />
+    {!session || heatmapPreview ? <Landing onLogin={signIn} />
       : session.role === 'admin' ? <AdminWorkspace session={session} onExit={signOut} />
       : <Workspace key={session.id} session={session} onSwitchUser={signIn} onExit={signOut} />}
     <AnimatePresence>{resetToken && <ResetPasswordModal token={resetToken} onClose={() => finishReset()} onComplete={finishReset} />}</AnimatePresence>
@@ -157,7 +168,9 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
     api.trackReferral(refCode).catch(() => undefined);
     if (window.location.pathname.startsWith('/ref/')) window.history.replaceState({}, '', '/');
   }, [refCode]);
-  const [authModal, setAuthModal] = useState<'login' | 'register' | null>(null);
+  // ?admin=1 (the Left Shift + A shortcut) opens sign-in straight away.
+  const [authModal, setAuthModal] = useState<'login' | 'register' | null>(() => new URLSearchParams(window.location.search).get('admin') === '1' ? 'login' : null);
+  useEffect(() => { trackView('/'); }, []);
   const [conductOpen, setConductOpen] = useState(false);
   const openLogin = () => setAuthModal('login');
   const openRegister = () => setAuthModal('register');
@@ -330,10 +343,13 @@ function Feature({ icon: Icon, title, text }: { icon: typeof Target; title: stri
  * Bootstrap dashboard (jobs/matches/swipes make no sense for an admin
  * account), just the billing moderation dashboard and a way to log out. */
 function AdminWorkspace({ session, onExit }: { session: SessionUser; onExit: () => void }) {
-  const [tab, setTab] = useState<'queue' | 'analytics' | 'users' | 'jobs' | 'billing' | 'safety'>('queue');
+  const [tab, setTab] = useState<'kpis' | 'queue' | 'analytics' | 'traffic' | 'integrations' | 'users' | 'jobs' | 'billing' | 'safety'>('kpis');
   const adminNav: { id: typeof tab; label: string; icon: typeof Inbox }[] = [
+    { id: 'kpis', label: 'KPI dashboard', icon: Target },
     { id: 'queue', label: 'Action Queue', icon: Inbox },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'traffic', label: 'Traffic & heatmap', icon: Activity },
+    { id: 'integrations', label: 'Integrations', icon: Layers3 },
     { id: 'users', label: 'Candidates & Recruiters', icon: Users },
     { id: 'jobs', label: 'Jobs', icon: BriefcaseBusiness },
     { id: 'billing', label: 'Billing & Subscriptions', icon: CreditCard },
@@ -349,6 +365,9 @@ function AdminWorkspace({ session, onExit }: { session: SessionUser; onExit: () 
       </div>
     </aside>
     <div className="app-main admin-main">
+    {tab === 'kpis' && <AdminKpisPage />}
+    {tab === 'traffic' && <AdminTrafficPage />}
+    {tab === 'integrations' && <AdminIntegrationsPage />}
     {tab === 'queue' && <AdminActionQueuePage />}
     {tab === 'analytics' && <AdminAnalyticsPage />}
     {tab === 'users' && <AdminUsersPage />}
@@ -375,7 +394,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const [jobImportOpen, setJobImportOpen] = useState(false);
   const [manualJobRequest, setManualJobRequest] = useState(0);
   // Candidates land on "Look for new Matches" (the top section of their home).
-  const [activeAnchor, setActiveAnchor] = useState(session.role === 'candidate' || featureOn('findMatches') ? 'td-new-matches' : '');
+  const [activeAnchor, setActiveAnchor] = useState(session.role === 'candidate' ? 'td-today' : featureOn('findMatches') ? 'td-new-matches' : '');
   const [openMatchId, setOpenMatchId] = useState<string | undefined>(undefined);
   const openMessages = (matchId: string) => { setOpenMatchId(matchId); setView('messages'); };
   const [editJobId, setEditJobId] = useState<string | undefined>(undefined);
@@ -400,6 +419,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     return list.sort((a, b) => b.at - a.at).slice(0, 8);
   }, [data, role]);
 
+  useEffect(() => { trackView(`/app/${view}`); }, [view]);
   const load = () => { setLoading(true); setError(''); api.bootstrap(session.id).then(setData).catch((e) => setError(e.message)).finally(() => setLoading(false)); };
   useEffect(load, [session.id]);
   // VNPay redirects the browser back to /?billing=success|failed once the

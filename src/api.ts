@@ -1,4 +1,5 @@
-import type { ActionQueueItem, AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewKit, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
+import type { AdminKpi, IntegrationStatus, WebAnalyticsReport } from './types';
+import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewKit, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -60,6 +61,11 @@ export const api = {
     if (!response.ok) throw new Error(body.error || 'Selfie upload failed');
     return body;
   },
+  adminKpis: () => request<Record<'registrations' | 'matches' | 'hires', AdminKpi>>('/api/admin/kpis'),
+  adminWebAnalytics: (days: number) => request<WebAnalyticsReport>(`/api/admin/web-analytics?days=${days}`),
+  adminIntegrations: () => request<{ integrations: Record<string, IntegrationStatus> }>('/api/admin/integrations'),
+  adminSaveIntegration: (vendor: string, payload: { key?: string; enabled?: boolean }) => request<{ integrations: Record<string, IntegrationStatus> }>(`/api/admin/integrations/${vendor}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  adminTestIntegration: (vendor: string) => request<{ ok: boolean; status: number; error: string | null }>(`/api/admin/integrations/${vendor}/test`, { method: 'POST' }),
   adminVerifications: () => request<{ verifications: PendingVerification[] }>('/api/admin/verifications'),
   adminDecideVerification: (userId: string, decision: 'approve' | 'reject', reason?: string) => request<{ verification: NonNullable<Person['verification']> }>(`/api/admin/verifications/${encodeURIComponent(userId)}/${decision}`, { method: 'POST', body: JSON.stringify({ reason }) }),
   adminVerificationSelfieUrl: (userId: string) => `${apiBase}/api/admin/verifications/${encodeURIComponent(userId)}/selfie`,

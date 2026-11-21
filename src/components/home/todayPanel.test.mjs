@@ -34,6 +34,19 @@ test('summary numbers, urgent order, next interview and labels come from real re
   assert.deepEqual(calm, []);
 });
 
+test('recruiter: likes come from role lists; pipeline columns follow the current step', async () => {
+  const { mod: t } = await loadTsx(new URL('../../lib/today.ts', import.meta.url));
+  const data = { viewer: { id: 'e', role: 'employer', name: 'Priya' }, jobs: [], candidates: [{ id: 'c1' }, { id: 'c2' }], matches: [{ id: 'm', candidateId: 'c1', employerId: 'e', jobId: 'j' }],
+    roleMatches: [{ job: { id: 'j' }, candidates: [{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }], interestedCount: 3, newCount: 0 }] };
+  assert.equal(t.likesWaiting(data), 2, 'c2 and c3 like a role; c1 is already matched');
+  const { mod: rs } = await loadTsx(new URL('./RecruiterSections.tsx', import.meta.url));
+  const steps = [{ id: 'match', name: 'Mutual match', owner: '', kind: 'match' }, { id: 'r1', name: 'Tech', owner: '', kind: 'technical' }, { id: 'offer', name: 'Offer', owner: '', kind: 'offer' }, { id: 'hire', name: 'Hired', owner: '', kind: 'hired' }];
+  assert.equal(rs.columnOf({ pipeline: steps, currentStepId: 'match' }), 'matched');
+  assert.equal(rs.columnOf({ pipeline: steps, currentStepId: 'r1' }), 'interviewing');
+  assert.equal(rs.columnOf({ pipeline: steps, currentStepId: 'offer' }), 'offer');
+  assert.equal(rs.columnOf({ pipeline: steps, currentStepId: 'hire' }), 'hired');
+});
+
 test('Today panel renders the profile first with completeness, visibility and the four blocks', async () => {
   const { React, renderToStaticMarkup, mod } = await loadTsx(new URL('./TodayPanel.tsx', import.meta.url));
   const html = renderToStaticMarkup(React.createElement(mod.TodayPanel, { data: base(), setData: () => undefined, navigate: () => undefined, onEditProfile: () => undefined, onPreview: () => undefined }));

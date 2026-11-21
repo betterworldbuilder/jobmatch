@@ -117,6 +117,10 @@ export type StepKind = 'match' | 'hr' | 'technical' | 'manager' | 'culture' | 'a
 export interface PipelineStep { id: string; name: string; owner: string; hidden?: boolean; kind?: StepKind; date?: string; format?: string }
 export interface JobMatch { id: string; candidateId: string; employerId: string; jobId: string; stage: string; createdAt: number; stageChangedAt?: number; candidate: Person; employer?: Person; job: Job; screeningAnswers?: ScreeningAnswer[]; pipeline?: PipelineStep[]; currentStepId?: string }
 export interface Message { id: string; matchId: string; senderId: string; text: string; createdAt: number; firstImpression?: boolean }
+export interface AdminKpi { label: string; hint: string; total: number; thisWeek: number; lastWeek: number; last30d: number; weeks: { week: string; n: number }[] }
+export interface HeatClick { path: string; dev: 'desktop' | 'tablet' | 'mobile'; w: number; x: number; y: number; sel: string; ox: number; oy: number }
+export interface WebAnalyticsReport { days: number; totals: { visits: number; visitors: number; pageviews: number; avgDur: number }; daily: { day: string; n: number }[]; sources: { key: string; n: number }[]; devices: { key: string; n: number }[]; pages: { key: string; n: number }[]; clicks: HeatClick[] }
+export interface IntegrationStatus { label: string; field: string; hint: string; enabled: boolean; hasKey: boolean; keyHint: string; lastSentAt: number | null; lastError: string | null }
 export interface PendingVerification { userId: string; name: string; role: Role; photo?: string; submittedAt: number }
 export interface ScheduledCall { id: string; matchId: string; createdBy: string; title: string; startAt: number; durationMinutes: number; notes?: string; createdAt: number }
 export interface RoleMatchGroup { job: Job; candidates: Person[]; matchingCandidates?: Person[]; interestedCount: number; newCount: number }

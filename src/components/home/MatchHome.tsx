@@ -15,6 +15,7 @@ import { NewMatchesSection } from './NewMatchesSection';
 import { FindMatches } from '../findmatches/FindMatches';
 import { featureOn } from '../../lib/flags';
 import { TodayPanel } from './TodayPanel';
+import { CandidatesToReview, HiringPipelineBoard } from './RecruiterSections';
 
 type HomeProps = {
   data: Bootstrap;
@@ -198,11 +199,6 @@ export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMe
     ? <div className="td-job-grid">{items.slice(0, 3).map((job) => <CandidateJobCard key={job.id} job={job} recruiter={data.matches.find((match) => match.jobId === job.id)?.employer} saved={data.bookmarkedIds.includes(job.id)} onSave={() => void toggleSave(job)} onView={() => setSelectedJob(job)} onTalk={() => void startTalk(job)} />)}</div>
     : <EmptyRow>No recruiter offers yet. Your profile remains visible to matching teams.</EmptyRow>;
 
-  const metrics = [
-    { icon: Heart, label: 'Matches', value: matchedJobs.length, note: 'both said yes', action: 'View all', target: 'td-matches' },
-    { icon: Target, label: 'Recruiters that like you', value: likesYou.length, note: 'liked your profile', action: 'See who', target: 'td-chasing' },
-    { icon: Coffee, label: 'Let’s Talk Invitations', value: upcomingCalls.length, note: 'invitations', action: 'View invites', target: 'messages' },
-  ];
 
   if (switchingProfile) return <div className="profile-switch-overlay">
     <div className="profile-switch-spinner" />
@@ -267,11 +263,6 @@ export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMe
       </div>
     </section>
 
-    <section className="td-metrics candidate" aria-label="Candidate summary">
-      {metrics.map((metric) => <button key={metric.label} onClick={() => metric.target === 'messages' ? navigate('messages') : scrollTo(metric.target)}>
-        <span><metric.icon size={15} /></span><small>{metric.label}</small><strong>{metric.value}</strong><p>{metric.note}</p><b>{metric.action}<ArrowRight size={10} /></b>
-      </button>)}
-    </section>
 
     <section className="td-section" id="td-matches">
       <DashboardTitle icon={Heart} title="Job Matches" subtitle="You and these teams both said yes — start the conversation." action={`See all (${matchedJobs.length})`} onAction={() => navigate('matches')} />
@@ -346,16 +337,12 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
     : bestMatchFirst ? (b.match?.score || 0) - (a.match?.score || 0) : a.name.localeCompare(b.name);
 
   const upcomingCalls = [...data.calls].filter((call) => call.startAt >= Date.now()).sort((a, b) => a.startAt - b.startAt);
-  const metrics = [
-    { icon: Heart, label: 'People Who Love Your Jobs', value: interested.length, note: 'candidates', target: 'td-roles' },
-    { icon: Eye, label: 'Viewed Your Jobs', value: allPeople.length, note: 'today', target: 'td-recent' },
-    { icon: Coffee, label: 'Coffee Requests', value: upcomingCalls.length, note: 'awaiting', target: 'td-coffee' },
-    { icon: MessageCircle, label: 'Active Conversations', value: data.matches.length, note: 'ongoing', target: 'messages' },
-    { icon: TrendingUp, label: topRole?.job.title || 'Top Performing Role', value: topRole?.matchingCandidates?.length || 0, note: 'perfect matches', target: 'td-roles' },
-  ];
 
   return <main className="td-dashboard td-recruiter">
+    {/* Recruiter home template (same for every hiring team): today → pipeline → candidates to review → roles. */}
     <TodayPanel data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onOpenMessages={onOpenMessages} onScroll={scrollTo} />
+    <HiringPipelineBoard data={data} navigate={navigate} />
+    <CandidatesToReview data={data} setData={setData} onView={setSelected} onOpenMessages={onOpenMessages} />
     <header className="td-recruiter-head">
       <div><h1 className="td-recruiter-title">Your roles today</h1><p>Here’s who loves your jobs today.</p></div>
       <button className="primary-button" onClick={onAddJobs}>+ Add New Job Offers</button>
@@ -363,19 +350,6 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
 
     {/* Headhunting: the "Find your Matches" studio on candidates (preview: ?fm=1). */}
     {featureOn('findMatches') && <FindMatches role="employer" data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Look for new Matches" subtitle="Swipe right on candidates you want to meet. A chat opens only if they like you back." />} />}
-
-    <section className="td-section" id="td-company-profile">
-      <DashboardTitle icon={Building2} title="Company Profile" subtitle="How candidates see your company." action="Edit profile" onAction={() => navigate('profile')} />
-      <div className="td-profile-card">
-        <img src={data.viewer.photo} alt="" />
-        <div className="td-profile-card-info">
-          <strong>{data.viewer.company || data.viewer.name}</strong>
-          <span>{data.viewer.title}</span>
-          <div className="td-profile-card-meta">{data.viewer.industry && <span>{data.viewer.industry}</span>}{data.viewer.headquarters && <span>{data.viewer.headquarters}</span>}</div>
-        </div>
-        <button className="secondary-button small" onClick={() => navigate('profile')}>View profile</button>
-      </div>
-    </section>
 
     <section className="td-section td-role-section" id="td-roles">
       <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet." action={bestMatchFirst ? 'Sort by: Best Match' : 'Sort by: Name'} onAction={() => setBestMatchFirst((value) => !value)} />
@@ -412,11 +386,6 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
       </div>
     </section>
 
-    <section className="td-metrics recruiter" aria-label="Recruiter summary">
-      {metrics.map((metric, index) => <button key={metric.label} className={index === 4 ? 'highlight' : ''} onClick={() => metric.target === 'messages' ? navigate('messages') : scrollTo(metric.target)}>
-        <span><metric.icon size={15} /></span><small>{metric.label}</small><strong>{metric.value}</strong><p>{metric.note}</p>
-      </button>)}
-    </section>
 
     <section className="td-bottom-grid recruiter">
       <article className="td-list-panel" id="td-recent"><DashboardTitle icon={Eye} title="Recently Viewed Your Jobs" />{allPeople.slice(0, 4).map((person) => <button key={person.id} onClick={() => setSelected(person)}><img src={person.photo} alt="" /><span><strong>{person.name}</strong><small>Viewed a role recently</small></span><ArrowRight size={12} /></button>)}</article>

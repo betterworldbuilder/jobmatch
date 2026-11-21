@@ -21,7 +21,9 @@ import fs from 'node:fs';
 import { exchangeLinkedinCode, linkedinAuthorizationUrl, readSignedValue, signedValue, toLinkedinJobPayload } from './integrations/linkedin.js';
 import { oauthAuthorizationUrl, oauthExchangeCode, oauthProviders } from './integrations/oauth.js';
 import { logBillingEvent } from './billing/audit.js';
-import { actorSide, involvesDemo, track, untrack, weeklyCounts } from './analytics.js';
+import { actorSide, involvesDemo, onTrack, track, untrack, weeklyCounts } from './analytics.js';
+import { BOT_UA, buildReport, parsePayload, readEvents, recordEvents } from './web-analytics.js';
+import { VENDORS, forwardEvent, maskedConfig, sendTo, setIntegrationConfig } from './integrations.js';
 import {
   applyCredit, availableCredits, canUseRecruiterFeatures, computeEffectiveStatus, DAY_MS,
   findSubscription, getOrCreateTrialSubscription, isBillingExempt, PRICE_AMOUNT, PRICE_CURRENCY,
@@ -3061,6 +3063,113 @@ app.get('/api/admin/analytics/events', async (req, res, next) => {
     res.json({ weeks: weeklyCounts(db.eventCounts, { includeDemo: req.query.includeDemo === 'true' }) });
   } catch (error) { next(error); }
 });
+
+// --- Admin: the 3 KPIs that matter most for a hiring marketplace -------------
+// 1. New registrations (real candidates + hiring teams), 2. mutual matches, 3. hires.
+// Real accounts only; each with this week, last week, last 30 days and an 8-week series.
+app.get('/api/admin/kpis', async (req, res, next) => {
+  try {
+    requireAdminRole(authSession(req));
+    const db = await store.read();
+    const now = Date.now();
+    const demo = new Set(db.users.filter((u) => u.demo === true || u.sample === true).map((u) => u.id));
+    const real = (m) => !demo.has(m.candidateId) && !demo.has(m.employerId);
+    const regs = db.users.filter((u) => !demo.has(u.id) && (u.role === 'candidate' || u.role === 'employer') && u.createdAt).map((u) => u.createdAt);
+    const matches = db.matches.filter(real).map((m) => m.createdAt).filter(Boolean);
+    const hiredAt = db.matches.filter((m) => real(m) && (m.stage === 'Hired' || m.currentStepId === 'hire')).map((m) => m.stageChangedAt || m.createdAt).filter(Boolean);
+    const weekStart = (t) => { const d = new Date(t); const day = (d.getUTCDay() + 6) % 7; return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day); };
+    const thisWeek = weekStart(now);
+    const kpi = (times) => ({
+      total: times.length,
+      thisWeek: times.filter((t) => t >= thisWeek).length,
+      lastWeek: times.filter((t) => t >= thisWeek - 7 * DAY_MS && t < thisWeek).length,
+      last30d: times.filter((t) => t >= now - 30 * DAY_MS).length,
+      weeks: Array.from({ length: 8 }, (_, i) => { const start = thisWeek - (7 - i) * 7 * DAY_MS; return { week: new Date(start).toISOString().slice(0, 10), n: times.filter((t) => t >= start && t < start + 7 * DAY_MS).length }; }),
+    });
+    res.json({
+      registrations: { label: 'New registrations', hint: 'Real candidates and hiring teams who created an account', ...kpi(regs) },
+      matches: { label: 'Mutual matches', hint: 'Both sides said yes: a conversation opened', ...kpi(matches) },
+      hires: { label: 'Hires', hint: 'Matches moved to the Hired stage (finish line)', ...kpi(hiredAt) },
+    });
+  } catch (error) { next(error); }
+});
+
+// --- Visitor analytics + click heatmap (cookie-free, self-hosted) -----------
+const ANALYTICS_DIR = process.env.ANALYTICS_DIR || path.join(path.dirname(UPLOADS_ROOT), 'analytics');
+app.post('/api/track', rateLimit({ windowMs: 60000, max: 120, bucket: 'track' }), express.text({ type: () => true, limit: '64kb' }), async (req, res) => {
+  try {
+    const ua = String(req.headers['user-agent'] || '');
+    if (BOT_UA.test(ua)) return res.status(204).end();
+    let body = req.body;
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = null; } }
+    const payload = parsePayload(body);
+    if (!payload) return res.status(400).json({ error: 'Invalid payload' });
+    await recordEvents(ANALYTICS_DIR, payload, { ip: req.ip || '', ua, secret: process.env.SESSION_SECRET });
+    res.status(204).end();
+  } catch { res.status(204).end(); }
+});
+
+app.get('/api/admin/web-analytics', async (req, res, next) => {
+  try {
+    requireAdminRole(authSession(req));
+    const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30;
+    const events = await readEvents(ANALYTICS_DIR, Date.now() - days * DAY_MS);
+    res.json(buildReport(events, days));
+  } catch (error) { next(error); }
+});
+
+// --- Admin: Mixpanel / Amplitude / Heap (server-side event forwarding) -------
+app.get('/api/admin/integrations', async (req, res, next) => {
+  try { requireAdminRole(authSession(req)); const db = await store.read(); res.json({ integrations: maskedConfig(db.integrations || {}) }); }
+  catch (error) { next(error); }
+});
+
+app.put('/api/admin/integrations/:vendor', async (req, res, next) => {
+  try {
+    const session = requireAdminRole(authSession(req));
+    const vendor = VENDORS[req.params.vendor];
+    if (!vendor) { const error = new Error('Unknown integration'); error.status = 404; throw error; }
+    const key = req.body?.key === undefined ? undefined : String(req.body.key).trim().slice(0, 200);
+    if (key !== undefined && key && !/^[A-Za-z0-9_\-.]{4,200}$/.test(key)) throw new ValidationError('key', 'That key has unexpected characters');
+    const integrations = await store.transaction((db) => {
+      db.integrations ||= {};
+      const current = db.integrations[req.params.vendor] || {};
+      db.integrations[req.params.vendor] = { ...current, ...(key !== undefined ? { [vendor.field]: key } : {}), enabled: req.body?.enabled === undefined ? Boolean(current.enabled) : req.body.enabled === true };
+      logBillingEvent(db, session.sub, 'integration_updated', 'integration', req.params.vendor, { enabled: db.integrations[req.params.vendor].enabled, keyChanged: key !== undefined });
+      return db.integrations;
+    });
+    setIntegrationConfig(integrations);
+    res.json({ integrations: maskedConfig(integrations) });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/admin/integrations/:vendor/test', async (req, res, next) => {
+  try {
+    requireAdminRole(authSession(req));
+    const vendor = VENDORS[req.params.vendor];
+    if (!vendor) { const error = new Error('Unknown integration'); error.status = 404; throw error; }
+    const db = await store.read();
+    const key = db.integrations?.[req.params.vendor]?.[vendor.field];
+    if (!key) throw new ValidationError('key', 'Save a key first');
+    const result = await sendTo(req.params.vendor, key, { name: 'jobsmatchnow_test_event', dim: 'admin-test', side: '' });
+    await recordIntegrationResult(req.params.vendor, result);
+    res.json(result);
+  } catch (error) { next(error); }
+});
+
+async function recordIntegrationResult(vendor, result) {
+  try {
+    await store.transaction((db) => {
+      if (!db.integrations?.[vendor]) return;
+      db.integrations[vendor] = { ...db.integrations[vendor], ...(result.ok ? { lastSentAt: Date.now(), lastError: null } : { lastError: result.error }) };
+    });
+  } catch { /* status only */ }
+}
+{
+  const db = await store.read();
+  setIntegrationConfig(db.integrations || {});
+  onTrack((name, opts) => forwardEvent(name, opts, (vendor, result) => { if (!result.ok) void recordIntegrationResult(vendor, result); }));
+}
 
 // --- Admin: candidate/recruiter account management -------------------------
 // Search/suspend/reactivate only — no silent edits to a user's own profile
