@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
 import type { PanInfo } from 'motion/react';
-import { ArrowRight, Check, ChevronsRight, Heart, MapPin, MessageCircle, RotateCcw, Send, Star, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, ChevronRight, ChevronsRight, Heart, MapPin, MessageCircle, RotateCcw, Send, Star, X } from 'lucide-react';
 import { api, apiBase } from '../../api';
 import type { Bootstrap, Job, JobMatch, Person, View } from '../../types';
 import { JobDetailModal, ScreeningModal } from '../coach/CoachModals';
@@ -189,6 +189,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
   const [picked, setPicked] = useState<Job | null>(null);
   const [dmOpen, setDmOpen] = useState(false);
   const phoneRef = useRef<HTMLDivElement>(null);
+  const carouselRef = useRef<HTMLUListElement>(null);
   const canLike = data.likesRemaining > 0;
   const job = (picked || current) as Job | undefined;
   const list = considerList(filtered, deck, index).filter((item) => !likedFromList.includes(item.id)) as Job[];
@@ -271,20 +272,33 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
         <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Super Like</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>
       </div>
       <aside className="nm-list" id="td-recommended" aria-label="Recommended Roles">
-        <h3>Recommended Roles</h3>
+        <div className="nm-carousel-head">
+          <h3>Recommended Roles</h3>
+          {list.length > 2 && <span className="nm-carousel-nav">
+            <button type="button" aria-label="Previous roles" onClick={() => carouselRef.current?.scrollBy({ left: -360, behavior: 'smooth' })}><ChevronLeft size={18} /></button>
+            <button type="button" aria-label="More roles" onClick={() => carouselRef.current?.scrollBy({ left: 360, behavior: 'smooth' })}><ChevronRight size={18} /></button>
+          </span>}
+        </div>
+        {/* Carousel of mini phone screens: tap one to load it into the big phone above. */}
         {list.length
-          ? <ul>{list.map((item) => <li key={item.id}>
-            <button type="button" className={picked?.id === item.id ? 'nm-row on' : 'nm-row'} onClick={() => showInPhone(item)} aria-label={`Show ${item.title} in the swipe deck`} aria-pressed={picked?.id === item.id}>
-              <CompanyLogoMark job={ownLogo(item)} small />
-              <span className="nm-row-main"><strong>{item.title}</strong><small>{item.company}</small></span>
-              <span className="nm-row-facts">
-                {!item.salaryHidden && item.salary ? <small>{item.salary}</small> : <SalaryBadge status={item.match?.salaryStatus} />}
-                {typeof item.match?.score === 'number' && <b className="nm-fit">{item.match.score}%</b>}
-                {showsCommute(item) && <small><MapPin size={10} /> {item.distanceKm} km</small>}
+          ? <ul className="nm-carousel" ref={carouselRef}>{list.map((item) => { const photo = cardPhoto(item); return <li key={item.id} className="nm-mini">
+            <button type="button" className={picked?.id === item.id ? 'nm-mini-phone on' : 'nm-mini-phone'} onClick={() => showInPhone(item)} aria-label={`Show ${item.title} in the swipe deck`} aria-pressed={picked?.id === item.id}>
+              <span className="nm-mini-island" aria-hidden="true" />
+              <span className="nm-mini-screen" style={photo ? { backgroundImage: `url(${assetUrl(photo)})` } : undefined}>
+                {!photo && <span className="nm-mini-logo"><CompanyLogoMark job={ownLogo(item)} /></span>}
+                {typeof item.match?.score === 'number' && <b className="nm-mini-fit">{item.match.score}%</b>}
+                <span className="nm-mini-info">
+                  <strong>{item.title}</strong>
+                  <small>{item.company}</small>
+                  <span className="nm-mini-chips">
+                    {!item.salaryHidden && item.salary ? <em>{item.salary}</em> : <SalaryBadge status={item.match?.salaryStatus} />}
+                    {item.workMode === 'Remote' ? <em>Remote</em> : showsCommute(item) && <em><MapPin size={9} /> {item.distanceKm} km</em>}
+                  </span>
+                </span>
               </span>
             </button>
-            <button type="button" className="nm-row-like" onClick={() => { if (picked?.id === item.id) setPicked(null); likeFromList(item); }} disabled={busy || !canLike} aria-label={`Like ${item.title}`}><Heart size={15} /></button>
-          </li>)}</ul>
+            <button type="button" className="nm-row-like nm-mini-like" onClick={() => { if (picked?.id === item.id) setPicked(null); likeFromList(item); }} disabled={busy || !canLike} aria-label={`Like ${item.title}`}><Heart size={15} /></button>
+          </li>; })}</ul>
           : <p className="nm-list-empty">No more roles right now. Your profile stays visible to matching teams.</p>}
         <button type="button" className="nm-see-all" onClick={() => navigate('discover')}>See all in Discover <ArrowRight size={13} /></button>
       </aside>
