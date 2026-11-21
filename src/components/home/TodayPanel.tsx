@@ -16,6 +16,21 @@ type Props = {
   onPreview?: () => void; onScroll?: (id: string) => void;
 };
 
+/** Contact bar (Book an interview, WhatsApp, Zalo, Telegram, phone, email) from the member's own channels. */
+export function ContactBar({ person, onAdd }: { person: Bootstrap['viewer']; onAdd?: () => void }) {
+  const contacts = contactLinks(person);
+  const candidate = person.role === 'candidate';
+  return <div className="tp-contact">
+    <p className="tp-meeting-label">{candidate ? 'How teams reach you after a match' : 'How candidates reach you'}</p>
+    {contacts.length ? <div className="tp-contact-bar">{contacts.map((c) => <a key={c.kind + c.href} className={`tp-c tp-c-${c.kind}`} href={c.href} target={c.kind === 'email' || c.kind === 'phone' ? undefined : '_blank'} rel="noopener noreferrer">
+      {c.kind === 'book' ? <Calendar size={15} /> : c.kind === 'email' ? <Mail size={15} /> : c.kind === 'phone' ? <Phone size={15} /> : c.kind === 'zalo' ? <b className="tp-zalo">Zalo</b> : <MessageCircle size={15} />}
+      {c.kind === 'zalo' ? null : c.label}
+    </a>)}</div> : <small className="tp-muted-small">No contact details yet.</small>}
+    {onAdd && <button type="button" className="tp-link" onClick={onAdd}>Add WhatsApp, Zalo or a booking link <ArrowRight size={13} /></button>}
+    {candidate && <small className="tp-muted-small">Your contact details stay hidden until a team matches with you.</small>}
+  </div>;
+}
+
 function greeting(now = new Date()) { const h = now.getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
 
 function ageOf(birthdate?: string) {
@@ -126,14 +141,7 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
         </div>
 
         {/* Contact bar */}
-        {contacts.length > 0 && <div className="tp-contact">
-          <p className="tp-meeting-label">{candidate ? 'How teams reach you after a match' : 'How candidates reach you'}</p>
-          <div className="tp-contact-bar">{contacts.map((c) => <a key={c.kind + c.href} className={`tp-c tp-c-${c.kind}`} href={c.href} target={c.kind === 'email' || c.kind === 'phone' ? undefined : '_blank'} rel="noopener noreferrer">
-            {c.kind === 'book' ? <Calendar size={15} /> : c.kind === 'email' ? <Mail size={15} /> : c.kind === 'phone' ? <Phone size={15} /> : c.kind === 'zalo' ? <b className="tp-zalo">Zalo</b> : <MessageCircle size={15} />}
-            {c.kind === 'zalo' ? null : c.label}
-          </a>)}</div>
-          {candidate && <small className="tp-muted-small">Your contact details stay hidden until a team matches with you.</small>}
-        </div>}
+        {contacts.length > 0 && <ContactBar person={v} />}
       </div>
     </article>
 

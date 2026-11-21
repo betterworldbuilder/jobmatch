@@ -3,6 +3,7 @@ import { Check, Eye, Loader2, Lock, Pencil, ShieldCheck, Sparkles, Trash2, X } f
 import type { Job, Person } from '../../types';
 import { CandidateCards } from './CandidateCards';
 import { DemoBadge } from '../DemoBadge';
+import { ContactBar } from '../home/TodayPanel';
 
 // Card index (0-5, matches CandidateCards' NAV order) -> wizard step. Must
 // stay in sync with the step= props on each <Card> in CandidateCards.tsx.
@@ -52,6 +53,8 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
       <div className="rp-deck-wrap">
         <CandidateCards person={viewer} match={comparisonJob?.match} onEdit={onEdit} visibilityInspector={inspector} initialCard={initialCard} onActiveChange={changeCard} />
         <p className="rp-privacy-note"><Lock size={14} /> Private contact values remain hidden in owner preview exactly as they are before a mutual match.</p>
+        {/* Contact bar: what teams can use once you match. */}
+        <div className="rp-contact-wrap"><ContactBar person={viewer} onAdd={() => onEdit(0)} /></div>
       </div>
       <aside className="rp-context">
         <div className="rp-completion-head"><div className="mh-ring" style={{ '--value': `${completion * 3.6}deg` } as React.CSSProperties}><strong>{completion}%</strong></div><div><span className="overline">Profile strength</span><h2>Make recruiters fall in love with your profile</h2></div></div>

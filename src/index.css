@@ -3461,6 +3461,9 @@ img.avatar-mini { object-fit:cover; }
 .tp-c-phone { background:#111; }
 .tp-c-email { background:#fff; color:#1a56c4; border:1px solid #cfd9ef; }
 .tp-zalo { font-size:13px; font-weight:900; letter-spacing:-.02em; }
+.rp-contact-wrap { width:min(560px,100%); margin:4px auto 0; padding:14px 16px; border:1px solid var(--line); border-radius:16px; background:#fff; }
+.rp-contact-wrap .tp-contact { margin-top:0; padding-top:0; border-top:0; align-items:center; text-align:center; }
+.rp-contact-wrap .tp-contact-bar { justify-content:center; }
 
 /* ---- Target roles upsell + personal AI agent + AI analyst chat (mockup) ---- */
 .tp-locked { margin:8px 0 0; font-size:12px; color:var(--muted); }
