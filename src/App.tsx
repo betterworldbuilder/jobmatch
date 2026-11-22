@@ -15,7 +15,7 @@ import { LoginModal, RegisterModal, ResetPasswordModal, SettingsModal } from './
 import { FeaturesTable, FeedbackSection, JourneyPipeline, LatestShowcase } from './components/LandingSections';
 import { HeroAlt, HeroDefault, HeroImage } from './components/landing/HeroBanners';
 import { CANDIDATE_OFFERS, LaunchOffers } from './components/LaunchOffers';
-import { PlanCardView } from './components/landing/PlanCards';
+import { PlanCardView, TrialCardView } from './components/landing/PlanCards';
 import { ANNUAL_MONTHS_CHARGED, BOOST, HEADLINE_PLANS, planCard, POSTING_TERM_DAYS, SINGLE_POSTING, TRIAL } from './lib/plans';
 import { CandidateWizard } from './components/profile/CandidateWizard';
 import { CandidateProfilePage } from './components/profile/CandidateProfilePage';
@@ -335,7 +335,8 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
         </header>
         {/* Recruiter pricing (founder design, 2026-11-22). Prices come from src/lib/plans.ts (synced with the server). */}
         <p className="plan-trial-banner"><Gift size={20} /> <b>{Math.round(TRIAL.days / 7)} weeks free</b> · Full features including AI</p>
-        <div className="plan-grid three">
+        <div className="plan-grid four">
+          <TrialCardView onStart={openRegister} />
           {HEADLINE_PLANS.map((key) => <PlanCardView key={key} plan={planCard(key)} onRegister={openRegister} />)}
         </div>
         <div className="plan-one-role">

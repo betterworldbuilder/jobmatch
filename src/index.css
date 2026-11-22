@@ -3842,6 +3842,10 @@ img.avatar-mini { object-fit:cover; }
 .plan-one-icon { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; background:#ffe1ec; color:#fd267a; }
 .plan-all-include { text-align:center; margin:14px auto 6px; max-width:640px; color:#33394d; font-size:14px; line-height:1.5; }
 .billing-plan-cards { margin:18px 0; }
+.plan-grid.four { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+.plan-card-trial .plan-price small { display:block; font-size:15px; font-weight:600; color:#4b5368; }
+@media (max-width:1100px) { .plan-grid.four { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+@media (max-width:640px) { .plan-grid.four { grid-template-columns:1fr; } }
 @media (max-width:820px) { .plan-grid.three { grid-template-columns:1fr; } .plan-trial-banner { font-size:15px; border-radius:16px; } }
 
 /* Premium trial + My AI chatbot */

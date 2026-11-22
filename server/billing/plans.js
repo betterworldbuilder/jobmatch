@@ -24,14 +24,13 @@ export const PLANS = {
     outboundMessaging: false, analytics: false, atsExport: false, priorityPlacement: false,
     prices: { USD: { monthly: 0 }, VND: { monthly: 0 } },
   },
-  // Pricing 2026-11-22 (founder): Solo USD 49, Duo USD 80, Team (3 seats) USD 140; every paid plan
-  // includes all features + the AI Hiring Assistant (Ask AI). VND prices were not part of the change
-  // and are unchanged pending a founder decision.
+  // Pricing 2026-11-22 (founder, final): Solo USD 50, Duo USD 80 (saves 20 vs 2 Solo), Team (3 recruiters) USD 120
+  // (saves 30 vs 3 Solo); every paid plan includes all features + the AI Hiring Assistant. All billing in USD.
   solo: {
     key: 'solo', display: 'Solo', order: 1,
     seats: 1, liveJobSlots: 5, monthlyMatchCap: UNLIMITED,
     outboundMessaging: true, analytics: true, atsExport: false, priorityPlacement: false, aiAssistant: true,
-    prices: { USD: { monthly: 49 }, VND: { monthly: 490000 } },
+    prices: { USD: { monthly: 50 }, VND: { monthly: 490000 } },
   },
   duo: {
     key: 'duo', display: 'Duo', order: 2,
@@ -44,7 +43,7 @@ export const PLANS = {
     key: 'trio', display: 'Team', order: 3,
     seats: 3, liveJobSlots: 15, monthlyMatchCap: UNLIMITED,
     outboundMessaging: true, analytics: true, atsExport: false, priorityPlacement: false, aiAssistant: true,
-    prices: { USD: { monthly: 140 }, VND: { monthly: 1190000 } },
+    prices: { USD: { monthly: 120 }, VND: { monthly: 1190000 } },
   },
   // Legacy 5-seat tier: no longer sold on the pricing page (kept so any existing row still resolves).
   team: {
@@ -117,8 +116,10 @@ export function planPrice(planKey, currency = 'USD', interval = 'monthly') {
   return interval === 'annual' ? monthly * ANNUAL_MONTHS_CHARGED : monthly;
 }
 
-/** VN accounts are billed in VND; everyone else in USD. Never inferred client-side. */
+/** All prices are in USD for every account, Vietnam included (founder, 2026-11-22). The VND figures stay in the
+ * catalogue only so a stored VND charge still resolves; set BILLING_VND_FOR_VIETNAM=true to bring them back. */
 export function currencyForCountry(country) {
+  if (process.env.BILLING_VND_FOR_VIETNAM !== 'true') return 'USD';
   return String(country || '').trim().toLowerCase() === 'vietnam' ? 'VND' : 'USD';
 }
 

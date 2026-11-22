@@ -4,7 +4,7 @@ import { api } from '../../api';
 import { Field, TextInput } from '../profile/fields';
 import { isAndroidNative, isIosNative, purchaseAppleSubscription, purchaseGooglePlaySubscription } from '../../lib/nativeBilling';
 import { LaunchOffers } from '../LaunchOffers';
-import { PlanCardView } from '../landing/PlanCards';
+import { PlanCardView, TrialCardView } from '../landing/PlanCards';
 import { HEADLINE_PLANS, planCard, SINGLE_POSTING, TRIAL } from '../../lib/plans';
 import type { Bootstrap, Payment, PaymentMethod, TeamInfo } from '../../types';
 
@@ -60,7 +60,7 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
         <p className="plan-trial-banner"><Gift size={20} /> <b>{Math.round(TRIAL.days / 7)} weeks free</b> · Full features including AI</p>
         <button className="primary-button" onClick={startTrial}>Start your free {Math.round(TRIAL.days / 7)}-week trial</button>
       </div>
-      <div className="plan-grid three billing-plan-cards">{HEADLINE_PLANS.map((key) => <PlanCardView key={key} plan={planCard(key)} onRegister={startTrial} cta={`Start free, then ${planCard(key).display}`} />)}</div>
+      <div className="plan-grid four billing-plan-cards"><TrialCardView onStart={startTrial} />{HEADLINE_PLANS.map((key) => <PlanCardView key={key} plan={planCard(key)} onRegister={startTrial} cta={`Start free, then ${planCard(key).display}`} />)}</div>
       <p className="plan-all-include">All packages include candidate matching, messaging, scheduling, AI candidate insights and outreach drafts. One role only? ${SINGLE_POSTING.usd} once for 1 job for {SINGLE_POSTING.termDays} days.</p>
     </div>;
   }

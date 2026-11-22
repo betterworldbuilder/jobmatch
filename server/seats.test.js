@@ -19,24 +19,29 @@ const CURRENCIES = ['USD', 'VND'];
  * handful of hand-picked comparisons, so condition 2 cannot pass by accident.
  */
 
-/* 2026-11-22 pricing (founder): Solo 49 · Duo 80 · Team (key `trio`, 3 seats) 140 USD.
- * The old "per-seat never increases" and "bundle never beaten by stacking" invariants no longer hold in USD:
- * Team is 46.67/seat (Duo is 40) and Duo + Solo (129) is cheaper than Team (140). That was the founder's call;
- * these tests now pin what the pricing page promises instead, and keep the old invariants for VND (unchanged). */
-test('USD pricing matches what the page promises: every bundle is cheaper than separate Solo accounts', () => {
-  assert.deepEqual(SEAT_LADDER.map((k) => planPrice(k, 'USD')), [49, 80, 140]);
-  assert.equal(planPrice('solo', 'USD') * 2 - planPrice('duo', 'USD'), 18, 'Duo saves USD 18/month vs 2 Solo');
-  assert.equal(planPrice('solo', 'USD') * 3 - planPrice('trio', 'USD'), 7, 'Team saves USD 7/month vs 3 Solo');
+/* 2026-11-22 pricing (founder, final), all in USD: Solo 50 · Duo 80 · Team (key `trio`, 3 recruiters) 120.
+ * The seat invariants hold again: per-seat 50 → 40 → 40, and no stack of smaller plans beats a bundle. */
+test('USD pricing matches what the page promises: Duo saves 20, Team saves 30 vs separate Solo accounts', () => {
+  assert.deepEqual(SEAT_LADDER.map((k) => planPrice(k, 'USD')), [50, 80, 120]);
+  assert.equal(planPrice('solo', 'USD') * 2 - planPrice('duo', 'USD'), 20, 'Duo saves $20/month vs 2 Solo');
+  assert.equal(planPrice('solo', 'USD') * 3 - planPrice('trio', 'USD'), 30, 'Team saves $30/month vs 3 Solo');
   assert.equal(PLANS.trio.display, 'Team');
 });
 
-test('VND seat pricing invariant still holds: per-seat price never increases, bundles never beaten by stacking', () => {
-  const currency = 'VND';
-  for (let i = 1; i < SEAT_LADDER.length; i += 1) {
-    const lower = SEAT_LADDER[i - 1]; const upper = SEAT_LADDER[i];
-    assert.ok(planPrice(upper, currency) / PLANS[upper].seats <= planPrice(lower, currency) / PLANS[lower].seats);
+test('seat pricing invariant: per-seat price never increases up the ladder, bundles never beaten by stacking', () => {
+  for (const currency of CURRENCIES) {
+    for (let i = 1; i < SEAT_LADDER.length; i += 1) {
+      const lower = SEAT_LADDER[i - 1]; const upper = SEAT_LADDER[i];
+      assert.ok(planPrice(upper, currency) / PLANS[upper].seats <= planPrice(lower, currency) / PLANS[lower].seats, `${currency}: ${upper} vs ${lower}`);
+    }
+    for (const key of SEAT_LADDER) assert.ok(planPrice(key, currency) <= cheapestStackCost(PLANS[key].seats, currency), `${currency}: ${key} beaten by stacking`);
   }
-  for (const key of SEAT_LADDER) assert.ok(planPrice(key, currency) <= cheapestStackCost(PLANS[key].seats, currency));
+});
+
+test('every account is billed in USD (Vietnam included) unless VND is switched back on', async () => {
+  const { currencyForCountry } = await import('./billing/plans.js');
+  assert.equal(currencyForCountry('Vietnam'), 'USD');
+  assert.equal(currencyForCountry('United States'), 'USD');
 });
 
 test('any seat count can be assembled from the ladder', () => {

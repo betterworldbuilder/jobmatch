@@ -26,12 +26,20 @@ test('an account that never chose a plan is billed the cheapest paid tier', () =
   assert.equal(chargeFor(db(), usRecruiter, sub()).amount, PLANS.solo.prices.USD.monthly);
 });
 
-test('a Vietnam account is billed the stored VND price, not a converted one', () => {
+// All prices are in USD for every account since 2026-11-22 (founder). VND only with BILLING_VND_FOR_VIETNAM=true.
+test('a Vietnam account is billed the USD price by default', () => {
   const charge = chargeFor(db(), vnRecruiter, sub({ recruiterUserId: 'r2', selectedPlanKey: 'trio' }));
-  assert.equal(charge.currency, 'VND');
-  assert.equal(charge.amount, PLANS.trio.prices.VND.monthly);
-  // Deliberately NOT the USD price times any rate.
-  assert.notEqual(charge.amount, PLANS.trio.prices.USD.monthly);
+  assert.equal(charge.currency, 'USD');
+  assert.equal(charge.amount, PLANS.trio.prices.USD.monthly);
+});
+
+test('with VND switched back on, a Vietnam account is billed the stored VND price, not a converted one', () => {
+  process.env.BILLING_VND_FOR_VIETNAM = 'true';
+  try {
+    const charge = chargeFor(db(), vnRecruiter, sub({ recruiterUserId: 'r2', selectedPlanKey: 'trio' }));
+    assert.equal(charge.currency, 'VND');
+    assert.equal(charge.amount, PLANS.trio.prices.VND.monthly);
+  } finally { delete process.env.BILLING_VND_FOR_VIETNAM; }
 });
 
 test('annual bills ten months and covers twelve', () => {
