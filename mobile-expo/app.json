@@ -9,11 +9,18 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.jobsmatchnow.app"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.jobsmatchnow.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "JobsMatchNow uses the camera for your verification selfie and profile photo.",
+        "NSMicrophoneUsageDescription": "JobsMatchNow uses the microphone for video calls with your matches.",
+        "NSPhotoLibraryUsageDescription": "JobsMatchNow lets you choose a profile photo or upload your CV.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.jobsmatchnow.app",
+      "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

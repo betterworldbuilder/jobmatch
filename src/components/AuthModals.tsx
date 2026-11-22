@@ -49,7 +49,7 @@ function detectNativeWebview() {
   if (typeof window === 'undefined') return false;
   const w = window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } };
   if (w.Capacitor?.isNativePlatform?.()) return true;
-  return /JobsMatchNowExpoPreview|Median/i.test(navigator.userAgent || '');
+  return /JobsMatchNowExpo|Median/i.test(navigator.userAgent || '');
 }
 const isNativeWebview = detectNativeWebview();
 
