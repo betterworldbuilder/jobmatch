@@ -3847,6 +3847,14 @@ img.avatar-mini { object-fit:cover; }
   .sp-label { font-size:12.5px; }
 }
 @media (hover:none) { .sp-arrow { opacity:.95; } }
+/* Desktop too (founder, 2026-11-22): the same big, clearly visible ‹ › for job seekers and recruiters. */
+@media (min-width: 761px) {
+  .sp-arrow { width:44px; height:44px; opacity:1; background:rgba(13,24,52,.7); color:#fff; border:2px solid rgba(255,255,255,.85); box-shadow:0 4px 14px rgba(0,0,0,.35); }
+  .sp-arrow svg { width:26px; height:26px; stroke-width:3; }
+  .sp-arrow:hover { background:#0f62fe; transform:translateY(-50%) scale(1.06); }
+  .on-detail .sp-arrow { background:#0f62fe; color:#fff; border-color:#fff; }
+  .on-detail .sp-arrow:hover { transform:scale(1.06); }
+}
 /* "How candidates see this role" */
 .rpv-page { position:fixed; inset:0; z-index:60; overflow-y:auto; background:linear-gradient(160deg,#f6f3ff,#fff4f8); padding:24px 20px 90px; }
 .rpv-head { max-width:980px; margin:0 auto 18px; display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }
