@@ -1,0 +1,41 @@
+/* Phone theme (founder, 2026-11-22): every button and accent in LinkedIn blue for a professional look.
+   Phones only (≤760px): desktop keeps its current colours. Loaded after index.css so equal selectors win.
+   The logo's pink "Now" badge stays (brand mark, set with its own colours). */
+@media (max-width:760px) {
+  :root {
+    --green:#0a66c2;           /* the main accent variable (named "green", holds the brand accent) */
+    --lime:#eaf3fd;
+    --accent:#0a66c2;
+    --coral:#004182;
+    --brand-gradient:linear-gradient(135deg,#0a66c2 0%,#0a5cb0 55%,#004182 100%);
+  }
+  .primary-button { box-shadow:0 10px 25px rgba(10,102,194,.25); }
+
+  /* Buttons that were hard-coded pink */
+  #pricing .plan-card .primary-button,
+  .schedule-card button.meeting-btn.solid,
+  .td-variant-add,
+  .nm-btn.like,
+  .nm-talk,
+  .tp-add-roles,
+  .tp-urgent button,
+  .ai-msg.you,
+  .askai-msg.user { background:linear-gradient(135deg,#0a66c2,#004182); box-shadow:0 8px 20px rgba(10,102,194,.3); }
+  .gm-edit.on { background:#0a66c2; border-color:#0a66c2; }
+  .wz-tag button, .wz-tag-remove { background:rgba(10,102,194,.12); }
+  .demo-list button.on { background:rgba(10,102,194,.08); box-shadow:inset 0 0 0 1px rgba(10,102,194,.4); }
+
+  /* Pink text links / icon buttons */
+  .mobile-bottom-nav.app-tabs button.active,
+  .tp-summary button, .tp-link, .nm-see-all, .nm-row-like,
+  .tp-cal a:hover, .nm-carousel-nav button:hover, .td-cand-row-open:hover strong,
+  .plan-trial-banner svg, .plan-one-icon, .ai-suggest.wrap button:hover { color:#0a66c2; }
+  .tp-cal a:hover, .nm-carousel-nav button:hover { border-color:#0a66c2; }
+  .plan-one-icon { background:#eaf3fd; }
+
+  /* Recruiter home: the role title had no room next to the "Created" chip; the chip now sits on its own line. */
+  .td-role-head { grid-template-columns:minmax(0,1fr) 20px; row-gap:6px; }
+  .td-role-head > .job-header-badge { grid-column:1; grid-row:1; min-width:0; }
+  .td-role-head > span.td-role-date { grid-column:1; grid-row:2; justify-self:start; }
+  .td-role-head > svg { grid-column:2; grid-row:1; }
+}
