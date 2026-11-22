@@ -64,7 +64,7 @@ export function InterviewPreparation({ data, navigate }: { data: Bootstrap; navi
   // Premium preview: the plan runs in preview for everyone today (payments not open) — the button is marked Premium.
   const premium = true;
   return <div className="page ip-page">
-    <div className="page-title"><div><span className="overline">AI feature</span><h1>Interview preparation</h1>
+    <div className="page-title"><div><span className="overline">AI feature</span><h1>Interview AI coach</h1>
       <p>For every role you are in a process for: the skills it asks for, what to refresh, Coursera courses, likely questions, and a refresh plan written with your own AI chatbot.</p></div></div>
     <section className="ip-agent">
       <span className="ip-agent-icon"><Bot size={18} /></span>

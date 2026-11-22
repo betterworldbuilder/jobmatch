@@ -39,6 +39,9 @@ export const api = {
   resetPassword: (token: string, password: string) => request<{ ok: boolean; user: SessionUser }>('/api/auth/reset', { method: 'POST', body: JSON.stringify({ token, password }) }),
   resendVerification: () => request<{ ok: boolean; mailer: boolean }>('/api/auth/resend-verification', { method: 'POST' }),
   deleteAccount: () => request<{ ok: boolean }>('/api/me', { method: 'DELETE' }),
+  // Ask AI (job seekers): the server uses the session user only; keys stay server-side.
+  aiChatStatus: () => request<{ enabled: boolean; reason?: string; provider?: string; providerLabel?: string; dailyLimit?: number; remaining?: number }>('/api/ai/chat/status'),
+  aiChat: (question: string, history: { role: 'user' | 'assistant'; content: string }[]) => request<{ answer: string; sources: { ref: string; kind: string; label: string }[]; provider: string | null; remaining: number }>('/api/ai/chat', { method: 'POST', body: JSON.stringify({ question, history }) }),
   calendarFeed: (userId: string, reset = false) => request<{ url: string; webcal: string; reminders: number[] }>(`/api/users/${encodeURIComponent(userId)}/calendar-feed`, { method: 'POST', body: JSON.stringify({ reset }) }),
   updateProfile: (userId: string, payload: Partial<Person> & { onboarding?: boolean }) => request<{ user: Person }>(`/api/users/${encodeURIComponent(userId)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   uploadResume: async (userId: string, file: File): Promise<{ resume: ResumeMeta; completeness: number }> => {

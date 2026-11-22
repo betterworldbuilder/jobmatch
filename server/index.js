@@ -8,6 +8,7 @@ import { createSeed } from './seed.js';
 import { matchingPool, targetIsInMatchingPool } from './matching-pool.js';
 import { buildIcs, meetingsFor, newFeedToken, validFeedToken, REMINDER_MINUTES } from './calendar-feed.js';
 import { onCandidateHired, onRoleFilled, stopProcess } from './hiring-rules.js';
+import { buildContext as buildAiContext, callProvider as callAiProvider, citedSources as citedAiSources, providerConfig as aiProviderConfig, today as aiToday } from './ai-chat.js';
 import { importMetadata, normalizeLinkedInImports, parseJobImportFile } from './job-import.js';
 import { detectMutualMatch, isStrongRoleMatch, likesRemainingToday, scoreCandidateForJob, ValidationError, reqString, optString, optStringArray, oneOf } from './matching.js';
 import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, recruiterCompleteness } from './profile.js';
@@ -3252,6 +3253,64 @@ app.delete('/api/me/connector-keys/:id', async (req, res, next) => {
       db.connectorKeys = (db.connectorKeys || []).filter((k) => !(k.id === req.params.id && k.userId === userId));
     });
     res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+// ---------------------------------------------------------------------------
+// "Ask AI" (job seekers): questions about the member's OWN data, answered by a configurable
+// server-side AI provider (see server/ai-chat.js). Session required — no demo bypass, no userId
+// parameter: the member is always the session user. Read-only. Daily per-member limit.
+// ---------------------------------------------------------------------------
+// Burst guard on top of the daily limit (AI_CHAT_BURST_PER_MIN, default 10 requests a minute).
+const aiChatLimiter = rateLimit({ windowMs: 60 * 1000, max: Number(process.env.AI_CHAT_BURST_PER_MIN) || 10, bucket: 'ai-chat' });
+async function aiChatUser(req) {
+  const session = authSession(req);
+  if (!session) { const error = new Error('Sign in to use Ask AI'); error.status = 401; throw error; }
+  const db = await store.read();
+  const user = db.users.find((u) => u.id === session.sub && !u.suspendedAt);
+  if (!user) { const error = new Error('Sign in to use Ask AI'); error.status = 401; throw error; }
+  if (user.role !== 'candidate') { const error = new Error('Ask AI is for job seekers for now'); error.status = 403; throw error; }
+  return { user, db };
+}
+const aiUsageOf = (db, userId) => (db.aiChatUsage || []).find((u) => u.id === `${userId}:${aiToday()}`)?.count || 0;
+
+app.get('/api/ai/chat/status', async (req, res, next) => {
+  try {
+    const { user, db } = await aiChatUser(req);
+    const cfg = aiProviderConfig();
+    res.json(cfg.enabled ? { enabled: true, provider: cfg.provider, providerLabel: cfg.label, dailyLimit: cfg.limit, remaining: Math.max(0, cfg.limit - aiUsageOf(db, user.id)) } : { enabled: false, reason: cfg.reason });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/ai/chat', aiChatLimiter, async (req, res, next) => {
+  try {
+    const { user, db } = await aiChatUser(req);
+    const question = String(req.body?.question || '').trim();
+    if (!question) throw new ValidationError('question', 'Ask a question');
+    if (question.length > 1000) throw new ValidationError('question', 'Keep the question under 1000 characters');
+    const history = Array.isArray(req.body?.history) ? req.body.history.slice(-6) : [];
+    const cfg = aiProviderConfig();
+    if (!cfg.enabled) return res.status(503).json({ error: 'Ask AI is not set up yet on this server.', code: cfg.reason });
+    if (aiUsageOf(db, user.id) >= cfg.limit) return res.status(429).json({ error: `You reached today's limit of ${cfg.limit} questions. It resets tomorrow.`, code: 'daily_limit' });
+    // The member's own data, through the same bootstrap the app shows them (session user only).
+    const cookie = `${AUTH_COOKIE}=${signedValue({ sub: user.id, role: user.role, expiresAt: Date.now() + 60000 }, sessionSecret)}`;
+    const r = await fetch(`http://127.0.0.1:${req.socket.localPort}/api/bootstrap?userId=${encodeURIComponent(user.id)}`, { headers: { Cookie: cookie } });
+    if (!r.ok) return res.status(503).json({ error: 'Your JobsMatchNow data could not be loaded right now. Try again in a minute.', code: 'data_unavailable' });
+    const ctx = buildAiContext(await r.json());
+    if (ctx.empty) return res.json({ answer: 'I don\'t have enough of your data yet to answer: your profile has no skills, and you have no matching roles or matches. Add your skills and target roles in your profile, then ask again.', sources: [], provider: null, remaining: Math.max(0, cfg.limit - aiUsageOf(db, user.id)) });
+    // Count the question before calling the provider (failed calls still count; protects cost).
+    const used = await store.transaction((tx) => {
+      if (!Array.isArray(tx.aiChatUsage)) tx.aiChatUsage = [];
+      const id = `${user.id}:${aiToday()}`;
+      let rec = tx.aiChatUsage.find((u) => u.id === id);
+      if (!rec) { rec = { id, userId: user.id, day: aiToday(), count: 0 }; tx.aiChatUsage.push(rec); }
+      rec.count += 1;
+      return rec.count;
+    });
+    let answerText;
+    try { answerText = await callAiProvider(cfg, { context: ctx.text, question, history }); }
+    catch (e) { return res.status(e.status || 502).json({ error: e.code === 'provider_busy' ? 'The AI service is busy. Try again in a moment.' : 'The AI service is not answering right now. Try again in a moment.', code: e.code || 'provider_error', remaining: Math.max(0, cfg.limit - used) }); }
+    res.json({ answer: answerText, sources: citedAiSources(answerText, ctx.sources), provider: cfg.label, remaining: Math.max(0, cfg.limit - used) });
   } catch (error) { next(error); }
 });
 

@@ -65,6 +65,7 @@ import { FeedbackPage } from './components/home/FeedbackPage';
 import { FindMyMatchPage } from './components/home/FindMyMatchPage';
 import { HiredResults } from './components/home/HiredResults';
 import { InterviewPreparation } from './components/home/InterviewPreparation';
+import { AskAi } from './components/home/AskAi';
 import { GraduationCap, Trophy } from 'lucide-react';
 import { FindMatches } from './components/findmatches/FindMatches';
 import type { Bootstrap, Job, JobMatch, Message, Person, Role, ScheduledCall, SessionUser, View } from './types';
@@ -104,9 +105,10 @@ const candidateNav: NavItem[] = [
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   // "Saved" and "Recruiters that like you" left the menu (founder, 2026-11-22); both stay on the Things to do page.
   { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
-  // AI interview preparation (refresh plan with your own chatbot = Premium), above the invitations (founder, 2026-11-22).
-  { label: 'Interview preparation', short: 'Prep', icon: GraduationCap, view: 'prep' },
   { label: 'Recruiter Invitation', short: 'Invites', icon: Calendar, view: 'meetings' },
+  // AI interview preparation (refresh plan with your own chatbot = Premium), renamed and moved below the
+  // invitations (founder, 2026-11-22).
+  { label: 'Interview AI coach', short: 'Coach', icon: GraduationCap, view: 'prep' },
   { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
   { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
@@ -119,7 +121,7 @@ const NAV_COLORS: Record<string, string> = {
   Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
   Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
-  'Coffee Invitations': '#e0a96d', 'Hired Results': '#fbbf24', 'Interview preparation': '#a78bfa', 'Recruiter Invitation': '#2dd4bf',
+  'Coffee Invitations': '#e0a96d', 'Hired Results': '#fbbf24', 'Interview AI coach': '#a78bfa', 'Recruiter Invitation': '#2dd4bf',
 };
 // Mirrors the candidate menu (same order and pages), plus the recruiter-only lists.
 const employerNav: NavItem[] = [
@@ -525,7 +527,9 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
           : <ViewRouter view={view} role={role} data={data} setData={setData} navigate={setView} onEditProfile={setEditStep} profileCard={profileCard} onProfileCardChange={setProfileCard} reload={load} onAddJobs={() => setJobImportOpen(true)} manualJobRequest={manualJobRequest} openMatchId={openMatchId} onOpenMessages={openMessages} editJobId={editJobId} onEditJob={openJobEditor} paymentResult={vnpayResult} onDismissResult={() => setVnpayResult(null)} />
       )}
     </section>
-    {data && !data.viewer.onboarding && view !== 'analytics' && view !== 'match' && <AiAnalyst data={data} />}
+    {/* Job seekers: real "Ask AI" (server-side provider, own data only). Recruiters keep the AI analyst preview. */}
+    {data && !data.viewer.onboarding && role === 'candidate' && <AskAi />}
+    {data && !data.viewer.onboarding && role !== 'candidate' && view !== 'analytics' && view !== 'match' && <AiAnalyst data={data} />}
     {profileSaved && <div className="profile-saved-toast" role="status"><Check size={15} /> Profile updated. Recruiter view refreshed.</div>}
     {jobImportOpen && data && <JobImportModal viewer={data.viewer} onClose={() => setJobImportOpen(false)} onImported={() => { setJobImportOpen(false); setView('jobs'); load(); }} onManual={() => { setJobImportOpen(false); setView('jobs'); setManualJobRequest((value) => value + 1); }} />}
     <nav className="mobile-bottom-nav" aria-label="Primary navigation">{nav.slice(0, 5).map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)}><Icon size={19} /><span>{item.short || item.label}</span></button>; })}</nav>
