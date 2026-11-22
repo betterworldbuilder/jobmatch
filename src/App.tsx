@@ -94,10 +94,10 @@ function billingNotificationIcon(billingKind?: string) {
 // home dashboard (`anchor`). `short` is the compact label for the mobile bar.
 type NavItem = { label: string; short?: string; icon: typeof Compass; view?: View; anchor?: string };
 const candidateNav: NavItem[] = [
+  // "My dashboard" (was "Things to do") is first in the menu (founder, 2026-11-22); the app still opens on Find My Match.
+  { label: 'My dashboard', short: 'Dashboard', icon: Compass, anchor: 'td-today' },
   // "Find My Match" (the swipe deck + Recommended Roles) is the page the app opens on.
   { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
-  // Home: my profile card + Today panel at the top, then matches, likes, conversations.
-  { label: 'Things to do', short: 'To do', icon: Compass, anchor: 'td-today' },
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   // "Saved" and "Recruiters that like you" left the menu (founder, 2026-11-22); both stay on the Things to do page.
   { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
@@ -111,16 +111,16 @@ const candidateNav: NavItem[] = [
 ];
 // One colour per menu item, so each section is easy to spot.
 const NAV_COLORS: Record<string, string> = {
-  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
+  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
   Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
   'Coffee Invitations': '#e0a96d',
 };
 // Mirrors the candidate menu (same order and pages), plus the recruiter-only lists.
 const employerNav: NavItem[] = [
+  { label: 'My dashboard', short: 'Dashboard', icon: Compass, view: 'home' },
   // "Find My Match": the candidate swipe deck + Recommended Candidates, the page recruiters open on too.
   { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
-  { label: 'Things to do', short: 'To do', icon: Compass, view: 'home' },
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'My JobMatches', icon: BriefcaseBusiness, anchor: 'td-roles' },
   { label: 'Selected Candidates', short: 'Candidates', icon: Users, view: 'selected' },
