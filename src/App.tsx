@@ -430,6 +430,13 @@ function AdminWorkspace({ session, onExit }: { session: SessionUser; onExit: () 
       </div>
     </aside>
     <div className="app-main admin-main">
+    {/* Phones hide the sidebar, which held the admin menu and Log out (founder, 2026-11-22): a top bar brings both back. */}
+    <div className="admin-phone-bar">
+      <select aria-label="Admin section" value={tab} onChange={(event) => setTab(event.target.value as typeof tab)}>
+        {adminNav.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+      </select>
+      <button type="button" className="admin-phone-logout" onClick={onExit}><LogOut size={16} /> Log out</button>
+    </div>
     {tab === 'kpis' && <AdminKpisPage />}
     {tab === 'traffic' && <AdminTrafficPage />}
     {tab === 'integrations' && <AdminIntegrationsPage />}

@@ -20,6 +20,10 @@
   .tp-urgent button,
   .ai-msg.you,
   .askai-msg.user { background:linear-gradient(135deg,#0a66c2,#004182); box-shadow:0 8px 20px rgba(10,102,194,.3); }
+  /* Admin on phones: section menu + Log out in a sticky top bar (the sidebar is hidden on phones). */
+  .admin-phone-bar { display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:30; box-sizing:border-box; width:100%; margin:0 0 14px; padding:calc(8px + env(safe-area-inset-top)) 16px 8px; background:#fff; border-bottom:1px solid #e3e8f0; }
+  .admin-phone-bar select { flex:1; min-width:0; min-height:42px; padding:0 12px; border:1px solid #d5deea; border-radius:12px; background:#f6f9fd; color:#0b102b; font:800 14px 'Manrope'; }
+  .admin-phone-logout { flex:none; display:inline-flex; align-items:center; gap:6px; min-height:42px; padding:0 14px; border:1px solid #d5deea; border-radius:999px; background:#fff; color:#0a66c2; font:800 13.5px 'Manrope'; }
   .auth-modal .auth-forgot { color:#0a66c2; font-weight:800; }
   /* Log in + Test demo account stay brand pink (founder, 2026-11-22): pink button, matching pink shadow. */
   .auth-modal .auth-submit { background:linear-gradient(135deg,#fd267a 0%,#ff4458 55%,#ff6036 100%); box-shadow:0 10px 24px rgba(253,38,122,.28); }
