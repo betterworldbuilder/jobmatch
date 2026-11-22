@@ -24,7 +24,9 @@ if (typeof window !== 'undefined') {
 function hiddenNow() {
   try { return Number(localStorage.getItem(HIDE_KEY) || 0) > Date.now(); } catch { return false; }
 }
-const standalone = () => typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true);
+// Also true inside our Android/iOS app (Expo WebView adds "JobsMatchNowExpoPreview" to its user agent): no
+// "install the app" offers inside the app itself.
+const standalone = () => typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true || /JobsMatchNowExpo/i.test(navigator.userAgent));
 
 /** "Get the app" button at the top of the phone landing (founder, 2026-11-22). Uses the browser's install when it
  *  offers one; otherwise shows how to add the app to the home screen (iPhone Safari, Android Chrome / Samsung). */
