@@ -289,7 +289,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-AI-Provider, X-AI-Key, X-AI-Tier, X-AI-Model');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
   }
   if (req.method === 'OPTIONS') return res.sendStatus(origin && allowedOrigins.has(origin) ? 204 : 403);
@@ -3301,7 +3301,21 @@ const aiUsageOf = (db, userId) =>(db.aiChatUsage || []).find((u) => u.id === `${
 const aiKeySecret = () => process.env.AI_KEY_SECRET || sessionSecret;
 const aiKeyRecOf = (db, userId) => (db.aiKeys || []).find((k) => k.id === userId) || null;
 /** The member's own key wins; else the server's provider (if configured). */
-function aiChatConfig(db, user) {
+/* Demo accounts are shared, so they never SAVE a key. Instead the browser tab may send the visitor's own key with
+ * each request (headers x-ai-provider / x-ai-key / x-ai-tier, over HTTPS); it is used for that one request only,
+ * never stored or logged. Real accounts ignore these headers (they use their saved, encrypted key). */
+function demoSessionKey(req, user) {
+  if (user.demo !== true) return null;
+  const provider = String(req.headers['x-ai-provider'] || '');
+  const key = String(req.headers['x-ai-key'] || '').trim();
+  if (!key || aiKeyFormatError(provider, key)) return null;
+  const tier = req.headers['x-ai-tier'] === 'fast' ? 'fast' : 'best';
+  const model = /^[\w.-]{3,60}$/.test(String(req.headers['x-ai-model'] || '')) ? String(req.headers['x-ai-model']) : pickAiModel(provider, tier, []);
+  return { rec: { provider, tier, model, last4: key.slice(-4), savedAt: null, sessionOnly: true }, key };
+}
+function aiChatConfig(db, user, req) {
+  const session = req ? demoSessionKey(req, user) : null;
+  if (session) return { cfg: { ...aiOwnKeyConfig(session.rec, session.key), label: `your ${session.rec.provider === 'anthropic' ? 'Claude' : 'ChatGPT'} key (this tab only)` }, rec: session.rec };
   const rec = aiKeyRecOf(db, user.id);
   if (rec) {
     const key = decryptAiKey(rec.enc, aiKeySecret());
@@ -3314,7 +3328,7 @@ function aiChatConfig(db, user) {
 app.get('/api/ai/chat/status', async (req, res, next) => {
   try {
     const { user, db } = await aiChatUser(req);
-    const { cfg, rec } = aiChatConfig(db, user);
+    const { cfg, rec } = aiChatConfig(db, user, req);
     const base = { ownKey: publicAiKeyInfo(rec), canSaveKey: user.demo !== true, keyLinks: AI_KEY_LINKS, premium: premiumFor(db, user) };
     res.json(cfg.enabled ? { ...base, enabled: true, source: cfg.source, provider: cfg.provider, providerLabel: cfg.label, model: cfg.model, dailyLimit: cfg.limit, remaining: Math.max(0, cfg.limit - aiUsageOf(db, user.id)) } : { ...base, enabled: false, reason: cfg.reason });
   } catch (error) { next(error); }
@@ -3326,6 +3340,21 @@ app.get('/api/ai/key', async (req, res, next) => {
   try {
     const { user, db } = await aiChatUser(req);
     res.json({ key: publicAiKeyInfo(aiKeyRecOf(db, user.id)), canSave: user.demo !== true, links: AI_KEY_LINKS });
+  } catch (error) { next(error); }
+});
+// Check a key with the provider WITHOUT saving it (demo accounts use it for their browser tab only).
+app.post('/api/ai/key/check', aiKeyLimiter, async (req, res, next) => {
+  try {
+    await aiChatUser(req);
+    const provider = String(req.body?.provider || '');
+    const apiKey = String(req.body?.apiKey || '').trim();
+    const tier = req.body?.tier === 'fast' ? 'fast' : 'best';
+    const formatError = aiKeyFormatError(provider, apiKey);
+    if (formatError) throw new ValidationError('apiKey', formatError);
+    const check = await verifyAiKey(provider, apiKey);
+    const who = provider === 'anthropic' ? 'Anthropic (Claude)' : 'OpenAI (ChatGPT)';
+    if (!check.ok) return res.status(check.status).json({ error: check.code === 'key_refused' ? `${who} refused this key. Check that you copied the whole key and that it is still active.` : `We could not reach ${who} to check the key. Try again in a minute.`, code: check.code, field: 'apiKey' });
+    res.json({ ok: true, provider, tier, model: pickAiModel(provider, tier, check.models), last4: apiKey.slice(-4) });
   } catch (error) { next(error); }
 });
 app.put('/api/ai/key', aiKeyLimiter, async (req, res, next) => {
@@ -3400,7 +3429,7 @@ app.post('/api/ai/chat', aiChatLimiter, async (req, res, next) => {
     if (!prem.active) return res.status(402).json({ error: user.role === 'employer'
       ? (prem.trialUsed ? 'Your trial has ended. Ask AI is included in every recruiter plan.' : `Ask AI is included in every recruiter plan. Start your free ${TRIAL_DAYS}-day trial to use it.`)
       : (prem.trialUsed ? 'Your Premium trial has ended. Ask AI is part of Premium.' : `Ask AI is part of Premium. Start your free ${PREMIUM_TRIAL_DAYS}-day trial to use it.`), code: 'premium_required' });
-    const { cfg } = aiChatConfig(db, user);
+    const { cfg } = aiChatConfig(db, user, req);
     if (!cfg.enabled) return res.status(503).json(cfg.reason === 'own_key_unreadable'
       ? { error: 'Your saved AI key can no longer be read. Please connect your chatbot again.', code: cfg.reason }
       : { error: 'Ask AI is not set up yet. Connect your own Claude or ChatGPT key to start.', code: cfg.reason });

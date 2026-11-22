@@ -9,6 +9,17 @@ export type PremiumState = { active: boolean; source: 'paid' | 'trial' | 'demo' 
 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
+/* Demo accounts (shared) never save an AI key: the visitor's key lives in THIS browser tab only (sessionStorage)
+ * and travels with Ask AI requests; the server uses it for that request and never stores it. */
+const TAB_KEY = 'jm-ai-tab-key';
+export type TabAiKey = { provider: 'anthropic' | 'openai'; key: string; tier: 'best' | 'fast'; model: string; last4: string };
+export function readTabAiKey(): TabAiKey | null { try { return JSON.parse(sessionStorage.getItem(TAB_KEY) || 'null'); } catch { return null; } }
+export function writeTabAiKey(v: TabAiKey | null) { try { if (v) sessionStorage.setItem(TAB_KEY, JSON.stringify(v)); else sessionStorage.removeItem(TAB_KEY); } catch { /* blocked storage */ } }
+function tabAiHeaders(): Record<string, string> {
+  const t = readTabAiKey();
+  return t ? { 'x-ai-provider': t.provider, 'x-ai-key': t.key, 'x-ai-tier': t.tier, 'x-ai-model': t.model } : {};
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   // credentials: session cookie must travel on native (Capacitor) origins too
   const response = await fetch(`${apiBase}${url}`, { ...init, credentials: 'include', headers: { 'Content-Type': 'application/json', ...init?.headers } });
@@ -46,13 +57,14 @@ export const api = {
   resendVerification: () => request<{ ok: boolean; mailer: boolean }>('/api/auth/resend-verification', { method: 'POST' }),
   deleteAccount: () => request<{ ok: boolean }>('/api/me', { method: 'DELETE' }),
   // Ask AI (job seekers): the server uses the session user only; keys stay server-side.
-  aiChatStatus: () => request<{ enabled: boolean; reason?: string; source?: 'own' | 'server'; provider?: string; providerLabel?: string; model?: string; dailyLimit?: number; remaining?: number; ownKey: AiKeyInfo | null; canSaveKey: boolean; premium: PremiumState }>('/api/ai/chat/status'),
+  checkAiKey: (provider: 'anthropic' | 'openai', apiKey: string, tier: 'best' | 'fast') => request<{ ok: boolean; provider: 'anthropic' | 'openai'; tier: 'best' | 'fast'; model: string; last4: string }>('/api/ai/key/check', { method: 'POST', body: JSON.stringify({ provider, apiKey, tier }) }),
+  aiChatStatus: () => request<{ enabled: boolean; reason?: string; source?: 'own' | 'server'; provider?: string; providerLabel?: string; model?: string; dailyLimit?: number; remaining?: number; ownKey: AiKeyInfo | null; canSaveKey: boolean; premium: PremiumState }>('/api/ai/chat/status', { headers: tabAiHeaders() }),
   premium: () => request<PremiumState>('/api/premium'),
   startPremiumTrial: () => request<PremiumState>('/api/premium/trial', { method: 'POST', body: '{}' }),
   aiKey: () =>request<{ key: AiKeyInfo | null; canSave: boolean }>('/api/ai/key'),
   saveAiKey: (provider: 'anthropic' | 'openai', apiKey: string, tier: 'best' | 'fast') => request<{ key: AiKeyInfo }>('/api/ai/key', { method: 'PUT', body: JSON.stringify({ provider, apiKey, tier }) }),
   deleteAiKey: () => request<{ ok: boolean }>('/api/ai/key', { method: 'DELETE' }),
-  aiChat: (question: string, history: { role: 'user' | 'assistant'; content: string }[]) => request<{ answer: string; sources: { ref: string; kind: string; label: string }[]; provider: string | null; remaining: number }>('/api/ai/chat', { method: 'POST', body: JSON.stringify({ question, history }) }),
+  aiChat: (question: string, history: { role: 'user' | 'assistant'; content: string }[]) => request<{ answer: string; sources: { ref: string; kind: string; label: string }[]; provider: string | null; remaining: number }>('/api/ai/chat', { method: 'POST', body: JSON.stringify({ question, history }), headers: tabAiHeaders() }),
   calendarFeed: (userId: string, reset = false) => request<{ url: string; webcal: string; reminders: number[] }>(`/api/users/${encodeURIComponent(userId)}/calendar-feed`, { method: 'POST', body: JSON.stringify({ reset }) }),
   updateProfile: (userId: string, payload: Partial<Person> & { onboarding?: boolean }) => request<{ user: Person }>(`/api/users/${encodeURIComponent(userId)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   uploadResume: async (userId: string, file: File): Promise<{ resume: ResumeMeta; completeness: number }> => {

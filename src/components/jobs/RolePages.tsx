@@ -51,14 +51,16 @@ export function RoleSummaryPage({ job: j, photo = rolePhoto(j), onRecruiter }: {
   const salary = salaryText(j);
   return <>
     {/* Every role's front uses IBM blue (#0f62fe), founder 2026-11-22. */}
-    <div className="nm-photo rp-brand">
-      <span className="rp-brand-mark" aria-hidden="true">{(j.company || '?').slice(0, 1).toUpperCase()}</span>
-    </div>
-    {photo && <figure className="rp-stamp" title={j.recruiter?.name ? `Recruiter: ${j.recruiter.name}` : 'Recruiter'}>
-      <img src={asset(photo)} alt={j.recruiter?.name ? `Recruiter ${j.recruiter.name}` : 'Recruiter'} />
-      {j.recruiter?.name && <figcaption>{j.recruiter.name.split(' ')[0]}</figcaption>}
-    </figure>}
-    <div className="nm-card-info rp-summary">
+    <div className="nm-photo rp-brand" />
+    {/* Scrollable like the job description page (founder, 2026-11-22); mark + ID stamp sit in the top row, never over text. */}
+    <div className="nm-card-info rp-summary"><div className="rp-summary-inner">
+      <div className="rp-top-row">
+        <span className="rp-brand-mark" aria-hidden="true">{(j.company || '?').slice(0, 1).toUpperCase()}</span>
+        {photo && <figure className="rp-stamp" title={j.recruiter?.name ? `Recruiter: ${j.recruiter.name}` : 'Recruiter'}>
+          <img src={asset(photo)} alt={j.recruiter?.name ? `Recruiter ${j.recruiter.name}` : 'Recruiter'} />
+          {j.recruiter?.name && <figcaption>{j.recruiter.name.split(' ')[0]}</figcaption>}
+        </figure>}
+      </div>
       <h3>{j.title}</h3>
       <p className="nm-company">{j.company}{j.experienceLevel ? ` · ${j.experienceLevel}` : ''}</p>
       {j.recruiter?.name && (onRecruiter
@@ -75,7 +77,7 @@ export function RoleSummaryPage({ job: j, photo = rolePhoto(j), onRecruiter }: {
         {j.requiredLanguages?.length ? <span className="nm-chip"><Languages size={11} /> {j.requiredLanguages.join(', ')}</span> : null}
         {fit && <span className="nm-chip">{fit}</span>}
       </div>
-    </div>
+    </div></div>
   </>;
 }
 

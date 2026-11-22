@@ -95,7 +95,7 @@ function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, page, onPage, onRe
       : <div className="sp-page"><RoleDetailPage job={job} page={page} /></div>}
     <motion.span className="nm-stamp like" style={{ opacity: likeOpacity }} aria-hidden="true">LIKE</motion.span>
     <motion.span className="nm-stamp nope" style={{ opacity: nopeOpacity }} aria-hidden="true">NOPE</motion.span>
-    <SwipePager pages={ROLE_PAGES} page={page} onPage={onPage} tapZones={page === 0} />
+    <SwipePager pages={ROLE_PAGES} page={page} onPage={onPage} />
   </motion.article>;
 }
 

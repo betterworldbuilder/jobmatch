@@ -3697,6 +3697,16 @@ img.avatar-mini { object-fit:cover; }
   .askai-panel { inset:0; right:0; bottom:0; width:100vw; height:100dvh; border-radius:0; }
 }
 @media print { .askai-fab, .askai-panel { display:none !important; } }
+/* Phone side menu (founder, 2026-11-22): the whole menu scrolls as one page (no small inner list), compact rows,
+   so every section is reachable exactly like the desktop sidebar. */
+@media (max-width: 760px) {
+  .sidebar { overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+  .sidebar .sidebar-nav { flex:none; overflow:visible; min-height:auto; }
+  .sidebar .sidebar-nav button { min-height:42px; padding-top:3px; padding-bottom:3px; font-size:14.5px; }
+  .sidebar .sidebar-nav .nav-ico { width:30px; height:30px; }
+  .sidebar .sidebar-bottom { margin-top:12px; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+  .sidebar .sidebar-bottom > button { min-height:36px; }
+}
 /* Phone bar: Profile · Surf · Explore · Likes · Chat (founder, 2026-11-22). Active tab in brand pink. */
 .explore-sheet { display:none; }
 @media (max-width: 760px) {
@@ -3737,7 +3747,8 @@ img.avatar-mini { object-fit:cover; }
 @media (max-width:639px) {
   .td-match-page .nm-screen { height:calc(100svh - 68px - 84px - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height:460px; }
   .td-match-page .fmm-rolebar { margin-bottom:22px; } /* the deck below pulls itself up 14px */
-  .td-match-page .nm-screen { height:calc(100svh - 68px - 98px - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+  .td-match-page .nm-screen { height:calc(100svh - 68px - 98px - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height:380px; }
+  .sp-card:not(.on-detail) .sp-arrow { top:68%; } /* page 1: below the recruiter's ID stamp */
 }
 /* ---- Pages inside swipe cards (founder, 2026-11-22): progress bars, page name, ‹ ›, tap zones ---- */
 .sp-top { position:absolute; z-index:5; top:0; left:0; right:0; padding:8px 10px 0; pointer-events:none; }
@@ -3795,8 +3806,12 @@ img.avatar-mini { object-fit:cover; }
 /* Role front (founder, 2026-11-22): IBM blue background, company mark, recruiter photo as a small ID stamp */
 .nm-photo.rp-brand { background:radial-gradient(120% 80% at 80% 0%, #4589ff 0%, #0f62fe 45%, #0043ce 100%); }
 .nm-photo.rp-brand::after { background:linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,20,70,.35) 60%, rgba(0,20,70,.65) 100%); }
-.rp-brand-mark { position:absolute; left:18px; top:58px; width:64px; height:64px; border-radius:18px; display:grid; place-items:center; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.35); color:#fff; font:900 30px 'Manrope'; }
-.rp-stamp { position:absolute; z-index:4; top:52px; right:14px; margin:0; width:74px; padding:4px 4px 3px; background:#fff; border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,.28); transform:rotate(3deg); text-align:center; }
+/* Page 1 scrolls (like the JD page): the info fills the card under the bars; short content sits at the bottom. */
+.nm-card-info.rp-summary { top:52px; bottom:0; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; padding-top:4px; padding-bottom:16px; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.35) transparent; }
+.rp-summary-inner { margin-top:auto; } /* bottom-aligned when it fits, scrolls from the top when it doesn't */
+.rp-top-row { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.rp-brand-mark { flex:none; width:56px; height:56px; border-radius:16px; display:grid; place-items:center; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.35); color:#fff; font:900 26px 'Manrope'; }
+.rp-stamp { flex:none; margin:0 4px 0 0; width:74px; padding:4px 4px 3px; background:#fff; border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,.28); transform:rotate(3deg); text-align:center; }
 .rp-stamp img { display:block; width:66px; height:80px; object-fit:cover; border-radius:3px; }
 .rp-stamp figcaption { font:800 9.5px 'Manrope'; color:#0d1834; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .rp-recruiter { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin:2px 0 8px; padding:0; border:0; background:none; color:#e8efff; font:600 12.5px 'Manrope'; text-align:left; cursor:pointer; }
@@ -4021,6 +4036,7 @@ img.avatar-mini { object-fit:cover; }
 .ai-connected > div:not(.ai-connected-actions) { flex:1; min-width:160px; display:flex; flex-direction:column; }
 .ai-connected-actions { display:flex; gap:6px; }
 .ai-ok { width:26px; height:26px; border-radius:50%; display:grid; place-items:center; background:#e8f8ee; color:#0c7a43; }
+.ai-demo-note { margin:4px 0 8px; padding:9px 11px; border-radius:12px; background:#eef4ff; color:#0b3a8c; font-size:12.5px; line-height:1.45; display:flex; gap:7px; align-items:flex-start; }
 .ai-form-actions { display:flex; gap:8px; } .ai-form-actions .fm-black { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
 .askai-premium { font-style:normal; display:inline-flex; align-items:center; gap:3px; margin-left:6px; padding:1px 7px; border-radius:999px; background:linear-gradient(135deg,#fde68a,#fbbf24); color:#5b3b00; font-size:10px; font-weight:800; vertical-align:middle; }
 .askai-gate { display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px; padding:18px 10px; color:#1c2033; }
