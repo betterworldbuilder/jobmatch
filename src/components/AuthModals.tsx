@@ -120,6 +120,7 @@ export function LoginModal({ onClose, onComplete }: { onClose: () => void; onCom
   const [error, setError] = useState('');
   const [forgot, setForgot] = useState(false);
   const [forgotDone, setForgotDone] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState<'demo' | 'password' | 'sso' | null>(null); // where to show the error
 
   // Demo profiles come from a cache started when the landing page loads (prefetchDemoProfiles), so the list and the
   // "Test demo account" button are there at once instead of after two slow calls in a row.
@@ -147,24 +148,27 @@ export function LoginModal({ onClose, onComplete }: { onClose: () => void; onCom
   </ModalShell>;
 
   return <ModalShell title="Welcome back" subtitle={config.demoAuth ? 'Sign in with your account, or explore with a demo profile.' : 'Sign in with your email and password.'} onClose={onClose}>
-    <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!email.trim() || !password) return; setSubmitting('password'); run(async () => (await api.loginPassword(email.trim(), password)).user); }}>
+    <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!email.trim() || !password) return; setSubmitting('password'); setSubmitted('password'); run(async () => (await api.loginPassword(email.trim(), password)).user); }}>
       <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" aria-label="Email address" />
       <input className="auth-input" type="password" placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" aria-label="Password" />
       <button type="submit" className="primary-button auth-submit" disabled={submitting !== null || !email.trim() || !password}>{submitting === 'password' ? <Loader2 size={16} className="spin" /> : <><LogIn size={16} /> Log in</>}</button>
+      {/* The error sits right under Log in: at the bottom of the window it was hidden below the demo list on phones. */}
+      {error && submitted === 'password' && <p className="auth-error" role="alert">{error}</p>}
       <button type="button" className="text-button auth-forgot" onClick={() => { setForgot(true); setError(''); }}>Forgot password?</button>
     </form>
     <div className="auth-divider"><span>or</span></div>
-    <SsoButtons config={config} busy={busy} onMockSso={(provider) => { setBusy(provider); run(() => authProviders[provider].signIn()); }} />
+    <SsoButtons config={config} busy={busy} onMockSso={(provider) => { setBusy(provider); setSubmitted('sso'); run(() => authProviders[provider].signIn()); }} />
     {config.demoAuth && <>
       <div className="auth-divider"><span>test the matching experience</span></div>
-      <form className="auth-form demo-form" onSubmit={(event) => { event.preventDefault(); if (!selected) return; setSubmitting('demo'); run(() => authProviders.demo.signIn({ userId: selected })); }}>
+      <form className="auth-form demo-form" onSubmit={(event) => { event.preventDefault(); if (!selected) return; setSubmitting('demo'); setSubmitted('demo'); run(() => authProviders.demo.signIn({ userId: selected })); }}>
         {profiles.length ? <DemoPicker profiles={profiles} selected={selected} onSelect={setSelected} />
           : <div className="demo-picker demo-loading" aria-busy="true"><span /><span /><span /></div>}
+        {error && submitted === 'demo' && <p className="auth-error" role="alert">{error}</p>}
         {/* Pinned to the bottom of the window, so it is visible right after picking an account. */}
         <button type="submit" className="primary-button auth-submit demo-submit" disabled={submitting !== null || !selected}>{submitting === 'demo' ? <Loader2 size={16} className="spin" /> : <>Test demo account <ArrowRight size={16} /></>}</button>
       </form>
     </>}
-    {error && <p className="auth-error">{error}</p>}
+    {error && submitted === 'sso' && <p className="auth-error" role="alert">{error}</p>}
   </ModalShell>;
 }
 
