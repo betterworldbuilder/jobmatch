@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Camera, Check, FileText, Loader2, MapPin, Sparkl
 import { api } from '../../api';
 import { CameraCaptureModal } from '../CameraCaptureModal';
 import { Chips, Field, LevelTagInput, Repeat, Segmented, TagInput, TextInput, Toggle } from './fields';
+import { IdVerification } from './IdVerification';
 import type { AgePrivacy, ContactChannel, ContactChannelType, Education, LanguageTag, Person, Recommendation, ResumeMeta, Seniority, SkillTag, WorkExperience } from '../../types';
 
 const SENIORITY_LABELS = { junior: 'Junior', mid: 'Mid', senior: 'Senior', lead: 'Lead', exec: 'Exec' };
@@ -200,6 +201,7 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
   const [showCamera, setShowCamera] = useState(false);
   const [autofillNote, setAutofillNote] = useState('');
   const [geoBusy, setGeoBusy] = useState(false);
+  const [idv, setIdv] = useState(viewer.idVerification);
   const [error, setError] = useState('');
   const [aboutMeAnswers, setAboutMeAnswers] = useState<AboutMeAnswers>({ bestWhen: '', relyOnMe: '', proudResult: '' });
   const pickArchetype = (archetype: Archetype) => {
@@ -355,6 +357,8 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
           <Field label="Work authorization" required hint="Your status relative to where you'll work — shown as a status, never a document."><select className="wz-input wz-select" value={form.workAuthorization} onChange={(e) => patch({ workAuthorization: e.target.value })}><option value="">Select one…</option>{WORK_AUTH_OPTIONS.map((o) => <option key={o}>{o}</option>)}</select></Field>
           <Field label="Visa sponsorship"><Toggle checked={form.visaSponsorship} onChange={(visaSponsorship) => patch({ visaSponsorship })} label={form.visaSponsorship ? 'I need sponsorship' : 'No sponsorship needed'} /></Field>
         </div>
+        {/* "Verified account" (optional): ID check preview — the document never leaves the device. */}
+        <IdVerification viewer={{ ...viewer, idVerification: idv }} onSaved={(v) => setIdv(v.idVerification)} />
         <Field label="Location for distance matching" hint="Enables real distance to roles. Your exact coordinates are never shown to anyone.">
           <button type="button" className={form.geo ? 'wz-geo-btn set' : 'wz-geo-btn'} onClick={captureLocation} disabled={geoBusy}>
             {geoBusy ? <><Loader2 size={15} className="spin" /> Locating…</> : form.geo ? <><MapPin size={15} /> Location set ✓ — tap to update</> : <><MapPin size={15} /> Use my current location</>}

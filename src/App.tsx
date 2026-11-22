@@ -63,6 +63,8 @@ import { CandidateSubscription } from './components/home/CandidateSubscription';
 import { ChatbotPage } from './components/home/ChatbotPage';
 import { FeedbackPage } from './components/home/FeedbackPage';
 import { FindMyMatchPage } from './components/home/FindMyMatchPage';
+import { HiredResults } from './components/home/HiredResults';
+import { Trophy } from 'lucide-react';
 import { FindMatches } from './components/findmatches/FindMatches';
 import type { Bootstrap, Job, JobMatch, Message, Person, Role, ScheduledCall, SessionUser, View } from './types';
 
@@ -114,7 +116,7 @@ const NAV_COLORS: Record<string, string> = {
   Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
   Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
-  'Coffee Invitations': '#e0a96d',
+  'Coffee Invitations': '#e0a96d', 'Hired Results': '#fbbf24',
 };
 // Mirrors the candidate menu (same order and pages), plus the recruiter-only lists.
 const employerNav: NavItem[] = [
@@ -124,9 +126,10 @@ const employerNav: NavItem[] = [
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'My JobMatches', icon: BriefcaseBusiness, anchor: 'td-roles' },
   { label: 'Selected Candidates', short: 'Candidates', icon: Users, view: 'selected' },
-  { label: 'Saved', icon: BookmarkIcon, view: 'saved' },
+  // "Saved" left the recruiter menu (founder, 2026-11-22); "Hired Results" sits after Hiring Stages.
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
   { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
+  { label: 'Hired Results', short: 'Hired', icon: Trophy, view: 'hired' },
   { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: 'Use your chatbot here', short: 'Chatbot', icon: Bot, view: 'assistant' },
@@ -548,6 +551,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'selected') return <SelectedCandidates data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'coffee') return <CoffeeInvitations data={data} onOpenMessages={onOpenMessages} />;
+  if (view === 'hired') return <HiredResults data={data} onOpenMessages={onOpenMessages} />;
   if (view === 'billing' && role === 'candidate') return <CandidateSubscription data={data} navigate={navigate} />;
   if (view === 'billing') return <BillingPage data={data} setData={setData} paymentResult={paymentResult} onDismissResult={onDismissResult} />;
   if (role === 'candidate') return <CandidateProfilePage

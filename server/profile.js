@@ -34,6 +34,16 @@ function objArray(value, shape, maxItems = 20) {
 const SENIORITIES = ['junior', 'mid', 'senior', 'lead', 'exec'];
 const VISIBILITIES = ['all', 'after-swipe', 'paused'];
 export const JOB_STATUSES = ['open', 'waiting', 'signing', 'hired', 'contract'];
+export const ID_DOC_TYPES = ['id-card', 'passport', 'driving-licence'];
+
+/** "Verified account" (preview): only the outcome of the in-browser check is kept, never the ID document. */
+function applyIdVerification(user, body) {
+  if (body.idVerification === undefined) return;
+  if (body.idVerification === null) { delete user.idVerification; return; }
+  const docType = body.idVerification?.docType;
+  if (!ID_DOC_TYPES.includes(docType)) throw new ValidationError('idVerification', `docType must be one of ${ID_DOC_TYPES.join(', ')}`);
+  user.idVerification = { status: 'preview-checked', docType, checkedAt: Date.now() };
+}
 const WORK_MODES = ['remote', 'hybrid', 'onsite'];
 const CONTACT_TYPES = ['whatsapp', 'telegram', 'phone', 'signal', 'wechat', 'zalo', 'email', 'other'];
 const AGE_PRIVACY = ['public', 'after-match', 'private'];
@@ -61,6 +71,7 @@ export function applyCandidateProfile(user, body) {
       value: (v) => str(v, 120),
     }, 6)?.filter((channel) => channel.type && channel.value) || [];
   }
+  applyIdVerification(user, body);
   // "My super power": one thing the candidate is exceptionally good at, in their own words. '' clears it.
   if (body.superPower !== undefined) {
     const sp = String(body.superPower || '').trim().slice(0, 300);
@@ -214,6 +225,7 @@ export function applyRecruiterProfile(user, body) {
   set('clients', strArray(body.clients, 20, 100));
   set('contactName', str(body.contactName, 120));
   set('contactEmail', str(body.contactEmail, 200));
+  applyIdVerification(user, body);
   // "How candidates reach you" contact bar: same channels as candidates (shown to matched candidates).
   if (body.contactChannels !== undefined) {
     user.contactChannels = objArray(body.contactChannels, {

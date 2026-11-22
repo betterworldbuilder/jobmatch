@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, BriefcaseBusiness, Download, Linkedin, Loader2, LogIn, Mail, ShieldCheck, Trash2, User, X } from 'lucide-react';
+import { ArrowRight, BriefcaseBusiness, Check, Download, Linkedin, Loader2, LogIn, Mail, Search, ShieldCheck, Trash2, User, X } from 'lucide-react';
 import { api, apiBase } from '../api';
 import { authProviders } from '../lib/auth';
 import { ConductModal } from './ConductModal';
@@ -11,6 +11,36 @@ function GoogleMark() {
 }
 
 type SsoBusy = 'linkedin' | 'google' | null;
+
+/** Demo account picker: Candidates / Recruiters tabs, search, a compact scrolling list (phone friendly). */
+function DemoPicker({ profiles, selected, onSelect }: { profiles: SessionUser[]; selected: string; onSelect: (id: string) => void }) {
+  const [tab, setTab] = useState<'candidate' | 'employer'>('candidate');
+  const [q, setQ] = useState('');
+  const counts = { candidate: profiles.filter((p) => p.role === 'candidate').length, employer: profiles.filter((p) => p.role !== 'candidate').length };
+  const term = q.trim().toLowerCase();
+  const list = profiles.filter((p) => (tab === 'candidate' ? p.role === 'candidate' : p.role !== 'candidate'))
+    .filter((p) => !term || [p.name, p.title, p.company].filter(Boolean).join(' ').toLowerCase().includes(term));
+  const initials = (n = '') => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
+  return <div className="demo-picker">
+    <div className="demo-tabs" role="tablist" aria-label="Demo account type">
+      {(['candidate', 'employer'] as const).map((r) => <button key={r} type="button" role="tab" aria-selected={tab === r} className={tab === r ? 'on' : ''}
+        onClick={() => { setTab(r); const first = profiles.find((p) => (r === 'candidate' ? p.role === 'candidate' : p.role !== 'candidate')); if (first) onSelect(first.id); }}>
+        {r === 'candidate' ? <User size={13} /> : <BriefcaseBusiness size={13} />} {r === 'candidate' ? 'Candidates' : 'Recruiters'} <em>{counts[r]}</em>
+      </button>)}
+    </div>
+    <label className="demo-search"><Search size={14} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === 'candidate' ? 'Search name, role…' : 'Search name, company…'} aria-label="Search demo accounts" /></label>
+    <ul className="demo-list" role="listbox" aria-label="Demo profile">
+      {list.map((p) => <li key={p.id}>
+        <button type="button" role="option" aria-selected={selected === p.id} className={selected === p.id ? 'on' : ''} onClick={() => onSelect(p.id)}>
+          <span className="demo-ava">{p.photo ? <img src={p.photo} alt="" loading="lazy" /> : initials(p.name)}</span>
+          <span className="demo-txt"><b>{p.name}</b><small>{[p.title, p.company].filter(Boolean).join(' · ')}</small></span>
+          {selected === p.id && <Check size={15} className="demo-check" />}
+        </button>
+      </li>)}
+      {!list.length && <li className="demo-empty">No demo account matches “{q}”.</li>}
+    </ul>
+  </div>;
+}
 
 // Google/LinkedIn block OAuth inside embedded webviews, so inside the native
 // app wrapper we hide SSO and steer users to email/demo (which work fine).
@@ -115,11 +145,7 @@ export function LoginModal({ onClose, onComplete }: { onClose: () => void; onCom
     {config.demoAuth && profiles.length > 0 && <>
       <div className="auth-divider"><span>test the matching experience</span></div>
       <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!selected) return; setSubmitting('demo'); run(() => authProviders.demo.signIn({ userId: selected })); }}>
-        <select className="auth-select" value={selected} onChange={(event) => setSelected(event.target.value)} aria-label="Demo profile">
-          {(['candidate', 'employer'] as const).map((r) => <optgroup key={r} label={r === 'candidate' ? 'Candidates' : 'Recruiters'}>
-            {profiles.filter((profile) => (profile.role === 'candidate') === (r === 'candidate')).map((profile) => <option key={profile.id} value={profile.id}>{profile.name}{profile.title ? ` · ${profile.title}` : ''}{profile.company ? `, ${profile.company}` : ''} (demo)</option>)}
-          </optgroup>)}
-        </select>
+        <DemoPicker profiles={profiles} selected={selected} onSelect={setSelected} />
         <button type="submit" className="secondary-button auth-submit" disabled={submitting !== null || !selected}>{submitting === 'demo' ? <Loader2 size={16} className="spin" /> : <>Test demo matching <ArrowRight size={16} /></>}</button>
       </form>
     </>}

@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Building2, Camera, Check, Loader2, MapPin, Uploa
 import { api } from '../../api';
 import { CameraCaptureModal } from '../CameraCaptureModal';
 import { Field, Segmented, TagInput, TextInput } from './fields';
+import { IdVerification } from './IdVerification';
 import type { EmployerKind, Person } from '../../types';
 
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-1000', '1000+'] as const;
@@ -81,6 +82,7 @@ export function RecruiterWizard({ viewer, initialStep = 0, onDone, onCancel }: {
   const [form, setForm] = useState<Form>(() => fromPerson(viewer));
   const [attempted, setAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [idv, setIdv] = useState(viewer.idVerification);
   const [error, setError] = useState('');
   const [geoBusy, setGeoBusy] = useState(false);
   const [uploadingImage, setUploadingImage] = useState<'companyLogo' | 'photo' | null>(null);
@@ -205,6 +207,8 @@ export function RecruiterWizard({ viewer, initialStep = 0, onDone, onCancel }: {
       </div>}
 
       {step === 1 && <div className="wz-body">
+        {/* "Verified account" (optional): ID check preview — the document never leaves the device. */}
+        <IdVerification viewer={{ ...viewer, idVerification: idv }} onSaved={(v) => setIdv(v.idVerification)} />
         <div className="wz-row">
           <Field label="Contact person" required><TextInput value={form.contactName} onChange={(e) => patch({ contactName: e.target.value })} /></Field>
           <Field label="Contact email" required><TextInput type="email" value={form.contactEmail} onChange={(e) => patch({ contactEmail: e.target.value })} /></Field>

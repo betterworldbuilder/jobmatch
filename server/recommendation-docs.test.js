@@ -50,6 +50,19 @@ test('letters: typed from the bytes, owner and matched recruiters only, removabl
   assert.equal((await call('PATCH', `/api/users/${id}`, { superPower: '' }, ck)).body.user.superPower, undefined);
 });
 
+test('verified account (preview): only the outcome is stored, never document data; works for both roles', async () => {
+  for (const role of ['candidate', 'employer']) {
+    const reg = await call('POST', '/api/auth/register', { role, name: `Idv ${role}`, email: `idv-${role}-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+    const id = reg.body.user.id; const ck = reg.session;
+    const ok = await call('PATCH', `/api/users/${id}`, { idVerification: { docType: 'passport', image: 'data:image/png;base64,AAAA', number: 'X1234567' } }, ck);
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    assert.deepEqual(Object.keys(ok.body.user.idVerification).sort(), ['checkedAt', 'docType', 'status'], 'no image, no document number');
+    assert.equal(ok.body.user.idVerification.status, 'preview-checked');
+    assert.equal((await call('PATCH', `/api/users/${id}`, { idVerification: { docType: 'library-card' } }, ck)).status, 400);
+    assert.equal((await call('PATCH', `/api/users/${id}`, { idVerification: null }, ck)).body.user.idVerification, undefined, 'null removes it');
+  }
+});
+
 test('demo candidates have a super power and certifications', async () => {
   const b = await call('GET', '/api/bootstrap?userId=employer-demo');
   const demo = b.body.candidates.filter((c) => c.demo);

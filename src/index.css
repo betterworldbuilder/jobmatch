@@ -3654,6 +3654,53 @@ img.avatar-mini { object-fit:cover; }
 .meeting-cancelled { color:#be123c; font-weight:800; }
 .rp-status-wrap { width:min(560px,100%); margin:6px auto 0; }
 .rp-status-wrap .job-status.js-card { margin:0; }
+/* Verified account (ID check preview) */
+.idv { border:1px solid #d6e4ff; border-radius:14px; background:#f5f9ff; padding:12px 14px; display:flex; flex-direction:column; gap:10px; margin:6px 0 12px; }
+.idv header { display:flex; gap:10px; align-items:flex-start; }
+.idv-icon { width:34px; height:34px; flex:none; border-radius:10px; display:grid; place-items:center; background:#1d4ed8; color:#fff; }
+.idv header strong { display:block; font-size:14px; color:#0d1834; } .idv header strong em { font-style:normal; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:#7a8296; margin-left:6px; }
+.idv header small { display:block; font-size:12px; color:#4b5368; line-height:1.45; }
+.idv-types { display:flex; flex-wrap:wrap; gap:6px; }
+.idv-types button { display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px; border:1px solid #d6e4ff; border-radius:999px; background:#fff; color:#1e2a4a; font:700 12px 'Manrope'; cursor:pointer; }
+.idv-types button.on { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+.idv-drop { display:flex; align-items:center; justify-content:center; gap:8px; min-height:52px; border:1.5px dashed #9db8f5; border-radius:12px; background:#fff; color:#1d4ed8; font:800 13px 'Manrope'; cursor:pointer; text-align:center; padding:8px; }
+.idv-drop.busy { cursor:progress; opacity:.85; }
+.idv-steps { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; font-size:12px; }
+.idv-steps li { display:flex; align-items:center; gap:6px; color:#14532d; } .idv-steps li.bad { color:#9f1239; }
+.idv-steps em { font-style:normal; font-size:10px; font-weight:800; text-transform:uppercase; color:#7a8296; margin-left:4px; }
+.idv-done { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; background:#eaf7ef; color:#14532d; font-size:13px; }
+.idv-done .text-button { margin-left:auto; }
+.idv-fail { margin:0; color:#9f1239; font-size:12px; font-weight:700; }
+.idv-privacy { margin:0; font-size:11px; color:#6b7286; line-height:1.45; display:flex; gap:5px; align-items:flex-start; }
+.tcard-idv { align-self:flex-start; display:inline-flex; align-items:center; gap:5px; margin:2px 0 4px; padding:3px 9px; border-radius:999px; background:rgba(29,78,216,.85); color:#fff; font-size:11px; font-weight:800; }
+/* Hired Results */
+.hired-page .analytics-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.hr-who { display:flex; align-items:center; gap:10px; }
+.hr-who img { width:32px; height:32px; border-radius:50%; object-fit:cover; }
+.hr-who > span { display:flex; flex-direction:column; }
+.hr-who small { color:#7a8296; font-size:11px; }
+@media (max-width:720px) { .hired-page .analytics-grid { grid-template-columns:1fr; } }
+/* Demo account picker (login): tabs, search, compact list */
+.demo-picker { display:flex; flex-direction:column; gap:8px; border:1px solid #ece6f2; border-radius:14px; padding:8px; background:#fbfaff; }
+.demo-tabs { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:3px; border-radius:10px; background:#f1edf7; }
+.demo-tabs button { display:inline-flex; align-items:center; justify-content:center; gap:6px; height:32px; border:0; border-radius:8px; background:transparent; color:#5b6378; font:800 12px 'Manrope'; cursor:pointer; }
+.demo-tabs button em { font-style:normal; font-size:10px; padding:1px 6px; border-radius:999px; background:rgba(0,0,0,.06); }
+.demo-tabs button.on { background:#fff; color:#0d1834; box-shadow:0 1px 4px rgba(20,20,60,.12); }
+.demo-tabs button.on em { background:#fd267a; color:#fff; }
+.demo-search { display:flex; align-items:center; gap:6px; height:34px; padding:0 10px; border:1px solid #e3dcec; border-radius:9px; background:#fff; color:#7a8296; }
+.demo-search input { flex:1; min-width:0; border:0; outline:0; background:transparent; font:600 13px 'Manrope'; color:#1c2033; }
+.demo-list { list-style:none; margin:0; padding:0; max-height:232px; overflow-y:auto; display:flex; flex-direction:column; gap:2px; scrollbar-width:thin; }
+.demo-list button { width:100%; display:flex; align-items:center; gap:10px; padding:6px 8px; border:0; border-radius:10px; background:transparent; text-align:left; cursor:pointer; }
+.demo-list button:hover { background:#f4f0fa; }
+.demo-list button.on { background:linear-gradient(135deg,rgba(253,38,122,.10),rgba(255,96,54,.10)); box-shadow:inset 0 0 0 1px rgba(253,38,122,.35); }
+.demo-ava { width:32px; height:32px; flex:none; border-radius:50%; overflow:hidden; display:grid; place-items:center; background:linear-gradient(135deg,#fd267a,#ff6036); color:#fff; font:800 11px 'Manrope'; }
+.demo-ava img { width:100%; height:100%; object-fit:cover; }
+.demo-txt { flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.25; }
+.demo-txt b { font-size:13px; color:#0d1834; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.demo-txt small { font-size:11px; color:#7a8296; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.demo-check { color:#fd267a; flex:none; }
+.demo-empty { padding:12px; text-align:center; font-size:12px; color:#7a8296; }
+@media (max-width:520px) { .demo-list { max-height:190px; } .demo-ava { width:28px; height:28px; } .demo-txt b { font-size:12px; } }
 /* "I got hired" in the conversation */
 .hired-quick-btn { background:#eef4ff !important; color:#1d4ed8 !important; border-color:#c7d7fe !important; }
 .hired-here-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:#eef4ff; color:#1d4ed8; font-size:13px; font-weight:800; }

@@ -1,5 +1,5 @@
 export type Role = 'candidate' | 'employer' | 'admin';
-export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match';
+export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired';
 export type EmployerKind = 'company' | 'headhunter';
 /** A recommendation letter the candidate uploaded (PDF, Word or image). Opens for matched recruiters only. */
 export interface RecommendationDoc { id: string; originalName: string; ext: string; size: number; uploadedAt: number }
@@ -54,6 +54,8 @@ export interface Person {
   industries?: string[]; workExperience?: WorkExperience[]; education?: Education[]; certifications?: string[];
   /** "My super power": what the candidate is exceptionally good at, in their own words (≤ 300 chars). */
   superPower?: string;
+  /** "Verified account" (preview): outcome of the in-browser ID check; the document itself is never stored. */
+  idVerification?: { status: 'preview-checked'; docType: 'id-card' | 'passport' | 'driving-licence'; checkedAt: number };
   links?: { github?: string; portfolio?: string; website?: string; linkedin?: string; appStore?: string; playStore?: string };
   /** Links to articles, papers, or talks — shown on the "What I Have Built" card. */
   publications?: string[];

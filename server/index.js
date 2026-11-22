@@ -640,7 +640,7 @@ app.get('/api/auth/profiles', async (_req, res, next) => {
       profiles: db.users
         // Every seeded demo persona (50+ candidates, 25+ recruiters), never a real or sample account.
         .filter((user) => user.demoTemplate === true && user.demo === true && !user.sample && (user.role === 'candidate' || user.role === 'employer'))
-        .map((user) => ({ id: user.id, role: user.role, kind: user.kind, name: user.name, title: user.title, company: user.company, demo: true })),
+        .map((user) => ({ id: user.id, role: user.role, kind: user.kind, name: user.name, title: user.title, company: user.company, photo: user.photo, demo: true })),
     });
   } catch (error) { next(error); }
 });
