@@ -2149,12 +2149,14 @@ app.post('/api/swipes', async (req, res, next) => {
       const targetUser = targetType === 'candidate'
         ? db.users.find((user) => user.id === targetId)
         : db.users.find((user) => user.id === targetJob?.employerId);
-      // Demo accounts only (founder, 2026-11-22): every DEMO_MATCH_EVERY-th like (default 3) on a demo profile/role
-      // is liked back by the demo counterpart, so about 1 in 3 likes becomes a match. Real users are never touched.
+      // Demo accounts only (founder, 2026-11-22): 1 match per 3 likes. Passes never count. The count restarts after
+      // every match, so the 3rd like since the last match is liked back by the demo counterpart; liking someone who
+      // already liked you still matches at once (and restarts the count). Real users are never touched.
       if (!mutual && direction === 'like' && actor.demo === true && (targetUser?.demo === true || targetJob?.demo === true)) {
         const every = Math.max(1, Number(process.env.DEMO_MATCH_EVERY) || 3);
-        const likes = db.swipes.filter((s) => s.actorId === actorId && s.direction === 'like').length;
-        if (likes % every === 0) {
+        const lastMatchAt = db.matches.reduce((t, m) => ((m.candidateId === actorId || m.employerId === actorId) && m.createdAt > t ? m.createdAt : t), 0);
+        const likesSinceMatch = db.swipes.filter((s) => s.actorId === actorId && s.direction === 'like' && !s.demoAutoLike && (s.createdAt || 0) > lastMatchAt).length;
+        if (likesSinceMatch >= every) {
           const now = Date.now();
           let counter = null;
           if (targetType === 'job' && targetJob) {
@@ -2164,7 +2166,10 @@ app.post('/api/swipes', async (req, res, next) => {
               || db.jobs.find((job) => job.employerId === actorId && String(job.status).toLowerCase() === 'active' && !db.matches.some((m) => m.candidateId === targetId && m.jobId === job.id));
             if (roleJob) counter = { id: crypto.randomUUID(), actorId: targetId, targetId: roleJob.id, targetType: 'job', direction: 'like', createdAt: now, demoAutoLike: true };
           }
-          if (counter && !db.swipes.some((s) => s.actorId === counter.actorId && s.targetType === counter.targetType && s.targetId === counter.targetId)) {
+          // One auto like-back per role: a recruiter's earlier auto like for another role does not block this one.
+          const sameLike = (s) => s.actorId === counter.actorId && s.targetType === counter.targetType && s.targetId === counter.targetId
+            && (counter.targetType === 'job' || !s.demoAutoLike || s.jobId === counter.jobId);
+          if (counter && !db.swipes.some(sameLike)) {
             db.swipes.push(counter);
             mutual = detectMutualMatch(swipe, db);
           }

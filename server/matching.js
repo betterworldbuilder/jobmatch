@@ -210,7 +210,9 @@ export function detectMutualMatch(swipe, { swipes, jobs }) {
         s.actorId === job.employerId &&
         s.targetType === 'candidate' &&
         s.targetId === swipe.actorId &&
-        s.direction === 'like'
+        s.direction === 'like' &&
+        // A demo auto like-back (1-in-3 demo rule) only counts for the role it was made for.
+        !(s.demoAutoLike && s.jobId && s.jobId !== job.id)
     );
     if (!reciprocal) return null;
     return { candidateId: swipe.actorId, jobId: job.id, employerId: job.employerId };
