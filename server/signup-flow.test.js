@@ -124,7 +124,7 @@ test('recruiter sign-up: register → company profile → post a role → deck �
   assert.equal(boot.status, 200);
   // Real accounts never see demo profiles (demo/real wall): posting a role adds 2 starter candidates who already like it.
   assert.ok(boot.body.candidates.every((c) => !c.demo), 'no demo candidates in a real recruiter\'s deck');
-  assert.ok(boot.body.candidates.every((c) => c.email === undefined && c.jobStatus === undefined), 'no contact details or private status before a match');
+  assert.ok(boot.body.candidates.every((c) => c.email === undefined && c.jobStatus?.recruiter === undefined), 'no contact details or private status details before a match');
   const cand = boot.body.candidates.find((c) => c.id === `sample-cand-${jobId}-0`);
   assert.ok(cand, 'starter candidate is in the deck');
   const like = await call('POST', '/api/swipes', { actorId: me.id, targetType: 'candidate', targetId: cand.id, jobId, direction: 'like' }, ck);

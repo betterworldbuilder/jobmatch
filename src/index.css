@@ -3558,6 +3558,19 @@ img.avatar-mini { object-fit:cover; }
 .job-status .js-typed input { height:30px; padding:0 8px; border:1px solid rgba(255,255,255,.14); border-radius:8px; background:#0f1d40; color:#fff; font:600 12px 'Manrope'; }
 /* Profile-page card variant (light) */
 .job-status.js-card { margin:0 0 14px; padding:14px 16px; gap:10px; background:#fff; border:1px solid #ece6f2; border-radius:16px; box-shadow:0 6px 18px rgba(20,20,60,.05); }
+/* Under the photo card on the profile page. */
+.rp-status-wrap { width:min(560px,100%); margin:6px auto 0; }
+.rp-status-wrap .job-status.js-card { margin:0; }
+.js-hint { font-size:12px; line-height:1.4; color:#1d4ed8; background:#eef4ff; border-radius:8px; padding:6px 9px; }
+.job-status.js-sidebar .js-hint { color:#c9d3e8; background:rgba(255,255,255,.06); }
+.js-card-head small { flex-wrap:wrap; justify-content:flex-end; text-align:right; }
+/* Status pill on the photo card (what recruiters see). */
+.tcard-status { align-self:flex-start; display:inline-flex; align-items:center; gap:7px; margin:2px 0 4px; padding:4px 11px; border-radius:999px; font-size:13px; font-weight:800; color:#fff; background:rgba(34,197,94,.85); backdrop-filter:blur(6px); }
+.tcard-status i { width:8px; height:8px; border-radius:50%; background:#fff; }
+.tcard-status.st-waiting { background:rgba(245,158,11,.9); }
+.tcard-status.st-signing { background:rgba(251,113,133,.92); }
+.tcard-status.st-hired { background:rgba(37,99,235,.9); }
+.tcard-status.st-contract { background:rgba(124,58,237,.9); }
 /* In the profile page header, between the title and the action buttons. */
 .rp-page-head .job-status.js-card { margin:0 0 0 auto; flex:0 1 400px; min-width:280px; padding:10px 14px; gap:7px; }
 .rp-page-head .job-status.js-card label { flex-direction:row; align-items:center; gap:8px; }

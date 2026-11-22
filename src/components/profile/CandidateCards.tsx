@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BadgeCheck, Brain, Briefcase, CalendarClock, CheckCircle2, Code2, Coffee, Download, FileText, Github, Globe, Hammer, Heart, Home, Languages, Link2, Lock, MapPin, MessageCircle, Music2, Pencil, Phone, Plane, PlusCircle, Quote, Send, ShieldCheck, Smartphone, Sparkles, Star, Target, User, Wallet, X, XCircle } from 'lucide-react';
 import { api } from '../../api';
+import { jobStatusText } from '../JobStatusPicker';
 import type { ContactChannel, MatchEvidence, Person } from '../../types';
 
 /** github.com/x -> https://github.com/x, otherwise pass real URLs through. */
@@ -151,6 +152,8 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
             <h2>{displayName}{age !== undefined && <span className="tcard-age">{age}</span>}{verified && <BadgeCheck size={20} className="verified-mark" />}</h2>
             {p.pronouns && <span className="tcard-pronouns">{p.pronouns}</span>}
             <p className="tcard-hero-title"><Briefcase size={14} /> {p.title || p.headline}</p>
+            {/* Job status, visible to recruiters (role and recruiter name stay private to the member). */}
+            {p.role === 'candidate' && p.jobStatus?.kind && <span className={`tcard-status st-${p.jobStatus.kind}`}><i aria-hidden="true" />{jobStatusText(p.jobStatus)}</span>}
             <div className="tcard-hero-meta">
               {(p.city || p.country) && <span><MapPin size={13} /> {[p.city, p.country].filter(Boolean).join(', ')}</span>}
               {p.nationality && <span><Globe size={13} /> {p.nationality}</span>}

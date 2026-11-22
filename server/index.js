@@ -122,12 +122,17 @@ function verifiedUser(user) {
  * What may leave the server about ANOTHER user or their job: never credentials,
  * never exact coordinates (distance is computed here and sent as distanceKm).
  */
+/** "I just got hired!": the candidate leaves recruiter search (existing matches stay). */
+const isHired = (user) => user?.role === 'candidate' && user.jobStatus?.kind === 'hired';
+
 function otherPartyView(user) {
   if (!user) return user;
   // `verification` is the member's own review record (status, admin reason): never shown to others.
-  // `jobStatus` (hired / pending signing, with role and recruiter name) is private to the member too.
+  // `jobStatus`: others see only the status itself (open / waiting / signing / hired / under contract till a
+  // date) so recruiters know who just got hired; the role, company, recruiter name and match stay private.
   // `calendarFeedToken` is the secret in the member's private calendar feed URL.
   const { geo, verification, jobStatus, calendarFeedToken, ...rest } = selfView(user);
+  if (jobStatus?.kind) rest.jobStatus = { kind: jobStatus.kind, ...(jobStatus.kind === 'contract' && jobStatus.until ? { until: jobStatus.until } : {}) };
   return rest;
 }
 
@@ -1856,10 +1861,11 @@ app.get('/api/bootstrap', async (req, res, next) => {
     assertDemoActor(req, db, viewer.id);
     const role = viewer.role === 'employer' ? 'employer' : 'candidate';
     const pool = matchingPool(db, viewer);
-    const candidates = pool.users.filter((user) => user.role === 'candidate');
     // Mutual salary reveal: exact ranges are hidden until both sides matched.
     const matchedJobIds = new Set(pool.matches.filter((match) => match.candidateId === viewer.id).map((match) => match.jobId));
     const matchedCandidateIds = new Set(pool.matches.filter((match) => match.employerId === viewer.id).map((match) => match.candidateId));
+    // "I just got hired!" takes a candidate out of recruiter search. Teams already matched keep them (and the chat).
+    const candidates = pool.users.filter((user) => user.role === 'candidate' && (!isHired(user) || matchedCandidateIds.has(user.id)));
     // Incoming super-likes: who signalled strong interest in the viewer already?
     const incomingEmployerLikes = pool.swipes.filter((s) => s.direction === 'like' && s.targetType === 'candidate' && s.targetId === viewer.id);
     const viewerJobIds = new Set(pool.jobs.filter((job) => job.employerId === viewer.id).map((job) => job.id));
@@ -2014,6 +2020,13 @@ app.post('/api/swipes', async (req, res, next) => {
       }
       if (!targetIsInMatchingPool(db, actor, targetType, targetId)) {
         const error = new Error('Demo and live matching are separate'); error.status = 403; throw error;
+      }
+      // A hired candidate is out of search: no new likes from recruiters who are not already matched.
+      if (actor.role === 'employer' && targetType === 'candidate') {
+        const target = db.users.find((u) => u.id === targetId);
+        if (isHired(target) && !db.matches.some((m) => m.candidateId === targetId && m.employerId === actor.id)) {
+          const error = new Error('This candidate just got hired and is no longer in search'); error.status = 409; throw error;
+        }
       }
       // A job only accepts interest while it is genuinely live. Without this a
       // candidate could swipe a job id straight from the API and match against

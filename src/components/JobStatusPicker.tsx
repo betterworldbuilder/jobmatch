@@ -1,9 +1,9 @@
 // The member's job status: Open to work · Waiting for offer · Pending contract signing ·
 // I just got hired! · Under contract till <date>. Signing / hired / contract name the role
 // and the recruiter, picked from the member's matches (linked to that conversation) or typed.
-// Private: the server never sends jobStatus to other members.
+// Recruiters see only the status (on the photo card); role, company, recruiter and match stay private.
 import { useState } from 'react';
-import { Briefcase, Loader2, Lock, User } from 'lucide-react';
+import { Briefcase, Eye, Loader2, Lock, User } from 'lucide-react';
 import { api } from '../api';
 import type { JobMatch, JobStatus, JobStatusKind, Person } from '../types';
 
@@ -77,7 +77,7 @@ export function JobStatusPicker({ viewer, matches = [], onSaved, variant = 'side
 
   const showJob = WITH_JOB(st.kind);
   return <div className={`job-status js-${variant}`} style={{ ['--st' as string]: COLOR[st.kind] }}>
-    {variant === 'card' && <header className="js-card-head"><span className="overline">My job status</span><small><Lock size={11} /> Only you see this</small></header>}
+    {variant === 'card' && <header className="js-card-head"><span className="overline">My job status</span><small><Eye size={11} /> Recruiters see the status · <Lock size={11} /> role and recruiter stay private</small></header>}
     <label><span className="js-label">Status</span>
       <span className="js-row"><i className="js-dot" aria-hidden="true" />
         <select value={st.kind} disabled={busy} aria-label="My job status" onChange={(e) => void save({ ...st, kind: e.target.value as Kind })}>
@@ -98,6 +98,7 @@ export function JobStatusPicker({ viewer, matches = [], onSaved, variant = 'side
       <input value={st.role || ''} placeholder="Role, e.g. Lead AI Engineer" aria-label="Role title" maxLength={80} onChange={(e) => setSt({ ...st, role: e.target.value })} onBlur={() => void save(st)} />
       <input value={st.recruiter || ''} placeholder="Recruiter name" aria-label="Recruiter name" maxLength={80} onChange={(e) => setSt({ ...st, recruiter: e.target.value })} onBlur={() => void save(st)} />
     </div>}
+    {st.kind === 'hired' && <small className="js-hint">You are out of recruiter search now. Teams you already matched keep the conversation. Pick “Open to work” to come back.</small>}
     {variant === 'card' && <p className="js-preview"><JobStatusLine s={st} matches={matches} onOpen={onOpen} /></p>}
     {variant === 'card' && saved && !error && <small className="js-ok">Saved</small>}
     {error && <small className="js-err">{error}</small>}

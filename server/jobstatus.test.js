@@ -43,5 +43,24 @@ test('"pending signing" and "hired" name the role and recruiter, and only the me
   assert.equal(bad.body.user.jobStatus.role, undefined, 'over-long text dropped');
   assert.equal(bad.body.user.jobStatus.matchId, undefined, 'odd match ids dropped');
   const deck = await call('GET', '/api/bootstrap?userId=employer-demo');
-  for (const candidate of deck.body.candidates) assert.equal(candidate.jobStatus, undefined, 'recruiters never see a candidate\'s job status');
+  for (const candidate of deck.body.candidates) {
+    for (const k of ['role', 'company', 'recruiter', 'matchId', 'updatedAt']) assert.equal(candidate.jobStatus?.[k], undefined, `recruiters never see the status ${k}`);
+  }
+  // Recruiters do see the status itself (demo Sofia: "I just got hired!").
+  const sofia = deck.body.candidates.find((c) => c.id === 'candidate-demo');
+  assert.deepEqual(sofia?.jobStatus, { kind: 'hired' }, 'status kind is visible to a recruiter she already matched');
+});
+
+test('"I just got hired!" takes a candidate out of recruiter search; matched teams keep her', async () => {
+  // employer-demo-10 (generated crowd) never matched Sofia, who is hired in the demo seed.
+  const other = await call('GET', '/api/bootstrap?userId=employer-demo-10');
+  assert.equal(other.status, 200);
+  assert.ok(!other.body.candidates.some((c) => c.id === 'candidate-demo'), 'hired candidate is not in an unmatched recruiter\'s search');
+  assert.ok(other.body.candidates.length > 10, 'other candidates still there');
+  const like = await call('POST', '/api/swipes', { actorId: 'employer-demo-10', targetType: 'candidate', targetId: 'candidate-demo', direction: 'like' });
+  assert.equal(like.status, 409, 'cannot like a hired candidate');
+  // Sarah matched Sofia: still sees her (and the conversation).
+  const sarah = await call('GET', '/api/bootstrap?userId=employer-demo');
+  assert.ok(sarah.body.candidates.some((c) => c.id === 'candidate-demo'));
+  assert.ok(sarah.body.matches.some((m) => m.candidateId === 'candidate-demo'));
 });
