@@ -46,7 +46,7 @@ import { assertNeverZeroLiveJobs, downgradeToFree, applyLiveJobLimit } from './b
 import { clearSlotLocks, confirmHire, hasVerifiedHire, HIRE_OUTCOMES, POSTING_TERM_DAYS, recordHire, renewPosting, startPostingTerm } from './billing/postings.js';
 import { extendForHireInFlight, TRIAL_DAYS } from './billing/trial.js';
 import { recruiterVerification } from './billing/verification.js';
-import { chargeFor, monthlyRecurringRevenue, selectPlan, SELECTABLE_PLANS } from './billing/charge.js';
+import { chargeFor, monthlyRecurringRevenue, selectPlan, SELECTABLE_PLANS, setExtraJobSlots } from './billing/charge.js';
 import { attachReferralOnRegister, findReferrerByCode, getOrCreateReferralCode, revokeReferralCreditForPayment } from './billing/referrals.js';
 import { BANK_INSTRUCTION_FIELDS, generateInvoiceNumber, generateTransferReference, MANUAL_METHOD_IDS, paymentInstructions } from './billing/providers/manual.js';
 import { buildPaymentUrl, isVnpayConfigured, isVnpaySuccess, VNPAY_AMOUNT_VND, verifySignature as verifyVnpaySignature } from './billing/providers/vnpay.js';
@@ -2308,7 +2308,7 @@ function billingPayload(db, recruiter) {
 function paymentAmountFields(db, subscription) {
   const recruiter = db.users.find((user) => user.id === subscription.recruiterUserId);
   const charge = chargeFor(db, recruiter, subscription);
-  return { amount: charge.amount, currency: charge.currency, planKey: charge.planKey, billingInterval: charge.interval };
+  return { amount: charge.amount, currency: charge.currency, planKey: charge.planKey, billingInterval: charge.interval, extraJobSlots: charge.extraJobSlots };
 }
 
 /** VNPay settles in VND and nothing else, so its rail always bills the plan's
@@ -2420,6 +2420,8 @@ app.post('/api/billing/plan', async (req, res, next) => {
       const result = selectPlan(db, subscription, planKey, interval, recruiterId);
       if (result.outcome === 'invalid_plan') { const error = new Error(`planKey must be one of ${SELECTABLE_PLANS.join(', ')}`); error.status = 400; throw error; }
       if (result.outcome === 'invalid_interval') { const error = new Error('interval must be monthly or annual'); error.status = 400; throw error; }
+      // Extra live roles (+USD 20 each per month, every plan).
+      if (req.body?.extraJobSlots !== undefined) setExtraJobSlots(db, subscription, req.body.extraJobSlots, recruiterId);
       return billingPayload(db, recruiter);
     });
     res.json(payload);

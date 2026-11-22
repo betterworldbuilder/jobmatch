@@ -3843,6 +3843,15 @@ img.avatar-mini { object-fit:cover; }
 .plan-all-include { text-align:center; margin:14px auto 6px; max-width:640px; color:#33394d; font-size:14px; line-height:1.5; }
 .billing-plan-cards { margin:18px 0; }
 .plan-grid.four { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+.plan-extra-note { text-align:center; margin:14px 0 0; font-size:14px; color:#33394d; }
+.billing-extra-roles { margin-top:12px; padding:12px 14px; border:1px solid #ece6f2; border-radius:14px; background:#fbfaff; display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; }
+.billing-extra-roles > div:first-child { flex:1; min-width:200px; display:flex; flex-direction:column; }
+.billing-extra-roles small { color:#5b6378; font-size:12px; }
+.billing-stepper { display:inline-flex; align-items:center; gap:10px; }
+.billing-stepper button { width:34px; height:34px; border-radius:10px; border:1px solid #e3dcec; background:#fff; font:800 18px 'Manrope'; cursor:pointer; }
+.billing-stepper button:disabled { opacity:.4; cursor:default; }
+.billing-stepper b { min-width:24px; text-align:center; font-size:16px; }
+.billing-total { width:100%; margin:0; font-size:13px; color:#33394d; }
 .plan-card-trial .plan-price small { display:block; font-size:15px; font-weight:600; color:#4b5368; }
 @media (max-width:1100px) { .plan-grid.four { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
 @media (max-width:640px) { .plan-grid.four { grid-template-columns:1fr; } }

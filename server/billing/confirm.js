@@ -3,7 +3,7 @@ import { extendFromPayment, findSubscription } from './subscriptions.js';
 import { qualifyReferralIfEligible } from './referrals.js';
 import { clearSlotLocks } from './postings.js';
 import { applyLiveJobLimit } from './downgrade.js';
-import { PLANS, seatPlanKey } from './plans.js';
+import { clampExtraJobSlots, PLANS, seatPlanKey } from './plans.js';
 
 /** Shared by the admin manual-confirm route and the VNPay IPN webhook so the
  * money-critical extend-subscription + qualify-referral + audit logic exists
@@ -32,8 +32,11 @@ export function confirmPayment(db, payment, { now = Date.now(), adminId = null, 
    * instant they buy — a customer who paid and still sees a locked slot has
    * been charged for nothing. */
   clearSlotLocks(db, payment.recruiterUserId, 'upgraded', now);
-  const planKey = seatPlanKey(subscription?.planCode);
-  applyLiveJobLimit(db, payment.recruiterUserId, PLANS[planKey].liveJobSlots, { reason: 'upgraded', now });
+  // Live roles = the plan this payment was for (stamped on the payment) + the extra roles it paid for.
+  const planKey = payment.planKey && PLANS[payment.planKey] ? payment.planKey : seatPlanKey(subscription?.planCode);
+  const liveSlots = PLANS[planKey].liveJobSlots + clampExtraJobSlots(payment.extraJobSlots);
+  if (subscription) { subscription.paidPlanKey = planKey; subscription.paidLiveJobSlots = liveSlots; }
+  applyLiveJobLimit(db, payment.recruiterUserId, liveSlots, { reason: 'upgraded', now });
 
   const recruiter = db.users.find((entry) => entry.id === payment.recruiterUserId);
   const referrer = qualification ? db.users.find((entry) => entry.id === qualification.referral.referrerUserId) : null;

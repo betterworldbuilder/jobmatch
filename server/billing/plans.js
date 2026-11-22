@@ -106,6 +106,19 @@ export function singlePostingPrice(currency = 'USD') {
 
 /** Annual is 10x monthly — two months free. Derived, not stored per plan. */
 export const ANNUAL_MONTHS_CHARGED = 10;
+
+/* Extra live roles (founder, 2026-11-22): every plan can add live job slots on top of what it includes,
+ * at USD 20 per extra role per month, in all cases. USD only (all billing is USD); with VND re-enabled the
+ * add-on has no VND price and is not charged — set one before turning VND back on. */
+export const EXTRA_JOB_SLOT_PRICE = { USD: 20 };
+export const MAX_EXTRA_JOB_SLOTS = 50;
+export const clampExtraJobSlots = (n) => Math.max(0, Math.min(MAX_EXTRA_JOB_SLOTS, Math.floor(Number(n) || 0)));
+export function extraJobSlotsPrice(count, currency = 'USD', interval = 'monthly') {
+  const each = EXTRA_JOB_SLOT_PRICE[currency];
+  if (each === undefined) return 0;
+  const monthly = each * clampExtraJobSlots(count);
+  return interval === 'annual' ? monthly * ANNUAL_MONTHS_CHARGED : monthly;
+}
 export const BILLING_INTERVALS = ['monthly', 'annual'];
 
 export function planPrice(planKey, currency = 'USD', interval = 'monthly') {

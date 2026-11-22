@@ -105,3 +105,27 @@ test('MRR normalises every account to USD so currencies are never mixed', () => 
   // A VN account contributes its USD-equivalent plan price, not 490,000.
   assert.equal(monthlyRecurringRevenue(d, d.subscriptions), PLANS.solo.prices.USD.monthly);
 });
+
+/* Extra live roles (founder, 2026-11-22): +USD 20 per extra role per month, on every plan. */
+test('extra live roles add USD 20 each per month on every plan, x10 on annual, and are granted only once paid', async () => {
+  const { setExtraJobSlots } = await import('./billing/charge.js');
+  const { confirmPayment } = await import('./billing/confirm.js');
+  const { getRecruiterEntitlements } = await import('./billing/entitlements.js');
+  for (const key of SELECTABLE_PLANS) {
+    const c = chargeFor(db(), usRecruiter, sub({ selectedPlanKey: key, extraJobSlots: 2 }));
+    assert.equal(c.amount, PLANS[key].prices.USD.monthly + 40, `${key}: +2 roles = +40`);
+    assert.equal(c.liveJobSlots, PLANS[key].liveJobSlots + 2);
+  }
+  assert.equal(chargeFor(db(), usRecruiter, sub({ selectedPlanKey: 'solo', extraJobSlots: 1, billingInterval: 'annual' })).amount, (50 + 20) * ANNUAL_MONTHS_CHARGED);
+  assert.equal(chargeFor(db(), usRecruiter, sub({ extraJobSlots: 999 })).extraJobSlots, 50, 'capped at 50');
+  // Selecting extras records intent only; a confirmed payment that includes them raises the live-role limit.
+  const d = db({ users: [usRecruiter], jobs: [], jobPostCredits: [], payments: [] });
+  const s = sub({ selectedPlanKey: 'solo' }); d.subscriptions.push(s);
+  setExtraJobSlots(d, s, 3, 'r1');
+  const c = chargeFor(d, usRecruiter, s);
+  assert.equal(c.amount, 50 + 60);
+  const payment = { id: 'p1', recruiterUserId: 'r1', subscriptionId: 's1', status: 'submitted', amount: c.amount, currency: 'USD', planKey: c.planKey, billingInterval: 'monthly', extraJobSlots: c.extraJobSlots };
+  confirmPayment(d, payment, { now: Date.now() });
+  assert.equal(s.paidLiveJobSlots, 8, 'Solo 5 + 3 extra');
+  assert.equal(getRecruiterEntitlements(d, usRecruiter, s).activeJobLimit, 8);
+});

@@ -182,6 +182,8 @@ export interface BillingInfo {
 export interface ChargeInfo {
   planKey: string; planDisplay: string; interval: 'monthly' | 'annual'; currency: string;
   amount: number; seats: number; liveJobSlots: number; monthsCovered: number;
+  /** Extra live roles on top of the plan (+USD 20 each per month). */
+  baseAmount?: number; extraJobSlots?: number; extraAmount?: number; extraJobSlotPrice?: number | null; includedJobSlots?: number;
 }
 export interface SelectablePlan {
   key: string; display: string; seats: number; liveJobSlots: number;

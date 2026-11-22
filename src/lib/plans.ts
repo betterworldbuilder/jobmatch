@@ -29,17 +29,17 @@ export const PLAN_CARDS: PlanCard[] = [
   {
     key: 'solo', display: 'Solo', seats: 1, liveJobSlots: 5, usd: 50, vnd: 490000,
     tagline: 'For one recruiter hiring steadily.',
-    perks: ['1 recruiter account', '5 live jobs at the same time', 'All features + AI Hiring Assistant', 'No bundle discount'],
+    perks: ['1 recruiter account', '5 live roles included (+$20 per extra role)', 'All features + AI Hiring Assistant', 'No bundle discount'],
   },
   {
     key: 'duo', display: 'Duo', seats: 2, liveJobSlots: 10, usd: 80, vnd: 850000,
     tagline: 'Two people, one pipeline.',
-    perks: ['2 recruiter accounts', '10 live jobs at the same time', 'All features + AI Hiring Assistant', 'Save $20/month vs 2 Solo accounts'],
+    perks: ['2 recruiter accounts', '10 live roles included (+$20 per extra role)', 'All features + AI Hiring Assistant', 'Save $20/month vs 2 Solo accounts'],
   },
   {
     key: 'trio', display: 'Team', seats: 3, liveJobSlots: 15, usd: 120, vnd: 1190000,
     tagline: 'A small hiring team.',
-    perks: ['3 recruiter accounts', '15 live jobs at the same time', 'All features + AI Hiring Assistant', 'Save $30/month vs 3 Solo accounts'],
+    perks: ['3 recruiter accounts', '15 live roles included (+$20 per extra role)', 'All features + AI Hiring Assistant', 'Save $30/month vs 3 Solo accounts'],
   },
   {
     key: 'team', display: 'Team 5 (legacy)', seats: 5, liveJobSlots: 25, usd: 75, vnd: 1790000,
@@ -50,6 +50,9 @@ export const PLAN_CARDS: PlanCard[] = [
 
 /** The free-trial card shown first on the pricing page ("Starter · Free for 4 weeks"). */
 export const TRIAL_CARD_PERKS = ['Full feature access', 'AI Hiring Assistant', 'Candidate matching', 'Messaging & scheduling', 'Team analytics'];
+
+/** Extra live roles on every plan: +USD 20 per role per month (mirror of server EXTRA_JOB_SLOT_PRICE). */
+export const EXTRA_JOB_SLOT = { usd: 20 };
 
 /** What every package includes (pricing card footer). */
 export const PLAN_INCLUDES = 'Candidate matching, messaging, scheduling, AI candidate insights and outreach drafts.';

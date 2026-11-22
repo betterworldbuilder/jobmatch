@@ -16,7 +16,7 @@ import { FeaturesTable, FeedbackSection, JourneyPipeline, LatestShowcase } from 
 import { HeroAlt, HeroDefault, HeroImage } from './components/landing/HeroBanners';
 import { CANDIDATE_OFFERS, LaunchOffers } from './components/LaunchOffers';
 import { PlanCardView, TrialCardView } from './components/landing/PlanCards';
-import { ANNUAL_MONTHS_CHARGED, BOOST, HEADLINE_PLANS, planCard, POSTING_TERM_DAYS, SINGLE_POSTING, TRIAL } from './lib/plans';
+import { ANNUAL_MONTHS_CHARGED, BOOST, EXTRA_JOB_SLOT, HEADLINE_PLANS, planCard, POSTING_TERM_DAYS, SINGLE_POSTING, TRIAL } from './lib/plans';
 import { CandidateWizard } from './components/profile/CandidateWizard';
 import { CandidateProfilePage } from './components/profile/CandidateProfilePage';
 import { RecruiterWizard } from './components/profile/RecruiterWizard';
@@ -339,6 +339,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
           <TrialCardView onStart={openRegister} />
           {HEADLINE_PLANS.map((key) => <PlanCardView key={key} plan={planCard(key)} onRegister={openRegister} />)}
         </div>
+        <p className="plan-extra-note">Need more roles? <b>+${EXTRA_JOB_SLOT.usd} / month per extra live role</b>, on every plan.</p>
         <div className="plan-one-role">
           <span className="plan-one-icon"><BriefcaseBusiness size={20} /></span>
           <strong>Hiring for one role?</strong>

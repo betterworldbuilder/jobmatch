@@ -67,6 +67,13 @@ test('pricing page shows the same one-off posting the server sells', () => {
   assert.ok(SINGLE_POSTING.prices.USD.once < PLANS.solo.prices.USD.monthly);
 });
 
+test('pricing page shows the same extra-role price the server charges (+20 USD per extra live role)', async () => {
+  const { EXTRA_JOB_SLOT_PRICE } = await import('./billing/plans.js');
+  const block = source.slice(source.indexOf('export const EXTRA_JOB_SLOT ='));
+  assert.equal(Number(block.match(/usd: (\d+)/)[1]), EXTRA_JOB_SLOT_PRICE.USD);
+  assert.equal(EXTRA_JOB_SLOT_PRICE.USD, 20);
+});
+
 test('pricing page shows the same posting term, trial lengths and hire fee', () => {
   assert.equal(Number(source.match(/POSTING_TERM_DAYS = (\d+)/)[1]), POSTING_TERM_DAYS);
   const fee = source.slice(source.indexOf('export const PAY_PER_HIRE ='));

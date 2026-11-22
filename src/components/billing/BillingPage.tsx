@@ -74,9 +74,9 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
   const chargeLabel = charge ? money(charge.amount, charge.currency) : 'USD 20';
   const vndCharge = charge?.currency === 'VND' ? charge.amount.toLocaleString('en-US') : null;
 
-  const choosePlan = async (planKey: string, interval?: 'monthly' | 'annual') => {
+  const choosePlan = async (planKey: string, interval?: 'monthly' | 'annual', extraJobSlots?: number) => {
     setPlanSaving(true); setPlanError('');
-    try { setData({ ...data, billing: await api.billingSelectPlan(viewer.id, planKey, interval) }); }
+    try { setData({ ...data, billing: await api.billingSelectPlan(viewer.id, planKey, interval, extraJobSlots) }); }
     catch (e) { setPlanError(e instanceof Error ? e.message : 'Could not change plan'); }
     finally { setPlanSaving(false); }
   };
@@ -209,6 +209,16 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
         <button type="button" className={charge.interval === 'annual' ? 'active' : ''} disabled={planSaving}
           onClick={() => choosePlan(charge.planKey, 'annual')}>Annual — two months free</button>
       </div>}
+      {/* Extra live roles: +USD 20 per role per month, on every plan (founder, 2026-11-22). */}
+      {charge && charge.extraJobSlotPrice ? <div className="billing-extra-roles">
+        <div><strong>Extra live roles</strong><small>{charge.includedJobSlots ?? charge.liveJobSlots} included in {charge.planDisplay} · +${charge.extraJobSlotPrice} per extra role / month</small></div>
+        <div className="billing-stepper">
+          <button type="button" aria-label="One fewer extra role" disabled={planSaving || !charge.extraJobSlots} onClick={() => choosePlan(charge.planKey, undefined, (charge.extraJobSlots || 0) - 1)}>−</button>
+          <b aria-live="polite">{charge.extraJobSlots || 0}</b>
+          <button type="button" aria-label="One more extra role" disabled={planSaving || (charge.extraJobSlots || 0) >= 50} onClick={() => choosePlan(charge.planKey, undefined, (charge.extraJobSlots || 0) + 1)}>+</button>
+        </div>
+        <p className="billing-total">{charge.liveJobSlots} live roles · total <b>{money(charge.amount, charge.currency)}</b> / {charge.interval === 'annual' ? 'year' : 'month'}</p>
+      </div> : null}
       {planError && <p className="billing-seat-error">{planError}</p>}
     </section>}
 

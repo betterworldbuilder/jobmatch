@@ -1,6 +1,6 @@
 import { logBillingEvent } from './audit.js';
 import {
-  BILLING_INTERVALS, currencyForCountry, PLANS, planPrice, SEAT_LADDER, seatPlanKey,
+  BILLING_INTERVALS, clampExtraJobSlots, currencyForCountry, EXTRA_JOB_SLOT_PRICE, extraJobSlotsPrice, PLANS, planPrice, SEAT_LADDER, seatPlanKey,
 } from './plans.js';
 
 /* What to actually charge a recruiter.
@@ -41,7 +41,11 @@ export function chargeFor(db, recruiter, subscription, overrides = {}) {
   const interval = BILLING_INTERVALS.includes(overrides.interval) ? overrides.interval : billingInterval(subscription);
   const currency = overrides.currency || currencyForCountry(recruiter?.country);
   const plan = PLANS[planKey];
-  const amount = planPrice(planKey, currency, interval) ?? 0;
+  const baseAmount = planPrice(planKey, currency, interval) ?? 0;
+  // Extra live roles on top of the plan: USD 20 each per month (see plans.js).
+  const extraJobSlots = clampExtraJobSlots(overrides.extraJobSlots ?? subscription?.extraJobSlots);
+  const extraAmount = extraJobSlotsPrice(extraJobSlots, currency, interval);
+  const amount = baseAmount + extraAmount;
 
   return {
     planKey,
@@ -49,8 +53,13 @@ export function chargeFor(db, recruiter, subscription, overrides = {}) {
     interval,
     currency,
     amount,
+    baseAmount,
+    extraJobSlots,
+    extraAmount,
+    extraJobSlotPrice: EXTRA_JOB_SLOT_PRICE[currency] ?? null,
     seats: plan.seats,
-    liveJobSlots: plan.liveJobSlots,
+    includedJobSlots: plan.liveJobSlots,
+    liveJobSlots: plan.liveJobSlots + extraJobSlots,
     // Annual bills ANNUAL_MONTHS_CHARGED months, so two are free.
     monthsCovered: interval === 'annual' ? 12 : 1,
   };
@@ -74,6 +83,16 @@ export function selectPlan(db, subscription, planKey, interval, actorUserId, now
   logBillingEvent(db, actorUserId, 'plan_selected', 'subscription', subscription.id,
     { planKey, interval: subscription.billingInterval || 'monthly' });
   return { outcome: 'selected', planKey, interval: subscription.billingInterval || 'monthly' };
+}
+
+/** Record how many extra live roles the recruiter wants to pay for (0–50). Like selectPlan, nothing is
+ *  granted until a payment that includes them is confirmed. */
+export function setExtraJobSlots(db, subscription, count, actorUserId, now = Date.now()) {
+  const extraJobSlots = clampExtraJobSlots(count);
+  subscription.extraJobSlots = extraJobSlots;
+  subscription.updatedAt = now;
+  logBillingEvent(db, actorUserId, 'extra_job_slots_selected', 'subscription', subscription.id, { extraJobSlots });
+  return { outcome: 'selected', extraJobSlots };
 }
 
 /** Monthly recurring revenue, summed per subscription rather than

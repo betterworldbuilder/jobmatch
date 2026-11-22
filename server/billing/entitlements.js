@@ -133,10 +133,12 @@ export function getRecruiterEntitlements(db, recruiter, subscription, now = Date
   const nextFreeJobAvailableAt = subscription?.nextFreeJobAvailableAt ?? null;
   // Premium add-on (own 7-day trial or paid) raises the live-role limit to PREMIUM_ACTIVE_JOB_LIMIT (default 5).
   const premium = premiumActive(recruiter, now);
+  // Paid accounts get what their last confirmed payment bought (plan roles + extra roles), else the default.
+  const baseLimit = planCode === 'pro' && Number(subscription?.paidLiveJobSlots) > 0 ? Number(subscription.paidLiveJobSlots) : activeJobLimitFor(planCode);
   return {
     planCode,
     premium,
-    activeJobLimit: premium ? Math.max(activeJobLimitFor(planCode), PREMIUM_ACTIVE_JOB_LIMIT) : activeJobLimitFor(planCode),
+    activeJobLimit: premium ? Math.max(baseLimit, PREMIUM_ACTIVE_JOB_LIMIT) : baseLimit,
     activeJobCount,
     jobCreditBalance: creditBalance,
     nextFreeJobAvailableAt,
