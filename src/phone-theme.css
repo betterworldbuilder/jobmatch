@@ -51,6 +51,10 @@
   .get-app-card p { margin:0 0 10px; color:#5b6573; font-size:14px; }
   .get-app-card ol { list-style:decimal; margin:0; padding-left:20px; display:grid; gap:8px; color:#26304a; font-size:14.5px; line-height:1.45; }
   .get-app-x { position:absolute; top:12px; right:12px; }
+  .install-popup-actions { display:flex; align-items:center; gap:10px; margin-top:14px; }
+  .install-popup-actions .get-app-button { flex:1; justify-content:center; min-height:46px; font-size:15px; }
+  .install-popup-later { flex:none; min-height:46px; padding:0 16px; border:1px solid #dbe7f5; border-radius:999px; background:#fff; color:#26304a; font:700 14px 'Manrope'; }
+  .install-popup-actions .install-popup-later:only-child { flex:1; }
   @keyframes installIn { from { transform:translateY(30px); opacity:0; } to { transform:none; opacity:1; } }
 
   /* Pricing bands: candidates in pink (founder, 2026-11-22); recruiters follow the accent (LinkedIn blue). */

@@ -33,8 +33,6 @@ export function GetAppButton() {
   const [help, setHelp] = useState(false);
   useEffect(() => { listeners.add(setEvent); return () => { listeners.delete(setEvent); }; }, []);
   if (standalone()) return null;
-  const ios = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const samsung = typeof navigator !== 'undefined' && /SamsungBrowser/i.test(navigator.userAgent);
   const go = async () => {
     if (!event) { setHelp(true); return; }
     await event.prompt();
@@ -49,14 +47,68 @@ export function GetAppButton() {
         <span className="brand-heart-mark install-bar-mark" aria-hidden="true" />
         <h3>Get the JobsMatchNow app</h3>
         <p>Free. It opens from your home screen like any app.</p>
-        <ol>
-          {ios ? <><li>Tap <b>Share</b> (the square with an arrow) at the bottom of Safari.</li><li>Choose <b>Add to Home Screen</b>, then <b>Add</b>.</li></>
-            : samsung ? <><li>Tap the menu <b>≡</b> at the bottom right.</li><li>Choose <b>Add page to</b> → <b>Home screen</b>.</li></>
-              : <><li>Tap the menu <b>⋮</b> at the top right of Chrome.</li><li>Choose <b>Install app</b> (or <b>Add to Home screen</b>).</li></>}
-        </ol>
+        <InstallSteps />
       </div>
     </div>}
   </>;
+}
+
+function InstallSteps() {
+  const ios = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const samsung = typeof navigator !== 'undefined' && /SamsungBrowser/i.test(navigator.userAgent);
+  return <ol>
+    {ios ? <><li>Tap <b>Share</b> (the square with an arrow) at the bottom of Safari.</li><li>Choose <b>Add to Home Screen</b>, then <b>Add</b>.</li></>
+      : samsung ? <><li>Tap the menu <b>≡</b> at the bottom right.</li><li>Choose <b>Add page to</b> → <b>Home screen</b>.</li></>
+        : <><li>Tap the menu <b>⋮</b> at the top right of Chrome.</li><li>Choose <b>Install app</b> (or <b>Add to Home screen</b>).</li></>}
+  </ol>;
+}
+
+/** Install popup on the first phone visit (founder, 2026-11-22: "still no install popup on my phone"). Browsers hide
+ *  their own offer when it was dismissed or the app was installed before, and iPhones never show one, so we offer it
+ *  ourselves: Install → the browser's real dialog when it has one, else the steps. Hidden inside the installed app,
+ *  when Chrome says it is already installed, and for 7 days after "Not now". Never cancels the browser's own offer. */
+export function InstallPopup() {
+  const [event, setEvent] = useState<InstallEvent | null>(pending);
+  const [open, setOpen] = useState(false);
+  const [steps, setSteps] = useState(false);
+  useEffect(() => { listeners.add(setEvent); return () => { listeners.delete(setEvent); }; }, []);
+  useEffect(() => {
+    if (standalone() || hiddenNow() || /[?&]noinstall\b/.test(location.search)) return;
+    let alive = true;
+    const t = window.setTimeout(async () => {
+      try {
+        const related = await (navigator as unknown as { getInstalledRelatedApps?: () => Promise<unknown[]> }).getInstalledRelatedApps?.();
+        if (related && related.length) return; // already on this phone
+      } catch { /* not supported */ }
+      if (alive) setOpen(true);
+    }, 2500);
+    return () => { alive = false; window.clearTimeout(t); };
+  }, []);
+  if (!open) return null;
+  const later = () => {
+    try { localStorage.setItem(HIDE_KEY, String(Date.now() + 7 * 24 * 3600 * 1000)); } catch { /* private mode */ }
+    setOpen(false);
+  };
+  const install = async () => {
+    if (!event) { setSteps(true); return; }
+    await event.prompt();
+    const { outcome } = await event.userChoice.catch(() => ({ outcome: 'dismissed' as const }));
+    pending = null; setEvent(null);
+    if (outcome === 'accepted') setOpen(false); else later();
+  };
+  return <div className="get-app-help install-popup" role="dialog" aria-label="Get the JobsMatchNow app" onClick={later}>
+    <div className="get-app-card" onClick={(e) => e.stopPropagation()}>
+      <button type="button" className="install-bar-close get-app-x" onClick={later} aria-label="Close"><X size={16} /></button>
+      <span className="brand-heart-mark install-bar-mark" aria-hidden="true" />
+      <h3>Get the JobsMatchNow app</h3>
+      <p>Free. Opens from your home screen like any app, full screen.</p>
+      {steps && <InstallSteps />}
+      <div className="install-popup-actions">
+        {!steps && <button type="button" className="get-app-button" onClick={() => void install()}><Download size={15} /> Install</button>}
+        <button type="button" className="install-popup-later" onClick={later}>{steps ? 'Done' : 'Not now'}</button>
+      </div>
+    </div>
+  </div>;
 }
 
 export function InstallAppBar() {

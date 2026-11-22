@@ -10,6 +10,7 @@
   "theme_color": "#0a66c2",
   "orientation": "portrait-primary",
   "categories": ["business", "productivity"],
+  "related_applications": [{ "platform": "webapp", "url": "https://jobsmatchnow.com/manifest.webmanifest" }],
   "icons": [
     { "src": "logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "brand-heart.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
