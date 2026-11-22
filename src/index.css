@@ -3559,6 +3559,18 @@ img.avatar-mini { object-fit:cover; }
 /* Profile-page card variant (light) */
 .job-status.js-card { margin:0 0 14px; padding:14px 16px; gap:10px; background:#fff; border:1px solid #ece6f2; border-radius:16px; box-shadow:0 6px 18px rgba(20,20,60,.05); }
 /* Under the photo card on the profile page. */
+/* Job Details: Role details (full JD) */
+.jd-title { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+.rd-facts { margin:6px 0 12px; }
+.rd-match { color:#0f8a5f; font-weight:800; }
+.rd-text { display:flex; flex-direction:column; gap:8px; font-size:14px; line-height:1.6; color:inherit; }
+.rd-h { margin:10px 0 0; font-size:13px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#ff7aa8; }
+.rd-p { margin:0; opacity:.92; white-space:pre-wrap; }
+.rd-list { margin:0; padding-left:20px; display:flex; flex-direction:column; gap:4px; opacity:.92; }
+.tcard-sub.must { color:#ff7aa8; }
+.skill-list span.ok svg { color:#34d399; margin-right:4px; vertical-align:-1px; }
+.skill-list span.miss svg { color:#fb7185; margin-right:4px; vertical-align:-1px; }
+.jd-paste { font-family:'Manrope', system-ui, sans-serif; line-height:1.5; min-height:260px; }
 /* Recruitment process rules */
 .rules-modal h4 { display:flex; align-items:center; gap:8px; }
 .rules-modal ol { margin:6px 0 14px; padding-left:22px; display:flex; flex-direction:column; gap:6px; line-height:1.5; }

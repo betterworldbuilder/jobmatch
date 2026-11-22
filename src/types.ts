@@ -76,6 +76,8 @@ export interface Job {
   companyLogo?: string;
   distanceKm?: number; workMode: string; salary: string; type: string; experienceLevel: string;
   requiredSkills: string[]; requiredLanguages: string[]; description: string; mission: string; culture: string[];
+  /** "Role details": the whole job description as pasted by the recruiter (plain text, line breaks kept). */
+  fullDescription?: string;
   responseTime: string; applicants: number; status: string; match: MatchEvidence;
   // Item 7 structured fields
   department?: string; seniority?: Seniority; requiredSkillsDetail?: WeightedSkill[]; niceToHaves?: string[];

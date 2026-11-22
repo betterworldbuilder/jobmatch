@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Award, BadgeCheck, BriefcaseBusiness, CalendarClock, CheckCircle2, Clock3, Coffee, Home, Layers, Lock, MapPin, Music2, Pencil, Plane, PlusCircle, Quote, ShieldCheck, Sparkles, Star, Target, Users, Wallet, XCircle } from 'lucide-react';
+import { Award, BadgeCheck, CalendarClock, CheckCircle2, Clock3, Coffee, FileText, Home, ListChecks, MapPin, Music2, Pencil, Plane, PlusCircle, Quote, ShieldCheck, Sparkles, Star, Target, Users, Wallet, XCircle } from 'lucide-react';
 import type { Job } from '../../types';
 import { JobHeaderBadge } from './JobHeaderBadge';
 
@@ -19,15 +19,46 @@ function songLabel(url?: string): string | null {
   catch { return null; }
 }
 
-const NAV = [{ icon: BriefcaseBusiness, label: 'Snapshot' }, { icon: Target, label: 'Requirements' }, { icon: Wallet, label: 'Compensation' }, { icon: Users, label: 'Team & culture' }, { icon: Star, label: 'Reviews' }];
+// Card order: Role details (full JD) · Skills requirements · Compensation · Team & culture · Reviews · Fit analysis (last, only with a match).
+const NAV_ALL = [
+  { icon: FileText, label: 'Role details', color: '#fd267a' },
+  { icon: ListChecks, label: 'Skills', color: '#007AFF' },
+  { icon: Wallet, label: 'Compensation', color: '#34C759' },
+  { icon: Users, label: 'Team & culture', color: '#FF9500' },
+  { icon: Star, label: 'Reviews', color: '#AF52DE' },
+  { icon: Target, label: 'Fit analysis', color: '#00C7BE' },
+];
+
+const BULLET = /^\s*(?:[-•*·▪●]|\d{1,2}[.)])\s+/;
+/** A short line with no closing punctuation reads as a section heading ("About the job", "How to apply"). */
+const isHeading = (line: string) => line.length <= 60 && !/[.,;:!?)]$/.test(line) && !BULLET.test(line) && /^[A-Z0-9]/.test(line) && line.split(/\s+/).length <= 8;
+
+/** The pasted job description, kept as written: headings, bullet lists (after "…:" or "- "), paragraphs. */
+export function RoleDetailsText({ text }: { text: string }) {
+  const lines = text.replace(/\r\n/g, '\n').split('\n').map((l) => l.trim());
+  const blocks: React.ReactNode[] = [];
+  let list: string[] = []; let listMode = false;
+  const flush = () => { if (list.length) blocks.push(<ul key={`l${blocks.length}`} className="rd-list">{list.map((li, i) => <li key={i}>{li}</li>)}</ul>); list = []; };
+  lines.forEach((line, i) => {
+    if (!line) { flush(); listMode = false; return; }
+    if (BULLET.test(line)) { list.push(line.replace(BULLET, '')); return; }
+    if (isHeading(line)) { flush(); listMode = false; blocks.push(<h4 key={`h${i}`} className="rd-h">{line}</h4>); return; }
+    if (listMode && line.length <= 240) { list.push(line); return; }
+    flush();
+    blocks.push(<p key={`p${i}`} className="rd-p">{line}</p>);
+    listMode = /:$/.test(line); // "The role includes:" → the following lines are bullets
+  });
+  flush();
+  return <div className="rd-text">{blocks}</div>;
+}
 
 /**
- * The job as a horizontal deck of five Tinder-style cards with a 5-icon
- * navigator — the job-side mirror of CandidateCards. Used for the employer's
- * own job posting (onEdit set) and for a candidate viewing a job in detail
- * (match set → skill split + %; salary stays masked pre-match when salaryHidden).
+ * The job as a horizontal deck of Tinder-style cards with a navigator — the
+ * job-side mirror of CandidateCards. Used for the employer's own job posting
+ * (onEdit set) and for a candidate viewing a job in detail ("Job Details";
+ * match set → Fit analysis card; salary stays masked pre-match when salaryHidden).
  */
-export function JobCards({ job: j, onEdit, unlocked = false }: { job: Job; onEdit?: (step: number) => void; unlocked?: boolean }) {
+export function JobCards({ job: j, onEdit, unlocked = false, showHeader = true }: { job: Job; onEdit?: (step: number) => void; unlocked?: boolean; showHeader?: boolean }) {
   const m = j.match;
   const deckRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
@@ -54,38 +85,40 @@ export function JobCards({ job: j, onEdit, unlocked = false }: { job: Job; onEdi
     ? j.companyReviews.reduce((sum, r) => sum + (r.rating ?? 0), 0) / j.companyReviews.filter((r) => r.rating !== undefined).length
     : undefined);
   const song = songLabel(j.teamSong);
+  const NAV = m ? NAV_ALL : NAV_ALL.slice(0, 5);
+  const mustHave = j.requiredSkillsDetail?.map((s) => s.name) ?? j.requiredSkills ?? [];
+  const have = new Set((m?.matchedSkills || []).map((s) => s.toLowerCase()));
 
   return <div className="tcards">
     <div className="tcards-deck" ref={deckRef}>
-      {/* ---------- Card 1 — Snapshot ---------- */}
-      <div className="tcard-slide">
-        <div className="tcard tcard-job-snapshot">
-          {onEdit && <button className="tcard-edit on-photo" onClick={() => onEdit(0)} aria-label="Edit snapshot"><Pencil size={14} /></button>}
-          <JobHeaderBadge job={{ ...j, salaryHidden: !showSalary }} />
-          <div className="tcard-job-summary">
-            {m && <span className="tcard-matchpct"><Sparkles size={13} /> {m.score}% match{requiredCount ? <b>{m.matchedSkills.length} of {requiredCount} skills</b> : null}</span>}
-            <div className="tcard-snapshot-facts">
-              {j.experienceLevel && <span>{j.experienceLevel} experience</span>}
-              {j.openings !== undefined && <span>{j.openings} opening{j.openings === 1 ? '' : 's'}</span>}
-              {j.deadline && <span><CalendarClock size={13} /> Apply by {j.deadline}</span>}
-              <span>{j.applicants} applicant{j.applicants === 1 ? '' : 's'}</span>
-              {j.responseTime && <span>{j.responseTime} response</span>}
-            </div>
-            {j.description && <p>{j.description}</p>}
-          </div>
+      {/* ---------- Card 1 — Role details (the full job description) ---------- */}
+      <div className="tcard-slide"><Card label="Role details" icon={FileText} step={1} onEdit={onEdit}>
+        {showHeader && <JobHeaderBadge job={{ ...j, salaryHidden: !showSalary }} compact />}
+        <div className="tcard-snapshot-facts rd-facts">
+          {m && <span className="rd-match"><Sparkles size={12} /> {m.score}% match{requiredCount ? ` · ${m.matchedSkills.length} of ${requiredCount} skills` : ''}</span>}
+          {j.experienceLevel && <span>{j.experienceLevel} experience</span>}
+          {j.openings !== undefined && <span>{j.openings} opening{j.openings === 1 ? '' : 's'}</span>}
+          {j.deadline && <span><CalendarClock size={13} /> Apply by {j.deadline}</span>}
+          <span>{j.applicants} applicant{j.applicants === 1 ? '' : 's'}</span>
+          {j.responseTime && <span>{j.responseTime} response</span>}
         </div>
-      </div>
+        {j.fullDescription ? <RoleDetailsText text={j.fullDescription} />
+          : <div className="rd-text">
+            {j.description && <p className="rd-p">{j.description}</p>}
+            {j.responsibilities?.length ? <><h4 className="rd-h">What you will do</h4><ul className="rd-list">{j.responsibilities.map((r) => <li key={r}>{r}</li>)}</ul></> : null}
+            {j.mission && <><h4 className="rd-h">Why it matters</h4><p className="rd-p">{j.mission}</p></>}
+            {onEdit && <p className="tcard-empty">Paste the full job description in Role details so candidates read the whole story.</p>}
+          </div>}
+      </Card></div>
 
-      {/* ---------- Card 2 — Requirements ---------- */}
-      <div className="tcard-slide"><Card label="Requirements" icon={Target} step={1} onEdit={onEdit}>
-        {m && <div className="tcard-counts"><span className="ok">{m.matchedSkills.length} matching</span><span className="miss">{m.missingSkills?.length ?? 0} missing</span><span className="extra">{m.extraSkills?.length ?? 0} extra</span></div>}
-        {m ? <div className="tcard-skillsplit">
-          <div className="tskill-group ok"><span className="tskill-h"><CheckCircle2 size={13} /> Matching</span><ul className="tskill-rows">{m.matchedSkills.length ? m.matchedSkills.map((s) => <li key={s}><b>{s}</b></li>) : <li><em>None yet</em></li>}</ul></div>
-          {(m.missingSkills?.length ?? 0) > 0 && <div className="tskill-group miss"><span className="tskill-h"><XCircle size={13} /> Gaps to close</span><div className="skill-list">{m.missingSkills!.map((s) => <span key={s} className="miss">{s}</span>)}</div></div>}
-          {(m.extraSkills?.length ?? 0) > 0 && <div className="tskill-group extra"><span className="tskill-h"><PlusCircle size={13} /> Bonus skills you bring</span><div className="skill-list">{m.extraSkills!.map((s) => <span key={s}>{s}</span>)}</div></div>}
-        </div> : <div className="skill-list pf-skills">{(j.requiredSkillsDetail?.map((s) => s.name) ?? j.requiredSkills ?? []).map((s) => <span key={s}>{s}</span>)}</div>}
-        {j.niceToHaves?.length ? <><span className="tcard-sub">Nice to have</span><div className="skill-list soft">{j.niceToHaves.map((s) => <span key={s}>{s}</span>)}</div></> : null}
-        {j.requiredLanguages?.length ? <><span className="tcard-sub">Languages</span><div className="skill-list soft">{j.requiredLanguages.map((s) => <span key={s}>{s}</span>)}</div></> : null}
+      {/* ---------- Card 2 — Skills requirements: must have · nice to have · languages ---------- */}
+      <div className="tcard-slide"><Card label="Skills requirements" icon={ListChecks} step={1} onEdit={onEdit}>
+        <span className="tcard-sub must">Must have</span>
+        <div className="skill-list pf-skills">{mustHave.length ? mustHave.map((s) => <span key={s} className={m ? (have.has(s.toLowerCase()) ? 'ok' : 'miss') : ''}>{m && (have.has(s.toLowerCase()) ? <CheckCircle2 size={11} /> : <XCircle size={11} />)}{s}</span>) : <em className="tcard-empty">Not listed yet</em>}</div>
+        <span className="tcard-sub">Nice to have</span>
+        <div className="skill-list soft">{j.niceToHaves?.length ? j.niceToHaves.map((s) => <span key={s}>{s}</span>) : <em className="tcard-empty">Not listed yet</em>}</div>
+        <span className="tcard-sub">Languages</span>
+        <div className="skill-list soft">{j.requiredLanguages?.length ? j.requiredLanguages.map((s) => <span key={s}>{s}</span>) : <em className="tcard-empty">Not listed yet</em>}</div>
         {j.successMeasures?.length ? <><span className="tcard-sub">What success looks like</span><ul className="coach-list">{j.successMeasures.map((s) => <li key={s}>{s}</li>)}</ul></> : null}
       </Card></div>
 
@@ -147,11 +180,22 @@ export function JobCards({ job: j, onEdit, unlocked = false }: { job: Job; onEdi
           {j.referenceCheck && <span><Award size={13} /> References required</span>}
         </div>}
       </Card></div>
+
+      {/* ---------- Card 6 — Fit analysis (last; only when there is a match to analyse) ---------- */}
+      {m && <div className="tcard-slide"><Card label="Fit analysis" icon={Target}>
+        <div className="tcard-counts"><span className="ok">{m.matchedSkills.length} matching</span><span className="miss">{m.missingSkills?.length ?? 0} missing</span><span className="extra">{m.extraSkills?.length ?? 0} extra</span></div>
+        <div className="tcard-skillsplit">
+          <div className="tskill-group ok"><span className="tskill-h"><CheckCircle2 size={13} /> Matching</span><ul className="tskill-rows">{m.matchedSkills.length ? m.matchedSkills.map((s) => <li key={s}><b>{s}</b></li>) : <li><em>None yet</em></li>}</ul></div>
+          {(m.missingSkills?.length ?? 0) > 0 && <div className="tskill-group miss"><span className="tskill-h"><XCircle size={13} /> Gaps to close</span><div className="skill-list">{m.missingSkills!.map((s) => <span key={s} className="miss">{s}</span>)}</div></div>}
+          {(m.extraSkills?.length ?? 0) > 0 && <div className="tskill-group extra"><span className="tskill-h"><PlusCircle size={13} /> Bonus skills you bring</span><div className="skill-list">{m.extraSkills!.map((s) => <span key={s}>{s}</span>)}</div></div>}
+        </div>
+        {j.requiredLanguages?.length ? <><span className="tcard-sub">Languages</span><div className="skill-list soft">{j.requiredLanguages.map((s) => <span key={s}>{s}</span>)}</div></> : null}
+      </Card></div>}
     </div>
 
     {/* ---------- Navigator ---------- */}
     <nav className="tcards-nav" aria-label="Job cards">
-      {NAV.map((item, i) => { const Icon = item.icon; return <button key={item.label} className={i === active ? 'on' : ''} onClick={() => goTo(i)} aria-label={item.label} aria-current={i === active}><Icon size={16} /><i /></button>; })}
+      {NAV.map((item, i) => { const Icon = item.icon; return <button key={item.label} className={i === active ? 'on' : ''} style={{ ['--nav-c' as string]: item.color }} onClick={() => goTo(i)} aria-label={item.label} aria-current={i === active}><Icon size={16} /><span>{item.label}</span><i /></button>; })}
     </nav>
   </div>;
 }

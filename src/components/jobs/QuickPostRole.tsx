@@ -18,6 +18,7 @@ const DEFAULT_RADIUS_KM = 40;
 type QuickForm = {
   title: string; salaryMin: string; salaryMax: string; currency: string;
   location: string; workMode?: typeof WORK_MODES[number]; skills: string[]; description: string;
+  niceToHaves: string[]; languages: string[]; fullDescription: string;
 };
 
 export function quickPostErrors(form: QuickForm): string[] {
@@ -29,14 +30,16 @@ export function quickPostErrors(form: QuickForm): string[] {
   else if (min > max) errors.push('Salary min cannot exceed max');
   if (!form.location.trim()) errors.push('City / location is required');
   if (!form.workMode) errors.push('Choose remote, hybrid, or on-site');
-  if (form.skills.length < 1) errors.push('Add at least 1 key skill');
-  if (!form.description.trim()) errors.push('Add a short description');
+  if (form.skills.length < 1) errors.push('Add at least 1 must-have skill');
+  if (form.niceToHaves.length < 1) errors.push('Add at least 1 nice-to-have skill');
+  if (form.languages.length < 1) errors.push('Add at least 1 language');
+  if (!form.description.trim() && !form.fullDescription.trim()) errors.push('Paste the job description or add a short summary');
   else if (form.description.length > DESCRIPTION_MAX) errors.push(`Keep the description under ${DESCRIPTION_MAX} characters`);
   return errors;
 }
 
 export function QuickPostRole({ viewer, onPosted, onCancel }: { viewer: Person; onPosted: () => void; onCancel: () => void }) {
-  const [form, setForm] = useState<QuickForm>({ title: '', salaryMin: '', salaryMax: '', currency: 'USD', location: '', workMode: undefined, skills: [], description: '' });
+  const [form, setForm] = useState<QuickForm>({ title: '', salaryMin: '', salaryMax: '', currency: 'USD', location: '', workMode: undefined, skills: [], description: '', niceToHaves: [], languages: ['English'], fullDescription: '' });
   const [attempted, setAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +57,9 @@ export function QuickPostRole({ viewer, onPosted, onCancel }: { viewer: Person; 
         ...(form.workMode === 'Remote' ? { remoteScope: 'worldwide' as const } : { hiringRadiusKm: DEFAULT_RADIUS_KM }),
         salaryRange: { min: Number(form.salaryMin), max: Number(form.salaryMax), currency: form.currency },
         requiredSkillsDetail: form.skills.map((name) => ({ name, weight: 2 })),
-        description: form.description.trim(),
+        niceToHaves: form.niceToHaves, requiredLanguages: form.languages,
+        ...(form.description.trim() ? { description: form.description.trim() } : {}),
+        ...(form.fullDescription.trim() ? { fullDescription: form.fullDescription.trim() } : {}),
       });
       onPosted();
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not post this role'); }
@@ -81,9 +86,16 @@ export function QuickPostRole({ viewer, onPosted, onCancel }: { viewer: Person; 
           <Field label="City / location" required hint="Shown as a city. Candidates only ever see a distance range, never an address."><TextInput value={form.location} maxLength={120} onChange={(e) => patch({ location: e.target.value })} placeholder="e.g. Ho Chi Minh City" /></Field>
           <Field label="Work mode" required><Segmented options={WORK_MODES} value={form.workMode} onChange={(workMode) => patch({ workMode })} /></Field>
         </div>
-        <Field label="Key skills" required hint="Press Enter after each. These drive the fit score."><TagInput value={form.skills} onChange={(skills) => patch({ skills: skills.slice(0, 15) })} placeholder="e.g. React — press Enter" /></Field>
-        <Field label={`Short description (${form.description.length}/${DESCRIPTION_MAX})`} required>
-          <textarea className="wz-input wz-textarea" rows={4} maxLength={DESCRIPTION_MAX} value={form.description} onChange={(e) => patch({ description: e.target.value })} placeholder="What the role is and why it matters, in 2–3 sentences." />
+        <Field label="Must have" required hint="Press Enter after each. These drive the fit score."><TagInput value={form.skills} onChange={(skills) => patch({ skills: skills.slice(0, 15) })} placeholder="e.g. React — press Enter" /></Field>
+        <div className="wz-row">
+          <Field label="Nice to have" required><TagInput value={form.niceToHaves} onChange={(niceToHaves) => patch({ niceToHaves: niceToHaves.slice(0, 15) })} placeholder="e.g. GraphQL — press Enter" /></Field>
+          <Field label="Languages" required><TagInput value={form.languages} onChange={(languages) => patch({ languages: languages.slice(0, 8) })} placeholder="e.g. English — press Enter" /></Field>
+        </div>
+        <Field label="Role details — paste the full job description" hint="Shown as-is in the Role details card. Optional here if you write a short summary below.">
+          <textarea className="wz-input wz-textarea jd-paste" rows={10} maxLength={20000} value={form.fullDescription} onChange={(e) => patch({ fullDescription: e.target.value })} placeholder="Paste the whole job description…" aria-label="Full job description" />
+        </Field>
+        <Field label={`Short summary (${form.description.length}/${DESCRIPTION_MAX})`} hint="For the swipe card. Leave empty to use the first paragraph of the job description.">
+          <textarea className="wz-input wz-textarea" rows={3} maxLength={DESCRIPTION_MAX} value={form.description} onChange={(e) => patch({ description: e.target.value })} placeholder="What the role is and why it matters, in 2–3 sentences." />
         </Field>
       </div>
       {(attempted && errors.length > 0) && <ul className="wz-errors">{errors.map((message) => <li key={message}>{message}</li>)}</ul>}

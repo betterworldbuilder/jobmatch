@@ -105,7 +105,7 @@ function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, onOpen }: {
           : showsCommute(job) && <span className="nm-chip"><MapPin size={11} /> {job.distanceKm} km away</span>}
         {reason && <span className="nm-chip">{reason}</span>}
       </div>
-      <button type="button" className="nm-full-role" onPointerDownCapture={(event) => event.stopPropagation()} onClick={onOpen}>Full role ›</button>
+      <button type="button" className="nm-full-role" onPointerDownCapture={(event) => event.stopPropagation()} onClick={onOpen}>Job details ›</button>
     </div>
   </motion.article>;
 }

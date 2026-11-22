@@ -31,17 +31,16 @@ export function JobDetailModal({ job, onClose, viewerId, notes, onNoteSaved }: {
   }, [tab, prep, job.id]);
 
   return <CoachModalShell onClose={onClose} wide>
-    {(job.demo || job.sample) && <DemoBadge label={job.sample ? 'Starter sample job — auto-generated for you' : 'Demo job offer — not a real opening'} />}
+    <div className="jd-title"><span className="overline">Job Details</span>{(job.demo || job.sample) && <DemoBadge label={job.sample ? 'Starter sample job — auto-generated for you' : 'Demo job offer — not a real opening'} />}</div>
     <JobHeaderBadge job={job} className="coach-job-header" />
     <div className="coach-tabs" role="tablist">
-      <button role="tab" aria-selected={tab === 'overview'} className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}><BriefcaseBusiness size={14} /> Overview</button>
+      <button role="tab" aria-selected={tab === 'overview'} className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}><BriefcaseBusiness size={14} /> Job Details</button>
       <button role="tab" aria-selected={tab === 'prepare'} className={tab === 'prepare' ? 'active' : ''} onClick={() => setTab('prepare')}><GraduationCap size={14} /> Prepare</button>
       {viewerId && !job.demo && !job.sample && <button type="button" className="coach-report-link" onClick={() => setReporting(true)}><Flag size={13} /> Report this job</button>}
     </div>
     {reporting && viewerId && <ReportModal viewerId={viewerId} targetType="job" targetId={job.id} onClose={() => setReporting(false)} />}
     {tab === 'overview' && <div className="coach-body">
-      <p className="coach-description">{job.description}</p>
-      <JobCards job={job} unlocked />
+      <JobCards job={job} unlocked showHeader={false} />
       {viewerId && notes && onNoteSaved && <NotesBox viewerId={viewerId} targetId={job.id} targetType="job" notes={notes} onSaved={onNoteSaved} />}
     </div>}
     {tab === 'prepare' && <div className="coach-body">

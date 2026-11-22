@@ -68,6 +68,16 @@ export function applyJob(job, body, { strict = false } = {}) {
     job.salary = formatSalary(job.salaryRange);
   }
   set('description', str(body.description, 5000));
+  // "Role details": the whole job description as the recruiter pasted it (shown as-is in the Role Details card).
+  if (body.fullDescription !== undefined) {
+    const full = typeof body.fullDescription === 'string' ? body.fullDescription.replace(/\r\n/g, '\n').trim().slice(0, 20000) : '';
+    if (full) job.fullDescription = full; else delete job.fullDescription;
+  }
+  // No short summary given: use the first real paragraph of the full description (swipe card + previews).
+  if (!job.description && job.fullDescription) {
+    const para = job.fullDescription.split(/\n+/).map((l) => l.trim()).find((l) => l.length > 60) || job.fullDescription;
+    job.description = para.length > 400 ? `${para.slice(0, 397).replace(/\s+\S*$/, '')}…` : para;
+  }
   set('responsibilities', strArray(body.responsibilities, 15, 300));
   set('interviewProcess', strArray(body.interviewProcess, 10, 120));
   set('startDate', str(body.startDate, 40));

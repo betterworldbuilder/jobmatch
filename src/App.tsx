@@ -720,7 +720,7 @@ function CardSummary({ item, role, detailed = false, onOpenResume, resumeUnlocke
           {job.benefits?.length ? <><span className="card-label">Why you might love this</span><div className="skill-list soft">{job.benefits.slice(0, 4).map((b) => <span key={b}>{b}</span>)}</div></> : null}
           <div className="match-count-line">{matched} matching skill{matched === 1 ? '' : 's'}{missing > 0 ? ` · ${missing} missing` : ''}</div>
           {gapViewer && onSkillAdded && <GapCoach job={job} viewer={gapViewer} onSkillAdded={onSkillAdded} />}
-          <div className="card-foot"><div><strong>{job.mission}</strong><small>{job.culture.join(' · ')}</small></div><button onPointerDownCapture={(event) => event.stopPropagation()} onClick={() => onOpenJob?.(job)}>Full role <ArrowRight size={14} /></button></div>
+          <div className="card-foot"><div><strong>{job.mission}</strong><small>{job.culture.join(' · ')}</small></div><button onPointerDownCapture={(event) => event.stopPropagation()} onClick={() => onOpenJob?.(job)}>Job details <ArrowRight size={14} /></button></div>
         </>}
       </div>
     </>;

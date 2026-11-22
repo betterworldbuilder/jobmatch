@@ -17,7 +17,7 @@ const VALUES_SUGGESTIONS = ['Ownership', 'Transparency', 'Customer obsession', '
 
 // The five wizard steps mirror the five job-profile cards candidates swipe through.
 // The first three carry every must-have field; the last two are optional and skippable.
-export const JOB_STEPS = ['Snapshot', 'Requirements', 'Compensation', 'Team & culture', 'Hiring process'] as const;
+export const JOB_STEPS = ['Snapshot', 'Role details & skills', 'Compensation', 'Team & culture', 'Hiring process'] as const;
 const JOB_REQUIRED_STEPS = 3;
 
 type Form = {
@@ -28,7 +28,7 @@ type Form = {
   salaryMin: string; salaryMax: string; currency: string; salaryNegotiable: boolean; bonus: string; equity: string;
   benefits: string[]; workingHours: string; flexibleHours: string; probation: string; hybridDays: number;
   visaSponsorship: boolean; relocationSupport: boolean; travel: string; onCall: string;
-  description: string; responsibilities: string[]; interviewProcess: string[]; startDate: string; externalUrl: string;
+  description: string; fullDescription: string; responsibilities: string[]; interviewProcess: string[]; startDate: string; externalUrl: string;
   status: typeof STATUSES[number]; screeningQuestions: string[];
   mission: string; culture: string[]; values: string[]; teamSize: string; teamComposition: string[]; teamLocations: string;
   managerName: string; managerTitle: string; managerStyle: string; managementStyleTags: string[]; teamStyle: string[]; teamSong: string;
@@ -42,7 +42,7 @@ const emptyForm = (): Form => ({
   salaryMin: '', salaryMax: '', currency: 'USD', salaryNegotiable: false, bonus: '', equity: '',
   benefits: [], workingHours: '', flexibleHours: '', probation: '', hybridDays: 2,
   visaSponsorship: false, relocationSupport: false, travel: '', onCall: '',
-  description: '', responsibilities: [], interviewProcess: [], startDate: '', externalUrl: '', status: 'draft', screeningQuestions: [],
+  description: '', fullDescription: '', responsibilities: [], interviewProcess: [], startDate: '', externalUrl: '', status: 'draft', screeningQuestions: [],
   mission: '', culture: [], values: [], teamSize: '', teamComposition: [], teamLocations: '',
   managerName: '', managerTitle: '', managerStyle: '', managementStyleTags: [], teamStyle: [], teamSong: '',
   hiringTimeline: '', backgroundCheck: false, referenceCheck: false,
@@ -63,7 +63,7 @@ function fromJob(job: Job): Form {
     benefits: job.benefits || [], workingHours: job.workingHours || '', flexibleHours: job.flexibleHours || '', probation: job.probation || '',
     hybridDays: job.hybridDays ?? 2, visaSponsorship: job.visaSponsorship ?? false, relocationSupport: job.relocationSupport ?? false,
     travel: job.travel || '', onCall: job.onCall || '',
-    description: job.description,
+    description: job.description, fullDescription: job.fullDescription || '',
     responsibilities: job.responsibilities || [], interviewProcess: job.interviewProcess || [],
     startDate: job.startDate || '', externalUrl: job.externalUrl || '', status: (job.status as Form['status']) || 'draft',
     screeningQuestions: job.screeningQuestions || [],
@@ -83,6 +83,8 @@ function applyDraft(form: Form, draft: JobDraft): Form {
     seniority: (draft.seniority as Seniority) ?? form.seniority,
     requiredSkills: draft.requiredSkillsDetail ? draft.requiredSkillsDetail.map((skill) => ({ name: skill.name, level: skill.weight })) : form.requiredSkills,
     niceToHaves: draft.niceToHaves ?? form.niceToHaves,
+    requiredLanguages: draft.requiredLanguages?.length ? draft.requiredLanguages : form.requiredLanguages,
+    fullDescription: draft.fullDescription ?? form.fullDescription,
     type: draft.type ?? form.type, workMode: draft.workMode ?? form.workMode,
     remoteScope: (draft.remoteScope as 'country' | 'worldwide') ?? form.remoteScope, country: draft.country ?? form.country,
     location: draft.location ?? form.location, hiringRadiusKm: draft.hiringRadiusKm ?? form.hiringRadiusKm,
@@ -106,8 +108,10 @@ function stepErrors(step: number, form: Form): string[] {
     if (form.workMode === 'Remote' && form.remoteScope === 'country' && !form.country.trim()) errors.push('Enter the country for a country-restricted remote role');
   }
   if (step === 1) {
-    if (form.requiredSkills.length < 1) errors.push('Add at least 1 required skill');
-    if (!form.description.trim()) errors.push('Description is required');
+    if (!form.fullDescription.trim() && !form.description.trim()) errors.push('Paste the full job description in Role details');
+    if (form.requiredSkills.length < 1) errors.push('Add at least 1 must-have skill');
+    if (form.niceToHaves.length < 1) errors.push('Add at least 1 nice-to-have skill');
+    if (form.requiredLanguages.length < 1) errors.push('Add at least 1 language');
   }
   if (step === 2) {
     if (form.salaryMin === '' || form.salaryMax === '') errors.push('Salary range is mandatory');
@@ -138,7 +142,8 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
     setImporting(true); setError('');
     try {
       const { draft, source } = await adapter.importDraft(input);
-      setForm((current) => applyDraft(current, draft));
+      // The pasted posting is kept whole as "Role details"; the parser only pre-fills the other fields.
+      setForm((current) => applyDraft(current, { ...draft, ...(input?.text?.trim() ? { fullDescription: input.text.trim() } : {}) }));
       setImportNote(`${source} — review the fields below, then save.`);
       setPasteOpen(false);
     } catch (e) { setError(e instanceof Error ? e.message : 'Import failed'); }
@@ -174,7 +179,7 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
       probation: form.probation || undefined, hybridDays: form.workMode === 'Hybrid' ? form.hybridDays : undefined,
       visaSponsorship: form.visaSponsorship, relocationSupport: form.relocationSupport,
       travel: form.travel || undefined, onCall: form.onCall || undefined,
-      description: form.description, responsibilities: form.responsibilities, interviewProcess: form.interviewProcess,
+      description: form.description.trim() || undefined, fullDescription: form.fullDescription, responsibilities: form.responsibilities, interviewProcess: form.interviewProcess,
       startDate: form.startDate || undefined, externalUrl: form.externalUrl || undefined, status: form.status,
       screeningQuestions: form.screeningQuestions,
       mission: form.mission || undefined, culture: form.culture, values: form.values, teamSize: form.teamSize || undefined,
@@ -267,12 +272,17 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
 
       {step === 1 && <div className="wz-body">
         <Field label="Seniority (optional)"><Segmented options={['junior', 'mid', 'senior', 'lead', 'exec'] as const} value={form.seniority} onChange={(seniority) => patch({ seniority })} labels={SENIORITY_LABELS} /></Field>
-        <Field label="Required skills" required hint="Min 1 — add more any time. Dots set the weight (1–3) that feeds the fit score.">
-          <LevelTagInput value={form.requiredSkills} onChange={(requiredSkills) => patch({ requiredSkills: requiredSkills.map((skill) => ({ ...skill, level: Math.min(skill.level, 3) })) })} maxLevel={3} placeholder="Add a required skill, press Enter" />
+        <Field label="Role details — the full job description" required hint="Paste the whole job description as it is (about the company, the role, who it is for, what you look for, how to apply). Candidates read it as-is in the Role details card.">
+          <textarea className="wz-input wz-textarea jd-paste" rows={14} maxLength={20000} value={form.fullDescription} onChange={(e) => patch({ fullDescription: e.target.value })} placeholder={'About the job\nWho we are…\n\nThe role\nWhat you will build…\n\nWhat we are looking for\n…\n\nHow to apply\n…'} aria-label="Full job description" />
         </Field>
-        <Field label="Nice-to-haves (optional)"><TagInput value={form.niceToHaves} onChange={(niceToHaves) => patch({ niceToHaves })} placeholder="Bonus skills — press Enter" /></Field>
-        <Field label="Required languages (optional)"><TagInput value={form.requiredLanguages} onChange={(requiredLanguages) => patch({ requiredLanguages })} placeholder="Add a language, press Enter" /></Field>
-        <Field label="Description" required><textarea className="wz-input wz-textarea" rows={4} value={form.description} onChange={(e) => patch({ description: e.target.value })} /></Field>
+        <Field label="Short summary (optional)" hint="1–2 sentences for the swipe card. Leave empty and we use the first paragraph of the job description.">
+          <textarea className="wz-input wz-textarea" rows={2} maxLength={400} value={form.description} onChange={(e) => patch({ description: e.target.value })} aria-label="Short summary" />
+        </Field>
+        <Field label="Must have" required hint="Skills a candidate needs. Min 1. Dots set the weight (1–3) that feeds the fit score.">
+          <LevelTagInput value={form.requiredSkills} onChange={(requiredSkills) => patch({ requiredSkills: requiredSkills.map((skill) => ({ ...skill, level: Math.min(skill.level, 3) })) })} maxLevel={3} placeholder="Add a must-have skill, press Enter" />
+        </Field>
+        <Field label="Nice to have" required hint="Bonus skills. Min 1."><TagInput value={form.niceToHaves} onChange={(niceToHaves) => patch({ niceToHaves })} placeholder="Add a nice-to-have skill, press Enter" /></Field>
+        <Field label="Languages" required hint="Min 1, e.g. English."><TagInput value={form.requiredLanguages} onChange={(requiredLanguages) => patch({ requiredLanguages })} placeholder="Add a language, press Enter" suggestions={['English', 'Vietnamese', 'Japanese', 'Korean']} /></Field>
         <Field label="Responsibilities (optional)" hint="One bullet per line — press Enter to add.">
           <TagInput value={form.responsibilities} onChange={(responsibilities) => patch({ responsibilities })} placeholder="e.g. Own the matching API roadmap" />
         </Field>

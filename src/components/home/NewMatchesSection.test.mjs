@@ -30,7 +30,7 @@ test('renders the section, the deck region with a real counter and the 4 deck bu
   assert.match(html, /\$9100\/mo/);
   assert.match(html, /Matches your React, TypeScript, Node · 91%/);
   assert.match(html, /6 km away/);
-  assert.match(html, /Full role/);
+  assert.match(html, /Job details/);
 });
 
 test('"Recommended Roles" lists the sorted list minus the current card', async () => {
