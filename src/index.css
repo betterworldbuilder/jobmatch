@@ -3697,6 +3697,30 @@ img.avatar-mini { object-fit:cover; }
   .askai-panel { inset:0; right:0; bottom:0; width:100vw; height:100dvh; border-radius:0; }
 }
 @media print { .askai-fab, .askai-panel { display:none !important; } }
+/* Phone bar: Profile · Surf · Explore · Likes · Chat (founder, 2026-11-22). Active tab in brand pink. */
+.explore-sheet { display:none; }
+@media (max-width: 760px) {
+  .explore-sheet { display:block; }
+  .mobile-bottom-nav.app-tabs button { font-size:11px; font-weight:700; color:#5b6378; height:54px; }
+  .mobile-bottom-nav.app-tabs button.active { color:#fd267a; }
+  .mobile-bottom-nav.app-tabs .tab-ico { position:relative; display:inline-flex; max-width:none; overflow:visible; }
+  .mobile-bottom-nav.app-tabs .tab-ico em { position:absolute; top:-6px; right:-12px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#fd267a; color:#fff; font:800 10px/18px 'Manrope'; font-style:normal; text-align:center; box-shadow:0 0 0 2px #fff; }
+  .explore-sheet { position:fixed; inset:0 0 calc(60px + env(safe-area-inset-bottom)) 0; z-index:23; background:#fff; overflow-y:auto; padding:16px 16px 24px; }
+  .explore-sheet header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .explore-sheet h2 { margin:0; font-size:26px; font-weight:900; color:#0d1834; }
+  .explore-sheet .mobile-close { display:grid; place-items:center; width:38px; height:38px; border-radius:50%; border:0; background:#f4f2f8; }
+  .explore-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+  .explore-grid button { display:flex; align-items:center; gap:10px; min-height:62px; padding:10px 12px; border:1px solid #ece6f2; border-radius:16px; background:#fbfaff; text-align:left; font:800 13.5px 'Manrope'; color:#0d1834; cursor:pointer; }
+  .explore-grid button i { width:36px; height:36px; flex:none; border-radius:11px; display:grid; place-items:center; color:#fff; background:var(--c); font-style:normal; }
+  .explore-more { width:100%; margin-top:14px; }
+}
+/* Phone Find My Match: the role dropdown sits above the deck, so the dark screen is shorter by its height
+   (top bar 68 + role bar ~84 + bottom bar ~70) — the Pass / Like / Message buttons stay above the bottom bar. */
+@media (max-width:639px) {
+  .td-match-page .nm-screen { height:calc(100svh - 68px - 84px - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height:460px; }
+  .td-match-page .fmm-rolebar { margin-bottom:22px; } /* the deck below pulls itself up 14px */
+  .td-match-page .nm-screen { height:calc(100svh - 68px - 98px - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+}
 /* Phone swipe deck: the floating Ask AI button would cover the Like / Message buttons. */
 @media (max-width: 640px) { .askai-fab.hide-phone { display:none; } }
 /* Interview preparation */

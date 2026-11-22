@@ -5,7 +5,8 @@ import { ReportModal } from './components/ReportModal';
 import { ConductModal } from './components/ConductModal';
 import { AdminPasswordSetup } from './components/AdminPasswordSetup';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react';
-import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot, Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
+import { User, Waves } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
 import { apiBase } from './api';
 import { Capacitor } from '@capacitor/core';
@@ -415,6 +416,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [mobileNav, setMobileNav] = useState(false);
+  const [exploreOpen, setExploreOpen] = useState(false);
   const [editStep, setEditStep] = useState<number | null>(null);
   const [profileCard, setProfileCard] = useState(0);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -520,7 +522,22 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     {data && !data.viewer.onboarding && (role === 'candidate' || role === 'employer') && <AskAi role={role} hideFabOnPhone={view === 'match'} />}
     {profileSaved && <div className="profile-saved-toast" role="status"><Check size={15} /> Profile updated. Recruiter view refreshed.</div>}
     {jobImportOpen && data && <JobImportModal viewer={data.viewer} onClose={() => setJobImportOpen(false)} onImported={() => { setJobImportOpen(false); setView('jobs'); load(); }} onManual={() => { setJobImportOpen(false); setView('jobs'); setManualJobRequest((value) => value + 1); }} />}
-    <nav className="mobile-bottom-nav" aria-label="Primary navigation">{(role === 'employer' ? [...nav.slice(0, 4), ...nav.filter((i) => i.view === 'selected')] : nav.slice(0, 5)).map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)}><Icon size={19} /><span>{item.short || item.label}</span></button>; })}</nav>
+    {/* Phone bar, same for job seekers and recruiters (founder, 2026-11-22): Profile · Surf · Explore · Likes · Chat.
+        Surf = the swipe deck; Explore = every other section as tiles; Likes = people who liked you. */}
+    <nav className="mobile-bottom-nav app-tabs" aria-label="Primary navigation">
+      {([
+        { key: 'profile', label: 'Profile', icon: User, active: view === 'profile' && !exploreOpen, go: () => { setExploreOpen(false); setView('profile'); } },
+        { key: 'surf', label: 'Surf', icon: Waves, active: view === 'match' && !exploreOpen, go: () => { setExploreOpen(false); gotoNav({ label: 'Surf', icon: Waves, view: 'match' }); } },
+        { key: 'explore', label: 'Explore', icon: Compass, active: exploreOpen, go: () => setExploreOpen((o) => !o) },
+        { key: 'likes', label: 'Likes', icon: Heart, active: !exploreOpen && view === 'home' && (activeAnchor === 'td-chasing' || activeAnchor === 'td-review'), go: () => { setExploreOpen(false); gotoNav({ label: 'Likes', icon: Heart, anchor: role === 'candidate' ? 'td-chasing' : 'td-review' }); } },
+        { key: 'chat', label: 'Chat', icon: MessageCircle, active: view === 'messages' && !exploreOpen, badge: notifications.length, go: () => { setExploreOpen(false); setView('messages'); } },
+      ] as { key: string; label: string; icon: typeof User; active: boolean; badge?: number; go: () => void }[]).map((t) => { const Icon = t.icon; return <button key={t.key} className={t.active ? `active tab-${t.key}` : `tab-${t.key}`} onClick={t.go} aria-current={t.active ? 'page' : undefined}><span className="tab-ico"><Icon size={21} />{t.badge ? <em>{Math.min(t.badge, 99)}</em> : null}</span><span>{t.label}</span></button>; })}
+    </nav>
+    {exploreOpen && <section className="explore-sheet" role="dialog" aria-label="Explore">
+      <header><h2>Explore</h2><button type="button" className="mobile-close" onClick={() => setExploreOpen(false)} aria-label="Close Explore"><X /></button></header>
+      <div className="explore-grid">{nav.map((item) => { const Icon = item.icon; return <button key={item.label} type="button" onClick={() => { setExploreOpen(false); gotoNav(item); }} style={{ ['--c' as string]: NAV_COLORS[item.label] || '#9fb3d9' }}><i><Icon size={20} /></i><span>{item.label}</span></button>; })}</div>
+      <button type="button" className="secondary-button explore-more" onClick={() => { setExploreOpen(false); setMobileNav(true); }}>Settings, help and more</button>
+    </section>}
     <AnimatePresence>{settingsOpen && <SettingsModal user={session} onClose={() => setSettingsOpen(false)} onDeleted={() => { setSettingsOpen(false); onExit(); }} />}</AnimatePresence>
   </div>;
 }
