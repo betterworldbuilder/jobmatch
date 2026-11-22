@@ -80,6 +80,44 @@ test('demo: a recruiter who already PASSED on the job seeker does not block the 
   assert.ok(last.match, `3rd like since the last match matches even after a pass (${k} earlier likes)`);
 });
 
+// The phone deck shows EVERY card (also ones swiped before and ones already matched): 1 in 3 must hold there too.
+for (const userId of ['candidate-demo', 'employer-demo']) {
+  test(`${userId}: 9 likes straight down the phone deck (old and matched cards included) = 3 "It's a Match!" windows, 3 apart`, async () => {
+    const { ck, me } = await login(userId);
+    const boot = (await call('GET', `/api/bootstrap?userId=${me}`, undefined, ck)).body;
+    const isCand = boot.viewer.role === 'candidate';
+    const cards = (isCand ? boot.jobs : boot.candidates).filter((c) => c.demo || isCand).slice(0, 9);
+    assert.equal(cards.length, 9);
+    const d = db();
+    const lastAt = Math.max(0, ...d.matches.filter((m) => m.candidateId === me || m.employerId === me).map((m) => m.createdAt || 0),
+      ...d.swipes.filter((s) => s.actorId === me && s.demoMatchShown).map((s) => s.createdAt || 0));
+    const k = d.swipes.filter((s) => s.actorId === me && s.direction === 'like' && !s.demoAutoLike && (s.createdAt || 0) > lastAt).length;
+    const pattern = [];
+    for (const c of cards) {
+      const r = await call('POST', '/api/swipes', { actorId: me, targetId: c.id, targetType: isCand ? 'job' : 'candidate', direction: 'like' }, ck);
+      assert.equal(r.status, 201, JSON.stringify(r.body)); assert.equal(r.body.duplicate, false);
+      pattern.push(r.body.match ? 'M' : '-');
+      if (r.body.match) assert.ok(r.body.match.job && r.body.match.candidate && r.body.match.employer, 'match window has both sides');
+    }
+    const at = pattern.map((p, i) => (p === 'M' ? i : -1)).filter((i) => i >= 0);
+    assert.equal(at.length, 3, `pattern ${pattern.join('')} (k=${k})`);
+    assert.deepEqual([at[1] - at[0], at[2] - at[1]], [3, 3], `pattern ${pattern.join('')}`);
+    // First match on the 3rd like at the latest (a re-liked card replaces its own earlier like, so k can shrink).
+    assert.ok(at[0] <= 2, `pattern ${pattern.join('')} (k=${k})`);
+  });
+}
+
+test('demo: undo after a match shown again never deletes that older match or its chat', async () => {
+  const { ck, me } = await login('candidate-demo');
+  const before = db().matches.filter((m) => m.candidateId === me).length;
+  const r = await call('POST', '/api/swipes/undo', { actorId: me }, ck);
+  assert.equal(r.status, 200);
+  const after = db().matches.filter((m) => m.candidateId === me).length;
+  assert.ok(after >= before - 1, 'at most the one match this swipe created is removed');
+  const old = db().matches.filter((m) => m.candidateId === me && m.createdAt < Date.now() - 60_000).length;
+  assert.ok(old > 0, 'older seeded matches remain');
+});
+
 test('demo: liking someone who already liked you matches at once and restarts the count', async () => {
   const { ck, me } = await login('candidate-demo-2');
   const d = db();

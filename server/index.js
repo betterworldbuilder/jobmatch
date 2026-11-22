@@ -2135,47 +2135,54 @@ app.post('/api/swipes', async (req, res, next) => {
       if (direction === 'like' && likesRemainingToday(db.swipes, actorId) <= 0) {
         const error = new Error('Daily like limit reached'); error.status = 429; throw error;
       }
-      const existing = db.swipes.find((swipe) => swipe.actorId === actorId && swipe.targetType === targetType && swipe.targetId === targetId);
-      if (existing) return { swipe: existing, match: null, duplicate: true };
-      // A recruiter swiping from one role's deck tags the swipe with that role (must be their own job).
-      const roleJobId = actor.role === 'employer' && targetType === 'candidate' && typeof req.body.jobId === 'string'
-        && db.jobs.some((job) => job.id === req.body.jobId && job.employerId === actor.id) ? req.body.jobId : undefined;
-      const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(roleJobId ? { jobId: roleJobId } : {}), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}), ...(note ? { note } : {}) };
-      let mutual = detectMutualMatch(swipe, db);
-      db.swipes.push(swipe);
       // Demo if ANY party is demo/sample — starter sample accounts pre-like
       // real users, and those interactions must not inflate real counts.
       const targetJob = targetType === 'job' ? db.jobs.find((job) => job.id === targetId) : undefined;
       const targetUser = targetType === 'candidate'
         ? db.users.find((user) => user.id === targetId)
         : db.users.find((user) => user.id === targetJob?.employerId);
-      // Demo accounts only (founder, 2026-11-22): 1 match per 3 likes. Passes never count. The count restarts after
-      // every match, so the 3rd like since the last match is liked back by the demo counterpart; liking someone who
-      // already liked you still matches at once (and restarts the count). Real users are never touched.
-      if (!mutual && direction === 'like' && actor.demo === true && (targetUser?.demo === true || targetJob?.demo === true)) {
+      // Demo accounts only (founder, 2026-11-22): 1 match per 3 likes, on every card of the deck. Passes never count;
+      // the count restarts after every match; liking someone who already liked you still matches at once. The deck
+      // shows every card, so a demo like on a card swiped before counts as a fresh like, and a 3rd like on someone the
+      // demo account is already matched with opens that match again. Real users are never touched.
+      const demoLike = direction === 'like' && actor.demo === true && (targetUser?.demo === true || targetJob?.demo === true);
+      const existing = db.swipes.find((swipe) => swipe.actorId === actorId && swipe.targetType === targetType && swipe.targetId === targetId);
+      if (existing && !demoLike) return { swipe: existing, match: null, duplicate: true };
+      if (existing) { untrack(db, existing.tracked); db.swipes = db.swipes.filter((s) => s.id !== existing.id); }
+      // A recruiter swiping from one role's deck tags the swipe with that role (must be their own job).
+      const roleJobId = actor.role === 'employer' && targetType === 'candidate' && typeof req.body.jobId === 'string'
+        && db.jobs.some((job) => job.id === req.body.jobId && job.employerId === actor.id) ? req.body.jobId : undefined;
+      const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(roleJobId ? { jobId: roleJobId } : {}), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}), ...(note ? { note } : {}) };
+      const matchedPair = (p) => db.matches.find((m) => m.candidateId === p.candidateId && m.jobId === p.jobId);
+      let mutual = detectMutualMatch(swipe, db);
+      // Demo: a mutual like with someone already matched is just a like (counted below), not an instant match.
+      if (demoLike && mutual && matchedPair(mutual)) mutual = null;
+      db.swipes.push(swipe);
+      let reshown = null;
+      if (!mutual && demoLike) {
         const every = Math.max(1, Number(process.env.DEMO_MATCH_EVERY) || 3);
-        const lastMatchAt = db.matches.reduce((t, m) => ((m.candidateId === actorId || m.employerId === actorId) && m.createdAt > t ? m.createdAt : t), 0);
-        const likesSinceMatch = db.swipes.filter((s) => s.actorId === actorId && s.direction === 'like' && !s.demoAutoLike && (s.createdAt || 0) > lastMatchAt).length;
+        const mine = (m) => m.candidateId === actorId || m.employerId === actorId;
+        const lastMatchAt = Math.max(0, ...db.matches.filter(mine).map((m) => Number(m.createdAt) || 0),
+          ...db.swipes.filter((s) => s.actorId === actorId && s.demoMatchShown).map((s) => Number(s.createdAt) || 0));
+        const likesSinceMatch = db.swipes.filter((s) => s.actorId === actorId && s.direction === 'like' && !s.demoAutoLike && (Number(s.createdAt) || 0) > lastMatchAt).length;
         if (likesSinceMatch >= every) {
-          const now = Date.now();
-          let counter = null;
-          if (targetType === 'job' && targetJob) {
-            counter = { id: crypto.randomUUID(), actorId: targetJob.employerId, targetId: actorId, targetType: 'candidate', direction: 'like', jobId: targetJob.id, createdAt: now, demoAutoLike: true };
-          } else if (targetType === 'candidate' && targetUser) {
+          let pair = null;
+          if (targetType === 'job' && targetJob) pair = { candidateId: actorId, jobId: targetJob.id, employerId: targetJob.employerId };
+          else if (targetType === 'candidate' && targetUser) {
+            const active = db.jobs.filter((job) => job.employerId === actorId && String(job.status).toLowerCase() === 'active');
             const roleJob = (roleJobId && db.jobs.find((job) => job.id === roleJobId))
-              || db.jobs.find((job) => job.employerId === actorId && String(job.status).toLowerCase() === 'active' && !db.matches.some((m) => m.candidateId === targetId && m.jobId === job.id));
-            if (roleJob) counter = { id: crypto.randomUUID(), actorId: targetId, targetId: roleJob.id, targetType: 'job', direction: 'like', createdAt: now, demoAutoLike: true };
+              || active.find((job) => !matchedPair({ candidateId: targetId, jobId: job.id })) || active[0];
+            if (roleJob) pair = { candidateId: targetId, jobId: roleJob.id, employerId: actorId };
           }
-          // The 3rd like ALWAYS matches: an earlier pass (or a like for another role) by the demo counterpart must not
-          // block it, so the match is built directly; the auto like-back is only recorded when none exists yet.
-          if (counter) {
-            const pair = counter.targetType === 'candidate'
-              ? { candidateId: actorId, jobId: counter.jobId, employerId: counter.actorId }
-              : { candidateId: targetId, jobId: counter.targetId, employerId: actorId };
-            const sameLike = (s) => s.actorId === counter.actorId && s.targetType === counter.targetType && s.targetId === counter.targetId && s.direction === 'like'
-              && (counter.targetType === 'job' || s.jobId === counter.jobId);
-            if (!db.swipes.some(sameLike)) db.swipes.push(counter);
-            mutual = pair;
+          if (pair) {
+            // The demo counterpart's like-back (recorded once; an earlier pass by them never blocks the match).
+            const counter = targetType === 'job'
+              ? { actorId: pair.employerId, targetId: actorId, targetType: 'candidate', jobId: pair.jobId }
+              : { actorId: targetId, targetId: pair.jobId, targetType: 'job' };
+            const has = db.swipes.some((s) => s.actorId === counter.actorId && s.targetType === counter.targetType && s.targetId === counter.targetId && s.direction === 'like' && (counter.targetType === 'job' || s.jobId === counter.jobId));
+            if (!has) db.swipes.push({ id: crypto.randomUUID(), ...counter, direction: 'like', createdAt: swipe.createdAt, demoAutoLike: true });
+            const old = matchedPair(pair);
+            if (old) { swipe.demoMatchShown = true; reshown = old; } else mutual = pair;
           }
         }
       }
@@ -2201,6 +2208,9 @@ app.post('/api/swipes', async (req, res, next) => {
         if (pairSwipes.length) match.firstMessageTracked = track(db, 'first_message', { demo: involvesDemo(...parties), dim: actorSide(db.users.find((u) => u.id === pairSwipes[0].actorId)), at: match.createdAt });
         // Expand for the match screen: names, photos, and the mutual salary reveal.
         match = { ...match, candidate: otherPartyView(db.users.find((user) => user.id === match.candidateId)), employer: otherPartyView(db.users.find((user) => user.id === match.employerId)), job: jobPublicView(db.jobs.find((job) => job.id === match.jobId)) };
+      } else if (reshown) {
+        // Demo: the 3rd like landed on an existing match: open "It's a Match!" on it (same conversation).
+        match = { ...reshown, candidate: otherPartyView(db.users.find((user) => user.id === reshown.candidateId)), employer: otherPartyView(db.users.find((user) => user.id === reshown.employerId)), job: jobPublicView(db.jobs.find((job) => job.id === reshown.jobId)) };
       }
       return { swipe, match, duplicate: false, likesRemaining: likesRemainingToday(db.swipes, actorId) };
     });
@@ -2219,7 +2229,9 @@ app.post('/api/swipes/undo', async (req, res, next) => {
       if (!last) return { undone: null };
       db.swipes = db.swipes.filter((swipe) => swipe.id !== last.id);
       // Drop any match this swipe completed (and its messages), so undo is clean.
-      const removedMatches = db.matches.filter((m) => (last.targetType === 'job' ? m.candidateId === actorId && m.jobId === last.targetId : m.employerId === actorId && m.candidateId === last.targetId));
+      // Only a match this swipe created (never an older match on the same pair, e.g. a demo match shown again).
+      const removedMatches = db.matches.filter((m) => (Number(m.createdAt) || 0) >= (Number(last.createdAt) || 0)
+        && (last.targetType === 'job' ? m.candidateId === actorId && m.jobId === last.targetId : m.employerId === actorId && m.candidateId === last.targetId));
       const removedIds = new Set(removedMatches.map((m) => m.id));
       // Retract exactly what was counted, so undo + re-swipe never double counts.
       untrack(db, last.tracked);
