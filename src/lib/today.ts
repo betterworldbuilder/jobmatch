@@ -48,12 +48,13 @@ function dayStart(date: string) { const [y, m, d] = date.split('-').map(Number);
 export function nextInterview(data: Pick<Bootstrap, 'viewer' | 'matches' | 'calls'>, now = Date.now()): NextInterview | null {
   const items: NextInterview[] = [];
   for (const call of data.calls) {
-    if (call.startAt < now) continue;
+    if (call.startAt < now || call.cancelledAt) continue;
     const m = data.matches.find((x) => x.id === call.matchId);
     // Call titles name the guest ("Coffee chat - Lan Tran"); show the kind of call + the role instead.
     if (m) items.push({ matchId: m.id, title: `${call.title.split(' - ')[0]}${m.job ? ` · ${m.job.title}` : ''}`, who: otherName(m, data), withName: otherName(m, data), at: call.startAt, source: 'call', durationMinutes: call.durationMinutes || 30 });
   }
   for (const m of data.matches) {
+    if (m.stage === 'Archived' || m.stage === 'Hired') continue; // closed processes have no next round
     const t = timeline(m);
     const cur = t.steps[t.currentIndex];
     if (!cur?.round || !cur.date) continue;
@@ -66,8 +67,8 @@ export function nextInterview(data: Pick<Bootstrap, 'viewer' | 'matches' | 'call
 
 export function interviewsThisWeek(data: Pick<Bootstrap, 'viewer' | 'matches' | 'calls'>, now = Date.now()) {
   const end = now + 7 * DAY;
-  const calls = data.calls.filter((c) => c.startAt >= now && c.startAt <= end).length;
-  const rounds = data.matches.filter((m) => { const t = timeline(m); const d = t.steps[t.currentIndex]?.date; return t.steps[t.currentIndex]?.round && d && dayStart(d) >= now - DAY && dayStart(d) <= end; }).length;
+  const calls = data.calls.filter((c) => c.startAt >= now && c.startAt <= end && !c.cancelledAt).length;
+  const rounds = data.matches.filter((m) => { if (m.stage === 'Archived' || m.stage === 'Hired') return false; const t = timeline(m); const d = t.steps[t.currentIndex]?.date; return t.steps[t.currentIndex]?.round && d && dayStart(d) >= now - DAY && dayStart(d) <= end; }).length;
   return calls + rounds;
 }
 

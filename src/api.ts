@@ -106,6 +106,9 @@ export const api = {
   matchIcebreakers: (matchId: string) => request<{ icebreakers: string[]; generator: string }>(`/api/matches/${encodeURIComponent(matchId)}/icebreakers`),
   swipe: (payload: { actorId: string; targetId: string; targetType: 'job' | 'candidate'; direction: 'like' | 'pass'; superLike?: boolean; answers?: ScreeningAnswer[]; note?: string }) => request<{ match: JobMatch | null; likesRemaining: number; duplicate: boolean }>('/api/swipes', { method: 'POST', body: JSON.stringify(payload) }),
   undoSwipe: (actorId: string) => request<{ undone: { targetId: string; targetType: string; direction: string } | null; likesRemaining?: number }>('/api/swipes/undo', { method: 'POST', body: JSON.stringify({ actorId }) }),
+  // Recruitment process rules: Hired fills the role and thanks the other candidates; stopping needs a reason + feedback.
+  hireMatch: (id: string) => request<JobMatch & { effects?: { closed: number; meetingsCancelled: number; messages: number } }>(`/api/matches/${id}`, { method: 'PATCH', body: JSON.stringify({ stage: 'Hired' }) }),
+  stopMatch: (id: string, closeCategory: string, closeFeedback: string) => request<JobMatch & { effects?: { closed: number; meetingsCancelled: number; messages: number } }>(`/api/matches/${id}`, { method: 'PATCH', body: JSON.stringify({ stage: 'Archived', closeCategory, closeFeedback }) }),
   updateStage: (id: string, stage: string) => request<JobMatch>(`/api/matches/${id}`, { method: 'PATCH', body: JSON.stringify({ stage }) }),
   updateMatchPipeline: (id: string, pipeline: PipelineStep[], currentStepId: string) => request<JobMatch>(`/api/matches/${id}/pipeline`, { method: 'PATCH', body: JSON.stringify({ pipeline, currentStepId }) }),
   sendFeedbackEmail: (matchId: string, message: string) => request<{ ok: boolean; mailer: boolean }>(`/api/matches/${matchId}/feedback-email`, { method: 'POST', body: JSON.stringify({ message }) }),

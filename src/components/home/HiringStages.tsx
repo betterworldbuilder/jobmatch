@@ -2,7 +2,7 @@
 // a timeline from Mutual match → Round 1…N (who interviews, kind, date) → Offer → Hired.
 // Recruiters edit rounds and move the current step; candidates see their own, read-only.
 import { useState } from 'react';
-import { Calendar, Check, Eye, EyeOff, Flag, MessageCircle, Pencil, Plus, User } from 'lucide-react';
+import { BadgeCheck, Ban, Calendar, Check, Eye, EyeOff, Flag, Loader2, MessageCircle, Pencil, Plus, User } from 'lucide-react';
 import { api } from '../../api';
 import { JobHeaderBadge } from '../jobs/JobHeaderBadge';
 import { KIND_LABEL, defaultSteps, formatDay, summary, timeline } from '../../lib/hiringStages';
@@ -58,9 +58,53 @@ function StepsEditor({ steps, onChange, onDone }: { steps: PipelineStep[]; onCha
   </div>;
 }
 
+// Keep in sync with STOP_REASONS in server/hiring-rules.js.
+export const STOP_REASONS = ['Skills gap', 'Experience level', 'Salary expectations', 'Time zone or availability', 'Role on hold or cancelled', 'Chose another candidate', 'Other'];
+const MIN_FEEDBACK = 30;
+const CLOSED_LABEL: Record<string, string> = { candidate_hired: 'Closed: the candidate accepted another offer', role_filled: 'Closed: the role was filled', stopped_by_recruiter: 'Closed: process stopped' };
+
+/** Rule 3: stopping a process needs the main reason and honest feedback, sent to the candidate. */
+function StopProcessForm({ match, onCancel, onDone }: { match: JobMatch; onCancel: () => void; onDone: () => void }) {
+  const [category, setCategory] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const ok = category && feedback.trim().length >= MIN_FEEDBACK;
+  const send = async () => {
+    setBusy(true); setError('');
+    try { await api.stopMatch(match.id, category, feedback.trim()); onDone(); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not stop the process'); }
+    finally { setBusy(false); }
+  };
+  return <div className="hs-stop">
+    <strong>Stop the process with {match.candidate?.name?.split(' ')[0] || 'this candidate'}</strong>
+    <p>Recruitment process rule: give the main reason and honest, specific feedback. It is sent to the candidate in the conversation, and upcoming meetings are cancelled.</p>
+    <label>Main reason<select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Main reason"><option value="">Pick one…</option>{STOP_REASONS.map((r) => <option key={r}>{r}</option>)}</select></label>
+    <label>Honest feedback for the candidate<textarea rows={4} value={feedback} onChange={(e) => setFeedback(e.target.value)} aria-label="Feedback for the candidate" placeholder="What was strong, what was missing for this role, and what would make them a fit next time." maxLength={2000} /></label>
+    <small className={feedback.trim().length >= MIN_FEEDBACK ? 'hs-count ok' : 'hs-count'}>{feedback.trim().length} / {MIN_FEEDBACK} characters minimum</small>
+    {error && <p className="cb-err">{error}</p>}
+    <div className="hs-stop-actions"><button type="button" className="secondary-button small" onClick={onCancel}>Cancel</button>
+      <button type="button" className="danger-button small" disabled={!ok || busy} onClick={() => void send()}>{busy ? <Loader2 size={14} className="spin" /> : 'Send feedback and stop'}</button></div>
+  </div>;
+}
+
 export function HiringStages({ data, setData, onOpenMessages }: { data: Bootstrap; setData: (d: Bootstrap) => void; onOpenMessages: (matchId: string) => void }) {
+  // Quiet refresh after a rule changed several records (other matches, messages, meetings) — keeps the notice on screen.
+  const reload = () => { void api.bootstrap(data.viewer.id).then(setData).catch(() => undefined); };
   const isRecruiter = data.viewer.role === 'employer';
   const [editing, setEditing] = useState<string | null>(null);
+  const [stopping, setStopping] = useState<string | null>(null);
+  const [hiring, setHiring] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
+  const isOpen = (m: JobMatch) => m.stage !== 'Hired' && m.stage !== 'Archived';
+  const hire = async (m: JobMatch) => {
+    try {
+      const r = await api.hireMatch(m.id);
+      const e = r.effects;
+      setNotice(`${m.candidate?.name || 'The candidate'} is hired and the role is marked filled.${e?.closed ? ` ${e.closed} other candidate${e.closed === 1 ? '' : 's'} got an automatic thank-you${e.meetingsCancelled ? `, ${e.meetingsCancelled} meeting${e.meetingsCancelled === 1 ? '' : 's'} cancelled` : ''}.` : ''}`);
+      setHiring(null); reload();
+    } catch (err) { alert(err instanceof Error ? err.message : 'Could not mark as hired'); }
+  };
   const mine = data.matches.filter((m) => (isRecruiter ? m.employerId === data.viewer.id : m.candidateId === data.viewer.id));
   const byJob = new Map<string, JobMatch[]>();
   for (const m of mine) byJob.set(m.jobId, [...(byJob.get(m.jobId) || []), m]);
@@ -75,6 +119,7 @@ export function HiringStages({ data, setData, onOpenMessages }: { data: Bootstra
   return <div className="page hs-page">
     <div className="page-title"><div><span className="overline">Milestones</span><h1>Hiring Stages</h1>
       <p>{isRecruiter ? 'Every role, every candidate: which round they are in, who interviews them and when — up to the finish line.' : 'Where you stand with each team: the rounds ahead, who you meet and when.'}</p></div></div>
+    {notice && <p className="hs-notice" role="status"><Check size={14} /> {notice} <button type="button" className="text-button" onClick={() => setNotice('')}>OK</button></p>}
     {mine.length === 0 && <div className="sc-empty"><Flag size={26} /><strong>No hiring stages yet</strong><p>Stages start when you and {isRecruiter ? 'a candidate' : 'a team'} both say yes.</p></div>}
     {[...byJob.entries()].map(([jobId, matches]) => {
       const job = matches[0].job;
@@ -93,8 +138,17 @@ export function HiringStages({ data, setData, onOpenMessages }: { data: Bootstra
               <div className="hs-who"><strong>{name}</strong><small>{isRecruiter ? m.candidate?.title : person?.title || `Hiring for ${m.job?.title}`}</small></div>
               <span className="hs-summary">{summary(m)}</span>
               <button type="button" className="secondary-button small" onClick={() => onOpenMessages(m.id)}><MessageCircle size={14} /> Message</button>
+              {isRecruiter && isOpen(m) && <button type="button" className="secondary-button small hs-hire" onClick={() => setHiring(hiring === m.id ? null : m.id)}><BadgeCheck size={14} /> Hired</button>}
+              {isRecruiter && isOpen(m) && <button type="button" className="secondary-button small hs-stop-btn" onClick={() => setStopping(stopping === m.id ? null : m.id)}><Ban size={14} /> Stop process</button>}
               {isRecruiter && <button type="button" className={editing === m.id ? 'hs-edit on' : 'hs-edit'} onClick={() => setEditing(editing === m.id ? null : m.id)} aria-label="Edit rounds"><Pencil size={14} /></button>}
             </div>
+            {!isOpen(m) && <p className={`hs-closed ${m.stage === 'Hired' ? 'hired' : ''}`}>{m.stage === 'Hired' ? <><BadgeCheck size={14} /> Hired</> : <><Ban size={14} /> {CLOSED_LABEL[m.closedReason || ''] || 'Closed'}{m.closedCategory ? ` · ${m.closedCategory}` : ''}</>}</p>}
+            {hiring === m.id && (() => {
+              const others = matches.filter((x) => x.id !== m.id && isOpen(x)).length;
+              return <div className="hs-confirm"><p><b>Mark {m.candidate?.name || 'this candidate'} as hired?</b> The role is marked filled and leaves search.{others ? ` The ${others} other candidate${others === 1 ? '' : 's'} in this role get an automatic thank-you saying the role is filled (with your offer to recommend them), and their meetings are cancelled.` : ''}</p>
+                <div className="hs-stop-actions"><button type="button" className="secondary-button small" onClick={() => setHiring(null)}>Cancel</button><button type="button" className="primary-button small" onClick={() => void hire(m)}><BadgeCheck size={14} /> Yes, hired</button></div></div>;
+            })()}
+            {stopping === m.id && <StopProcessForm match={m} onCancel={() => setStopping(null)} onDone={() => { setStopping(null); setNotice(`Feedback sent to ${m.candidate?.name || 'the candidate'} and the process is closed.`); reload(); }} />}
             {editing === m.id
               ? <StepsEditor steps={stepsFor(m)} onDone={() => setEditing(null)} onChange={(steps) => {
                   const visible = steps.filter((s) => !s.hidden);

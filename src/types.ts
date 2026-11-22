@@ -120,15 +120,18 @@ export interface JobImportResult { jobs: Job[]; found: number; skipped: number }
 export type StepKind = 'match' | 'hr' | 'technical' | 'manager' | 'culture' | 'assignment' | 'offer' | 'hired' | 'other';
 /** One hiring step (a round). `owner` = who runs it (e.g. "Priya Nair, Talent Partner"); `date` = YYYY-MM-DD. */
 export interface PipelineStep { id: string; name: string; owner: string; hidden?: boolean; kind?: StepKind; date?: string; format?: string }
-export interface JobMatch { id: string; candidateId: string; employerId: string; jobId: string; stage: string; createdAt: number; stageChangedAt?: number; candidate: Person; employer?: Person; job: Job; screeningAnswers?: ScreeningAnswer[]; pipeline?: PipelineStep[]; currentStepId?: string; feedback?: { text: string; at: number; from: string }[] }
-export interface Message { id: string; matchId: string; senderId: string; text: string; createdAt: number; firstImpression?: boolean }
+export interface JobMatch { id: string; candidateId: string; employerId: string; jobId: string; stage: string; createdAt: number; stageChangedAt?: number; candidate: Person; employer?: Person; job: Job; screeningAnswers?: ScreeningAnswer[]; pipeline?: PipelineStep[]; currentStepId?: string; feedback?: { text: string; at: number; from: string; kind?: string }[];
+  /** Set when the process closed: candidate_hired (rule 1), role_filled (rule 2), stopped_by_recruiter (rule 3). */
+  closedReason?: 'candidate_hired' | 'role_filled' | 'stopped_by_recruiter'; closedAt?: number; closedBy?: string; closedCategory?: string }
+/** `auto`: sent automatically by a recruitment-process rule (thank-you, role filled, closing feedback). */
+export interface Message { id: string; matchId: string; senderId: string; text: string; createdAt: number; firstImpression?: boolean; auto?: boolean }
 export interface ConnectorKey { id: string; userId: string; label: string; last4: string; createdAt: number; lastUsedAt: number | null }
 export interface AdminKpi { label: string; hint: string; total: number; thisWeek: number; lastWeek: number; last30d: number; weeks: { week: string; n: number }[] }
 export interface HeatClick { path: string; dev: 'desktop' | 'tablet' | 'mobile'; w: number; x: number; y: number; sel: string; ox: number; oy: number }
 export interface WebAnalyticsReport { days: number; totals: { visits: number; visitors: number; pageviews: number; avgDur: number }; daily: { day: string; n: number }[]; sources: { key: string; n: number }[]; devices: { key: string; n: number }[]; pages: { key: string; n: number }[]; clicks: HeatClick[] }
 export interface IntegrationStatus { label: string; field: string; hint: string; enabled: boolean; hasKey: boolean; keyHint: string; lastSentAt: number | null; lastError: string | null }
 export interface PendingVerification { userId: string; name: string; role: Role; photo?: string; submittedAt: number }
-export interface ScheduledCall { id: string; matchId: string; createdBy: string; title: string; startAt: number; durationMinutes: number; notes?: string; createdAt: number }
+export interface ScheduledCall { id: string; matchId: string; createdBy: string; title: string; startAt: number; durationMinutes: number; notes?: string; createdAt: number; cancelledAt?: number; cancelReason?: string }
 export interface RoleMatchGroup { job: Job; candidates: Person[]; matchingCandidates?: Person[]; interestedCount: number; newCount: number }
 /** A viewer's private note about a specific job or candidate — visible only to its author. */
 export interface Note { id: string; userId: string; targetId: string; targetType: 'job' | 'candidate'; text: string; updatedAt: number }

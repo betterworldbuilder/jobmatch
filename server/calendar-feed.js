@@ -41,8 +41,10 @@ export function buildIcs(items, { appUrl = 'https://jobsmatchnow.com/app/', calN
     const desc = [who, job ? `Role: ${job.title}${job.company ? ` at ${job.company}` : ''}` : '', call.notes || '', `Open the conversation: ${appUrl}`].filter(Boolean).join('\n');
     lines.push('BEGIN:VEVENT', `UID:${call.id}@jobsmatchnow.com`, `DTSTAMP:${stamp(call.createdAt || Date.now())}`,
       `DTSTART:${stamp(call.startAt)}`, `DTEND:${stamp(end)}`, `SUMMARY:${esc(call.title || 'JobsMatchNow meeting')}`,
-      `DESCRIPTION:${esc(desc)}`, `URL:${appUrl}`, 'STATUS:CONFIRMED');
-    for (const min of REMINDER_MINUTES) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(call.title || 'Meeting')} in ${min >= 60 ? `${min / 60} hour` : `${min} minutes`}`, `TRIGGER:-PT${min}M`, 'END:VALARM');
+      `DESCRIPTION:${esc(desc)}`, `URL:${appUrl}`, `STATUS:${call.cancelledAt ? 'CANCELLED' : 'CONFIRMED'}`,
+      ...(call.cancelledAt ? [`SEQUENCE:1`] : []));
+    // Cancelled meetings stay in the feed as CANCELLED (so subscribed calendars remove them), without alarms.
+    if (!call.cancelledAt) for (const min of REMINDER_MINUTES) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(call.title || 'Meeting')} in ${min >= 60 ? `${min / 60} hour` : `${min} minutes`}`, `TRIGGER:-PT${min}M`, 'END:VALARM');
     lines.push('END:VEVENT');
   }
   lines.push('END:VCALENDAR');

@@ -7,6 +7,7 @@ import { PgStore } from './store-pg.js';
 import { createSeed } from './seed.js';
 import { matchingPool, targetIsInMatchingPool } from './matching-pool.js';
 import { buildIcs, meetingsFor, newFeedToken, validFeedToken, REMINDER_MINUTES } from './calendar-feed.js';
+import { onCandidateHired, onRoleFilled, stopProcess } from './hiring-rules.js';
 import { importMetadata, normalizeLinkedInImports, parseJobImportFile } from './job-import.js';
 import { detectMutualMatch, isStrongRoleMatch, likesRemainingToday, scoreCandidateForJob, ValidationError, reqString, optString, optStringArray, oneOf } from './matching.js';
 import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, recruiterCompleteness } from './profile.js';
@@ -871,12 +872,16 @@ app.delete('/api/me', async (req, res, next) => {
 app.patch('/api/users/:id', async (req, res, next) => {
   try {
     requireSelf(req, req.params.id);
+    let hiredEffects = null;
     const user = await store.transaction((db) => {
       const item = db.users.find((entry) => entry.id === req.params.id);
       if (!item) { const error = new Error('User not found'); error.status = 404; throw error; }
       assertDemoActor(req, db, item.id);
       if (item.role === 'candidate') {
+        const wasHired = item.jobStatus?.kind === 'hired';
         applyCandidateProfile(item, req.body);
+        // Rule 1: becoming "hired" closes the other processes, cancels their meetings, thanks each recruiter.
+        if (!wasHired && item.jobStatus?.kind === 'hired') hiredEffects = onCandidateHired(db, item, item.jobStatus.matchId);
         item.completeness = candidateCompleteness(item);
         // Real candidate, first time skills show up: give them 2 relevant
         // starter jobs (posted as Sarah, the familiar demo recruiter) so
@@ -893,7 +898,7 @@ app.patch('/api/users/:id', async (req, res, next) => {
       } else { applyRecruiterProfile(item, req.body); item.completeness = recruiterCompleteness(item); }
       return item;
     });
-    res.json({ user: selfView(user) });
+    res.json({ user: selfView(user), ...(hiredEffects ? { effects: hiredEffects } : {}) });
   } catch (error) { next(error); }
 });
 
@@ -2111,16 +2116,22 @@ app.patch('/api/matches/:id', async (req, res, next) => {
     const stage = oneOf(req.body, 'stage', ['Matched', 'Screen', 'Interview', 'Offer', 'Hired', 'Archived']);
     const session = authSession(req);
     if (!session && !demoAuth) { const error = new Error('Sign in to continue'); error.status = 401; throw error; }
+    let effects = null;
     const match = await store.transaction((db) => {
       const item = db.matches.find((entry) => entry.id === req.params.id);
       if (!item) { const error = new Error('Match not found'); error.status = 404; throw error; }
       if (session && item.candidateId !== session.sub && item.employerId !== session.sub) { const error = new Error('Only the matched parties can update this match'); error.status = 403; throw error; }
       assertDemoActor(req, db, item.employerId); // matches involving a real account need a party session
-      item.stage = stage;
-      item.stageChangedAt = Date.now(); // idle-time tracking for pipeline nudges
+      const byRecruiter = session ? session.sub === item.employerId : true; // demo calls act as the recruiter
+      const now = Date.now();
+      // Recruitment process rules (hiring-rules.js): hiring fills the role and thanks the others;
+      // stopping a process needs a reason and honest feedback, sent to the candidate.
+      if (byRecruiter && stage === 'Hired' && item.stage !== 'Hired') effects = onRoleFilled(db, item, item.employerId, now);
+      else if (byRecruiter && stage === 'Archived' && item.stage !== 'Archived') effects = stopProcess(db, item, item.employerId, { category: req.body.closeCategory, feedback: req.body.closeFeedback }, now);
+      else { item.stage = stage; item.stageChangedAt = now; } // idle-time tracking for pipeline nudges
       return item;
     });
-    res.json(match);
+    res.json({ ...match, ...(effects ? { effects } : {}) });
   } catch (error) { next(error); }
 });
 

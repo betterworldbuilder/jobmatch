@@ -49,6 +49,7 @@ import { ScheduleCallModal } from './components/messages/ScheduleCallModal';
 import { FeedbackEmailModal, RecommendationEmailModal } from './components/messages/FeedbackModals';
 import { googleCalendarUrl, icsDataUrl, meetingMailto, outlookCalendarUrl } from './lib/calendar';
 import { CalendarSync } from './components/CalendarSync';
+import { RecruitmentRulesModal } from './components/RecruitmentRulesModal';
 import { Mail as MailIcon } from 'lucide-react';
 import type { ScreeningAnswer } from './types';
 import { comparisonRows } from './content/landingContent';
@@ -421,6 +422,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const [notifOpen, setNotifOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [conductOpen, setConductOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [jobImportOpen, setJobImportOpen] = useState(false);
   const [manualJobRequest, setManualJobRequest] = useState(0);
   // Candidates land on "Look for new Matches" (the top section of their home).
@@ -494,10 +496,11 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     <aside className={mobileNav ? 'sidebar open' : 'sidebar'}><div className="sidebar-head"><Brand /><button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close menu"><X /></button></div>
       <div className="workspace-switch"><span>Profile</span><button onClick={() => { setView('profile'); setMobileNav(false); }}>{data?.viewer.photo ? <img className="avatar-mini" src={data.viewer.photo} alt="" /> : <div className="avatar-mini">{initials}</div>}<div><strong>{data?.viewer.name || session.name}</strong><small>{role === 'candidate' ? 'Candidate' : 'Recruiter'}</small></div><ArrowRight size={15} /></button></div>
       <nav className="sidebar-nav">{nav.map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)} style={{ ['--c' as string]: NAV_COLORS[item.label] || '#9fb3d9' }}><i className="nav-ico"><Icon size={18} /></i><span>{item.label}</span>{item.view === 'messages' && notifications.length > 0 && <em>{Math.min(notifications.length, 9)}</em>}</button>; })}</nav>
-      <div className="sidebar-bottom"><button onClick={() => setConductOpen(true)} style={{ ['--c' as string]: '#34d399' }}><i className="nav-ico"><ShieldCheck size={17} /></i>Code of Conduct</button><button onClick={() => setSupportOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><CircleHelp size={17} /></i>Help center</button><button onClick={() => setSettingsOpen(true)} style={{ ['--c' as string]: '#c4b5fd' }}><i className="nav-ico"><Settings size={17} /></i>Settings</button><button className="logout-button" onClick={onExit} style={{ ['--c' as string]: '#fb7185' }}><i className="nav-ico"><LogOut size={17} /></i>Log out</button></div>
+      <div className="sidebar-bottom"><button onClick={() => setRulesOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><ListChecks size={17} /></i>Recruitment process</button><button onClick={() => setConductOpen(true)} style={{ ['--c' as string]: '#34d399' }}><i className="nav-ico"><ShieldCheck size={17} /></i>Code of Conduct</button><button onClick={() => setSupportOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><CircleHelp size={17} /></i>Help center</button><button onClick={() => setSettingsOpen(true)} style={{ ['--c' as string]: '#c4b5fd' }}><i className="nav-ico"><Settings size={17} /></i>Settings</button><button className="logout-button" onClick={onExit} style={{ ['--c' as string]: '#fb7185' }}><i className="nav-ico"><LogOut size={17} /></i>Log out</button></div>
     </aside>
     <AnimatePresence>{supportOpen && <SupportModal viewer={data?.viewer} onClose={() => setSupportOpen(false)} />}</AnimatePresence>
     <AnimatePresence>{conductOpen && <ConductModal onClose={() => setConductOpen(false)} />}</AnimatePresence>
+    <AnimatePresence>{rulesOpen && <RecruitmentRulesModal onClose={() => setRulesOpen(false)} />}</AnimatePresence>
     {mobileNav && <button className="nav-scrim" aria-label="Close navigation" onClick={() => setMobileNav(false)} />}
     <section className="app-main">{session.emailVerified === false && <div className="verify-banner"><span><ShieldCheck size={15} /> Verify your email to secure your account and unlock everything.</span><button onClick={() => setSettingsOpen(true)}>Verify now</button></div>}<header className="topbar"><button className="menu-button" onClick={() => setMobileNav(true)}><Menu /></button><div className="search-box"><Search size={17} /><input aria-label="Search" placeholder={role === 'candidate' ? 'Search jobs, companies, skills…' : 'Search talent, jobs, messages…'} onKeyDown={(event) => { if (event.key === 'Enter') setView('discover'); }} /><kbd><Command size={12} /> K</kbd></div><div className="topbar-actions"><div className="notif-wrap"><button aria-label="Notifications" onClick={() => setNotifOpen((v) => !v)}><Bell size={19} />{notifications.length > 0 && <i />}</button>{notifOpen && <><button className="notif-scrim" aria-label="Close notifications" onClick={() => setNotifOpen(false)} /><div className="notif-dropdown"><header>Notifications</header>{notifications.length === 0 ? <p className="notif-empty">No notifications yet.</p> : notifications.map((n) => <button key={n.id} className="notif-item" onClick={() => { setNotifOpen(false); if (n.kind === 'billing') { if (n.jobId) openJobEditor(n.jobId); else if (n.billingKind && JOB_NOTIFICATION_KINDS.has(n.billingKind)) setView('jobs'); else setView('billing'); } else if (n.matchId) openMessages(n.matchId); }}><span className={`notif-icon ${n.kind}`}>{n.kind === 'match' ? <Heart size={14} fill="currentColor" /> : n.kind === 'billing' ? billingNotificationIcon(n.billingKind) : <MessageCircle size={14} />}</span><span className="notif-text">{n.text}<small>{timeAgo(n.at)}</small></span></button>)}</div></>}</div>{data?.viewer.demo && <button className="role-chip" onClick={() => changeRole(role === 'candidate' ? 'employer' : 'candidate')}>{role === 'candidate' ? 'Recruiter view' : 'Candidate view'}<ChevronDown size={14} /></button>}</div></header>
       {loading ? <LoadingState /> : error ? <ErrorState message={error} retry={load} /> : data && (
@@ -545,7 +548,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'billing') return <BillingPage data={data} setData={setData} paymentResult={paymentResult} onDismissResult={onDismissResult} />;
   if (role === 'candidate') return <CandidateProfilePage
     viewer={data.viewer} jobs={data.jobs} onEdit={onEditProfile} initialCard={profileCard} onCardChange={onProfileCardChange}
-    matches={data.matches} onViewerSaved={(viewer) => setData({ ...data, viewer })} onOpenMessages={onOpenMessages}
+    matches={data.matches} onViewerSaved={(viewer) => setData({ ...data, viewer })} onOpenMessages={onOpenMessages} onReload={() => { void api.bootstrap(data.viewer.id).then(setData).catch(() => undefined); }}
     onDeleteProfile={data.viewer.activeVariantId ? async () => { await api.deleteProfileVariant(data.viewer.activeVariantId!, data.viewer.id); reload(); navigate('home'); } : undefined}
   />;
   return <RecruiterProfilePage viewer={data.viewer} onEdit={onEditProfile} />;
@@ -848,7 +851,7 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
       </header>
       <div className="conversation-body">
         <div className="date-divider">Today</div>
-        {thread.map((message) => { const own = message.senderId === data.viewer.id; return <div className={own ? 'bubble-row own' : 'bubble-row'} key={message.id}>{!own && otherPhoto && <img src={otherPhoto} />}<div><p>{message.text}</p><time>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}
+        {thread.map((message) => { const own = message.senderId === data.viewer.id; return <div className={own ? 'bubble-row own' : 'bubble-row'} key={message.id}>{!own && otherPhoto && <img src={otherPhoto} />}<div>{message.auto && <small className="bubble-auto">Sent automatically · recruitment process</small>}<p>{message.text}</p><time>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}
         {calls.map((call) => {
           const event = { title: call.title, description: call.notes, startAt: call.startAt, durationMinutes: call.durationMinutes };
           return <div className="schedule-card" key={call.id}>
@@ -908,10 +911,11 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
 function Meetings({ role, data, setData, onOpenMessages }: { role: Role; data: Bootstrap; setData: (d: Bootstrap) => void; onOpenMessages: (matchId: string) => void }) {
   const [schedulingFor, setSchedulingFor] = useState<JobMatch | null>(null);
   const now = Date.now();
-  const upcoming = [...data.calls].filter((call) => call.startAt >= now).sort((a, b) => a.startAt - b.startAt);
-  const past = [...data.calls].filter((call) => call.startAt < now).sort((a, b) => b.startAt - a.startAt);
-  const scheduledMatchIds = new Set(data.calls.map((call) => call.matchId));
-  const unscheduled = data.matches.filter((match) => !scheduledMatchIds.has(match.id));
+  // Cancelled meetings (a process closed: someone got hired or it was stopped) move to the past list.
+  const upcoming = [...data.calls].filter((call) => call.startAt >= now && !call.cancelledAt).sort((a, b) => a.startAt - b.startAt);
+  const past = [...data.calls].filter((call) => call.startAt < now || call.cancelledAt).sort((a, b) => b.startAt - a.startAt);
+  const scheduledMatchIds = new Set(data.calls.filter((call) => !call.cancelledAt).map((call) => call.matchId));
+  const unscheduled = data.matches.filter((match) => !scheduledMatchIds.has(match.id) && match.stage !== 'Archived');
 
   const otherParty = (match: JobMatch) => role === 'candidate'
     ? { name: match.job?.company || match.employer?.name || 'Recruiter', sub: match.job?.title, photo: match.employer?.photo, email: match.employer?.email }
@@ -924,7 +928,7 @@ function Meetings({ role, data, setData, onOpenMessages }: { role: Role; data: B
     return <div className="schedule-card" key={call.id}>
       {other?.photo ? <img className="meeting-photo" src={other.photo} alt="" /> : <div><Calendar size={16} /></div>}
       <section><span>{other?.name}{other?.sub ? ` · ${other.sub}` : ''}</span><strong>{call.title}</strong>
-        <p>{new Date(call.startAt).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {call.durationMinutes} min</p>
+        <p>{new Date(call.startAt).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {call.durationMinutes} min{call.cancelledAt ? <b className="meeting-cancelled"> · Cancelled{call.cancelReason === 'candidate_hired' ? ' (candidate hired)' : call.cancelReason === 'role_filled' ? ' (role filled)' : call.cancelReason === 'stopped_by_recruiter' ? ' (process stopped)' : ''}</b> : null}</p>
       </section>
       <div className="schedule-card-actions">
         {!isPast && <>

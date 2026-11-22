@@ -43,9 +43,11 @@ export function JobStatusLine({ s, matches = [], onOpen }: { s?: JobStatus; matc
   </span>;
 }
 
-export function JobStatusPicker({ viewer, matches = [], onSaved, variant = 'sidebar', onOpen }: {
-  viewer: Person; matches?: JobMatch[]; onSaved: (viewer: Person) => void; variant?: 'sidebar' | 'card'; onOpen?: (matchId: string) => void;
+export function JobStatusPicker({ viewer, matches = [], onSaved, variant = 'sidebar', onOpen, onReload }: {
+  viewer: Person; matches?: JobMatch[]; onSaved: (viewer: Person) => void; variant?: 'sidebar' | 'card'; onOpen?: (matchId: string) => void; onReload?: () => void;
 }) {
+  const savedHired = viewer.jobStatus?.kind === 'hired';
+  const [result, setResult] = useState('');
   const current: JobStatus = viewer.jobStatus || { kind: viewer.privacy?.openToWork === false ? 'waiting' : 'open' };
   const [st, setSt] = useState<JobStatus>(current);
   const [pick, setPick] = useState(current.matchId && matches.some((m) => m.id === current.matchId) ? current.matchId : current.role ? OTHER : '');
@@ -53,17 +55,24 @@ export function JobStatusPicker({ viewer, matches = [], onSaved, variant = 'side
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
-  const save = async (next: JobStatus) => {
+  const save = async (next: JobStatus, confirmed = false) => {
     setSt(next); setSaved(false);
     if (next.kind === 'contract' && !next.until) return; // wait for the date
+    // Becoming "hired" closes the other processes and messages recruiters: wait for an explicit confirmation.
+    if (next.kind === 'hired' && !savedHired && !confirmed) return;
     setBusy(true); setError('');
     const jobStatus: JobStatus = WITH_JOB(next.kind)
       ? { kind: next.kind, ...(next.kind === 'contract' ? { until: next.until } : {}), ...(next.role ? { role: next.role } : {}), ...(next.company ? { company: next.company } : {}), ...(next.recruiter ? { recruiter: next.recruiter } : {}), ...(next.matchId ? { matchId: next.matchId } : {}) }
       : { kind: next.kind };
     try {
-      await api.updateProfile(viewer.id, { jobStatus });
+      const res = await api.updateProfile(viewer.id, { jobStatus }) as { user: Person; effects?: { closed: number; meetingsCancelled: number; messages: number } };
       onSaved({ ...viewer, jobStatus, privacy: { ...(viewer.privacy || {}), openToWork: next.kind === 'open' } });
       setSaved(true);
+      if (res.effects) {
+        const e = res.effects;
+        setResult(e.closed ? `Done: ${e.closed} other process${e.closed === 1 ? '' : 'es'} closed, ${e.meetingsCancelled} meeting${e.meetingsCancelled === 1 ? '' : 's'} cancelled, ${e.messages} thank-you message${e.messages === 1 ? '' : 's'} sent.` : 'Done: you had no other open processes.');
+        onReload?.();
+      }
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save'); }
     finally { setBusy(false); }
   };
@@ -98,7 +107,18 @@ export function JobStatusPicker({ viewer, matches = [], onSaved, variant = 'side
       <input value={st.role || ''} placeholder="Role, e.g. Lead AI Engineer" aria-label="Role title" maxLength={80} onChange={(e) => setSt({ ...st, role: e.target.value })} onBlur={() => void save(st)} />
       <input value={st.recruiter || ''} placeholder="Recruiter name" aria-label="Recruiter name" maxLength={80} onChange={(e) => setSt({ ...st, recruiter: e.target.value })} onBlur={() => void save(st)} />
     </div>}
-    {st.kind === 'hired' && <small className="js-hint">You are out of recruiter search now. Teams you already matched keep the conversation. Pick “Open to work” to come back.</small>}
+    {st.kind === 'hired' && !savedHired && (() => {
+      const others = matches.filter((m) => m.id !== st.matchId && m.stage !== 'Hired' && m.stage !== 'Archived').length;
+      return <div className="js-confirm">
+        <p><b>Congratulations!</b> {pick && pick !== OTHER ? 'Confirm the role you got.' : 'Pick the role you got above (or type it).'} When you confirm, following the recruitment process rules:</p>
+        <ul><li>you leave recruiter search;</li>
+          <li>{others ? (others === 1 ? 'your other hiring process closes and its upcoming meetings are cancelled;' : `your ${others} other hiring processes close and their upcoming meetings are cancelled;`) : 'any other open process closes and its meetings are cancelled;'}</li>
+          <li>each of those recruiters gets an automatic thank-you message from you for their time.</li></ul>
+        <button type="button" className="primary-button small" disabled={busy || !(st.matchId || st.role)} onClick={() => void save(st, true)}>{busy ? <Loader2 size={14} className="spin" /> : 'Confirm: I got this job'}</button>
+      </div>;
+    })()}
+    {st.kind === 'hired' && savedHired && <small className="js-hint">You are out of recruiter search now. Teams you already matched keep the conversation. Pick “Open to work” to come back.</small>}
+    {result && <small className="js-hint">{result}</small>}
     {variant === 'card' && <p className="js-preview"><JobStatusLine s={st} matches={matches} onOpen={onOpen} /></p>}
     {variant === 'card' && saved && !error && <small className="js-ok">Saved</small>}
     {error && <small className="js-err">{error}</small>}

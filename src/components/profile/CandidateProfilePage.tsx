@@ -14,7 +14,7 @@ const ORDER = [4, 0, 1, 2, 3, 5];
 const CARD_STEP = [0, 3, 1, 6, 2, 5];
 const EDIT_STEPS = ORDER.map((card) => CARD_STEP[card]);
 
-export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, onCardChange, onDeleteProfile, matches = [], onViewerSaved, onOpenMessages }: { viewer: Person; jobs: Job[]; onEdit: (step: number) => void; initialCard?: number; onCardChange?: (card: number) => void; onDeleteProfile?: () => Promise<void>; matches?: JobMatch[]; onViewerSaved?: (viewer: Person) => void; onOpenMessages?: (matchId: string) => void }) {
+export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, onCardChange, onDeleteProfile, matches = [], onViewerSaved, onOpenMessages, onReload }: { viewer: Person; jobs: Job[]; onEdit: (step: number) => void; initialCard?: number; onCardChange?: (card: number) => void; onDeleteProfile?: () => Promise<void>; matches?: JobMatch[]; onViewerSaved?: (viewer: Person) => void; onOpenMessages?: (matchId: string) => void; onReload?: () => void }) {
   const [jobId, setJobId] = useState('');
   const [inspector, setInspector] = useState(false);
   const [activeCard, setActiveCard] = useState(initialCard);
@@ -58,7 +58,7 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
       <div className="rp-deck-wrap">
         <CandidateCards person={viewer} match={comparisonJob?.match} onEdit={onEdit} visibilityInspector={inspector} initialCard={initialCard} onActiveChange={changeCard} order={ORDER} />
         {/* Job status under the photo card: recruiters see the status on the card; role and recruiter stay private. */}
-        {onViewerSaved && <div className="rp-status-wrap"><JobStatusPicker key={`${viewer.id}-${viewer.jobStatus?.kind}-${viewer.jobStatus?.matchId || ''}`} variant="card" viewer={viewer} matches={matches} onSaved={onViewerSaved} onOpen={onOpenMessages} /></div>}
+        {onViewerSaved && <div className="rp-status-wrap"><JobStatusPicker key={viewer.id} variant="card" viewer={viewer} matches={matches} onSaved={onViewerSaved} onOpen={onOpenMessages} onReload={onReload} /></div>}
         <p className="rp-privacy-note"><Lock size={14} /> Private contact values remain hidden in owner preview exactly as they are before a mutual match.</p>
         {/* Contact bar: what teams can use once you match. */}
         <div className="rp-contact-wrap">{onViewerSaved ? <ContactBarEditor key={viewer.id} viewer={viewer} onSaved={onViewerSaved} /> : <ContactBar person={viewer} onAdd={() => onEdit(0)} />}</div>

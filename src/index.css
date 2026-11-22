@@ -3559,6 +3559,25 @@ img.avatar-mini { object-fit:cover; }
 /* Profile-page card variant (light) */
 .job-status.js-card { margin:0 0 14px; padding:14px 16px; gap:10px; background:#fff; border:1px solid #ece6f2; border-radius:16px; box-shadow:0 6px 18px rgba(20,20,60,.05); }
 /* Under the photo card on the profile page. */
+/* Recruitment process rules */
+.rules-modal h4 { display:flex; align-items:center; gap:8px; }
+.rules-modal ol { margin:6px 0 14px; padding-left:22px; display:flex; flex-direction:column; gap:6px; line-height:1.5; }
+.js-confirm { border:1px solid #c7d7fe; background:#f2f6ff; border-radius:12px; padding:10px 12px; font-size:13px; color:#1e2a4a; }
+.js-confirm p { margin:0 0 6px; }
+.js-confirm ul { margin:0 0 10px; padding-left:20px; line-height:1.5; }
+.hs-hire { color:#1d4ed8 !important; }
+.hs-stop-btn { color:#be123c !important; }
+.hs-closed { margin:8px 0 0; display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:800; color:#9f1239; background:#fff1f2; border-radius:999px; padding:4px 11px; }
+.hs-closed.hired { color:#1d4ed8; background:#eef4ff; }
+.hs-confirm, .hs-stop { margin-top:10px; border:1px solid #ece6f2; background:#fbf9fe; border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; font-size:13px; color:#3b4256; }
+.hs-confirm p, .hs-stop p { margin:0; line-height:1.5; }
+.hs-stop label { display:flex; flex-direction:column; gap:4px; font-weight:800; font-size:12px; color:#4b5368; }
+.hs-stop select, .hs-stop textarea { border:1px solid #e3dcec; border-radius:9px; background:#fff; padding:8px 10px; font:600 13px 'Manrope'; color:#1c2033; }
+.hs-count { font-size:11px; color:#9f1239; } .hs-count.ok { color:#16794a; }
+.hs-stop-actions { display:flex; justify-content:flex-end; gap:8px; }
+.hs-notice { display:flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px; background:#ecfdf3; color:#14532d; font-size:13px; font-weight:700; }
+.bubble-auto { display:block; font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; opacity:.7; margin-bottom:3px; }
+.meeting-cancelled { color:#be123c; font-weight:800; }
 .rp-status-wrap { width:min(560px,100%); margin:6px auto 0; }
 .rp-status-wrap .job-status.js-card { margin:0; }
 .js-hint { font-size:12px; line-height:1.4; color:#1d4ed8; background:#eef4ff; border-radius:8px; padding:6px 9px; }
