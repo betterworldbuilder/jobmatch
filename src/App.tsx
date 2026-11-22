@@ -264,7 +264,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
   // One responsive landing for every screen size — mobile gets the same hero,
   // stacked for phone width (no separate mobile layout).
   return <main className="landing">
-    <header className="landing-header">
+    <header className={`landing-header${banner !== 'image' ? ' has-brand' : ''}`}>
       {banner !== 'image' && <nav className="landing-nav"><Brand /></nav>}
       {banner !== 'image' && <nav className="landing-subnav"><a href="#how">How it works</a><a href="#compare">Why JobsMatchNow</a><a href="#trust">Fewer steps</a></nav>}
     </header>

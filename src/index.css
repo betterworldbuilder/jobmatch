@@ -873,10 +873,20 @@ button { cursor:pointer; }
 
 /* Unified responsive landing — desktop hero, scaled for phones */
 @media (max-width:760px) {
-  .landing-nav { padding:16px 18px 2px; }
-  .landing-nav .brand { font-size:26px; gap:11px; letter-spacing:-.9px; }
-  .landing-nav .brand-heart-mark { width:56px; height:56px; }
-  .landing-subnav { max-width:none; padding:6px 18px 12px; gap:18px; font-size:12px; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch; }
+  /* Phone header (founder, 2026-11-22): centered, bigger, balanced logo (Tinder-like), links on their own centered
+     line, a pink brand line under the block; the header stays at the top while scrolling. */
+  .landing-header.has-brand { position:sticky; top:0; z-index:40; background:rgba(255,255,255,.94); backdrop-filter:saturate(180%) blur(14px); -webkit-backdrop-filter:saturate(180%) blur(14px); box-shadow:0 6px 18px rgba(15,23,42,.06); }
+  .landing-header.has-brand::after { content:''; display:block; height:3px; background:linear-gradient(90deg,#fd267a,#ff5a3c); }
+  .landing { overflow:visible; overflow-x:clip; } /* "hidden" would stop the sticky header */
+  .landing-header.has-brand .landing-nav { height:auto; padding:18px 16px 6px; justify-content:center; }
+  .landing-nav .brand { font-size:clamp(25px,8.2vw,32px); gap:clamp(8px,2.6vw,11px); letter-spacing:-.045em; line-height:1; }
+  .landing-nav .brand-heart-mark { width:clamp(36px,11vw,44px); height:clamp(36px,11vw,44px); border-radius:24%; filter:drop-shadow(0 4px 10px rgba(10,102,194,.22)); }
+  .landing-nav .brand-wordmark b:last-child { padding:.05em .2em .09em; }
+  .landing-subnav { max-width:none; padding:8px 8px 12px; gap:clamp(0px,1vw,6px); justify-content:safe center; font-size:clamp(11.5px,3.5vw,13px); font-weight:650; overflow-x:auto; white-space:nowrap; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .landing-subnav::-webkit-scrollbar { display:none; }
+  .landing-subnav a { color:#5b6573; flex:0 0 auto; padding:6px clamp(7px,2.6vw,11px); border-radius:999px; transition:background .15s,color .15s; }
+  .landing-subnav a:hover, .landing-subnav a:active { color:#e0115f; background:rgba(253,38,122,.08); }
+  .landing #how, .landing #compare, .landing #trust { scroll-margin-top:118px; }
   .hero { padding:34px 20px 56px; }
   .hero-copy .eyebrow { font-size:13px; }
   .hero-actions { flex-direction:column; gap:12px; width:100%; max-width:360px; }
