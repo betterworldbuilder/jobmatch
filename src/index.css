@@ -696,6 +696,10 @@ button { cursor:pointer; }
 }
 .feedback-layout { display:grid; grid-template-columns:1.15fr .85fr; gap:34px; align-items:start; }
 .review-wall { columns:2; column-gap:14px; }
+/* No approved reviews yet: one centered column instead of an empty left half (founder, 2026-11-22). */
+.feedback-layout:has(> .review-wall:empty) { grid-template-columns:minmax(0,520px); justify-content:center; }
+.review-wall:empty { display:none; }
+.feedback-section .section-heading .eyebrow { justify-content:center; }
 .review-card { break-inside:avoid; margin-bottom:14px; border:1px solid var(--line); border-radius:16px; padding:18px; background:white; box-shadow:0 8px 24px rgba(29,53,37,.05); }
 .review-card p { margin:9px 0; font-size:13px; line-height:1.6; color:#3a4550; }
 .review-card footer { display:flex; align-items:center; gap:8px; }

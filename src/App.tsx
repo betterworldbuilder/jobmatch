@@ -14,6 +14,7 @@ import { Browser } from '@capacitor/browser';
 import { App as NativeApp } from '@capacitor/app';
 import { LoginModal, RegisterModal, ResetPasswordModal, SettingsModal, prefetchDemoProfiles } from './components/AuthModals';
 import { FeaturesTable, FeedbackSection, JourneyPipeline, LatestShowcase } from './components/LandingSections';
+import { GetAppButton } from './components/InstallAppBar';
 import { ForWhoSection, HowSection, ProblemSection, SoWhatSection, WhatNowSection } from './components/landing/StorySections';
 import { HeroAlt, HeroDefault, HeroImage } from './components/landing/HeroBanners';
 import { CANDIDATE_OFFERS, LaunchOffers } from './components/LaunchOffers';
@@ -278,6 +279,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
         : <nav className="landing-subnav"><a href="#how">How it works</a><a href="#compare">Why JobsMatchNow</a><a href="#trust">Fewer steps</a></nav>)}
     </header>
     {linkedinState && <div className="integration-notice">{linkedinState === 'connected' ? 'LinkedIn connected. Your professional identity is ready to use.' : 'Add LinkedIn app credentials to enable live account connection. The demo remains available.'}<button onClick={() => history.replaceState({}, '', '/')}>×</button></div>}
+    {isPhone && <div className="get-app-row"><GetAppButton /></div>}
     {banner === 'alt' ? <HeroAlt onRegister={openRegister} onLogin={openLogin} />
       : banner === 'image' ? <HeroImage url={bannerImageUrl} onRegister={openRegister} onLogin={openLogin} />
       : <HeroDefault onRegister={openRegister} onLogin={openLogin} />}

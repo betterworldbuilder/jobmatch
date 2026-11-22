@@ -15,7 +15,6 @@
   #pricing .plan-card .primary-button,
   .schedule-card button.meeting-btn.solid,
   .td-variant-add,
-  .nm-btn.like,
   .nm-talk,
   .tp-add-roles,
   .tp-urgent button,
@@ -32,6 +31,27 @@
   .plan-trial-banner svg, .plan-one-icon, .ai-suggest.wrap button:hover { color:#0a66c2; }
   .tp-cal a:hover, .nm-carousel-nav button:hover { border-color:#0a66c2; }
   .plan-one-icon { background:#eaf3fd; }
+
+  /* The Like heart stays pink for everyone, job seekers and recruiters (founder, 2026-11-22). */
+
+  /* "Get the app" bar (InstallAppBar), phone landing only. */
+  .install-bar { position:fixed; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:60; display:flex; align-items:center; gap:10px; padding:10px 10px 10px 12px; background:#fff; border:1px solid #dbe7f5; border-radius:16px; box-shadow:0 14px 34px rgba(15,23,42,.22); animation:installIn .3s ease-out; }
+  .install-bar-mark { width:34px; height:34px; flex:none; }
+  .install-bar-text { flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.25; }
+  .install-bar-text b { font:800 13.5px 'Manrope'; color:#0b102b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .install-bar-text small { font-size:11.5px; color:#5b6573; }
+  .install-bar-go { flex:none; display:inline-flex; align-items:center; gap:6px; min-height:38px; padding:0 14px; border:0; border-radius:999px; background:linear-gradient(135deg,#0a66c2,#004182); color:#fff; font:800 13px 'Manrope'; }
+  .install-bar-close { flex:none; width:30px; height:30px; display:grid; place-items:center; border:0; background:#f1f4f9; color:#5b6573; border-radius:50%; }
+  /* "Get the app" button at the top of the phone hero + its how-to sheet. */
+  .get-app-row { display:flex; justify-content:center; padding:14px 16px 0; }
+  .get-app-button { display:inline-flex; align-items:center; gap:7px; min-height:40px; padding:0 18px; border:0; border-radius:999px; background:linear-gradient(135deg,#0a66c2,#004182); color:#fff; font:800 14px 'Manrope'; box-shadow:0 8px 20px rgba(10,102,194,.28); }
+  .get-app-help { position:fixed; inset:0; z-index:120; background:rgba(9,15,30,.55); display:flex; align-items:flex-end; padding:12px; }
+  .get-app-card { position:relative; width:100%; background:#fff; border-radius:20px; padding:22px 20px 18px; box-shadow:0 20px 50px rgba(0,0,0,.3); animation:installIn .25s ease-out; }
+  .get-app-card h3 { font:800 18px 'Manrope'; color:#0b102b; margin:10px 0 4px; }
+  .get-app-card p { margin:0 0 10px; color:#5b6573; font-size:14px; }
+  .get-app-card ol { list-style:decimal; margin:0; padding-left:20px; display:grid; gap:8px; color:#26304a; font-size:14.5px; line-height:1.45; }
+  .get-app-x { position:absolute; top:12px; right:12px; }
+  @keyframes installIn { from { transform:translateY(30px); opacity:0; } to { transform:none; opacity:1; } }
 
   /* Pricing bands: candidates in pink (founder, 2026-11-22); recruiters follow the accent (LinkedIn blue). */
   #pricing .pricing-candidates .pricing-side-tag { background:linear-gradient(135deg,#fd267a,#ff5a3c); }
