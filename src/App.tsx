@@ -351,7 +351,6 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
         </header>
         {/* Recruiter pricing (founder design, 2026-11-22). Prices come from src/lib/plans.ts (synced with the server). */}
         <p className="plan-trial-banner"><Gift size={20} /> <b>{Math.round(TRIAL.days / 7)} weeks free</b> · Full features including AI</p>
-        <p className="plan-swipe-hint" aria-hidden="true">Swipe to compare plans <ArrowRight size={14} /></p>
         <div className="plan-grid four">
           <TrialCardView onStart={openRegister} />
           {HEADLINE_PLANS.map((key) => <PlanCardView key={key} plan={planCard(key)} onRegister={openRegister} />)}

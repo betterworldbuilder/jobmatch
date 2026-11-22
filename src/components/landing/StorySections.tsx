@@ -8,7 +8,7 @@ type Cta = { onRegister: () => void; onLogin: () => void };
 
 export function ProblemSection() {
   return <section className="story story-problem" id="problem">
-    <div className="story-head"><span className="story-kicker">The problem</span><h2>Hiring and job hunting are broken on both sides.</h2></div>
+    <div className="story-head"><span className="story-kicker">The problems</span><h2>The Problems We Solve in Hiring</h2></div>
     <div className="problem-grid">
       <article><h3><UserRound size={18} /> Job seekers</h3><ul>
         <li><X size={15} /> Endless scrolling and the same forms again and again</li>
@@ -76,7 +76,7 @@ const JMN_STEPS = ['Mutual match: application, screening and job comparison in o
 
 export function SoWhatSection() {
   return <section className="story story-sowhat" id="compare">
-    <div className="story-head"><span className="story-kicker">So what?</span><h2>Classic hiring vs JobsMatchNow</h2><p>Less chasing, fewer steps, and a human touch for both sides.</p></div>
+    <div className="story-head"><span className="story-kicker">Benefits</span><h2>Benefits of Using Our New Hiring System</h2><p>Classic hiring vs JobsMatchNow: less chasing, fewer steps, and a human touch for both sides.</p></div>
     <div className="vs-frame" role="table" aria-label="Classic hiring compared with JobsMatchNow">
       <div className="vs-row vs-headrow" role="row"><span role="columnheader" /><span role="columnheader" className="vs-old">Classic</span><span role="columnheader" className="vs-new">JobsMatchNow</span></div>
       {ROWS.map(([what, old, now]) => <div className="vs-row" role="row" key={what}>

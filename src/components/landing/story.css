@@ -1,7 +1,7 @@
 /* Concise landing story (founder, 2026-11-22): problem → for who → how → so what → what now. Phone first. */
 .story { max-width:1080px; margin:0 auto; padding:72px 24px; }
 .story-head { text-align:center; max-width:720px; margin:0 auto 34px; }
-.story-kicker { display:inline-flex; align-items:center; gap:6px; color:#e0115f; background:#fff0f6; border:1px solid #ffd3e4; border-radius:999px; padding:6px 14px; font:800 11px 'Manrope'; letter-spacing:.12em; text-transform:uppercase; }
+.story-kicker { display:inline-flex; align-items:center; gap:6px; color:#0a66c2; background:#eaf3fd; border:1px solid #c6ddf6; border-radius:999px; padding:6px 14px; font:800 11px 'Manrope'; letter-spacing:.12em; text-transform:uppercase; }
 .story-kicker.light { color:#fff; background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.28); }
 .story-head h2 { font:800 clamp(28px,4.4vw,44px)/1.12 'Manrope'; letter-spacing:-.04em; color:#0b102b; margin:16px 0 0; }
 .story-head p { color:#5b6573; font-size:16px; line-height:1.6; margin:12px 0 0; }
@@ -18,7 +18,7 @@
 .who-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
 .who-card { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:10px; border-radius:22px; padding:26px; color:#fff; overflow:hidden; box-shadow:0 18px 40px rgba(15,23,42,.14); }
 .who-card.seeker { background:linear-gradient(145deg,#0a66c2,#0b3f86); }
-.who-card.hirer { background:linear-gradient(145deg,#fd267a,#ff5a3c); }
+.who-card.hirer { background:linear-gradient(145deg,#12305e,#0a1f42); }
 .who-card::after { content:''; position:absolute; right:-40px; top:-40px; width:150px; height:150px; border-radius:50%; background:rgba(255,255,255,.1); }
 .who-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:14px; background:rgba(255,255,255,.18); }
 .who-card h3 { font:800 22px 'Manrope'; margin:4px 0 0; letter-spacing:-.02em; }
@@ -30,8 +30,8 @@
 /* How it works */
 .how-steps { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3,1fr); gap:18px; counter-reset:none; }
 .how-steps li { position:relative; background:#fff; border:1px solid #eee6ee; border-radius:20px; padding:24px 22px 22px; box-shadow:0 10px 30px rgba(15,23,42,.05); }
-.how-num { position:absolute; top:18px; right:20px; font:800 34px 'Manrope'; color:#fde3ee; line-height:1; }
-.how-icon { display:grid; place-items:center; width:44px; height:44px; border-radius:14px; color:#fff; background:linear-gradient(135deg,#fd267a,#ff5a3c); box-shadow:0 8px 18px rgba(253,38,122,.3); }
+.how-num { position:absolute; top:18px; right:20px; font:800 34px 'Manrope'; color:#dcebfb; line-height:1; }
+.how-icon { display:grid; place-items:center; width:44px; height:44px; border-radius:14px; color:#fff; background:linear-gradient(135deg,#0a66c2,#004182); box-shadow:0 8px 18px rgba(10,102,194,.3); }
 .how-steps h3 { font:800 18px 'Manrope'; color:#0b102b; margin:16px 0 6px; }
 .how-steps p { margin:0; color:#5b6573; font-size:14.5px; line-height:1.55; }
 
@@ -43,12 +43,12 @@
 .vs-headrow { border-top:0; }
 .vs-headrow > span { font:800 11px 'Manrope'; letter-spacing:.1em; text-transform:uppercase; padding:12px 16px; align-items:center; }
 .vs-row.vs-headrow .vs-old { color:#7a8494; background:#f6f6f9; }
-.vs-row.vs-headrow .vs-new { color:#fff; background:linear-gradient(135deg,#fd267a,#ff5a3c); font-weight:800; }
+.vs-row.vs-headrow .vs-new { color:#fff; background:linear-gradient(135deg,#0a66c2,#004182); font-weight:800; }
 .vs-row.vs-headrow > span:first-child { background:#f6f6f9; }
 .vs-what { font:800 13px 'Manrope'; color:#0b102b; background:#fbfafc; }
 .vs-row .vs-old { color:#7a8494; }
 .vs-row .vs-old svg { color:#c4c9d2; }
-.vs-row .vs-new { color:#0b102b; font-weight:650; background:#fff7fb; }
+.vs-row .vs-new { color:#0b102b; font-weight:650; background:#f3f8fe; }
 .vs-row .vs-new svg { color:#12a150; }
 
 .steps-card { margin-top:18px; background:#0f1424; color:#fff; border-radius:20px; padding:22px 22px 18px; box-shadow:0 18px 40px rgba(15,23,42,.25); }
@@ -58,39 +58,64 @@
 .steps-bars > div { display:grid; grid-template-columns:112px 1fr; align-items:center; gap:10px; font-size:13px; color:#c7cbd6; }
 .steps-bars i { display:block; height:30px; border-radius:9px; position:relative; }
 .steps-bars i.old { background:rgba(255,255,255,.22); }
-.steps-bars i.new { background:linear-gradient(90deg,#fd267a,#ff5a3c); }
+.steps-bars i.new { background:linear-gradient(90deg,#2f8cff,#0a66c2); }
 .steps-bars b { position:absolute; left:12px; top:50%; transform:translateY(-50%); font:800 13px 'Manrope'; color:#fff; }
 .steps-card > p { margin:0; color:#aab1c0; font-size:13.5px; line-height:1.55; }
 .steps-details { margin-top:12px; border-top:1px solid rgba(255,255,255,.12); padding-top:10px; }
 .steps-details summary { cursor:pointer; font:800 13px 'Manrope'; color:#fff; list-style:none; display:flex; align-items:center; gap:6px; }
 .steps-details summary::-webkit-details-marker { display:none; }
-.steps-details summary::after { content:'+'; margin-left:auto; font-size:18px; color:#ff5a8a; }
+.steps-details summary::after { content:'+'; margin-left:auto; font-size:18px; color:#7cb8ff; }
 .steps-details[open] summary::after { content:'–'; }
 .steps-lists { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
 .steps-lists ol { margin:0; padding:0 0 0 18px; list-style:decimal; counter-reset:list-item -1; display:grid; gap:6px; font-size:12.5px; line-height:1.4; color:#d5d9e2; }
 .steps-lists .steps-list-title { list-style:none; margin-left:-18px; font:800 11px 'Manrope'; letter-spacing:.08em; text-transform:uppercase; }
 .steps-lists ol.old .steps-list-title { color:#aab1c0; }
-.steps-lists ol.new .steps-list-title { color:#ff7aa6; }
+.steps-lists ol.new .steps-list-title { color:#7cb8ff; }
 .trust-points { list-style:none; display:flex; flex-wrap:wrap; justify-content:center; gap:10px 22px; padding:0; margin:22px 0 0; }
 .trust-points li { display:flex; align-items:center; gap:7px; color:#3b4454; font-size:14px; font-weight:650; }
 .trust-points svg { color:#0a66c2; }
 
 /* What now */
-.story-now { max-width:1080px; margin:20px auto 56px; text-align:center; color:#fff; border-radius:28px; padding:54px 28px; background:radial-gradient(circle at 85% 10%,rgba(255,255,255,.18),transparent 40%),linear-gradient(135deg,#fd267a,#ff5a3c); box-shadow:0 26px 60px rgba(253,38,122,.32); }
+.story-now { max-width:1080px; margin:20px auto 56px; text-align:center; color:#fff; border-radius:28px; padding:54px 28px; background:radial-gradient(circle at 85% 10%,rgba(255,255,255,.16),transparent 40%),linear-gradient(135deg,#0a66c2,#004182); box-shadow:0 26px 60px rgba(10,102,194,.32); }
 .story-now h2 { font:800 clamp(24px,3.6vw,38px)/1.18 'Manrope'; letter-spacing:-.03em; max-width:760px; margin:16px auto 24px; }
 .now-actions { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; }
-.story-now .primary-button { background:#fff; color:#e0115f; box-shadow:0 12px 28px rgba(0,0,0,.18); }
+.story-now .primary-button { background:#fff; color:#0a66c2; box-shadow:0 12px 28px rgba(0,0,0,.18); }
 .now-demo { display:inline-flex; align-items:center; gap:8px; min-height:52px; padding:0 22px; border-radius:999px; border:1.5px solid rgba(255,255,255,.7); background:transparent; color:#fff; font:800 15px 'Manrope'; cursor:pointer; }
 .now-facts { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 18px; margin:20px 0 0; font-size:13.5px; color:rgba(255,255,255,.92); }
 .now-facts span { display:inline-flex; align-items:center; gap:6px; }
 
-/* Phone pricing: plans and launch offers swipe sideways (snap), like cards in a deck, instead of a long stack. */
-.plan-swipe-hint { display:none; }
+/* Phone pricing (founder, 2026-11-22): compact plan blocks stacked one after the other, full phone width. */
 @media (max-width:640px) {
-  #pricing .plan-grid.four, #pricing .launch-offer-grid { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; margin-left:-16px; margin-right:-16px; padding:6px 16px 16px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
-  #pricing .plan-grid.four::-webkit-scrollbar, #pricing .launch-offer-grid::-webkit-scrollbar { display:none; }
-  #pricing .plan-grid.four > *, #pricing .launch-offer-grid > * { flex:0 0 84%; scroll-snap-align:center; }
-  .plan-swipe-hint { display:flex; justify-content:center; align-items:center; gap:6px; margin:4px 0 2px; color:#8a6278; font:700 12.5px 'Manrope'; }
+  #pricing .plan-grid.four { display:grid; grid-template-columns:1fr; gap:12px; }
+  #pricing .plan-card { padding:16px 16px 14px; gap:4px; border-radius:16px; }
+  #pricing .plan-card .plan-price { font-size:26px; margin:0; }
+  #pricing .plan-card .plan-price small { display:inline; font-size:13px; }
+  #pricing .plan-card .plan-tagline { margin:2px 0; font-size:12.5px; }
+  #pricing .plan-card .plan-perks { display:grid; grid-template-columns:1fr 1fr; gap:5px 10px; margin:6px 0 10px; }
+  #pricing .plan-card .plan-perks li { font-size:12px; line-height:1.35; gap:5px; }
+  #pricing .plan-card .plan-perks li svg { width:13px; height:13px; }
+  #pricing .plan-card button { min-height:42px; font-size:14px; }
+  #pricing .plan-badge { top:-9px; left:16px; }
+  #pricing .launch-offer-grid { gap:10px; }
+  #pricing .launch-offer { padding:14px 16px; }
+}
+
+/* Phone feedback / reviews (founder, 2026-11-22): compact, fits the screen width. Desktop untouched. */
+@media (max-width:760px) {
+  .landing #feedback { padding:40px 16px 28px; }
+  .landing #feedback .section-heading.centered { margin:0 auto 18px; }
+  .landing #feedback .eyebrow { display:inline-flex; justify-content:center; align-items:center; gap:6px; max-width:100%; font:800 10.5px/1.4 'Manrope'; letter-spacing:.08em; color:#0a66c2; background:#eaf3fd; border:1px solid #c6ddf6; border-radius:999px; padding:6px 12px; text-align:center; }
+  .landing #feedback h2 { font-size:28px; margin:12px 0 6px; }
+  .landing #feedback .section-heading p { font-size:14px; }
+  .landing #feedback .feedback-layout { grid-template-columns:1fr; gap:14px; }
+  .landing #feedback .feedback-layout > * { min-width:0; }
+  .landing #feedback .review-wall { columns:1; }
+  .landing #feedback .review-card { padding:14px; margin-bottom:10px; border-radius:14px; }
+  .landing #feedback .review-card:nth-child(n+4) { display:none; } /* the 3 newest reviews keep it short */
+  .landing #feedback .feedback-form-wrap { position:static; padding:14px; border-radius:16px; }
+  .landing #feedback .feedback-toggle button { min-width:0; font-size:12px; padding:0 6px; white-space:nowrap; }
+  .landing #feedback input, .landing #feedback textarea, .landing #feedback select { max-width:100%; box-sizing:border-box; }
+  .landing #feedback .fb-row > * { min-width:0; width:100%; }
 }
 
 @media (max-width:760px) {
