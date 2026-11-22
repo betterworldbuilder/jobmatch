@@ -3855,6 +3855,20 @@ img.avatar-mini { object-fit:cover; }
   .on-detail .sp-arrow { background:#0f62fe; color:#fff; border-color:#fff; }
   .on-detail .sp-arrow:hover { transform:scale(1.06); }
 }
+/* "It's a Match!" never traps the screen (founder bug, 2026-11-22): the window fits the screen and scrolls inside,
+   the ✕ stays pinned, and the dark background scrolls too if needed. */
+.match-scrim { overflow-y:auto; overscroll-behavior:contain; place-items:start center; padding:max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); }
+.match-scrim .match-modal { margin:auto 0; max-height:calc(100dvh - 24px); overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+.match-scrim .match-close { position:sticky; top:10px; float:right; margin:10px 10px -46px 0; z-index:3; background:rgba(13,24,52,.72); color:#fff; box-shadow:0 2px 8px rgba(0,0,0,.3); }
+@media (max-width: 640px) {
+  .match-scrim .match-modal { border-radius:20px; }
+  .match-scrim .match-hero { padding:26px 18px 18px; }
+  .match-scrim .match-face img, .match-scrim .match-face-logo { width:60px; height:60px; }
+  .match-scrim .match-body { padding:18px 18px 22px; }
+  .match-scrim .match-script { font-size:36px; }
+}
+/* In-phone match screen: scroll instead of clipping when the phone is short. */
+.nm-match { overflow-y:auto; justify-content:safe center; }
 /* "How candidates see this role" */
 .rpv-page { position:fixed; inset:0; z-index:60; overflow-y:auto; background:linear-gradient(160deg,#f6f3ff,#fff4f8); padding:24px 20px 90px; }
 .rpv-head { max-width:980px; margin:0 auto 18px; display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }

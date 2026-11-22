@@ -69,8 +69,14 @@ export function MatchModal({ match, viewer, onClose, onMessage }: { match: JobMa
     if (!Capacitor.isNativePlatform()) return;
     import('@capacitor/haptics').then(({ Haptics, ImpactStyle }) => Haptics.impact({ style: ImpactStyle.Heavy })).catch(() => undefined);
   }, []);
+  // Never trap the screen (founder bug, 2026-11-22): Escape and a tap on the dark background close it, the window
+  // fits the screen and scrolls inside, and the ✕ stays pinned at the top.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
   const candidateName = match.candidate?.name || viewer.name;
-  return <motion.div className="modal-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><Confetti /><motion.div className="match-modal" initial={{ y: 30, scale: .96 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: .96 }}><button className="modal-close on-dark" onClick={onClose}><X /></button>
+  return <motion.div className="modal-scrim match-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}><Confetti /><motion.div className="match-modal" role="dialog" aria-modal="true" aria-label="It's a Match" initial={{ y: 30, scale: .96 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: .96 }}><button className="modal-close on-dark match-close" onClick={onClose} aria-label="Close"><X /></button>
     <div className="match-hero">
       <div className="match-script">It&rsquo;s a Match!</div>
       <p className="match-sub">You and {counterpart.split(' ')[0]} have mutually matched.</p>

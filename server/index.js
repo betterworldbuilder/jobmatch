@@ -2141,7 +2141,7 @@ app.post('/api/swipes', async (req, res, next) => {
       const roleJobId = actor.role === 'employer' && targetType === 'candidate' && typeof req.body.jobId === 'string'
         && db.jobs.some((job) => job.id === req.body.jobId && job.employerId === actor.id) ? req.body.jobId : undefined;
       const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(roleJobId ? { jobId: roleJobId } : {}), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}), ...(note ? { note } : {}) };
-      const mutual = detectMutualMatch(swipe, db);
+      let mutual = detectMutualMatch(swipe, db);
       db.swipes.push(swipe);
       // Demo if ANY party is demo/sample — starter sample accounts pre-like
       // real users, and those interactions must not inflate real counts.
@@ -2149,6 +2149,27 @@ app.post('/api/swipes', async (req, res, next) => {
       const targetUser = targetType === 'candidate'
         ? db.users.find((user) => user.id === targetId)
         : db.users.find((user) => user.id === targetJob?.employerId);
+      // Demo accounts only (founder, 2026-11-22): every DEMO_MATCH_EVERY-th like (default 3) on a demo profile/role
+      // is liked back by the demo counterpart, so about 1 in 3 likes becomes a match. Real users are never touched.
+      if (!mutual && direction === 'like' && actor.demo === true && (targetUser?.demo === true || targetJob?.demo === true)) {
+        const every = Math.max(1, Number(process.env.DEMO_MATCH_EVERY) || 3);
+        const likes = db.swipes.filter((s) => s.actorId === actorId && s.direction === 'like').length;
+        if (likes % every === 0) {
+          const now = Date.now();
+          let counter = null;
+          if (targetType === 'job' && targetJob) {
+            counter = { id: crypto.randomUUID(), actorId: targetJob.employerId, targetId: actorId, targetType: 'candidate', direction: 'like', jobId: targetJob.id, createdAt: now, demoAutoLike: true };
+          } else if (targetType === 'candidate' && targetUser) {
+            const roleJob = (roleJobId && db.jobs.find((job) => job.id === roleJobId))
+              || db.jobs.find((job) => job.employerId === actorId && String(job.status).toLowerCase() === 'active' && !db.matches.some((m) => m.candidateId === targetId && m.jobId === job.id));
+            if (roleJob) counter = { id: crypto.randomUUID(), actorId: targetId, targetId: roleJob.id, targetType: 'job', direction: 'like', createdAt: now, demoAutoLike: true };
+          }
+          if (counter && !db.swipes.some((s) => s.actorId === counter.actorId && s.targetType === counter.targetType && s.targetId === counter.targetId)) {
+            db.swipes.push(counter);
+            mutual = detectMutualMatch(swipe, db);
+          }
+        }
+      }
       // The stamp lives on the swipe so undo can retract exactly this count.
       swipe.tracked = track(db, 'swipe', { demo: involvesDemo(actor, targetUser, targetJob), dim: `${direction}/${actorSide(actor)}`, at: swipe.createdAt });
       let match = null;
