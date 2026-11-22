@@ -46,7 +46,8 @@ function PhoneCandidateCard({ person: c, reducedMotion, canLike, onSwipe, onOpen
     <motion.span className="nm-stamp like" style={{ opacity: likeOpacity }} aria-hidden="true">LIKE</motion.span>
     <motion.span className="nm-stamp nope" style={{ opacity: nopeOpacity }} aria-hidden="true">NOPE</motion.span>
     <div className="nm-card-info">
-      {c.jobStatus?.kind && <p className={`nm-hiring rm-status st-${c.jobStatus.kind}`}>{jobStatusText(c.jobStatus)}</p>}
+      {/* Status pill removed with the profile status (founder, 2026-11-22: "noise"). */}
+      {false && c.jobStatus?.kind && <p className={`nm-hiring rm-status st-${c.jobStatus!.kind}`}>{jobStatusText(c.jobStatus)}</p>}
       <h3>{maskedName(c.name)}</h3>
       <p className="nm-company">{c.title || c.headline}{c.yearsExperience ? ` · ${c.yearsExperience} yrs` : ''}</p>
       <div className="nm-chips">
@@ -70,12 +71,13 @@ function ProfileModal({ person, onClose }: { person: Person; onClose: () => void
   </div>;
 }
 
-export function RecruiterMatchSection({ data, setData, navigate, onOpenMessages, header }: { data: Bootstrap; setData: (d: Bootstrap) => void; navigate: (v: View) => void; onOpenMessages?: (matchId: string) => void; header?: React.ReactNode }) {
+export function RecruiterMatchSection({ data, setData, navigate, onOpenMessages, header, items, jobId }: { data: Bootstrap; setData: (d: Bootstrap) => void; navigate: (v: View) => void; onOpenMessages?: (matchId: string) => void; header?: React.ReactNode; items?: Person[]; jobId?: string }) {
   const reducedMotion = Boolean(useReducedMotion());
   const [likedFromList, setLikedFromList] = useState<string[]>([]);
   const deckState = useDiscoverDeck('employer', data, setData, {
     onSwiped: (result) => { if (result.match) api.bootstrap(data.viewer.id).then(setData).catch(() => undefined); },
     skipIds: likedFromList,
+    items, jobId, resetKey: jobId || 'all',
   });
   const { deck, filtered, index, setIndex, current, next, busy, match, setMatch, commitSwipe, act, undo } = deckState;
   const [picked, setPicked] = useState<Person | null>(null);

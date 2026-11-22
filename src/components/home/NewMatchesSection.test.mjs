@@ -21,7 +21,7 @@ test('renders the section, the deck region with a real counter and the 4 deck bu
   assert.match(html, /id="td-new-matches"/);
   assert.match(html, /role="region" aria-label="New matches deck"/);
   assert.match(html, /tabindex="0"/);
-  assert.match(html, /1 \/ 3/);
+  assert.match(html, /1 \/ 4/); // every available role is in the deck (no Top 3 cut)
   for (const label of ['Undo last swipe', 'Rewind', 'Pass', 'Forward to a friend', 'Like', 'Direct message \\(premium\\)']) assert.match(html, new RegExp(`aria-label="${label}"`));
   assert.match(html, /class="nm-action-labels"/, 'title bar above the buttons');
   // JobsMatchNow logo at the top of the phone.

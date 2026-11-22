@@ -6,24 +6,25 @@ import { buildDeck, considerList, filtersActive, needsScreening, showsCommute, s
 import { loadTsx } from '../../test-utils/loadTsx.mjs';
 
 const job = (id, score, extra = {}) => ({ id, title: `Role ${id}`, company: `Co ${id}`, location: 'Ho Chi Minh City', workMode: 'Hybrid', type: 'Full-time', experienceLevel: 'Mid', salary: '$3k', requiredSkills: ['React'], match: { score, matchedSkills: ['React'], matchedLanguages: [], experienceFit: true }, ...extra });
-const noFilters = { radius: 25, query: '', filterMode: '', filterType: '', minScore: 0 };
+const noFilters = { radius: 100, query: '', filterMode: '', filterType: '', minScore: 0 };
 
-test('candidate deck is the top 3 by score when no filter is active', () => {
+test('candidate deck holds every available role, best fit first (no Top 3 cut)', () => {
   const { filtered, deck } = buildDeck('candidate', [job('a', 50), job('b', 90), job('c', 70), job('d', 80)], noFilters);
   assert.deepEqual(filtered.map((j) => j.id), ['b', 'd', 'c', 'a']);
-  assert.deepEqual(deck.map((j) => j.id), ['b', 'd', 'c']);
+  assert.deepEqual(deck.map((j) => j.id), ['b', 'd', 'c', 'a']);
 });
 
-test('active filters show the whole filtered list, not the top 3', () => {
-  const filters = { ...noFilters, query: 'role' };
+test('active filters narrow the deck', () => {
+  const filters = { ...noFilters, query: 'role b' };
   assert.equal(filtersActive(filters), true);
   const { deck } = buildDeck('candidate', [job('a', 50), job('b', 90), job('c', 70), job('d', 80)], filters);
-  assert.equal(deck.length, 4);
+  assert.deepEqual(deck.map((j) => j.id), ['b']);
 });
 
-test('distance slider gates place-based roles but never remote ones', () => {
+test('default distance is "any"; a set limit gates place-based roles but never remote ones', () => {
   const items = [job('near', 60, { distanceKm: 5 }), job('far', 90, { distanceKm: 80 }), job('remote', 70, { workMode: 'Remote', distanceKm: 900 })];
-  const { filtered } = buildDeck('candidate', items, noFilters);
+  assert.equal(buildDeck('candidate', items, noFilters).filtered.length, 3, 'any distance shows all');
+  const { filtered } = buildDeck('candidate', items, { ...noFilters, radius: 25 });
   assert.deepEqual(filtered.map((j) => j.id), ['remote', 'near']);
 });
 
@@ -90,7 +91,7 @@ test('commute shows only for non-remote roles with a distance', () => {
   assert.equal(showsCommute(job('a', 1)), false);
 });
 
-test('useDiscoverDeck starts at the first card of the top-3 deck', async () => {
+test('useDiscoverDeck starts at the first card of the full deck', async () => {
   const { React, renderToStaticMarkup, mod } = await loadTsx(new URL('./useDiscoverDeck.ts', import.meta.url));
   const data = { viewer: { id: 'me' }, jobs: [job('a', 50), job('b', 90), job('c', 70), job('d', 80)], candidates: [], likesRemaining: 5 };
   let state;
@@ -99,20 +100,20 @@ test('useDiscoverDeck starts at the first card of the top-3 deck', async () => {
   assert.equal(state.index, 0);
   assert.equal(state.current.id, 'b');
   assert.equal(state.next.id, 'd');
-  assert.equal(state.deck.length, 3);
+  assert.equal(state.deck.length, 4);
   assert.equal(state.filtered.length, 4);
   assert.equal(state.busy, false);
   assert.equal(state.filtersActive, false);
 });
 
-test('useDiscoverDeck: recruiters default to an 80%+ fit filter', async () => {
+test('useDiscoverDeck: recruiters see every candidate by default (no fit filter, any distance)', async () => {
   const { React, renderToStaticMarkup, mod } = await loadTsx(new URL('./useDiscoverDeck.ts', import.meta.url));
-  const data = { viewer: { id: 'me' }, jobs: [], candidates: [{ id: 'p1', name: 'A', skills: [], match: { score: 85 } }, { id: 'p2', name: 'B', skills: [], match: { score: 60 } }], likesRemaining: 5 };
+  const data = { viewer: { id: 'me' }, jobs: [], candidates: [{ id: 'p1', name: 'A', skills: [], match: { score: 85 } }, { id: 'p2', name: 'B', skills: [], match: { score: 60 }, distanceKm: 900 }], likesRemaining: 5 };
   let state;
   function Probe() { state = mod.useDiscoverDeck('employer', data, () => undefined); return null; }
   renderToStaticMarkup(React.createElement(Probe));
-  assert.equal(state.minScore, 80);
-  assert.deepEqual(state.deck.map((p) => p.id), ['p1']);
+  assert.equal(state.minScore, 0);
+  assert.deepEqual(state.deck.map((p) => p.id), ['p1', 'p2']);
 });
 
 test('useDiscoverDeck: a card liked from the list is not shown again later in the deck', async () => {
@@ -121,8 +122,8 @@ test('useDiscoverDeck: a card liked from the list is not shown again later in th
   let state;
   function Probe() { state = mod.useDiscoverDeck('candidate', data, () => undefined, { skipIds: ['d'] }); return null; }
   renderToStaticMarkup(React.createElement(Probe));
-  // Same top 3 (b, d, c) minus d; no fourth card is pulled in.
-  assert.deepEqual(state.deck.map((j) => j.id), ['b', 'c']);
+  // The full deck (b, d, c, a) minus d.
+  assert.deepEqual(state.deck.map((j) => j.id), ['b', 'c', 'a']);
   assert.equal(state.current.id, 'b');
   assert.equal(state.next.id, 'c');
   assert.equal(state.filtered.length, 4);

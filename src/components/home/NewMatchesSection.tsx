@@ -205,13 +205,14 @@ export function DirectMessageSheet({ job, toName, about, recruiter = false, view
   </div>;
 }
 
-export function NewMatchesSection({ data, setData, navigate, onOpenMessages, header }: Props) {
+export function NewMatchesSection({ data, setData, navigate, onOpenMessages, header, items, roleKey }: Props & { items?: Job[]; roleKey?: string }) {
   const reducedMotion = Boolean(useReducedMotion());
   const [likedFromList, setLikedFromList] = useState<string[]>([]);
   // After a swipe that creates a match, refresh so "Job Matches" below updates.
   const deckState = useDiscoverDeck('candidate', data, setData, {
     onSwiped: (result) => { if (result.match) api.bootstrap(data.viewer.id).then(setData).catch(() => undefined); },
     skipIds: likedFromList,
+    items, resetKey: roleKey,
   });
   const { deck, filtered, index, setIndex, current, next, busy, match, setMatch, screeningFor, setScreeningFor, commitSwipe, act, undo } = deckState;
   const [detail, setDetail] = useState<Job | null>(null);

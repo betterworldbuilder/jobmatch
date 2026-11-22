@@ -2027,6 +2027,9 @@ app.get('/api/bootstrap', async (req, res, next) => {
           job: { ...job, companyLogo: viewer.companyLogo, match: scoreCandidateForJob(viewer, job) },
           candidates: interested,
           matchingCandidates,
+          // Light per-role fit for EVERY candidate, so the recruiter can swipe the whole pool for this role
+          // (Find My Match role dropdown) without resending full profiles per role.
+          scores: Object.fromEntries(ranked.map((c) => [c.id, { score: c.match?.score, matchedSkills: c.match?.matchedSkills || [], missingSkills: c.match?.missingSkills || [], extraSkills: c.match?.extraSkills || [], matchedLanguages: c.match?.matchedLanguages || [], experienceFit: c.match?.experienceFit, salaryStatus: c.match?.salaryStatus }])),
           interestedCount: interested.length,
           newCount: interested.slice(0, 4).length,
         };
@@ -2128,7 +2131,10 @@ app.post('/api/swipes', async (req, res, next) => {
       }
       const existing = db.swipes.find((swipe) => swipe.actorId === actorId && swipe.targetType === targetType && swipe.targetId === targetId);
       if (existing) return { swipe: existing, match: null, duplicate: true };
-      const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}), ...(note ? { note } : {}) };
+      // A recruiter swiping from one role's deck tags the swipe with that role (must be their own job).
+      const roleJobId = actor.role === 'employer' && targetType === 'candidate' && typeof req.body.jobId === 'string'
+        && db.jobs.some((job) => job.id === req.body.jobId && job.employerId === actor.id) ? req.body.jobId : undefined;
+      const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(roleJobId ? { jobId: roleJobId } : {}), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}), ...(note ? { note } : {}) };
       const mutual = detectMutualMatch(swipe, db);
       db.swipes.push(swipe);
       // Demo if ANY party is demo/sample — starter sample accounts pre-like

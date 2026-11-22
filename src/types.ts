@@ -138,7 +138,8 @@ export interface WebAnalyticsReport { days: number; totals: { visits: number; vi
 export interface IntegrationStatus { label: string; field: string; hint: string; enabled: boolean; hasKey: boolean; keyHint: string; lastSentAt: number | null; lastError: string | null }
 export interface PendingVerification { userId: string; name: string; role: Role; photo?: string; submittedAt: number }
 export interface ScheduledCall { id: string; matchId: string; createdBy: string; title: string; startAt: number; durationMinutes: number; notes?: string; createdAt: number; cancelledAt?: number; cancelReason?: string }
-export interface RoleMatchGroup { job: Job; candidates: Person[]; matchingCandidates?: Person[]; interestedCount: number; newCount: number }
+/** `scores`: this role's fit for every candidate in the pool (candidate id → evidence), for per-role swiping. */
+export interface RoleMatchGroup { job: Job; candidates: Person[]; matchingCandidates?: Person[]; interestedCount: number; newCount: number; scores?: Record<string, MatchEvidence> }
 /** A viewer's private note about a specific job or candidate — visible only to its author. */
 export interface Note { id: string; userId: string; targetId: string; targetType: 'job' | 'candidate'; text: string; updatedAt: number }
 // Recruiter billing (candidates never see any of this).

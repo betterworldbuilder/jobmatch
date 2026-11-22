@@ -33,6 +33,9 @@ export function ContactBar({ person, onAdd }: { person: Bootstrap['viewer']; onA
   </div>;
 }
 
+/** Kept switchable in code; off since 2026-11-22 (founder: remove the profile from Things to do). */
+const SHOW_PROFILE_CARD = false;
+
 function greeting(now = new Date()) { const h = now.getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
 
 function ageOf(birthdate?: string) {
@@ -106,12 +109,13 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
       ['Open roles', String(openRoles)],
       ['Hiring regions', (v.regions || v.officeLocations || []).join(', ')],
       ['Focus', (v.specializations || v.techStack || []).slice(0, 4).join(', ')],
-      ['Candidate filter', '80%+ fit by default'],
+      ['Candidate filter', 'All candidates (filter by fit in Discover)'],
     ];
 
-  return <section className="td-section tp-section" id="td-today" aria-label="Today">
-    {/* Profile: who the other side sees */}
-    <article className="tp-profile">
+  // The profile card left "Things to do" (founder, 2026-11-22): the profile lives in the sidebar box and on
+  // "My full profile"; the recruiter contact bar moved to the recruiter profile page.
+  return <section className="td-section tp-section tp-no-profile" id="td-today" aria-label="Today">
+    {SHOW_PROFILE_CARD && <article className="tp-profile">
       <div className="tp-photo" style={v.photo ? { backgroundImage: `url(${v.photo})` } : undefined}>{!v.photo && <User size={42} />}</div>
       <div className="tp-profile-body">
         <p className="tp-hello">{greeting()}, {v.name.split(' ')[0]}{(v.demo || v.sample) && <DemoBadge label={v.sample ? 'Starter sample account' : 'Demo account — not a real user'} />}</p>
@@ -147,7 +151,7 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
         {/* Contact bar: candidates edit theirs on the profile page; recruiters edit "How candidates reach you" here. */}
         {candidate ? (contacts.length > 0 && <ContactBar person={v} />) : <div className="tp-contact-edit"><ContactBarEditor key={v.id} viewer={v} onSaved={(viewer) => setData({ ...data, viewer })} /></div>}
       </div>
-    </article>
+    </article>}
 
     <div className="tp-side">
       {/* Summary */}
@@ -168,6 +172,15 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
             <strong>{next.title}</strong>
             <span>{new Date(next.at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}{next.source === 'call' ? ` · ${new Date(next.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''}</span>
             <small>With {next.who}</small>
+            {/* Add to my calendar (moved here with the profile card) */}
+            <div className="tp-cal">
+              <span>Add to my calendar:</span>
+              {(() => { const ev = { title: next.title, description: `JobsMatchNow — with ${next.who}`, startAt: next.at, durationMinutes: next.durationMinutes }; return <>
+                <a href={googleCalendarUrl(ev)} target="_blank" rel="noopener noreferrer">Google</a>
+                <a href={outlookCalendarUrl(ev)} target="_blank" rel="noopener noreferrer">Outlook</a>
+                <a href={icsDataUrl(ev)} download="jobsmatchnow-meeting.ics">Phone alarm</a>
+              </>; })()}
+            </div>
             <button type="button" className="tp-link" onClick={() => navigate('stages')}>See all stages <ArrowRight size={13} /></button>
           </div> : <p className="tp-muted">No interview planned yet. It shows here once a round has a date.</p>}
         </div>

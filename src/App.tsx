@@ -62,8 +62,7 @@ import { AiAnalyst, AiAnalystInline } from './components/home/AiAnalyst';
 import { CandidateSubscription } from './components/home/CandidateSubscription';
 import { ChatbotPage } from './components/home/ChatbotPage';
 import { FeedbackPage } from './components/home/FeedbackPage';
-import { NewMatchesSection } from './components/home/NewMatchesSection';
-import { RecruiterMatchSection } from './components/home/RecruiterMatchSection';
+import { FindMyMatchPage } from './components/home/FindMyMatchPage';
 import { FindMatches } from './components/findmatches/FindMatches';
 import type { Bootstrap, Job, JobMatch, Message, Person, Role, ScheduledCall, SessionUser, View } from './types';
 
@@ -543,9 +542,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'matches') return <Matches data={data} navigate={navigate} onOpenMessages={onOpenMessages} />;
   if (view === 'match') return <main className="td-dashboard td-candidate td-match-page">{featureOn('findMatches')
     ? <FindMatches role={role === 'candidate' ? 'candidate' : 'employer'} data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Find My Match" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
-    : role === 'candidate'
-      ? <NewMatchesSection data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Find My Match" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
-      : <RecruiterMatchSection data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Find My Match" subtitle="Swipe right on candidates you want to meet. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />}</main>;
+    : <FindMyMatchPage data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} />}</main>;
   if (view === 'assistant') return <ChatbotPage data={data} navigate={navigate} />;
   if (view === 'feedback') return <FeedbackPage data={data} />;
   if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;
@@ -558,7 +555,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
     matches={data.matches} onViewerSaved={(viewer) => setData({ ...data, viewer })} onOpenMessages={onOpenMessages} onReload={() => { void api.bootstrap(data.viewer.id).then(setData).catch(() => undefined); }}
     onDeleteProfile={data.viewer.activeVariantId ? async () => { await api.deleteProfileVariant(data.viewer.activeVariantId!, data.viewer.id); reload(); navigate('home'); } : undefined}
   />;
-  return <RecruiterProfilePage viewer={data.viewer} onEdit={onEditProfile} />;
+  return <RecruiterProfilePage viewer={data.viewer} onEdit={onEditProfile} onViewerSaved={(viewer) => setData({ ...data, viewer })} />;
 }
 
 /** Item 18: pre-swipe readiness checklist for candidates, with fix links into the wizard. */
@@ -614,7 +611,7 @@ function Discover({ role, data, setData, navigate, onEditProfile }: { role: Role
       </>}
       {filtersActive && <button className="df-clear" onClick={() => { setQuery(''); setFilterMode(''); setFilterType(''); setMinScore(0); }}>Clear all</button>}
     </div>}
-    <section className="geo-control" aria-label="Geolocation of Opportunities"><div><MapPin size={18} /><span><small>Geolocation of Opportunities</small><strong>{role === 'candidate' ? 'Roles' : 'Candidates'} within {radius} km</strong></span></div><input aria-label="Maximum match distance in kilometres" type="range" min="5" max="100" step="5" value={radius} onChange={(event) => setRadius(Number(event.target.value))} /><p>City-level matching only. Exact locations stay private.</p></section>
+    <section className="geo-control" aria-label="Geolocation of Opportunities"><div><MapPin size={18} /><span><small>Geolocation of Opportunities</small><strong>{role === 'candidate' ? 'Roles' : 'Candidates'} {radius >= 100 ? 'at any distance' : `within ${radius} km`}</strong></span></div><input aria-label="Maximum match distance in kilometres" type="range" min="5" max="100" step="5" value={radius} onChange={(event) => setRadius(Number(event.target.value))} /><p>City-level matching only. Exact locations stay private.</p></section>
     <div className="discover-layout"><section className="deck-area">
       <div className="deck-progress-row">
         <div className="deck-progress" role="progressbar" aria-valuenow={Math.min(index + 1, deck.length)} aria-valuemin={1} aria-valuemax={deck.length || 1}><i style={{ width: deck.length ? `${(Math.min(index + 1, deck.length) / deck.length) * 100}%` : '0%' }} /></div>

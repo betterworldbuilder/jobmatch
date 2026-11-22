@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BadgeCheck, Building2, CalendarClock, Globe, Linkedin, MapPin, Pencil, Phone, UserSearch } from 'lucide-react';
+import { ContactBarEditor } from '../ContactBarEditor';
 import { appleColor } from '../../lib/colors';
 import type { Person } from '../../types';
 
@@ -10,7 +11,7 @@ function Section({ title, step, onEdit, children }: { title: string; step: numbe
   </section>;
 }
 
-export function RecruiterProfilePage({ viewer, onEdit }: { viewer: Person; onEdit: (step: number) => void }) {
+export function RecruiterProfilePage({ viewer, onEdit, onViewerSaved }: { viewer: Person; onEdit: (step: number) => void; onViewerSaved?: (viewer: Person) => void }) {
   const p = viewer;
   const headhunter = p.kind === 'headhunter';
   const displayTitle = headhunter ? p.name : (p.company || p.name);
@@ -65,6 +66,8 @@ export function RecruiterProfilePage({ viewer, onEdit }: { viewer: Person; onEdi
           <div><dt><Phone size={13} /> Phone</dt><dd>{p.phone ? `${p.phone} · hidden until match` : 'Not added'}</dd></div>
           <div><dt><CalendarClock size={13} /> Calendar</dt><dd>{p.calendarLink ? <a href={/^https?:/.test(p.calendarLink) ? p.calendarLink : `https://${p.calendarLink}`} target="_blank" rel="noreferrer">{p.calendarLink}</a> : 'Not added'}</dd></div>
         </dl>
+        {/* "How candidates reach you": the contact bar matched candidates see (moved here from Things to do). */}
+        {onViewerSaved && <div className="rp-contact-wrap rec-contact"><ContactBarEditor key={p.id} viewer={p} onSaved={onViewerSaved} /></div>}
       </Section>
     </div>
   </div>;

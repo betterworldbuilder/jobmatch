@@ -218,6 +218,10 @@ export function detectMutualMatch(swipe, { swipes, jobs }) {
 
   if (swipe.targetType === 'candidate') {
     const employerJobs = new Set(jobs.filter((j) => j.employerId === swipe.actorId).map((j) => j.id));
+    // A like sent from one role's deck (swipe.jobId) matches on that role when the candidate liked it.
+    if (swipe.jobId && employerJobs.has(swipe.jobId) && swipes.some((s) => s.actorId === swipe.targetId && s.targetType === 'job' && s.direction === 'like' && s.targetId === swipe.jobId)) {
+      return { candidateId: swipe.targetId, jobId: swipe.jobId, employerId: swipe.actorId };
+    }
     const liked = swipes
       .filter(
         (s) =>

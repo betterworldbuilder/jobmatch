@@ -47,7 +47,7 @@ function formatRange(range?: { min: number; max: number; currency: string }) {
 /** Deck finished. Discover uses the default copy; the home phone deck passes its own copy and buttons. */
 export function EmptyDeck({ role, onReset, title, text, resetLabel, children }: { role: Role; onReset: () => void; title?: string; text?: string; resetLabel?: string; children?: React.ReactNode }) {
   if (title) return <div className="empty-deck"><div><Heart /></div><h2>{title}</h2>{text && <p>{text}</p>}<button className="primary-button" onClick={onReset}><RotateCcw size={16} />{resetLabel || 'Start over'}</button>{children}</div>;
-  if (role === 'candidate') return <div className="empty-deck"><div><Check /></div><h2>That’s your Top 3 for today</h2><p>Quality over volume: a fresh, curated batch of matches lands tomorrow.</p><button className="primary-button" onClick={onReset}><RotateCcw size={16} />Review again (demo)</button></div>;
+  if (role === 'candidate') return <div className="empty-deck"><div><Check /></div><h2>You’ve seen every role for now</h2><p>New roles appear here as soon as teams post them.</p><button className="primary-button" onClick={onReset}><RotateCcw size={16} />Review again (demo)</button></div>;
   return <div className="empty-deck"><div><Check /></div><h2>You’re all caught up</h2><p>We’ll bring you fresh recommendations as soon as the fit is strong enough.</p><button className="primary-button" onClick={onReset}><RotateCcw size={16} />Review again</button></div>;
 }
 

@@ -290,10 +290,10 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
     setGoal(same ? '' : tile.id);
     deck.setFilterMode(same ? '' : tile.filter?.filterMode || '');
     deck.setFilterType(same ? '' : tile.filter?.filterType || '');
-    deck.setMinScore(same ? (deckRole === 'employer' ? 80 : 0) : tile.filter?.minScore ?? (deckRole === 'employer' ? 80 : 0));
+    deck.setMinScore(same ? 0 : tile.filter?.minScore ?? 0);
     setSheetOpen(false);
   };
-  const clearGoal = () => { setGoal(''); deck.setFilterMode(''); deck.setFilterType(''); deck.setMinScore(deckRole === 'employer' ? 80 : 0); };
+  const clearGoal = () => { setGoal(''); deck.setFilterMode(''); deck.setFilterType(''); deck.setMinScore(0); };
   const openThread = (matchId: string) => { if (onOpenMessages) onOpenMessages(matchId); else navigate('messages'); };
   const sendImpression = async (note: string) => {
     if (!current) return;

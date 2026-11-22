@@ -9,10 +9,14 @@ export function filtersActive(filters: DeckFilters) {
   return Boolean(filters.query.trim() || filters.filterMode || filters.filterType || filters.minScore > 0);
 }
 
-/** The sorted list Discover shows, and the deck (candidates get a curated Top 3 unless filtering). */
+/** Distance slider at its maximum means "any distance" (the default): nothing is hidden by distance. */
+export const ANY_DISTANCE_KM = 100;
+
+/** The sorted list Discover shows, and the deck. Every user can swipe every available role or candidate
+ *  (founder rule, 2026-11-22): no "Top 3" cut, no default fit filter, no default distance limit. */
 export function buildDeck(role: Role, items: DeckItem[], filters: DeckFilters) {
-  // Remote roles are never gated by the distance slider — only place-based ones.
-  const inRadius = items.filter((item) => ('workMode' in item && (item as Job).workMode === 'Remote') || item.distanceKm === undefined || item.distanceKm <= filters.radius);
+  // Remote roles are never gated by the distance slider — only place-based ones, and only when a limit is set.
+  const inRadius = filters.radius >= ANY_DISTANCE_KM ? items : items.filter((item) => ('workMode' in item && (item as Job).workMode === 'Remote') || item.distanceKm === undefined || item.distanceKm <= filters.radius);
   const matchesSearch = (item: DeckItem) => {
     if (!filters.query.trim()) return true;
     const q = filters.query.toLowerCase();
@@ -27,8 +31,7 @@ export function buildDeck(role: Role, items: DeckItem[], filters: DeckFilters) {
     return true;
   };
   const filtered = inRadius.filter(matchesSearch).filter(passesFilters).sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
-  const deck = role === 'candidate' && !filtersActive(filters) ? filtered.slice(0, 3) : filtered;
-  return { filtered, deck };
+  return { filtered, deck: filtered };
 }
 
 /** Item 11: a plain like on a job with screening questions pauses for the 30-second form. */
