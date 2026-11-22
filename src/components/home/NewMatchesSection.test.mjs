@@ -31,7 +31,9 @@ test('renders the section, the deck region with a real counter and the 4 deck bu
   assert.match(html, /\$9100\/mo/);
   assert.match(html, /Matches your React, TypeScript, Node · 91%/);
   assert.match(html, /6 km away/);
-  assert.match(html, /Job details/);
+  // The role's pages live inside the card now (founder, 2026-11-22): pager instead of a "Job details" button.
+  assert.match(html, /Role summary <span>· 1\/4<\/span>/);
+  assert.match(html, /aria-label="Next: Job description"/);
 });
 
 test('"Recommended Roles" lists the sorted list minus the current card', async () => {

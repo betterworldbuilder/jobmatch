@@ -2,10 +2,11 @@
 // Same deck rules and API calls (useDiscoverDeck('employer')), same buttons (Rewind · Pass · Forward ·
 // Like · Message), the in-phone "It's a Match!", and a "Recommended Candidates" carousel of mini phones.
 // Pre-match privacy holds: last name initial only, no contact details, no exact salary.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
 import type { PanInfo } from 'motion/react';
-import { ChevronLeft, ChevronRight, Forward, Heart, MapPin, RotateCcw, Send, User, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, FileText, Forward, Heart, Lock, MapPin, RotateCcw, Send, User, X } from 'lucide-react';
+import { pageKey, SwipePager } from '../swipe/SwipePager';
 import { api, apiBase } from '../../api';
 import type { Bootstrap, JobMatch, Person, View } from '../../types';
 import { EmptyDeck } from '../discover/DeckParts';
@@ -26,7 +27,21 @@ const fitLine = (c: Person) => {
 const where = (c: Person) => [c.city, c.country].filter(Boolean).join(', ') || c.location || '';
 const workPref = (c: Person) => { const m = c.preferences?.workMode?.mode; return m === 'remote' ? 'Remote' : m === 'hybrid' ? 'Hybrid' : m === 'onsite' ? 'On-site' : ''; };
 
-function PhoneCandidateCard({ person: c, reducedMotion, canLike, onSwipe, onOpen }: { person: Person; reducedMotion: boolean; canLike: boolean; onSwipe: (a: 'like' | 'pass' | 'super') => void; onOpen: () => void }) {
+// Pages inside the candidate swipe card (founder, 2026-11-22), same order as the profile; the last page is the resume.
+export const CANDIDATE_PAGES = ['Who I am', 'My Dream Job', 'My Human Stack', 'My Skills', 'What I Have Built', 'Certifications', 'Recommendations', 'My Super Power', 'Resume'];
+const SWIPE_CARD_ORDER = [4, 1, 2, 3, 6, 5, 7]; // CandidateCards card numbers for pages 2–8
+
+function ResumePage({ person: c, unlocked }: { person: Person; unlocked: boolean }) {
+  const r = c.documents?.resume;
+  return <div className="rp-panel rp-resume">
+    <h4><FileText size={15} /> Resume</h4>
+    {!r ? <p className="rp-empty">No resume uploaded yet.</p>
+      : unlocked ? <a className="primary-button" href={`${apiBase}/api/users/${encodeURIComponent(c.id)}/resume/original`} download={r.originalName}><Download size={16} /> Download resume</a>
+        : <p className="rp-locked-line"><Lock size={14} /> A resume is on file. Download unlocks after a mutual match.</p>}
+  </div>;
+}
+
+function PhoneCandidateCard({ person: c, reducedMotion, canLike, onSwipe, page, onPage }: { person: Person; reducedMotion: boolean; canLike: boolean; onSwipe: (a: 'like' | 'pass' | 'super') => void; page: number; onPage: (p: number) => void }) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], reducedMotion ? [0, 0] : [-12, 12]);
   const likeOpacity = useTransform(x, [20, 110], [0, 1]);
@@ -37,15 +52,20 @@ function PhoneCandidateCard({ person: c, reducedMotion, canLike, onSwipe, onOpen
     onSwipe(action);
   };
   const fit = fitLine(c);
-  return <motion.article className="nm-card" style={{ x, rotate }} drag dragSnapToOrigin dragElastic={0.6} onDragEnd={onDragEnd}
+  const unlocked = false; // the deck only holds people you have not matched with yet
+  return <motion.article className={page > 0 ? 'nm-card sp-card on-detail' : 'nm-card sp-card'} style={{ x, rotate }} drag="x" dragSnapToOrigin dragElastic={0.6} onDragEnd={onDragEnd}
     initial={reducedMotion ? { opacity: 0 } : { scale: .95, y: 8, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }}
     exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: .9 }} transition={{ duration: reducedMotion ? .15 : .25 }}>
-    <div className="nm-photo" style={c.photo ? { backgroundImage: `url(${asset(c.photo)})` } : undefined}>
+    {page > 0 && <div className="sp-page">{page === CANDIDATE_PAGES.length - 1
+      ? <ResumePage person={c} unlocked={unlocked} />
+      : <CandidateCards person={c} match={c.match} variant="swipe" order={SWIPE_CARD_ORDER} page={page - 1} />}</div>}
+    {page === 0 && <div className="nm-photo" style={c.photo ? { backgroundImage: `url(${asset(c.photo)})` } : undefined}>
       {!c.photo && <span className="nm-initials" aria-hidden="true">{(c.name || '?').slice(0, 1)}</span>}
-    </div>
+    </div>}
     <motion.span className="nm-stamp like" style={{ opacity: likeOpacity }} aria-hidden="true">LIKE</motion.span>
     <motion.span className="nm-stamp nope" style={{ opacity: nopeOpacity }} aria-hidden="true">NOPE</motion.span>
-    <div className="nm-card-info">
+    <SwipePager pages={CANDIDATE_PAGES} page={page} onPage={onPage} tapZones={page === 0} />
+    {page === 0 && <div className="nm-card-info">
       {/* Status pill removed with the profile status (founder, 2026-11-22: "noise"). */}
       {false && c.jobStatus?.kind && <p className={`nm-hiring rm-status st-${c.jobStatus!.kind}`}>{jobStatusText(c.jobStatus)}</p>}
       <h3>{maskedName(c.name)}</h3>
@@ -56,8 +76,7 @@ function PhoneCandidateCard({ person: c, reducedMotion, canLike, onSwipe, onOpen
         {c.availability && <span className="nm-chip">Available {c.availability === 'Now' ? 'now' : c.availability}</span>}
         {fit && <span className="nm-chip">{fit}</span>}
       </div>
-      <button type="button" className="nm-full-role" onPointerDownCapture={(e) => e.stopPropagation()} onClick={onOpen}>Full profile ›</button>
-    </div>
+    </div>}
   </motion.article>;
 }
 
@@ -102,8 +121,13 @@ export function RecruiterMatchSection({ data, setData, navigate, onOpenMessages,
     if (action !== 'pass' && !canLike) return;
     act(action === 'super' ? 'like' : action, action === 'super');
   };
+  // Page inside the current card; every new card opens on page 1.
+  const [page, setPage] = useState(0);
+  useEffect(() => { setPage(0); }, [person?.id]);
   const onKeyDown = (event: React.KeyboardEvent) => {
     if ((event.target as HTMLElement).closest('input, textarea, select')) return;
+    const step = pageKey(event.key);
+    if (step && person) { event.preventDefault(); setPage((p) => Math.max(0, Math.min(CANDIDATE_PAGES.length - 1, p + step))); return; }
     const action = swipeFromKey(event.key);
     if (!action || (action !== 'undo' && !person)) return;
     event.preventDefault();
@@ -138,7 +162,7 @@ export function RecruiterMatchSection({ data, setData, navigate, onOpenMessages,
                 {(next || picked) && person && <div className="nm-card nm-peek" aria-hidden="true" />}
                 <AnimatePresence mode="popLayout">
                   {person
-                    ? <PhoneCandidateCard key={person.id} person={person} reducedMotion={reducedMotion} canLike={canLike} onSwipe={run} onOpen={() => setDetail(person)} />
+                    ? <PhoneCandidateCard key={person.id} person={person} reducedMotion={reducedMotion} canLike={canLike} onSwipe={run} page={page} onPage={setPage} />
                     : <EmptyDeck key="empty" role="employer" title="You've seen today's top candidates" text="A chat opens only when a candidate likes you back." resetLabel="Start over" onReset={() => setIndex(0)}>
                       <button type="button" className="secondary-button" onClick={() => navigate('discover')}>Open Discover</button>
                     </EmptyDeck>}

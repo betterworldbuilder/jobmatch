@@ -111,6 +111,7 @@ export function applyJob(job, body, { strict = false } = {}) {
     job.authorizedNationalities = { mode, ...(mode === 'custom' ? { custom: strArray(a.custom, 30, 60) || [] } : {}) };
   }
   if (body.relocationSupport !== undefined) job.relocationSupport = Boolean(body.relocationSupport);
+  set('contractDuration', str(body.contractDuration, 40)); // e.g. "6 months" (founder, 2026-11-22)
   set('travel', str(body.travel, 60));
   set('onCall', str(body.onCall, 60));
   set('teamSize', str(body.teamSize, 40)); // card 4

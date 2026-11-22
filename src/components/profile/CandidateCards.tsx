@@ -66,7 +66,10 @@ const SHOW_STATUS_PILL = false;
 const DEFAULT_ORDER = [0, 1, 2, 3, 4, 6, 5, 7];
 
 /** `order` lists card numbers (NAV indexes) in display order; positions (initialCard, onActiveChange) follow that order. */
-export function CandidateCards({ person: p, match, onEdit, unlocked = false, visibilityInspector = false, initialCard = 0, onActiveChange, order = DEFAULT_ORDER }: { person: Person; match?: MatchEvidence; onEdit?: (step: number) => void; unlocked?: boolean; visibilityInspector?: boolean; initialCard?: number; onActiveChange?: (card: number) => void; order?: number[] }) {
+// variant 'swipe' (founder, 2026-11-22): one page at a time inside a swipe card — `page` picks order[page];
+// no page-button row and no resume button under it (the swipe card has its own pager and a resume page).
+export function CandidateCards({ person: p, match, onEdit, unlocked = false, visibilityInspector = false, initialCard = 0, onActiveChange, order = DEFAULT_ORDER, variant = 'deck', page = 0 }: { person: Person; match?: MatchEvidence; onEdit?: (step: number) => void; unlocked?: boolean; visibilityInspector?: boolean; initialCard?: number; onActiveChange?: (card: number) => void; order?: number[]; variant?: 'deck' | 'swipe'; page?: number }) {
+  const swipe = variant === 'swipe';
   const m = match || p.match;
   const deckRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(initialCard);
@@ -170,10 +173,10 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
     setPendingRequests((prev) => prev.filter((r) => r.id !== id));
   };
 
-  return <div className="tcards">
-    {visibilityInspector && <div className="tcards-inspector" role="status"><span>Public</span><span>After mutual match</span><span>Private</span></div>}
-    <div className="tcards-deck" ref={deckRef} tabIndex={0} onKeyDown={onDeckKeyDown} aria-label={`Candidate profile card ${active + 1} of ${NAV.length}`}>
-      {order.map((i) => [
+  return <div className={swipe ? 'tcards tcards-swipe' : 'tcards'}>
+    {visibilityInspector && !swipe && <div className="tcards-inspector" role="status"><span>Public</span><span>After mutual match</span><span>Private</span></div>}
+    <div className="tcards-deck" ref={deckRef} tabIndex={swipe ? -1 : 0} onKeyDown={swipe ? undefined : onDeckKeyDown} aria-label={`Candidate profile card ${active + 1} of ${NAV.length}`}>
+      {(swipe ? [order[page] ?? order[0]] : order).map((i) => [
       /* ---------- Card 1 — Snapshot ---------- */
       <div className="tcard-slide" key="who">
         <div className="tcard tcard-hero" style={p.photo ? { backgroundImage: `url(${p.photo})` } : undefined}>
@@ -328,12 +331,12 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
       ][i])}
     </div>
 
-    {/* ---------- Navigator (same order as the deck) ---------- */}
-    <nav className="tcards-nav" aria-label="Profile cards">
+    {/* ---------- Navigator (same order as the deck) — not in the swipe card ---------- */}
+    {!swipe && <nav className="tcards-nav" aria-label="Profile cards">
       {order.map((card) => NAV[card]).map((item, i) => { const Icon = item.icon; return <button key={item.label} className={i === active ? 'on' : ''} style={{ ['--nav-c' as string]: item.color }} onClick={() => goTo(i)} aria-label={item.label} aria-current={i === active ? 'page' : undefined}><Icon size={16} /><span>{item.label}</span><i /></button>; })}
-    </nav>
+    </nav>}
     {/* Download the candidate's resume: owner and matched recruiters (server checks the same rule). */}
-    {p.documents?.resume && <div className="tcards-resume">
+    {!swipe && p.documents?.resume && <div className="tcards-resume">
       {canOpenLetters
         ? <a className="primary-button small" href={`${apiBase}/api/users/${encodeURIComponent(p.id)}/resume/original`} download={p.documents.resume.originalName}><Download size={15} /> Download {onEdit ? 'my' : 'candidate'} resume</a>
         : <span className="tcard-contact locked"><Lock size={13} /> Resume download unlocks after a mutual match</span>}

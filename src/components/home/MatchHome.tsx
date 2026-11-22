@@ -4,6 +4,7 @@ import {
   Eye, Heart, MapPin, MessageCircle, Pencil, RotateCcw, Sparkles, Star, Target, TrendingUp, User, X,
 } from 'lucide-react';
 import { api } from '../../api';
+import { RolePreview } from '../jobs/RolePreview';
 import type { Bootstrap, Job, MatchEvidence, Note, Person, RoleMatchGroup, View } from '../../types';
 import { JobDetailModal } from '../coach/CoachModals';
 import { CandidateCards } from '../profile/CandidateCards';
@@ -309,6 +310,8 @@ export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMe
 
 export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJobs, onOpenMessages, onEditJob }: HomeProps) {
   const [selected, setSelected] = useState<Person | null>(null);
+  // "How candidates see this role" preview (founder, 2026-11-22).
+  const [previewJob, setPreviewJob] = useState<Job | null>(null);
   const [expandedId, setExpandedId] = useState('');
   const [bestMatchFirst, setBestMatchFirst] = useState(true);
   const groups: RoleMatchGroup[] = data.roleMatches?.length
@@ -356,7 +359,10 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
           const lovesNotMatched = [...group.candidates].filter((candidate) => !matchedIds.has(candidate.id)).sort(sortFn);
           return <article className={open ? 'td-role open' : 'td-role'} key={group.job.id}>
             <div className="td-role-head" role="button" tabIndex={0} onClick={() => setExpandedId(open ? '__none__' : group.job.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? '__none__' : group.job.id); } }} aria-expanded={open}>
-              <JobHeaderBadge job={group.job} compact actions={<button className="td-role-edit" onClick={(event) => { event.stopPropagation(); onEditJob?.(group.job.id); }} aria-label={`Edit ${group.job.title}`}><Pencil size={12} /></button>} />
+              <JobHeaderBadge job={group.job} compact actions={<>
+                <button className="td-role-edit" onClick={(event) => { event.stopPropagation(); setPreviewJob(group.job); }} aria-label={`How candidates see ${group.job.title}`} title="How candidates see this role"><Eye size={12} /></button>
+                <button className="td-role-edit" onClick={(event) => { event.stopPropagation(); onEditJob?.(group.job.id); }} aria-label={`Edit ${group.job.title}`}><Pencil size={12} /></button>
+              </>} />
               {group.job.createdAt ? <span className="td-role-date" title="Date created"><Calendar size={12} /> Created {new Date(group.job.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> : null}
               <span><Check size={12} /> {matchedForJob.length} matched</span>
               <span><Heart size={12} /> {lovesNotMatched.length} love this job</span>
@@ -403,6 +409,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
       </article>
       <article className="td-list-panel" id="td-conversations"><DashboardTitle icon={MessageCircle} title="Active Conversations" />{data.matches.slice(0, 4).map((match) => <button key={match.id} onClick={() => navigate('messages')}><img src={match.candidate.photo} alt="" /><span><strong>{match.candidate.name}</strong><small>{data.messages.filter((message) => message.matchId === match.id).at(-1)?.text || match.job.title}</small></span><Bell size={12} /></button>)}</article>
     </section>
+    {previewJob && <RolePreview job={previewJob} recruiter={data.viewer} onClose={() => setPreviewJob(null)} onEdit={onEditJob ? () => { const id = previewJob.id; setPreviewJob(null); onEditJob(id); } : undefined} />}
     {selected && <CandidateProfileModal candidate={selected} onClose={() => setSelected(null)} onTalk={() => { const person = selected; setSelected(null); void talk(person); }} viewerId={data.viewer.id} notes={data.notes} onNoteSaved={(note) => setData({ ...data, notes: [...data.notes.filter((n) => n.id !== note.id), note] })} />}
   </main>;
 }

@@ -30,7 +30,7 @@ type Form = {
   salaryMin: string; salaryMax: string; currency: string; salaryNegotiable: boolean; bonus: string; equity: string;
   benefits: string[]; workingHours: string; flexibleHours: string; probation: string; hybridDays: number;
   visaSponsorship: boolean; relocationSupport: boolean; travel: string; onCall: string;
-  workVisaRequired: '' | 'yes' | 'no'; natMode: typeof NATIONALITY_MODES[number]; natCustom: string[];
+  workVisaRequired: '' | 'yes' | 'no'; natMode: typeof NATIONALITY_MODES[number]; natCustom: string[]; contractDuration: string;
   description: string; fullDescription: string; responsibilities: string[]; interviewProcess: string[]; startDate: string; externalUrl: string;
   status: typeof STATUSES[number]; screeningQuestions: string[];
   mission: string; culture: string[]; values: string[]; teamSize: string; teamComposition: string[]; teamLocations: string;
@@ -45,7 +45,7 @@ const emptyForm = (): Form => ({
   salaryMin: '', salaryMax: '', currency: 'USD', salaryNegotiable: false, bonus: '', equity: '',
   benefits: [], workingHours: '', flexibleHours: '', probation: '', hybridDays: 2,
   visaSponsorship: false, relocationSupport: false, travel: '', onCall: '',
-  workVisaRequired: '', natMode: 'any', natCustom: [],
+  workVisaRequired: '', natMode: 'any', natCustom: [], contractDuration: '',
   description: '', fullDescription: '', responsibilities: [], interviewProcess: [], startDate: '', externalUrl: '', status: 'draft', screeningQuestions: [],
   mission: '', culture: [], values: [], teamSize: '', teamComposition: [], teamLocations: '',
   managerName: '', managerTitle: '', managerStyle: '', managementStyleTags: [], teamStyle: [], teamSong: '',
@@ -67,7 +67,7 @@ function fromJob(job: Job): Form {
     benefits: job.benefits || [], workingHours: job.workingHours || '', flexibleHours: job.flexibleHours || '', probation: job.probation || '',
     hybridDays: job.hybridDays ?? 2, visaSponsorship: job.visaSponsorship ?? false, relocationSupport: job.relocationSupport ?? false,
     workVisaRequired: job.workVisaRequired === undefined ? '' : job.workVisaRequired ? 'yes' : 'no',
-    natMode: job.authorizedNationalities?.mode || 'any', natCustom: job.authorizedNationalities?.custom || [],
+    natMode: job.authorizedNationalities?.mode || 'any', natCustom: job.authorizedNationalities?.custom || [], contractDuration: job.contractDuration || '',
     travel: job.travel || '', onCall: job.onCall || '',
     description: job.description, fullDescription: job.fullDescription || '',
     responsibilities: job.responsibilities || [], interviewProcess: job.interviewProcess || [],
@@ -175,7 +175,7 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
       openings: form.openings !== '' ? Number(form.openings) : undefined, urgency: form.urgency || undefined, deadline: form.deadline || undefined,
       requiredSkillsDetail: form.requiredSkills.map((skill) => ({ name: skill.name, weight: Math.min(skill.level, 3) })),
       niceToHaves: form.niceToHaves, requiredLanguages: form.requiredLanguages, successMeasures: form.successMeasures,
-      type: form.type, workMode: form.workMode, location: form.location,
+      type: form.type, workMode: form.workMode, location: form.location, contractDuration: form.contractDuration.trim() || undefined,
       ...(form.workMode === 'Remote'
         ? { remoteScope: form.remoteScope, country: form.remoteScope === 'country' ? form.country : undefined }
         : { hiringRadiusKm: form.hiringRadiusKm }),
@@ -263,6 +263,7 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
           <Field label="Employment type" required><Segmented options={EMPLOYMENT_TYPES} value={form.type as typeof EMPLOYMENT_TYPES[number] | undefined} onChange={(type) => patch({ type })} /></Field>
           <Field label="Work mode" required><Segmented options={WORK_MODES} value={form.workMode as typeof WORK_MODES[number] | undefined} onChange={(workMode) => patch({ workMode })} /></Field>
         </div>
+        <Field label="Contract duration (optional)" hint="Shown on the role's first page, e.g. “6 months”, “12 months, renewable” or “Permanent”."><TextInput value={form.contractDuration} onChange={(e) => patch({ contractDuration: e.target.value })} placeholder="e.g. 6 months" maxLength={40} /></Field>
         {form.workMode === 'Remote' ? <>
           <Field label="Remote scope" required hint="Worldwide matches everyone; within-country limits to candidates in one country.">
             <Segmented options={['worldwide', 'country'] as const} value={form.remoteScope} onChange={(remoteScope) => patch({ remoteScope })} labels={{ worldwide: 'Worldwide', country: 'Within a country' }} />

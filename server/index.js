@@ -1976,7 +1976,9 @@ app.get('/api/bootstrap', async (req, res, next) => {
       const incomingLike = incomingEmployerLikes.find((swipe) => swipe.actorId === job.employerId && swipe.jobId === job.id);
       // Public recruiter card shown on each role (photo/name/title only — no contact info pre-match).
       const recruiter = employer ? { name: employer.name, title: employer.title, photo: employer.photo, company: employer.company } : undefined;
-      return { ...withDistance, companyLogo: employer?.companyLogo, recruiter, match, likedYou: Boolean(incomingLike), superLikedYou: Boolean(incomingLike?.superLike), verified: verifiedUser(employer), promoted: boostedJobIds.has(job.id) };
+      // Public company profile for the role's "Company" page (no contact details).
+      const companyProfile = employer ? { about: employer.about, industry: employer.industry, companySize: employer.companySize, headquarters: employer.headquarters, website: employer.website, foundedYear: employer.foundedYear, officeLocations: employer.officeLocations, techStack: employer.techStack, benefits: employer.benefits } : undefined;
+      return { ...withDistance, companyLogo: employer?.companyLogo, recruiter, companyProfile, match, likedYou: Boolean(incomingLike), superLikedYou: Boolean(incomingLike?.superLike), verified: verifiedUser(employer), promoted: boostedJobIds.has(job.id) };
     });
     // Boosted cards ride to the front of the deck, keeping their own relative
     // order. The match score is never touched — a promoted card shows the same

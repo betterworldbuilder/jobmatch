@@ -120,7 +120,12 @@ export interface Job {
   importNeedsReview?: string[];
   /** Public recruiter/hiring-contact info shown on the role's Team & culture card (no contact details pre-match). */
   recruiter?: { name?: string; title?: string; photo?: string; company?: string };
+  /** Contract duration, e.g. "6 months" (shown on the Role summary page). */
+  contractDuration?: string;
+  /** Public company profile from the recruiter's profile (Company page). */
+  companyProfile?: CompanyProfile;
 }
+export interface CompanyProfile { about?: string; industry?: string; companySize?: string; headquarters?: string; website?: string; foundedYear?: number; officeLocations?: string[]; techStack?: string[]; benefits?: string[] }
 export interface JobReview { author?: string; role?: string; text: string; verified?: boolean; rating?: number; date?: string }
 
 export interface SkillQuestions { skill: string; questions: string[] }

@@ -13,6 +13,8 @@ import { CompanyLogoMark } from '../jobs/JobHeaderBadge';
 import { EmptyDeck, SalaryBadge } from '../discover/DeckParts';
 import { considerList, needsScreening, showsCommute, swipeFromDrag, swipeFromKey } from '../discover/deckLogic';
 import { useDiscoverDeck } from '../discover/useDiscoverDeck';
+import { RoleDetailPage, ROLE_PAGES, RoleSummaryPage } from '../jobs/RolePages';
+import { pageKey, SwipePager } from '../swipe/SwipePager';
 
 type Props = {
   data: Bootstrap;
@@ -61,8 +63,8 @@ export function PhoneBrand() {
   return <span className="nm-brand"><span className="brand-heart-mark nm-logo" aria-hidden="true" /><span className="brand-wordmark"><b>Jobs</b><b>Match</b><b>Now</b></span></span>;
 }
 
-function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, onOpen }: {
-  job: Job; reducedMotion: boolean; canLike: boolean; onSwipe: (action: 'like' | 'pass' | 'super') => void; onOpen: () => void;
+function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, page, onPage }: {
+  job: Job; reducedMotion: boolean; canLike: boolean; onSwipe: (action: 'like' | 'pass' | 'super') => void; page: number; onPage: (p: number) => void;
 }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -74,13 +76,11 @@ function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, onOpen }: {
     if (!action || ((action === 'like' || action === 'super') && !canLike)) return;
     onSwipe(action);
   };
-  const reason = fitReason(job);
   const photo = cardPhoto(job);
-  const recruiterShown = !job.coverImage && job.recruiter?.photo && job.recruiter.name;
   return <motion.article
-    className="nm-card"
+    className={page > 0 ? 'nm-card sp-card on-detail' : 'nm-card sp-card'}
     style={{ x, y, rotate }}
-    drag
+    drag="x"
     dragSnapToOrigin
     dragElastic={0.6}
     onDragEnd={onDragEnd}
@@ -89,24 +89,13 @@ function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, onOpen }: {
     exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: .9 }}
     transition={{ duration: reducedMotion ? .15 : .25 }}
   >
-    <div className="nm-photo" style={photo ? { backgroundImage: `url(${assetUrl(photo)})` } : undefined}>
-      {!photo && <span className="nm-initials" aria-hidden="true">{initials(job.company)}</span>}
-    </div>
+    {/* Role pages inside the card (founder, 2026-11-22): 1 summary · 2 job description · 3 salary · 4 company. */}
+    {page === 0
+      ? <RoleSummaryPage job={job} photo={photo} extra={<SalaryLine job={job} />} />
+      : <div className="sp-page"><RoleDetailPage job={job} page={page} /></div>}
     <motion.span className="nm-stamp like" style={{ opacity: likeOpacity }} aria-hidden="true">LIKE</motion.span>
     <motion.span className="nm-stamp nope" style={{ opacity: nopeOpacity }} aria-hidden="true">NOPE</motion.span>
-    <div className="nm-card-info">
-      {recruiterShown && <p className="nm-hiring">Hiring: {job.recruiter!.name}{job.recruiter!.title ? ` · ${job.recruiter!.title}` : ''}</p>}
-      <h3>{job.title}</h3>
-      <p className="nm-company">{job.company}{job.experienceLevel ? ` · ${job.experienceLevel}` : ''}</p>
-      <div className="nm-chips">
-        <SalaryLine job={job} />
-        {job.workMode === 'Remote'
-          ? <span className="nm-chip">Remote</span>
-          : showsCommute(job) && <span className="nm-chip"><MapPin size={11} /> {job.distanceKm} km away</span>}
-        {reason && <span className="nm-chip">{reason}</span>}
-      </div>
-      <button type="button" className="nm-full-role" onPointerDownCapture={(event) => event.stopPropagation()} onClick={onOpen}>Job details ›</button>
-    </div>
+    <SwipePager pages={ROLE_PAGES} page={page} onPage={onPage} tapZones={page === 0} />
   </motion.article>;
 }
 
@@ -245,9 +234,14 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
     // On a phone the list sits under the deck: bring the deck back into view.
     window.setTimeout(() => phoneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
   };
+  // Page inside the current card; every new card opens on page 1.
+  const [page, setPage] = useState(0);
+  useEffect(() => { setPage(0); }, [job?.id]);
   const onKeyDown = (event: React.KeyboardEvent) => {
     const target = event.target as HTMLElement;
     if (target.closest('input, textarea, select')) return;
+    const step = pageKey(event.key);
+    if (step && job) { event.preventDefault(); setPage((p) => Math.max(0, Math.min(ROLE_PAGES.length - 1, p + step))); return; }
     const action = swipeFromKey(event.key);
     if (!action || (action !== 'undo' && !job)) return;
     event.preventDefault();
@@ -283,7 +277,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
                 {(next || picked) && job && <div className="nm-card nm-peek" aria-hidden="true" />}
                 <AnimatePresence mode="popLayout">
                   {job
-                    ? <PhoneJobCard key={job.id} job={job} reducedMotion={reducedMotion} canLike={canLike} onSwipe={run} onOpen={() => setDetail(job)} />
+                    ? <PhoneJobCard key={job.id} job={job} reducedMotion={reducedMotion} canLike={canLike} onSwipe={run} page={page} onPage={setPage} />
                     : <EmptyDeck key="empty" role="candidate" title="You've seen today's top picks" text="A chat opens only when a team likes you back." resetLabel="Start over" onReset={() => setIndex(0)}>
                       <button type="button" className="secondary-button" onClick={() => navigate('discover')}>Open Discover</button>
                     </EmptyDeck>}
