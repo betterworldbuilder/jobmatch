@@ -57,11 +57,11 @@ test('contact bar: booking, WhatsApp, Zalo and email links from the member\'s ow
   assert.deepEqual(t.contactLinks({ calendarLink: 'javascript:alert(1)' }).map((l) => l.kind), [], 'only https booking links');
 });
 
-test('Today panel renders the profile first with completeness, visibility and the four blocks', async () => {
+test('Today panel: no profile card (founder 2026-11-22); summary, urgent, next interview with calendar links, settings', async () => {
   const { React, renderToStaticMarkup, mod } = await loadTsx(new URL('./TodayPanel.tsx', import.meta.url));
   const html = renderToStaticMarkup(React.createElement(mod.TodayPanel, { data: base(), setData: () => undefined, navigate: () => undefined, onEditProfile: () => undefined, onPreview: () => undefined }));
-  assert.ok(html.indexOf('tp-profile') < html.indexOf('tp-summary'), 'profile comes first');
-  for (const text of ['My next meeting this week', 'Add to my calendar', 'calendar.google.com', 'Lan Tran', 'Looking for', 'Edit info', '60% complete', 'Visible to recruiters', 'Urgent', 'Next interview', 'My search settings', 'Replies waiting', 'Interviews this week', 'Not set'])
+  assert.doesNotMatch(html, /class="tp-profile"/, 'profile card removed from Things to do');
+  for (const text of ['Add to my calendar', 'calendar.google.com', 'Urgent', 'Next interview', 'My search settings', 'Replies waiting', 'Interviews this week', 'Not set'])
     assert.ok(html.includes(text), `shows ${text}`);
   assert.doesNotMatch(html, /profile views/, 'no invented view counts');
 });

@@ -54,6 +54,7 @@ const NAV = [
   { icon: Zap, label: 'My Super Power', color: '#FFB800' },
 ];
 const LAST_CARD = NAV.length - 1;
+const SHOW_STATUS_PILL = false;
 
 /**
  * The candidate as a horizontal deck of five Tinder-style cards with a 5-icon
@@ -181,8 +182,8 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
             <h2>{displayName}{age !== undefined && <span className="tcard-age">{age}</span>}{verified && <BadgeCheck size={20} className="verified-mark" />}</h2>
             {p.pronouns && <span className="tcard-pronouns">{p.pronouns}</span>}
             <p className="tcard-hero-title"><Briefcase size={14} /> {p.title || p.headline}</p>
-            {/* Job status, visible to recruiters (role and recruiter name stay private to the member). */}
-            {p.role === 'candidate' && p.jobStatus?.kind && <span className={`tcard-status st-${p.jobStatus.kind}`}><i aria-hidden="true" />{jobStatusText(p.jobStatus)}</span>}
+            {/* Job status pill removed from the profile view (founder, 2026-11-22: "noise"). */}
+            {SHOW_STATUS_PILL && p.role === 'candidate' && p.jobStatus?.kind && <span className={`tcard-status st-${p.jobStatus.kind}`}><i aria-hidden="true" />{jobStatusText(p.jobStatus)}</span>}
             <div className="tcard-hero-meta">
               {(p.city || p.country) && <span><MapPin size={13} /> {[p.city, p.country].filter(Boolean).join(', ')}</span>}
               {p.nationality && <span><Globe size={13} /> {p.nationality}</span>}

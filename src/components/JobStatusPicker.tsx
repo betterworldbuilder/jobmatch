@@ -43,9 +43,10 @@ export function JobStatusLine({ s, matches = [], onOpen }: { s?: JobStatus; matc
   </span>;
 }
 
-export function JobStatusPicker({ viewer, matches = [], onSaved, variant = 'sidebar', onOpen, onReload }: {
-  viewer: Person; matches?: JobMatch[]; onSaved: (viewer: Person) => void; variant?: 'sidebar' | 'card'; onOpen?: (matchId: string) => void; onReload?: () => void;
+export function JobStatusPicker({ viewer, matches = [], onSaved, variant = 'sidebar', onOpen, onReload, collapsible = false }: {
+  viewer: Person; matches?: JobMatch[]; onSaved: (viewer: Person) => void; variant?: 'sidebar' | 'card'; onOpen?: (matchId: string) => void; onReload?: () => void; collapsible?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const savedHired = viewer.jobStatus?.kind === 'hired';
   const [result, setResult] = useState('');
   const current: JobStatus = viewer.jobStatus || { kind: viewer.privacy?.openToWork === false ? 'waiting' : 'open' };
@@ -85,8 +86,14 @@ export function JobStatusPicker({ viewer, matches = [], onSaved, variant = 'side
   };
 
   const showJob = WITH_JOB(st.kind);
+  // Collapsed by default (founder: the status card was noise): one line with the status and "Change".
+  if (collapsible && !open && !result) return <div className="js-compact">
+    <span className="js-compact-label">Job status</span>
+    <JobStatusLine s={viewer.jobStatus || st} matches={matches} onOpen={onOpen} />
+    <button type="button" className="text-button" onClick={() => setOpen(true)}>Change</button>
+  </div>;
   return <div className={`job-status js-${variant}`} style={{ ['--st' as string]: COLOR[st.kind] }}>
-    {variant === 'card' && <header className="js-card-head"><span className="overline">My job status</span><small><Eye size={11} /> Recruiters see the status · <Lock size={11} /> role and recruiter stay private</small></header>}
+    {variant === 'card' && <header className="js-card-head"><span className="overline">My job status</span><small><Eye size={11} /> Recruiters see the status · <Lock size={11} /> role and recruiter stay private</small>{collapsible && <button type="button" className="text-button" onClick={() => { setOpen(false); setResult(''); }}>Done</button>}</header>}
     <label><span className="js-label">Status</span>
       <span className="js-row"><i className="js-dot" aria-hidden="true" />
         <select value={st.kind} disabled={busy} aria-label="My job status" onChange={(e) => void save({ ...st, kind: e.target.value as Kind })}>
