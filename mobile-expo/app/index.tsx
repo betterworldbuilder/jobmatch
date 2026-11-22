@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
+import { WebView, type WebViewProps } from 'react-native-webview';
+import type { ComponentType, Ref } from 'react';
+
+// react-native-webview 14's class typings don't match React 19.3's types yet (type-only problem: props resolve to
+// "never"). Same component, typed by its documented props.
+const AppWebView = WebView as unknown as ComponentType<WebViewProps & { ref?: Ref<WebView> }>;
 
 // Store app (2026-11-23): the JobsMatchNow web app full screen, no preview chrome. Web updates show at once; a store
 // rebuild is only needed when this shell (permissions, icon, native code) changes.
@@ -29,7 +34,7 @@ export default function JobsMatchNowApp() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <WebView
+      <AppWebView
         ref={webView}
         source={{ uri: appUrl }}
         onLoadStart={() => setLoading(true)}
@@ -73,7 +78,7 @@ export default function JobsMatchNowApp() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#ffffff' },
   webView: { flex: 1, backgroundColor: '#ffffff' },
-  overlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 28, backgroundColor: '#fff8fb' },
+  overlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 28, backgroundColor: '#fff8fb' },
   loadingText: { color: '#697085', fontSize: 13, fontWeight: '600' },
   errorTitle: { color: '#0b102b', fontSize: 20, fontWeight: '900', textAlign: 'center' },
   errorCopy: { maxWidth: 300, color: '#697085', fontSize: 14, lineHeight: 20, textAlign: 'center' },
