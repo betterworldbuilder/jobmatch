@@ -214,7 +214,19 @@ export function applyRecruiterProfile(user, body) {
   set('clients', strArray(body.clients, 20, 100));
   set('contactName', str(body.contactName, 120));
   set('contactEmail', str(body.contactEmail, 200));
-  set('calendarLink', str(body.calendarLink, 300));
+  // "How candidates reach you" contact bar: same channels as candidates (shown to matched candidates).
+  if (body.contactChannels !== undefined) {
+    user.contactChannels = objArray(body.contactChannels, {
+      type: (v) => (CONTACT_TYPES.includes(v) ? v : undefined),
+      value: (v) => str(v, 120),
+    }, 6)?.filter((channel) => channel.type && channel.value) || [];
+  }
+  // Booking link: https only; '' clears it.
+  if (body.calendarLink !== undefined) {
+    const link = String(body.calendarLink || '').trim();
+    if (link && !/^https:\/\/\S{4,300}$/.test(link)) throw new ValidationError('calendarLink', 'Booking link must start with https://');
+    if (link) user.calendarLink = link; else delete user.calendarLink;
+  }
   if (body.onboarding !== undefined) user.onboarding = Boolean(body.onboarding);
   return user;
 }

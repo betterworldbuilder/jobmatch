@@ -58,6 +58,16 @@ test('feed: a real member can only make their own link', async () => {
   assert.equal((await call('POST', `/api/users/${reg.body.user.id}/calendar-feed`, {}, reg.session)).status, 200);
 });
 
+test('recruiter contact bar: channels and an https booking link are saved', async () => {
+  const reg = await call('POST', '/api/auth/register', { role: 'employer', name: 'Contact Recruiter', email: `rc-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+  const id = reg.body.user.id; const ck = reg.session;
+  assert.equal((await call('PATCH', `/api/users/${id}`, { calendarLink: 'http://not-secure.example' }, ck)).status, 400);
+  const ok = await call('PATCH', `/api/users/${id}`, { calendarLink: 'https://calendar.app.google/rec1', contactChannels: [{ type: 'whatsapp', value: '+1 415 555 0100' }, { type: 'telegram', value: '@recruiter' }, { type: 'fax', value: 'x' }] }, ck);
+  assert.equal(ok.status, 200, ok.text);
+  assert.equal(ok.body.user.calendarLink, 'https://calendar.app.google/rec1');
+  assert.deepEqual(ok.body.user.contactChannels.map((c) => c.type), ['whatsapp', 'telegram'], 'unknown channel types dropped');
+});
+
 test('booking link: https only, saved for candidates, hidden from recruiters before a match', async () => {
   const reg = await call('POST', '/api/auth/register', { role: 'candidate', name: 'Booking Link', email: `book-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
   const id = reg.body.user.id; const ck = reg.session;

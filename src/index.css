@@ -3551,6 +3551,11 @@ img.avatar-mini { object-fit:cover; }
 .cb-howto ol { margin:10px 0 6px; padding-left:20px; display:flex; flex-direction:column; gap:6px; line-height:1.45; }
 .cb-howto a { color:#d61f6b; }
 .cb-note { margin:6px 0 0; font-size:12px; color:#6b7286; line-height:1.45; }
+.tp-contact-edit { margin-top:12px; padding-top:12px; border-top:1px solid #ebecf0; }
+.tp-contact-edit .tp-contact { margin-top:0; padding-top:0; border-top:0; }
+.tp-contact-edit .cb-editor { align-items:stretch; }
+.tp-contact-edit .cb-edit-btn { align-self:flex-start; }
+.tp-contact-edit .cb-row { grid-template-columns:1fr; gap:4px; }
 .cb-editor { display:flex; flex-direction:column; align-items:center; gap:10px; }
 .cb-edit-btn { align-self:center; }
 .cb-form { width:100%; text-align:left; display:flex; flex-direction:column; gap:9px; padding-top:12px; border-top:1px solid #ebecf0; }

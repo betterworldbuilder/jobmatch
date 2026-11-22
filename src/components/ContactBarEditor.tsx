@@ -19,16 +19,16 @@ const FIELDS: { kind: Kind; label: string; placeholder: string }[] = [
 
 const valueOf = (p: Person, kind: Kind) => (p.contactChannels || []).find((c) => c.type === kind)?.value || '';
 
-export function GoogleBookingHowTo() {
+export function GoogleBookingHowTo({ viewerFirstName }: { viewerFirstName?: string }) {
   return <details className="cb-howto">
     <summary><CalendarDays size={14} /> How to make a Google Calendar booking page (5 minutes, free) <ChevronDown size={14} /></summary>
     <ol>
       <li>On a computer, open <a href="https://calendar.google.com" target="_blank" rel="noreferrer">calendar.google.com</a> and sign in.</li>
       <li>Click <b>Create</b> (top left), then <b>Appointment schedule</b>.</li>
-      <li>Give it a name, for example <i>“Interview with Sofia (30 min)”</i>, pick a length (30 minutes is a good start) and the hours you are free each week.</li>
+      <li>Give it a name, for example <i>“Interview with {viewerFirstName || 'me'} (30 min)”</i>, pick a length (30 minutes is a good start) and the hours you are free each week.</li>
       <li>Optional: add <b>Google Meet</b> video, a buffer between meetings, and a limit per day so your week stays calm.</li>
       <li>Click <b>Save</b>. Then click <b>Share</b> (or <b>Open booking page</b>) and <b>copy the link</b>.</li>
-      <li>Paste the link in “Booking link” here and save. Teams you match with see a <b>Book an interview</b> button and pick a free time; Google adds it to both calendars.</li>
+      <li>Paste the link in “Booking link” here and save. People you match with see a <b>Book an interview</b> button and pick a free time; Google adds it to both calendars.</li>
     </ol>
     <p className="cb-note">Free Google accounts get one basic booking page. A Google Workspace plan adds extras such as several pages and reminders sent by Google. Want your JobsMatchNow meetings in Google Calendar too? Use <b>Meetings → Sync with Google Calendar</b>.</p>
   </details>;
@@ -60,7 +60,7 @@ export function ContactBarEditor({ viewer, onSaved }: { viewer: Person; onSaved:
       <header><strong>My contact bar</strong><small><Lock size={11} /> Shown only after a mutual match</small><button type="button" className="text-button" aria-label="Close" onClick={() => setOpen(false)}><X size={15} /></button></header>
       <label className="cb-row cb-booking"><span><CalendarDays size={14} /> Booking link</span>
         <input value={booking} onChange={(e) => setBooking(e.target.value)} placeholder="https://calendar.app.google/… (your Google booking page)" aria-label="Booking link" /></label>
-      <GoogleBookingHowTo />
+      <GoogleBookingHowTo viewerFirstName={viewer.name?.split(' ')[0]} />
       {FIELDS.map((f) => <label className="cb-row" key={f.kind}><span>{f.label}</span>
         <input value={form[f.kind]} onChange={(e) => setForm({ ...form, [f.kind]: e.target.value })} placeholder={f.placeholder} aria-label={f.label} maxLength={120} /></label>)}
       {error && <p className="cb-err">{error}</p>}

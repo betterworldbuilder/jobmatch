@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { AlertCircle, ArrowRight, BadgeCheck, Bot, Calendar, Check, Eye, EyeOff, Heart, Mail, MessageCircle, Pencil, Phone, Plus, SlidersHorizontal, Sparkles, Target, User, X } from 'lucide-react';
 import { AgentSettingsModal, PROVIDERS, readAgent } from './AiAnalyst';
 import { JobStatusLine } from '../JobStatusPicker';
+import { ContactBarEditor } from '../ContactBarEditor';
 import { api } from '../../api';
 import type { Bootstrap, View } from '../../types';
 import { DemoBadge } from '../DemoBadge';
@@ -143,8 +144,8 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
           </> : <small>No meeting planned this week.</small>}
         </div>
 
-        {/* Contact bar */}
-        {contacts.length > 0 && <ContactBar person={v} />}
+        {/* Contact bar: candidates edit theirs on the profile page; recruiters edit "How candidates reach you" here. */}
+        {candidate ? (contacts.length > 0 && <ContactBar person={v} />) : <div className="tp-contact-edit"><ContactBarEditor key={v.id} viewer={v} onSaved={(viewer) => setData({ ...data, viewer })} /></div>}
       </div>
     </article>
 
