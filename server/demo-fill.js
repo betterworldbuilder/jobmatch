@@ -128,6 +128,8 @@ export function withDemoFill(seed, now = Date.now(), crowd = { candidateIds: [],
       push('messages', { id: `dmsg-${matchId}-2`, matchId, senderId: c.id, text: `Thanks ${first(employer.name)}! Yes, Tuesday or Wednesday afternoon works for me (US morning).`, createdAt: at + 3 * HOUR });
       push('messages', { id: `dmsg-${matchId}-3`, matchId, senderId: employer.id, text: k === 0 ? 'Great, I sent a coffee chat invite for Wednesday. Talk soon!' : 'Perfect. I will share the interview steps before we talk.', createdAt: at + 5 * HOUR });
       if (k === 0) push('calls', { id: `dcall-${matchId}`, matchId, createdBy: employer.id, title: `Coffee chat - ${c.name}`, startAt: now + (i + 1) * DAY, durationMinutes: 25, notes: `Intro call about the ${job.title} role.`, createdAt: at + 5 * HOUR });
+      // Coffee invitations go both ways: on the other matches the candidate invites the recruiter.
+      else push('calls', { id: `dcoffee-${matchId}`, matchId, createdBy: c.id, title: `Coffee chat with ${first(employer.name)}`, startAt: now + (i + 2) * DAY + 3 * HOUR, durationMinutes: 30, notes: `${first(c.name)} would like a short coffee chat about the ${job.title} role.`, createdAt: at + 6 * HOUR });
   };
   // The recruiter behind job i likes candidate c ("Recruiters that like you").
   const recruiterLike = (jobId, i, c, k, superLike) => { const employer = users.get(jobs.get(jobId)?.employerId); if (employer && c) push('swipes', { id: `ds-${employer.id}-${c.id}-${jobId}`, actorId: employer.id, targetType: 'candidate', targetId: c.id, jobId, direction: 'like', ...(superLike ? { superLike: true } : {}), createdAt: now - (k + i) * HOUR }); };

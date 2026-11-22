@@ -57,12 +57,13 @@ import { loadSession, saveSession } from './lib/auth';
 import { featureOn } from './lib/flags';
 import { installAdminHotkey, trackView } from './lib/tracker';
 import { scoreOf } from './lib/report';
-import { CandidateReport, RecruiterReport } from './components/home/ReportSections';
+import { CandidateReport, RecruiterReport, downloadText, reportCsv } from './components/home/ReportSections';
 import { AiAnalyst, AiAnalystInline } from './components/home/AiAnalyst';
 import { CandidateSubscription } from './components/home/CandidateSubscription';
 import { ChatbotPage } from './components/home/ChatbotPage';
 import { FeedbackPage } from './components/home/FeedbackPage';
 import { NewMatchesSection } from './components/home/NewMatchesSection';
+import { RecruiterMatchSection } from './components/home/RecruiterMatchSection';
 import { FindMatches } from './components/findmatches/FindMatches';
 import type { Bootstrap, Job, JobMatch, Message, Person, Role, ScheduledCall, SessionUser, View } from './types';
 
@@ -103,6 +104,7 @@ const candidateNav: NavItem[] = [
   { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
   { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
+  { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: 'Use your chatbot here', short: 'Chatbot', icon: Bot, view: 'assistant' },
   { label: 'Feedback', icon: Lightbulb, view: 'feedback' },
@@ -115,19 +117,22 @@ const NAV_COLORS: Record<string, string> = {
   Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
   'Coffee Invitations': '#e0a96d',
 };
+// Mirrors the candidate menu (same order and pages), plus the recruiter-only lists.
 const employerNav: NavItem[] = [
+  // "Find My Match": the candidate swipe deck + Recommended Candidates, the page recruiters open on too.
+  { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
   { label: 'Things to do', short: 'To do', icon: Compass, view: 'home' },
+  { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'My JobMatches', icon: BriefcaseBusiness, anchor: 'td-roles' },
   { label: 'Selected Candidates', short: 'Candidates', icon: Users, view: 'selected' },
   { label: 'Saved', icon: BookmarkIcon, view: 'saved' },
-  { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
   { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
   { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
-  { label: 'Subscription', icon: CreditCard, view: 'billing' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: 'Use your chatbot here', short: 'Chatbot', icon: Bot, view: 'assistant' },
   { label: 'Feedback', icon: Lightbulb, view: 'feedback' },
+  { label: 'Subscription', icon: CreditCard, view: 'billing' },
 ];
 
 async function connectLinkedIn() {
@@ -410,7 +415,7 @@ function AdminWorkspace({ session, onExit }: { session: SessionUser; onExit: () 
 
 function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; onSwitchUser: (user: SessionUser) => void; onExit: () => void }) {
   // Candidates open the app on "Find My Match" (desktop and mobile); recruiters on Home.
-  const [view, setView] = useState<View>(session.role === 'candidate' ? 'match' : 'home');
+  const [view, setView] = useState<View>('match'); // both sides open on Find My Match
   const [data, setData] = useState<Bootstrap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -538,7 +543,9 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'matches') return <Matches data={data} navigate={navigate} onOpenMessages={onOpenMessages} />;
   if (view === 'match') return <main className="td-dashboard td-candidate td-match-page">{featureOn('findMatches')
     ? <FindMatches role={role === 'candidate' ? 'candidate' : 'employer'} data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Find My Match" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
-    : <NewMatchesSection data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Find My Match" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />}</main>;
+    : role === 'candidate'
+      ? <NewMatchesSection data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Find My Match" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
+      : <RecruiterMatchSection data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Find My Match" subtitle="Swipe right on candidates you want to meet. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />}</main>;
   if (view === 'assistant') return <ChatbotPage data={data} navigate={navigate} />;
   if (view === 'feedback') return <FeedbackPage data={data} />;
   if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;
@@ -982,31 +989,48 @@ function Meetings({ role, data, setData, onOpenMessages }: { role: Role; data: B
  * for — filtered by call.createdBy so a recruiter-proposed call (handled on
  * the Meetings page) doesn't get mixed in with an invite the candidate
  * actually initiated. */
+/** Coffee Invitations, both sides: invitations the other side sent you, and the ones you sent. */
 function CoffeeInvitations({ data, onOpenMessages }: { data: Bootstrap; onOpenMessages: (matchId: string) => void }) {
-  const invites = data.calls
-    .filter((call) => data.matches.some((match) => match.id === call.matchId && match.employerId === data.viewer.id && match.candidateId === call.createdBy))
-    .sort((a, b) => b.startAt - a.startAt);
-  return <div className="page">
-    <div className="page-title"><div><span className="overline">Real, in-person</span><h1>Coffee Invitations</h1><p>Every candidate who proactively invited you to a one-on-one coffee chat or call.</p></div></div>
-    {invites.length
-      ? <div className="meetings-list">{invites.map((call) => {
-        const match = data.matches.find((entry) => entry.id === call.matchId);
-        const event = { title: call.title, description: call.notes, startAt: call.startAt, durationMinutes: call.durationMinutes };
-        const upcoming = call.startAt >= Date.now();
-        return <div className="schedule-card" key={call.id}>
-          {match?.candidate.photo ? <img className="meeting-photo" src={match.candidate.photo} alt="" /> : <div><Coffee size={16} /></div>}
-          <section><span>{match?.candidate.name}{match?.job.title ? ` · ${match.job.title}` : ''}</span><strong>{call.title}</strong>
-            <p>{new Date(call.startAt).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {call.durationMinutes} min</p>
-          </section>
-          {upcoming && <div className="schedule-card-links">
-            <a href={googleCalendarUrl(event)} target="_blank" rel="noreferrer" title="Add to Google Calendar"><ExternalLink size={14} /> Google</a>
-            <a href={outlookCalendarUrl(event)} target="_blank" rel="noreferrer" title="Add to Outlook"><ExternalLink size={14} /> Outlook</a>
-            <a href={icsDataUrl(event)} download={`${call.title}.ics`} title="Download .ics"><Download size={14} /> .ics</a>
-          </div>}
-          <button className="meeting-btn" onClick={() => onOpenMessages(call.matchId)}>Open chat</button>
-        </div>;
-      })}</div>
-      : <EmptyRow>No candidate has invited you to a coffee chat yet.</EmptyRow>}
+  const candidate = data.viewer.role === 'candidate';
+  const mine = data.matches.filter((m) => (candidate ? m.candidateId : m.employerId) === data.viewer.id);
+  const byMatch = new Map(mine.map((m) => [m.id, m]));
+  const calls = data.calls.filter((c) => byMatch.has(c.matchId)).sort((a, b) => b.startAt - a.startAt);
+  const received = calls.filter((c) => c.createdBy !== data.viewer.id);
+  const sent = calls.filter((c) => c.createdBy === data.viewer.id);
+  const Card = ({ call }: { call: ScheduledCall }) => {
+    const match = byMatch.get(call.matchId);
+    const who = candidate ? (match?.employer?.name || match?.job?.company) : match?.candidate?.name;
+    const photo = candidate ? match?.employer?.photo : match?.candidate?.photo;
+    const event = { title: call.title, description: call.notes, startAt: call.startAt, durationMinutes: call.durationMinutes };
+    const upcoming = call.startAt >= Date.now() && !call.cancelledAt;
+    return <div className="schedule-card" key={call.id}>
+      {photo ? <img className="meeting-photo" src={photo} alt="" /> : <div><Coffee size={16} /></div>}
+      <section><span>{who}{match?.job?.title ? ` · ${match.job.title}` : ''}</span><strong>{call.title}</strong>
+        <p>{new Date(call.startAt).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {call.durationMinutes} min{call.cancelledAt ? <b className="meeting-cancelled"> · Cancelled</b> : !upcoming ? ' · Past' : ''}</p>
+      </section>
+      <div className="schedule-card-actions">
+        {upcoming && <>
+          <a className="meeting-chip" href={googleCalendarUrl(event)} target="_blank" rel="noreferrer" title="Add to Google Calendar"><ExternalLink size={13} /> Google</a>
+          <a className="meeting-chip" href={outlookCalendarUrl(event)} target="_blank" rel="noreferrer" title="Add to Outlook"><ExternalLink size={13} /> Outlook</a>
+          <a className="meeting-chip" href={icsDataUrl(event)} download={`${call.title}.ics`} title="Calendar file with phone alarms"><Download size={13} /> Phone alarm</a>
+        </>}
+        <button className="meeting-btn" onClick={() => onOpenMessages(call.matchId)}>Open chat</button>
+      </div>
+    </div>;
+  };
+  return <div className="page meetings-page">
+    <div className="page-title"><div><span className="overline">Real, in-person</span><h1>Coffee Invitations</h1>
+      <p>{candidate ? 'Hiring teams who invited you to a one-on-one coffee chat or call, and the invitations you sent.' : 'Candidates who proactively invited you to a one-on-one coffee chat or call, and the invitations you sent.'}</p></div></div>
+    <section className="td-section">
+      <DashboardTitle icon={Coffee} title="Invitations you received" subtitle={`${received.length} from ${candidate ? 'hiring teams' : 'candidates'}`} />
+      {received.length ? <div className="meetings-list">{received.map((c) => <Card call={c} key={c.id} />)}</div>
+        : <EmptyRow>{candidate ? 'No hiring team has invited you to a coffee chat yet.' : 'No candidate has invited you to a coffee chat yet.'}</EmptyRow>}
+    </section>
+    <section className="td-section">
+      <DashboardTitle icon={Send} title="Invitations you sent" subtitle={`${sent.length} sent`} />
+      {sent.length ? <div className="meetings-list">{sent.map((c) => <Card call={c} key={c.id} />)}</div>
+        : <EmptyRow>You have not sent a coffee invitation yet. Open a conversation and use “Let’s have a cup of coffee”.</EmptyRow>}
+    </section>
   </div>;
 }
 
@@ -1176,7 +1200,10 @@ function Analytics({ role, data }: { role: Role; data: Bootstrap }) {
     { label: 'Replied', value: otherReplied },
     { label: 'Interview +', value: interviewing },
   ];
-  return <div className="page"><div className="page-title"><div><span className="overline">{copy.overline}</span><h1>{copy.title}</h1><p>{copy.subtitle}</p></div><button className="ghost-button">All time <ChevronDown size={15} /></button></div><div className="analytics-grid"><Metric label="Mutual matches" value={String(totalMatches)} change="live" /><Metric label="In conversation" value={String(inConversation)} change={`${totalMatches ? Math.round((inConversation / totalMatches) * 100) : 0}% of matches`} /><Metric label={copy.responseLabel} value={`${responseRate}%`} change={`${otherReplied}/${inConversation} replied`} /><Metric label="Interviewing +" value={String(interviewing)} change="Interview & offer" /></div><div className="chart-grid"><section className="chart-card wide"><header><div><strong>{copy.funnelTitle}</strong><p>{copy.funnelSubtitle}</p></div><button><MoreHorizontal /></button></header><div className="bar-chart">{funnel.map((step) => <div key={step.label}><i style={{ height: `${totalMatches ? Math.max(2, (step.value / totalMatches) * 100) : 2}%` }} title={`${step.label}: ${step.value}`} /><span>{step.label} ({step.value})</span></div>)}</div></section><section className="chart-card"><header><div><strong>{copy.qualityTitle}</strong><p>{copy.qualitySubtitle}</p></div></header><div className="donut" style={{ background: scores.length ? `conic-gradient(var(--green) 0 ${excellentPct}%, #93c960 ${excellentPct}% ${excellentPct + goodPct}%, #dce9c6 ${excellentPct + goodPct}%)` : '#eef2ea' }}><div><strong>{scores.length ? avgScore : '–'}</strong><span>{scores.length ? 'avg. score' : 'no matches yet'}</span></div></div><div className="legend"><span><i className="excellent" />Excellent (85+) <b>{excellentPct}%</b></span><span><i className="good" />Good (70–84) <b>{goodPct}%</b></span><span><i className="fair" />Developing <b>{fairPct}%</b></span></div></section></div>{(role !== 'candidate' || data.viewer.preferences?.salary?.min === undefined) && <section className="insight-callout"><div><Sparkles /></div><section><span>Opportunity insight</span><h3>{copy.insightTitle}</h3><p>{copy.insightBody}</p></section><button className="secondary-button">{copy.insightAction}</button></section>}<AiAnalystInline data={data} />{role === 'candidate' ? <CandidateReport data={data} /> : <RecruiterReport data={data} />}</div>; }
+  const summary: [string, string | number][] = [['Mutual matches', totalMatches], ['In conversation', inConversation], [copy.responseLabel, `${responseRate}%`], ['Interviewing +', interviewing], ['Average fit', scores.length ? `${avgScore}%` : ''], ...funnel.map((f): [string, number] => [`Funnel: ${f.label}`, f.value])];
+  const downloadCsv = () => downloadText(`jobsmatchnow-report-${new Date().toISOString().slice(0, 10)}.csv`, reportCsv(role === 'candidate' ? 'candidate' : 'employer', data, summary));
+  return <div className="page report-page"><div className="page-title"><div><span className="overline">{copy.overline}</span><h1>{copy.title}</h1><p>{copy.subtitle}</p></div>
+    <div className="report-actions no-print"><button className="secondary-button small" onClick={downloadCsv}><Download size={15} /> Download CSV</button><button className="secondary-button small" onClick={() => window.print()}><Download size={15} /> Save as PDF</button><button className="ghost-button">All time <ChevronDown size={15} /></button></div></div><div className="analytics-grid"><Metric label="Mutual matches" value={String(totalMatches)} change="live" /><Metric label="In conversation" value={String(inConversation)} change={`${totalMatches ? Math.round((inConversation / totalMatches) * 100) : 0}% of matches`} /><Metric label={copy.responseLabel} value={`${responseRate}%`} change={`${otherReplied}/${inConversation} replied`} /><Metric label="Interviewing +" value={String(interviewing)} change="Interview & offer" /></div><div className="chart-grid"><section className="chart-card wide"><header><div><strong>{copy.funnelTitle}</strong><p>{copy.funnelSubtitle}</p></div><button><MoreHorizontal /></button></header><div className="bar-chart">{funnel.map((step) => <div key={step.label}><i style={{ height: `${totalMatches ? Math.max(2, (step.value / totalMatches) * 100) : 2}%` }} title={`${step.label}: ${step.value}`} /><span>{step.label} ({step.value})</span></div>)}</div></section><section className="chart-card"><header><div><strong>{copy.qualityTitle}</strong><p>{copy.qualitySubtitle}</p></div></header><div className="donut" style={{ background: scores.length ? `conic-gradient(var(--green) 0 ${excellentPct}%, #93c960 ${excellentPct}% ${excellentPct + goodPct}%, #dce9c6 ${excellentPct + goodPct}%)` : '#eef2ea' }}><div><strong>{scores.length ? avgScore : '–'}</strong><span>{scores.length ? 'avg. score' : 'no matches yet'}</span></div></div><div className="legend"><span><i className="excellent" />Excellent (85+) <b>{excellentPct}%</b></span><span><i className="good" />Good (70–84) <b>{goodPct}%</b></span><span><i className="fair" />Developing <b>{fairPct}%</b></span></div></section></div>{(role !== 'candidate' || data.viewer.preferences?.salary?.min === undefined) && <section className="insight-callout"><div><Sparkles /></div><section><span>Opportunity insight</span><h3>{copy.insightTitle}</h3><p>{copy.insightBody}</p></section><button className="secondary-button">{copy.insightAction}</button></section>}<AiAnalystInline data={data} />{role === 'candidate' ? <CandidateReport data={data} /> : <RecruiterReport data={data} />}</div>; }
 
 function timeAgo(ts: number) {
   const s = Math.floor((Date.now() - ts) / 1000);

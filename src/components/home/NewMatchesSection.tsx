@@ -57,7 +57,7 @@ function SalaryLine({ job }: { job: Job }) {
   </span>;
 }
 
-function PhoneBrand() {
+export function PhoneBrand() {
   return <span className="nm-brand"><span className="brand-heart-mark nm-logo" aria-hidden="true" /><span className="brand-wordmark"><b>Jobs</b><b>Match</b><b>Now</b></span></span>;
 }
 
@@ -118,10 +118,12 @@ function Face({ photo, name, fallback }: { photo?: string; name: string; fallbac
 export function PhoneMatch({ match, viewer, onTalk, onKeepSwiping }: { match: JobMatch; viewer: Person; onTalk: () => void; onKeepSwiping: () => void }) {
   const talkRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { talkRef.current?.focus(); }, []);
-  const other = match.employer;
-  const otherName = other?.name || match.job?.company || 'the team';
-  const otherLine = other ? (other.title || (match.job ? `Recruiter at ${match.job.company}` : '')) : match.job?.title || '';
-  const me = match.candidate || viewer;
+  // Works for both sides: a recruiter sees the candidate as "the other", a candidate sees the team.
+  const asRecruiter = viewer.role === 'employer';
+  const other = asRecruiter ? match.candidate : match.employer;
+  const otherName = other?.name || (asRecruiter ? 'the candidate' : match.job?.company || 'the team');
+  const otherLine = asRecruiter ? (other?.title || '') : other ? (other.title || (match.job ? `Recruiter at ${match.job.company}` : '')) : match.job?.title || '';
+  const me = asRecruiter ? viewer : (match.candidate || viewer);
   return <motion.div
     className="nm-match" role="dialog" aria-modal="false" aria-labelledby="nm-match-title"
     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -133,7 +135,7 @@ export function PhoneMatch({ match, viewer, onTalk, onKeepSwiping }: { match: Jo
     <div className="nm-match-faces">
       <div><Face photo={me.photo || viewer.photo} name={me.name || viewer.name} /><strong>{me.name || viewer.name}</strong>{(me.title || viewer.title) && <small>{me.title || viewer.title}</small>}</div>
       <span className="nm-match-heart" aria-hidden="true"><Heart size={20} fill="currentColor" /></span>
-      <div><Face photo={other?.photo} name={otherName} fallback={match.job ? <CompanyLogoMark job={ownLogo(match.job)} /> : undefined} /><strong>{otherName}</strong>{otherLine && <small>{otherLine}</small>}</div>
+      <div><Face photo={other?.photo} name={otherName} fallback={!asRecruiter && match.job ? <CompanyLogoMark job={ownLogo(match.job)} /> : undefined} /><strong>{otherName}</strong>{otherLine && <small>{otherLine}</small>}</div>
     </div>
     <button ref={talkRef} type="button" className="nm-talk" onClick={onTalk}><MessageCircle size={18} /> Let&rsquo;s Talk</button>
     <button type="button" className="nm-keep" onClick={onKeepSwiping}><ChevronsRight size={18} /> Keep swiping</button>
@@ -142,12 +144,16 @@ export function PhoneMatch({ match, viewer, onTalk, onKeepSwiping }: { match: Jo
 
 /** Direct message (premium, $5/month for 10). Payments for candidates aren't open: the paid button
  *  records interest; the free path sends the note with a Super Like (it opens the chat only on a match). */
-/** "Forward to a friend": share the role by the phone's share sheet, WhatsApp, email or a copied link. */
-export function ForwardSheet({ job, onClose }: { job: Job; onClose: () => void }) {
+/** Forward text for a role (candidate side). */
+export function jobForward(job: Job) {
+  const pay = !job.salaryHidden && job.salary ? job.salary : 'salary shown up front';
+  return { subject: `A role for you: ${job.title} at ${job.company}`, text: `Thought of you: ${job.title} at ${job.company} (${job.workMode || 'role'}, ${pay}). It's on JobsMatchNow: you both have to like each other before a chat opens.` };
+}
+
+/** "Forward to a friend": share by the phone's share sheet, WhatsApp, email or a copied link. */
+export function ForwardSheet({ subject, text, note = 'Your friend signs up for free to see it. Nothing about you is shared.', onClose }: { subject: string; text: string; note?: string; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   const url = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : 'https://jobsmatchnow.com/app/';
-  const pay = !job.salaryHidden && job.salary ? job.salary : 'salary shown up front';
-  const text = `Thought of you: ${job.title} at ${job.company} (${job.workMode || 'role'}, ${pay}). It's on JobsMatchNow: you both have to like each other before a chat opens.`;
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
   const copy = async () => { try { await navigator.clipboard.writeText(`${text}\n${url}`); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ } };
   return <div className="modal-scrim" onClick={onClose}>
@@ -156,45 +162,45 @@ export function ForwardSheet({ job, onClose }: { job: Job; onClose: () => void }
       <h2><span className="nm-fwd-ico big"><Forward size={22} /><User size={12} /></span> Forward to a friend</h2>
       <p className="nm-forward-text">{text}</p>
       <div className="nm-forward-actions">
-        {canShare && <button type="button" className="primary-button small" onClick={() => void navigator.share({ title: `${job.title} at ${job.company}`, text, url }).catch(() => undefined)}><Forward size={14} /> Share…</button>}
+        {canShare && <button type="button" className="primary-button small" onClick={() => void navigator.share({ title: subject, text, url }).catch(() => undefined)}><Forward size={14} /> Share…</button>}
         <a className="secondary-button small" href={`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`} target="_blank" rel="noreferrer"><MessageCircle size={14} /> WhatsApp</a>
-        <a className="secondary-button small" href={`mailto:?subject=${encodeURIComponent(`A role for you: ${job.title} at ${job.company}`)}&body=${encodeURIComponent(`${text}\n\n${url}`)}`}><Mail size={14} /> Email</a>
+        <a className="secondary-button small" href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`${text}\n\n${url}`)}`}><Mail size={14} /> Email</a>
         <button type="button" className="secondary-button small" onClick={() => void copy()}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}</button>
       </div>
-      <small className="nm-forward-note">Your friend signs up for free to see the role. Nothing about you is shared.</small>
+      <small className="nm-forward-note">{note}</small>
     </div>
   </div>;
 }
 
-export function DirectMessageSheet({ job, viewerId, canLike, busy, onClose, onSendNote }: { job: Job; viewerId: string; canLike: boolean; busy: boolean; onClose: () => void; onSendNote: (note: string) => void }) {
+export function DirectMessageSheet({ job, toName, about, recruiter = false, viewerId, canLike, busy, onClose, onSendNote }: { job?: Job; toName?: string; about?: React.ReactNode; recruiter?: boolean; viewerId: string; canLike: boolean; busy: boolean; onClose: () => void; onSendNote: (note: string) => void }) {
   const [note, setNote] = useState('');
   const [interest, setInterest] = useState<'idle' | 'busy' | 'done'>('idle');
   const ask = async () => {
     setInterest('busy');
-    try { await api.registerInterest(viewerId, 'candidate-premium'); setInterest('done'); } catch { setInterest('idle'); }
+    try { await api.registerInterest(viewerId, recruiter ? 'direct-messages-plus' : 'candidate-premium'); setInterest('done'); } catch { setInterest('idle'); }
   };
   return <div className="modal-scrim" onClick={onClose}>
     <div className="ai-setup nm-dm" role="dialog" aria-modal="true" aria-label="Direct message" onClick={(e) => e.stopPropagation()}>
       <button type="button" className="fm-x" aria-label="Close" onClick={onClose}><X size={18} /></button>
       <span className="ai-badge">Premium</span>
-      <h2><Send size={20} /> Message {job.recruiter?.name || job.company}</h2>
-      <p>About <b>{job.title}</b> at {job.company}.</p>
-      <textarea className="nm-dm-input" rows={3} maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} placeholder="A short, specific note: why you and why this role." aria-label="Your message" />
+      <h2><Send size={20} /> Message {toName || job?.recruiter?.name || job?.company}</h2>
+      <p>{about ?? (job ? <>About <b>{job.title}</b> at {job.company}.</> : null)}</p>
+      <textarea className="nm-dm-input" rows={3} maxLength={280} value={note} onChange={(e) => setNote(e.target.value)} placeholder={recruiter ? 'A short, specific note: why this candidate and why your role.' : 'A short, specific note: why you and why this role.'} aria-label="Your message" />
       <small className="tp-muted-small">{note.length}/280</small>
       <div className="nm-dm-options">
         <div className="nm-dm-opt">
           <strong>Premium <span>$10 / month · 10 direct messages + 3 target roles</span></strong>
-          <small>Your message reaches the team right away, before any match.</small>
+          <small>Your message reaches {recruiter ? 'the candidate' : 'the team'} right away, before any match.</small>
           {interest === 'done' ? <p className="tp-thanks"><Check size={15} /> Saved — we'll tell you when Premium opens. Nothing was charged.</p>
             : <button type="button" className="fm-black" disabled={interest === 'busy'} onClick={() => void ask()}>{interest === 'busy' ? 'Saving…' : 'Get Premium — notify me'}</button>}
         </div>
         <div className="nm-dm-opt free">
           <strong>Free today: send it with a Super Like</strong>
-          <small>The team sees your Super Like now; your note opens the chat if they like you back.</small>
+          <small>{recruiter ? 'The candidate' : 'The team'} sees your Super Like now; your note opens the chat if they like you back.</small>
           <button type="button" className="secondary-button" disabled={!note.trim() || !canLike || busy} onClick={() => onSendNote(note.trim())}><Star size={14} /> Super Like + note</button>
         </div>
       </div>
-      <p className="ai-privacy">Payments for candidates are not open yet: the premium button records your interest only.</p>
+      <p className="ai-privacy">Payments for direct messages are not open yet: the premium button records your interest only.</p>
     </div>
   </div>;
 }
@@ -332,7 +338,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
       </aside>
     </div>
 
-    {forwardOpen && job && <ForwardSheet job={job} onClose={() => setForwardOpen(false)} />}
+    {forwardOpen && job && <ForwardSheet {...jobForward(job)} onClose={() => setForwardOpen(false)} />}
     {dmOpen && job && <DirectMessageSheet job={job} viewerId={data.viewer.id} canLike={canLike} busy={busy} onClose={() => setDmOpen(false)}
       onSendNote={(note) => { const target = job; setDmOpen(false); if (picked) { setPicked(null); setLikedFromList((ids) => [...ids, target.id]); } void commitSwipe('like', target, { superLike: true, note }); }} />}
     <AnimatePresence>{screeningFor && <ScreeningModal job={screeningFor} onCancel={() => setScreeningFor(null)} onSubmit={(answers) => { const target = screeningFor; setScreeningFor(null); if (target.id !== current?.id) setLikedFromList((ids) => [...ids, target.id]); void commitSwipe('like', target, { answers }); }} />}</AnimatePresence>
