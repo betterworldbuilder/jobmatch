@@ -146,6 +146,7 @@ function makeCandidate(i, now) {
     documents: { coverLetter: `Hi! I'm ${first}, a ${title.toLowerCase()} in ${place.city}. I've spent ${lv.years} years shipping ${s[0]} products and I work best with US teams that write things down. I can overlap 4+ hours with US time zones.` },
     presentation: `I build ${s[0]} products people actually use. I like small teams, clear goals and shipping every week. Looking for a ${remote ? 'remote' : 'hybrid'} role with a US startup and at least 4 hours of overlap with US time zones.`,
     motto: ['Ship small, learn fast.', 'Write it down.', 'Make it work, then make it better.'][i % 3],
+    superPower: [`I can read a ${s[0]} codebase I have never seen and fix the bug in an hour.`, 'I explain hard technical ideas so anyone gets them on the first try.', 'I am the calm one when production is on fire.', `I automate the boring parts: if I do it twice, I script it.`][i % 4],
     mindset: ['Ownership', 'Clear writing', 'Bias for action', 'Curiosity'].slice(i % 2, (i % 2) + 3),
     humanSkills: ['Communication', 'Mentoring', 'Problem solving', 'Async collaboration'].slice(0, 3 + (i % 2)),
     workingPrefer: ['Async updates', 'Small teams', 'Clear goals', 'Code review culture'].slice(0, 3),

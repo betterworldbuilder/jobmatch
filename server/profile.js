@@ -61,6 +61,11 @@ export function applyCandidateProfile(user, body) {
       value: (v) => str(v, 120),
     }, 6)?.filter((channel) => channel.type && channel.value) || [];
   }
+  // "My super power": one thing the candidate is exceptionally good at, in their own words. '' clears it.
+  if (body.superPower !== undefined) {
+    const sp = String(body.superPower || '').trim().slice(0, 300);
+    if (sp) user.superPower = sp; else delete user.superPower;
+  }
   // Booking link (e.g. a Google Calendar appointment page): https only; '' clears it. Hidden until a match.
   if (body.calendarLink !== undefined) {
     const link = String(body.calendarLink || '').trim();

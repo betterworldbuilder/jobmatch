@@ -17,6 +17,16 @@ const DEMO_CANDIDATES = ['c-1', 'c-2', 'c-3', 'c-4', 'candidate-demo-2', 'candid
 
 const first = (name = '') => name.split(/\s+/)[0] || name;
 
+/** Demo "My super power" lines (mock, one per demo candidate in rotation). */
+export const SUPER_POWERS = [
+  'I turn a messy problem into a one-page plan the whole team understands.',
+  'I can debug a production issue at 2 a.m. and still explain it calmly the next morning.',
+  'I am very creative: I find the simple design nobody else saw.',
+  'I learn a new framework over a weekend and ship with it on Monday.',
+  'I make stakeholders who disagree leave the meeting agreeing.',
+  'I write code that the next person can read without asking me.',
+];
+
 function juniorTitle(title = '') {
   return title.replace(/^(Senior|Lead|Staff|Principal|Head of)\s+/i, '') || 'Engineer';
 }
@@ -46,6 +56,7 @@ function candidateFill(u, i) {
     workingPrefer: ['Async updates', 'Small teams', 'Clear goals'],
     workingAvoid: ['Endless meetings'],
     motto: 'Ship small, learn fast.',
+    superPower: SUPER_POWERS[i % SUPER_POWERS.length],
     favoriteSong: ['Viva la Vida — Coldplay', 'Blinding Lights — The Weeknd', 'Dynamite — BTS'][i % 3],
     contactChannels: [{ type: 'email', value: u.email }],
     privacy: { visibility: 'all', openToWork: true },

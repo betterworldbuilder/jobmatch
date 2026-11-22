@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { BadgeCheck, Brain, Briefcase, CalendarClock, CheckCircle2, Code2, Coffee, Download, FileText, Github, Globe, Hammer, Heart, Home, Languages, Link2, Lock, MapPin, MessageCircle, Music2, Pencil, Phone, Plane, PlusCircle, Quote, Send, ShieldCheck, Smartphone, Sparkles, Star, Target, User, Wallet, X, XCircle } from 'lucide-react';
-import { api } from '../../api';
+import { Award, Upload, Zap, BadgeCheck, Brain, Briefcase, CalendarClock, CheckCircle2, Code2, Coffee, Download, FileText, Github, Globe, Hammer, Heart, Home, Languages, Link2, Lock, MapPin, MessageCircle, Music2, Pencil, Phone, Plane, PlusCircle, Quote, Send, ShieldCheck, Smartphone, Sparkles, Star, Target, User, Wallet, X, XCircle } from 'lucide-react';
+import { api, apiBase } from '../../api';
 import { jobStatusText } from '../JobStatusPicker';
 import type { ContactChannel, MatchEvidence, Person } from '../../types';
 
@@ -49,7 +49,9 @@ const NAV = [
   { icon: Code2, label: 'My Skills', color: '#007AFF' },
   { icon: Hammer, label: 'What I Have Built', color: '#5856D6' },
   { icon: Target, label: 'My Dream Job', color: '#AF52DE' },
-  { icon: Star, label: 'What People Think About Me', color: '#FF2D55' },
+  { icon: Star, label: 'Recommendations', color: '#FF2D55' },
+  { icon: Award, label: 'Certifications', color: '#34C759' },
+  { icon: Zap, label: 'My Super Power', color: '#FFB800' },
 ];
 const LAST_CARD = NAV.length - 1;
 
@@ -59,7 +61,8 @@ const LAST_CARD = NAV.length - 1;
  * a recruiter viewing a candidate (match set → skill split + %, unlocked only
  * after a mutual match, so name and contacts stay masked until then).
  */
-const DEFAULT_ORDER = NAV.map((_, i) => i);
+// Card numbers: 0 Who I am, 1 Human Stack, 2 Skills, 3 Built, 4 Dream Job, 5 Recommendations, 6 Certifications, 7 Super Power.
+const DEFAULT_ORDER = [0, 1, 2, 3, 4, 6, 5, 7];
 
 /** `order` lists card numbers (NAV indexes) in display order; positions (initialCard, onActiveChange) follow that order. */
 export function CandidateCards({ person: p, match, onEdit, unlocked = false, visibilityInspector = false, initialCard = 0, onActiveChange, order = DEFAULT_ORDER }: { person: Person; match?: MatchEvidence; onEdit?: (step: number) => void; unlocked?: boolean; visibilityInspector?: boolean; initialCard?: number; onActiveChange?: (card: number) => void; order?: number[] }) {
@@ -133,6 +136,32 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
       setInviteContact('');
     } catch (e) { setInviteError(e instanceof Error ? e.message : 'Could not send that request'); }
     finally { setInviteSending(false); }
+  };
+  // Recommendation letters (owner uploads; matched recruiters open). Local list so uploads show at once.
+  const [recDocs, setRecDocs] = useState(p.documents?.recommendationDocs || []);
+  const [letterBusy, setLetterBusy] = useState(false);
+  const [letterError, setLetterError] = useState('');
+  const canOpenLetters = Boolean(onEdit) || unlocked;
+  const uploadLetter = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) { setLetterError('Files must be 10 MB or smaller'); return; }
+    setLetterBusy(true); setLetterError('');
+    try { const { doc } = await api.uploadRecommendationDoc(p.id, file); setRecDocs((prev) => [...prev, doc]); }
+    catch (e) { setLetterError(e instanceof Error ? e.message : 'Upload failed'); }
+    finally { setLetterBusy(false); }
+  };
+  const removeLetter = async (docId: string) => {
+    try { await api.deleteRecommendationDoc(p.id, docId); setRecDocs((prev) => prev.filter((d) => d.id !== docId)); }
+    catch (e) { setLetterError(e instanceof Error ? e.message : 'Could not remove it'); }
+  };
+  // My Super Power (owner edits inline).
+  const [power, setPower] = useState(p.superPower || '');
+  const [powerBusy, setPowerBusy] = useState(false);
+  const [powerSaved, setPowerSaved] = useState(false);
+  const savePower = async () => {
+    setPowerBusy(true);
+    try { await api.updateProfile(p.id, { superPower: power.trim() }); setPowerSaved(true); }
+    catch (e) { alert(e instanceof Error ? e.message : 'Could not save'); }
+    finally { setPowerBusy(false); }
   };
   const cancelInvite = async (id: string) => {
     await api.cancelRecommendationRequest(id, p.id);
@@ -235,8 +264,8 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
         {p.preferences?.workStyle?.length ? <><span className="tcard-sub">Work style</span><div className="skill-list soft">{p.preferences.workStyle.map((s) => <span key={s}>{s}</span>)}</div></> : null}
       </Card></div>,
 
-      /* ---------- Card 6 — What People Think About Me ---------- */
-      <div className="tcard-slide" key="people"><Card label="What People Think About Me" icon={Star} step={5} onEdit={onEdit}>
+      /* ---------- Card 6 — Recommendations (written + uploaded letters) ---------- */
+      <div className="tcard-slide" key="people"><Card label="Recommendations" icon={Star} step={5} onEdit={onEdit}>
         {avgRating !== undefined && <div className="tcard-rating"><strong>{avgRating.toFixed(1)}</strong><div className="tcard-stars">{[1, 2, 3, 4, 5].map((n) => <Star key={n} size={14} className={n <= Math.round(avgRating) ? 'on' : ''} />)}</div><small>{p.recommendations!.length} recommendation{p.recommendations!.length > 1 ? 's' : ''}</small></div>}
         {p.recommendations?.length ? <ul className="tcard-recs">{p.recommendations.map((r, i) => <li key={i}>
           <div className="trec-head">{r.photo && <img src={r.photo} alt="" />}<div><strong>{r.recruiterName}{r.verified && <BadgeCheck size={13} className="verified-mark" />}</strong>{(r.role || r.company) && <small>{[r.role, r.company].filter(Boolean).join(' · ')}</small>}{r.relationship && <em className="trec-rel">{r.relationship}</em>}</div></div>
@@ -245,6 +274,22 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
           <div className="trec-foot">{r.wouldWorkAgain && <span className="trec-again"><Heart size={11} /> Would work with again</span>}{r.date && <time>{r.date}</time>}</div>
           {r.recommenderEmail && <p className="trec-email"><Send size={11} /> {r.recommenderEmail}</p>}
         </li>)}</ul> : <p className="tcard-empty"><Coffee size={14} /> {onEdit ? 'Invite former recruiters or managers to recommend you (optional).' : 'No public recommendations yet.'}</p>}
+        {/* Recommendation letters (PDF, Word, image): owner + matched recruiters can open them. */}
+        {(onEdit || recDocs.length > 0) && <div className="tcard-letters">
+          <span className="tcard-sub">Recommendation letters</span>
+          {recDocs.length > 0 ? <ul className="tcard-letter-list">{recDocs.map((d) => <li key={d.id}>
+            <FileText size={14} />
+            {canOpenLetters ? <a href={api.recommendationDocUrl(p.id, d.id)} target="_blank" rel="noreferrer">{d.originalName}</a> : <span>{d.originalName}</span>}
+            <em>{d.ext.toUpperCase()} · {Math.max(1, Math.round(d.size / 1024))} KB</em>
+            {onEdit && <button type="button" onClick={() => void removeLetter(d.id)} aria-label={`Remove ${d.originalName}`}><X size={12} /></button>}
+          </li>)}</ul> : <p className="tcard-empty">Upload letters from former managers or clients. Recruiters can read them after a mutual match.</p>}
+          {!canOpenLetters && recDocs.length > 0 && <p className="tcard-contact locked"><Lock size={13} /> Letters open after a mutual match</p>}
+          {onEdit && recDocs.length < 5 && <label className="tcard-invite-btn tcard-upload">
+            <input type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadLetter(f); e.target.value = ''; }} />
+            {letterBusy ? 'Uploading…' : <><Upload size={13} /> Upload a letter (PDF, Word or image)</>}
+          </label>}
+          {letterError && <p className="tcard-invite-error">{letterError}</p>}
+        </div>}
         {onEdit && <div className="tcard-invite">
           <span className="tcard-sub">Invite a recommender</span>
           <div className="tcard-invite-row">
@@ -255,6 +300,23 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
           {pendingRequests.length > 0 && <ul className="tcard-invite-list">{pendingRequests.map((r) => <li key={r.id}><span>{r.contact}</span><button type="button" onClick={() => void cancelInvite(r.id)} aria-label={`Cancel request to ${r.contact}`}><X size={12} /></button></li>)}</ul>}
         </div>}
       </Card></div>,
+
+      /* ---------- Card 7 — Certifications ---------- */
+      <div className="tcard-slide" key="certs"><Card label="Certifications" icon={Award} step={1} onEdit={onEdit}>
+        {p.certifications?.length ? <ul className="tcard-certs">{p.certifications.map((c) => <li key={c}><Award size={15} /><span>{c}</span></li>)}</ul>
+          : <p className="tcard-empty">{onEdit ? 'Add certifications (AWS, Google, Scrum, language tests…) with the pencil.' : 'No certifications listed.'}</p>}
+      </Card></div>,
+
+      /* ---------- Card 8 — My Super Power ---------- */
+      <div className="tcard-slide" key="power"><Card label="My Super Power" icon={Zap} tone="power">
+        {onEdit ? <div className="tcard-power-edit">
+          <p className="tcard-power-hint">The one thing you are exceptionally good at, in your own words. For example: “I’m very creative”, “I can code blindfolded”, “I calm down any angry customer in 5 minutes”.</p>
+          <textarea value={power} maxLength={300} rows={4} onChange={(e) => { setPower(e.target.value); setPowerSaved(false); }} placeholder="My super power is…" aria-label="My super power" />
+          <div className="tcard-power-row"><small>{power.length}/300</small>
+            <button type="button" className="tcard-invite-btn" disabled={powerBusy || power.trim() === (p.superPower || '')} onClick={() => void savePower()}>{powerBusy ? 'Saving…' : powerSaved ? 'Saved' : 'Save'}</button></div>
+        </div>
+          : p.superPower ? <p className="tcard-power"><Zap size={20} /> {p.superPower}</p> : <p className="tcard-empty">No super power shared yet.</p>}
+      </Card></div>,
       ][i])}
     </div>
 
@@ -262,5 +324,11 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
     <nav className="tcards-nav" aria-label="Profile cards">
       {order.map((card) => NAV[card]).map((item, i) => { const Icon = item.icon; return <button key={item.label} className={i === active ? 'on' : ''} style={{ ['--nav-c' as string]: item.color }} onClick={() => goTo(i)} aria-label={item.label} aria-current={i === active ? 'page' : undefined}><Icon size={16} /><span>{item.label}</span><i /></button>; })}
     </nav>
+    {/* Download the candidate's resume: owner and matched recruiters (server checks the same rule). */}
+    {p.documents?.resume && <div className="tcards-resume">
+      {canOpenLetters
+        ? <a className="primary-button small" href={`${apiBase}/api/users/${encodeURIComponent(p.id)}/resume/original`} download={p.documents.resume.originalName}><Download size={15} /> Download {onEdit ? 'my' : 'candidate'} resume</a>
+        : <span className="tcard-contact locked"><Lock size={13} /> Resume download unlocks after a mutual match</span>}
+    </div>}
   </div>;
 }

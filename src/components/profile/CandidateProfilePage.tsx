@@ -8,10 +8,13 @@ import { DemoBadge } from '../DemoBadge';
 import { ContactBar } from '../home/TodayPanel';
 
 // On your own profile page "My Dream Job" comes first (founder request), then the usual cards.
-// ORDER lists CandidateCards' card numbers (0 Who I am, 1 Human Stack, 2 Skills, 3 Built, 4 Dream Job, 5 People).
-const ORDER = [4, 0, 1, 2, 3, 5];
-// Card number -> wizard step. Must stay in sync with the step= props on each <Card> in CandidateCards.tsx.
-const CARD_STEP = [0, 3, 1, 6, 2, 5];
+// ORDER lists CandidateCards' card numbers (0 Who I am, 1 Human Stack, 2 Skills, 3 Built, 4 Dream Job,
+// 5 Recommendations, 6 Certifications, 7 My Super Power).
+// Second row: Certifications · Recommendations · My Super Power (founder layout, 2026-11-22).
+const ORDER = [4, 0, 1, 2, 3, 6, 5, 7];
+// Card number -> wizard step. Must stay in sync with the step= props on each <Card> in CandidateCards.tsx
+// (6 Certifications live in step 1; 7 Super Power is edited on the card itself → Human stack step).
+const CARD_STEP = [0, 3, 1, 6, 2, 5, 1, 4];
 const EDIT_STEPS = ORDER.map((card) => CARD_STEP[card]);
 
 export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, onCardChange, onDeleteProfile, matches = [], onViewerSaved, onOpenMessages, onReload }: { viewer: Person; jobs: Job[]; onEdit: (step: number) => void; initialCard?: number; onCardChange?: (card: number) => void; onDeleteProfile?: () => Promise<void>; matches?: JobMatch[]; onViewerSaved?: (viewer: Person) => void; onOpenMessages?: (matchId: string) => void; onReload?: () => void }) {

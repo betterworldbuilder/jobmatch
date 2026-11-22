@@ -1278,6 +1278,86 @@ app.get('/api/users/:id/resume/original', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// ---------------------------------------------------------------------------
+// Recommendation letters: PDF, Word or image files a candidate uploads to the
+// Recommendations card. Same access rule as the full resume: the owner and
+// recruiters with a mutual match can open them; others see only that they exist.
+// The file type comes from the bytes, never from the client's Content-Type.
+// ---------------------------------------------------------------------------
+const MAX_REC_DOCS = 5;
+function sniffRecDoc(buf) {
+  const head = buf.subarray(0, 12);
+  if (head.subarray(0, 4).toString('latin1') === '%PDF') return { ext: 'pdf', mime: 'application/pdf', inline: true };
+  if (head[0] === 0x89 && head.subarray(1, 4).toString('latin1') === 'PNG') return { ext: 'png', mime: 'image/png', inline: true };
+  if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return { ext: 'jpg', mime: 'image/jpeg', inline: true };
+  if (head.subarray(0, 4).toString('latin1') === 'RIFF' && head.subarray(8, 12).toString('latin1') === 'WEBP') return { ext: 'webp', mime: 'image/webp', inline: true };
+  if (head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04) return { ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', inline: false };
+  if (head[0] === 0xd0 && head[1] === 0xcf && head[2] === 0x11 && head[3] === 0xe0) return { ext: 'doc', mime: 'application/msword', inline: false };
+  return null;
+}
+const publicRecDoc = (userId, d) => ({ id: d.id, originalName: d.originalName, ext: d.ext, size: d.size, uploadedAt: d.uploadedAt, url: `/api/users/${userId}/recommendation-docs/${d.id}` });
+
+app.post('/api/users/:id/recommendation-docs', uploadLimiter, express.raw({ type: () => true, limit: '10mb' }), async (req, res, next) => {
+  try {
+    requireSelf(req, req.params.id);
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) throw new ValidationError('file', 'Empty upload');
+    const kind = sniffRecDoc(req.body);
+    if (!kind) { const error = new Error('Upload a PDF, Word document (.docx/.doc) or image (PNG, JPG, WebP)'); error.status = 415; throw error; }
+    const originalName = decodeURIComponent(String(req.headers['x-filename'] || `recommendation.${kind.ext}`)).replace(/[/\\\r\n"]/g, '_').slice(0, 160);
+    const id = crypto.randomUUID();
+    const storedName = `${req.params.id}-rec-${id}.${kind.ext}`;
+    const doc = await store.transaction((db) => {
+      const item = db.users.find((entry) => entry.id === req.params.id);
+      if (!item) { const error = new Error('User not found'); error.status = 404; throw error; }
+      assertDemoActor(req, db, item.id);
+      if (item.role !== 'candidate') { const error = new Error('Only candidates upload recommendation letters'); error.status = 403; throw error; }
+      const docs = item.documents?.recommendationDocs || [];
+      if (docs.length >= MAX_REC_DOCS) { const error = new Error(`Up to ${MAX_REC_DOCS} recommendation letters`); error.status = 400; throw error; }
+      const meta = { id, originalName, storedName, ext: kind.ext, mime: kind.mime, size: req.body.length, uploadedAt: Date.now() };
+      item.documents = { ...(item.documents || {}), recommendationDocs: [...docs, meta] };
+      return meta;
+    });
+    await fs.promises.writeFile(path.join(RESUME_DIR, storedName), req.body);
+    await mirror(path.join(RESUME_DIR, storedName));
+    res.status(201).json({ doc: publicRecDoc(req.params.id, doc) });
+  } catch (error) { next(error); }
+});
+
+app.get('/api/users/:id/recommendation-docs/:docId', async (req, res, next) => {
+  try {
+    const db = await store.read();
+    const user = db.users.find((entry) => entry.id === req.params.id);
+    const doc = user?.documents?.recommendationDocs?.find((d) => d.id === req.params.docId);
+    if (!doc) { const error = new Error('Not found'); error.status = 404; throw error; }
+    const session = authSession(req);
+    if (!fullResumeAccess(db, session?.sub, req.params.id)) { const error = new Error('Recommendation letters open after a mutual match'); error.status = 403; throw error; }
+    const kind = sniffRecDoc(await fs.promises.readFile(path.join(RESUME_DIR, doc.storedName)).catch(() => Buffer.alloc(0)));
+    if (!kind) { const error = new Error('File missing'); error.status = 404; throw error; }
+    res.setHeader('Content-Type', kind.mime);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', `${kind.inline ? 'inline' : 'attachment'}; filename="${encodeURIComponent(doc.originalName)}"`);
+    res.sendFile(path.join(RESUME_DIR, doc.storedName));
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/users/:id/recommendation-docs/:docId', async (req, res, next) => {
+  try {
+    requireSelf(req, req.params.id);
+    const removed = await store.transaction((db) => {
+      const item = db.users.find((entry) => entry.id === req.params.id);
+      if (!item) { const error = new Error('User not found'); error.status = 404; throw error; }
+      assertDemoActor(req, db, item.id);
+      const docs = item.documents?.recommendationDocs || [];
+      const doc = docs.find((d) => d.id === req.params.docId);
+      if (!doc) { const error = new Error('Not found'); error.status = 404; throw error; }
+      item.documents = { ...item.documents, recommendationDocs: docs.filter((d) => d !== doc) };
+      return doc;
+    });
+    await fs.promises.unlink(path.join(RESUME_DIR, removed.storedName)).catch(() => undefined);
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
 // Auto-fill the candidate profile from the uploaded resume's extracted text.
 // Returns parsed fields for the wizard to pre-fill; never persisted here.
 app.post('/api/users/:id/resume/autofill', async (req, res, next) => {

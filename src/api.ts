@@ -1,4 +1,4 @@
-import type { AdminKpi, ConnectorKey, IntegrationStatus, WebAnalyticsReport } from './types';
+import type { AdminKpi, ConnectorKey, IntegrationStatus, RecommendationDoc, WebAnalyticsReport } from './types';
 import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewKit, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
@@ -47,6 +47,14 @@ export const api = {
     if (!response.ok) throw new Error(body.error || 'Upload failed');
     return body;
   },
+  uploadRecommendationDoc: async (userId: string, file: File): Promise<{ doc: RecommendationDoc & { url: string } }> => {
+    const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/recommendation-docs`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'Upload failed');
+    return body;
+  },
+  deleteRecommendationDoc: (userId: string, docId: string) => request<{ ok: boolean }>(`/api/users/${encodeURIComponent(userId)}/recommendation-docs/${encodeURIComponent(docId)}`, { method: 'DELETE' }),
+  recommendationDocUrl: (userId: string, docId: string) => `${apiBase}/api/users/${encodeURIComponent(userId)}/recommendation-docs/${encodeURIComponent(docId)}`,
   uploadResumeThumbnail: async (userId: string, blob: Blob): Promise<void> => {
     await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/resume/thumbnail`, { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: blob });
   },

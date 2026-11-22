@@ -1,6 +1,8 @@
 export type Role = 'candidate' | 'employer' | 'admin';
 export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match';
 export type EmployerKind = 'company' | 'headhunter';
+/** A recommendation letter the candidate uploaded (PDF, Word or image). Opens for matched recruiters only. */
+export interface RecommendationDoc { id: string; originalName: string; ext: string; size: number; uploadedAt: number }
 /** The member's own job status (never sent to other members). */
 export type JobStatusKind = 'open' | 'waiting' | 'signing' | 'hired' | 'contract';
 export interface JobStatus { kind: JobStatusKind; until?: string; role?: string; company?: string; recruiter?: string; matchId?: string; updatedAt?: number }
@@ -50,6 +52,8 @@ export interface Person {
   workAuthorization?: string; visaSponsorship?: boolean; pronouns?: string;
   languageDetail?: LanguageTag[]; yearsExperience?: number; seniority?: Seniority; skillsDetail?: SkillTag[];
   industries?: string[]; workExperience?: WorkExperience[]; education?: Education[]; certifications?: string[];
+  /** "My super power": what the candidate is exceptionally good at, in their own words (≤ 300 chars). */
+  superPower?: string;
   links?: { github?: string; portfolio?: string; website?: string; linkedin?: string; appStore?: string; playStore?: string };
   /** Links to articles, papers, or talks — shown on the "What I Have Built" card. */
   publications?: string[];
@@ -57,7 +61,7 @@ export interface Person {
   interests?: string[]; motto?: string; favoriteSong?: string; recommendations?: Recommendation[];
   /** Pending "please recommend me" invites sent to a LinkedIn profile or email — private, owner-only. */
   recommendationRequests?: RecommendationRequest[];
-  preferences?: CandidatePreferences; documents?: { resume?: ResumeMeta; coverLetter?: string }; privacy?: PrivacySettings;
+  preferences?: CandidatePreferences; documents?: { resume?: ResumeMeta; coverLetter?: string; recommendationDocs?: RecommendationDoc[] }; privacy?: PrivacySettings;
   /** Named presets of title/skills/desired-roles a candidate can snapshot and
    * switch between — e.g. a "Frontend Engineer" persona vs a "Product
    * Manager" one — so the same account can present differently per job type. */
