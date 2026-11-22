@@ -33,6 +33,9 @@
   .tp-cal a:hover, .nm-carousel-nav button:hover { border-color:#0a66c2; }
   .plan-one-icon { background:#eaf3fd; }
 
+  /* Pricing bands: candidates in pink (founder, 2026-11-22); recruiters follow the accent (LinkedIn blue). */
+  #pricing .pricing-candidates .pricing-side-tag { background:linear-gradient(135deg,#fd267a,#ff5a3c); }
+
   /* Recruiter home: the role title had no room next to the "Created" chip; the chip now sits on its own line. */
   .td-role-head { grid-template-columns:minmax(0,1fr) 20px; row-gap:6px; }
   .td-role-head > .job-header-badge { grid-column:1; grid-row:1; min-width:0; }
