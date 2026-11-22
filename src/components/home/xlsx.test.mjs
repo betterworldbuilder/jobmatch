@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { crc32 } from 'node:zlib';
-import { buildXlsx } from './xlsx.ts';
+import { buildXlsx } from '../../lib/xlsx.ts';
 
 /* The .xlsx writer produces a valid zip: signatures, 6 parts, CRCs that match, escaped text. */
 test('xlsx: valid stored zip with the six parts and correct CRCs', () => {
