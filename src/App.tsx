@@ -272,7 +272,10 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
   return <main className="landing">
     <header className={`landing-header${banner !== 'image' ? ' has-brand' : ''}`}>
       {banner !== 'image' && <nav className="landing-nav"><Brand /></nav>}
-      {banner !== 'image' && <nav className="landing-subnav"><a href="#how">How it works</a><a href="#compare">Why JobsMatchNow</a><a href="#trust">Fewer steps</a></nav>}
+      {/* Phones (founder, 2026-11-22): "Why JobsMatchNow" opens the problems we solve, "So what?" the benefits. */}
+      {banner !== 'image' && (isPhone
+        ? <nav className="landing-subnav"><a href="#how">How it works</a><a href="#problem">Why JobsMatchNow</a><a href="#compare">So what?</a></nav>
+        : <nav className="landing-subnav"><a href="#how">How it works</a><a href="#compare">Why JobsMatchNow</a><a href="#trust">Fewer steps</a></nav>)}
     </header>
     {linkedinState && <div className="integration-notice">{linkedinState === 'connected' ? 'LinkedIn connected. Your professional identity is ready to use.' : 'Add LinkedIn app credentials to enable live account connection. The demo remains available.'}<button onClick={() => history.replaceState({}, '', '/')}>×</button></div>}
     {banner === 'alt' ? <HeroAlt onRegister={openRegister} onLogin={openLogin} />
