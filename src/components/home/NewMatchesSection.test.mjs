@@ -32,7 +32,7 @@ test('renders the section, the deck region with a real counter and the 4 deck bu
   assert.match(html, /Matches your React, TypeScript, Node · 91%/);
   assert.match(html, /6 km away/);
   // The role's pages live inside the card now (founder, 2026-11-22): pager instead of a "Job details" button.
-  assert.match(html, /Role summary <span>· 1\/4<\/span>/);
+  assert.match(html, /Summary <span>· 1\/3<\/span>/);
   assert.match(html, /aria-label="Next: Job description"/);
 });
 
@@ -88,17 +88,17 @@ test('renders the title row passed by the home page', async () => {
   assert.match(html, /<header>Look for new matches<\/header>/);
 });
 
-test('card photo: cover image first, then the hiring contact photo; third-party logos are not shown', async () => {
+test('no role photos: the recruiter shows as a small ID stamp; third-party logos are not shown', async () => {
   const { mod } = await loadTsx(new URL('./NewMatchesSection.tsx', import.meta.url));
-  assert.equal(mod.cardPhoto(job('a', 1, { coverImage: '/uploads/c.jpg', recruiter: { photo: 'https://x/p.jpg' } })), '/uploads/c.jpg');
-  assert.equal(mod.cardPhoto(job('a', 1, { recruiter: { photo: 'https://x/p.jpg' } })), 'https://x/p.jpg');
+  assert.equal(mod.cardPhoto(job('a', 1, { coverImage: '/uploads/c.jpg', recruiter: { photo: 'https://x/p.jpg' } })), '', 'no full-card photo (founder, 2026-11-22)');
   assert.equal(mod.cardPhoto(job('a', 1)), '');
   assert.equal(mod.ownLogo(job('a', 1, { companyLogo: 'https://logo.clearbit.com/aws.amazon.com' })).companyLogo, undefined);
   assert.equal(mod.ownLogo(job('a', 1, { companyLogo: '/uploads/logo.png' })).companyLogo, '/uploads/logo.png');
   const html = await render(baseData([job('a', 70, { companyLogo: 'https://logo.clearbit.com/aws.amazon.com', recruiter: { name: 'Kim Le', title: 'Talent lead', photo: 'https://x/kim.jpg' } }), job('b', 60, { companyLogo: 'https://logo.clearbit.com/aws.amazon.com' })]));
   assert.ok(!/clearbit/.test(html), 'no third-party logo image');
-  assert.match(html, /kim\.jpg/);
-  assert.match(html, /Hiring: Kim Le · Talent lead/);
+  assert.match(html, /class="rp-stamp"[^>]*>.*kim\.jpg/s, 'recruiter photo as an ID stamp');
+  assert.match(html, /Hiring: <b>Kim Le<\/b> · Talent lead/);
+  assert.match(html, /See recruiter profile/);
 });
 
 test('"It\'s a Match!" in the phone: both faces, heart, Let\'s Talk and Keep swiping, real names only', async () => {

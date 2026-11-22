@@ -263,7 +263,10 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
           <Field label="Employment type" required><Segmented options={EMPLOYMENT_TYPES} value={form.type as typeof EMPLOYMENT_TYPES[number] | undefined} onChange={(type) => patch({ type })} /></Field>
           <Field label="Work mode" required><Segmented options={WORK_MODES} value={form.workMode as typeof WORK_MODES[number] | undefined} onChange={(workMode) => patch({ workMode })} /></Field>
         </div>
-        <Field label="Contract duration (optional)" hint="Shown on the role's first page, e.g. “6 months”, “12 months, renewable” or “Permanent”."><TextInput value={form.contractDuration} onChange={(e) => patch({ contractDuration: e.target.value })} placeholder="e.g. 6 months" maxLength={40} /></Field>
+        <div className="wz-row">
+          <Field label="Contract duration (optional)" hint="Shown on the role's first page, e.g. “6 months”, “12 months, renewable” or “Permanent”."><TextInput value={form.contractDuration} onChange={(e) => patch({ contractDuration: e.target.value })} placeholder="e.g. 6 months" maxLength={40} /></Field>
+          <Field label="Start date (optional)" hint="Shown on the role's first page, e.g. “As soon as possible”, “1 Feb 2027”."><TextInput value={form.startDate} onChange={(e) => patch({ startDate: e.target.value })} placeholder="e.g. As soon as possible" maxLength={40} /></Field>
+        </div>
         {form.workMode === 'Remote' ? <>
           <Field label="Remote scope" required hint="Worldwide matches everyone; within-country limits to candidates in one country.">
             <Segmented options={['worldwide', 'country'] as const} value={form.remoteScope} onChange={(remoteScope) => patch({ remoteScope })} labels={{ worldwide: 'Worldwide', country: 'Within a country' }} />

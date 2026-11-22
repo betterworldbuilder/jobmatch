@@ -39,9 +39,10 @@ export function ownLogo(job: Job): Job {
   return job.companyLogo && /^https?:/i.test(job.companyLogo) ? { ...job, companyLogo: undefined } : job;
 }
 
-/** Full-bleed card photo: the role's cover image, else the hiring contact's photo, else none. */
-export function cardPhoto(job: Job) {
-  return job.coverImage || job.recruiter?.photo || '';
+/** Full-bleed card photo: none any more (founder, 2026-11-22) — roles show a branded background and the
+ *  recruiter's photo only as a small ID stamp (RolePages). Kept for the mini cards, which fall back to the logo. */
+export function cardPhoto(_job: Job) {
+  return '';
 }
 
 /** "Matches your React, Node, SQL · 92%". Score only when it really exists. */
@@ -63,8 +64,8 @@ export function PhoneBrand() {
   return <span className="nm-brand"><span className="brand-heart-mark nm-logo" aria-hidden="true" /><span className="brand-wordmark"><b>Jobs</b><b>Match</b><b>Now</b></span></span>;
 }
 
-function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, page, onPage }: {
-  job: Job; reducedMotion: boolean; canLike: boolean; onSwipe: (action: 'like' | 'pass' | 'super') => void; page: number; onPage: (p: number) => void;
+function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, page, onPage, onRecruiter }: {
+  job: Job; reducedMotion: boolean; canLike: boolean; onSwipe: (action: 'like' | 'pass' | 'super') => void; page: number; onPage: (p: number) => void; onRecruiter: () => void;
 }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -76,7 +77,6 @@ function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, page, onPage }: {
     if (!action || ((action === 'like' || action === 'super') && !canLike)) return;
     onSwipe(action);
   };
-  const photo = cardPhoto(job);
   return <motion.article
     className={page > 0 ? 'nm-card sp-card on-detail' : 'nm-card sp-card'}
     style={{ x, y, rotate }}
@@ -89,9 +89,9 @@ function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, page, onPage }: {
     exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: .9 }}
     transition={{ duration: reducedMotion ? .15 : .25 }}
   >
-    {/* Role pages inside the card (founder, 2026-11-22): 1 summary · 2 job description · 3 salary · 4 company. */}
+    {/* Role pages inside the card (founder, 2026-11-22): 1 summary · 2 job description · 3 company. */}
     {page === 0
-      ? <RoleSummaryPage job={job} photo={photo} extra={<SalaryLine job={job} />} />
+      ? <RoleSummaryPage job={job} onRecruiter={onRecruiter} />
       : <div className="sp-page"><RoleDetailPage job={job} page={page} /></div>}
     <motion.span className="nm-stamp like" style={{ opacity: likeOpacity }} aria-hidden="true">LIKE</motion.span>
     <motion.span className="nm-stamp nope" style={{ opacity: nopeOpacity }} aria-hidden="true">NOPE</motion.span>
@@ -158,6 +158,29 @@ export function ForwardSheet({ subject, text, note = 'Your friend signs up for f
       </div>
       <small className="nm-forward-note">{note}</small>
     </div>
+  </div>;
+}
+
+/** "See recruiter profile" (job seekers): the recruiter, their company, and every open role they posted.
+ *  Contact details stay hidden until a mutual match. Picking a role shows it in the swipe card. */
+function RecruiterRolesSheet({ job, roles, onClose, onPick }: { job: Job; roles: Job[]; onClose: () => void; onPick: (role: Job) => void }) {
+  const r = job.recruiter;
+  return <div className="nm-sheet rr-sheet" role="dialog" aria-label="Recruiter profile">
+    <button type="button" className="nm-sheet-x" onClick={onClose} aria-label="Close"><X size={16} /></button>
+    <header className="rr-head">
+      {r?.photo ? <img src={assetUrl(r.photo)} alt="" /> : <span className="rr-initial">{(r?.name || '?').slice(0, 1)}</span>}
+      <div><strong>{r?.name || 'Recruiter'}</strong><small>{[r?.title, r?.company || job.company].filter(Boolean).join(' · ')}</small>
+        <em className="rr-lock">Contact details unlock after a mutual match</em></div>
+    </header>
+    {job.companyProfile?.about && <p className="rr-about">{job.companyProfile.about}</p>}
+    <h4>{roles.length} open {roles.length === 1 ? 'role' : 'roles'}</h4>
+    <ul className="rr-roles">{roles.map((role) => <li key={role.id}>
+      <button type="button" onClick={() => onPick(role)}>
+        <span><strong>{role.title}</strong><small>{[...new Set([role.location, role.workMode, [role.type, role.contractDuration].filter(Boolean).join(' · ')].filter(Boolean))].join(' · ')}</small></span>
+        {typeof role.match?.score === 'number' && <b>{role.match.score}%</b>}
+        <ChevronRight size={16} />
+      </button>
+    </li>)}</ul>
   </div>;
 }
 
@@ -234,6 +257,8 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
     // On a phone the list sits under the deck: bring the deck back into view.
     window.setTimeout(() => phoneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
   };
+  // "See recruiter profile": the recruiter and every open role they posted.
+  const [recruiterOf, setRecruiterOf] = useState<Job | null>(null);
   // Page inside the current card; every new card opens on page 1.
   const [page, setPage] = useState(0);
   useEffect(() => { setPage(0); }, [job?.id]);
@@ -277,7 +302,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
                 {(next || picked) && job && <div className="nm-card nm-peek" aria-hidden="true" />}
                 <AnimatePresence mode="popLayout">
                   {job
-                    ? <PhoneJobCard key={job.id} job={job} reducedMotion={reducedMotion} canLike={canLike} onSwipe={run} page={page} onPage={setPage} />
+                    ? <PhoneJobCard key={job.id} job={job} reducedMotion={reducedMotion} canLike={canLike} onSwipe={run} page={page} onPage={setPage} onRecruiter={() => setRecruiterOf(job)} />
                     : <EmptyDeck key="empty" role="candidate" title="You've seen today's top picks" text="A chat opens only when a team likes you back." resetLabel="Start over" onReset={() => setIndex(0)}>
                       <button type="button" className="secondary-button" onClick={() => navigate('discover')}>Open Discover</button>
                     </EmptyDeck>}
@@ -296,6 +321,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
             </div>
             <span className="nm-home-bar" aria-hidden="true" />
             <AnimatePresence>{match && <PhoneMatch key={match.id} match={match} viewer={data.viewer} onTalk={() => talk(match)} onKeepSwiping={() => setMatch(null)} />}</AnimatePresence>
+            {recruiterOf && <RecruiterRolesSheet job={recruiterOf} roles={data.jobs.filter((j) => j.employerId === recruiterOf.employerId)} onClose={() => setRecruiterOf(null)} onPick={(role) => { setRecruiterOf(null); showInPhone(role); }} />}
           </div>
         </div>
         <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>

@@ -1,14 +1,14 @@
 // "How candidates see this role" (founder, 2026-11-22): the recruiter's preview of a role exactly as job seekers
-// swipe it — the same 4 pages (Role summary · Job description · Salary · Company), with page buttons below
+// swipe it — the same 3 pages (Summary · Job description · Company), with page buttons below
 // (only on this preview page, not in the swipe view), plus Edit and Back.
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Briefcase, Building2, FileText, Pencil, Wallet } from 'lucide-react';
+import { ArrowLeft, Briefcase, Building2, FileText, Pencil } from 'lucide-react';
 import type { Job, Person } from '../../types';
 import { SwipePager } from '../swipe/SwipePager';
 import { RoleDetailPage, ROLE_PAGES, RoleSummaryPage } from './RolePages';
 
-const ICONS = [Briefcase, FileText, Wallet, Building2];
-const COLORS = ['#ff7a45', '#007AFF', '#34C759', '#AF52DE'];
+const ICONS = [Briefcase, FileText, Building2];
+const COLORS = ['#0f62fe', '#007AFF', '#AF52DE'];
 
 export function RolePreview({ job, recruiter, onClose, onEdit }: { job: Job; recruiter: Person; onClose: () => void; onEdit?: () => void }) {
   const [page, setPage] = useState(0);
@@ -24,7 +24,7 @@ export function RolePreview({ job, recruiter, onClose, onEdit }: { job: Job; rec
   const company = { name: recruiter.company || job.company, logo: recruiter.companyLogo, about: recruiter.about, industry: recruiter.industry, companySize: recruiter.companySize, headquarters: recruiter.headquarters, website: recruiter.website, foundedYear: recruiter.foundedYear, officeLocations: recruiter.officeLocations, techStack: recruiter.techStack };
   // Candidates don't see the recruiter's own fit; preview shows the role as published.
   const shown: Job = { ...job, match: undefined as unknown as Job['match'], recruiter: job.recruiter || { name: recruiter.name, title: recruiter.title, photo: recruiter.photo, company: recruiter.company } };
-  const photo = job.coverImage || recruiter.photo || '';
+  const photo = recruiter.photo || ''; // the recruiter's ID-style stamp (no role photos)
   return <div className="rpv-page" role="dialog" aria-label="How candidates see this role">
     <header className="rpv-head">
       <div><span className="overline">Your published role</span><h1>How Candidates See This Role</h1><p>The same pages job seekers flip through when they swipe on {job.title}.</p></div>

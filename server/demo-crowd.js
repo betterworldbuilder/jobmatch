@@ -236,5 +236,55 @@ export function withDemoCrowd(seed, nowMs = Date.now()) {
   }
   // Demo roles get a stable "date created" (the recruiter dashboard shows it); fixed dates so restarts never move them.
   seed.jobs.forEach((j, i) => { if (!j.createdAt) j.createdAt = Date.UTC(2026, 9, 1) + ((i * 7) % 50) * 86400000; });
+  // Every demo role gets the fields the 3 role pages show (founder, 2026-11-22). Demo roles only; real roles untouched.
+  seed.jobs.forEach((j) => { if (j.demo || j.demoTemplate) completeDemoRole(j, seed.users.find((u) => u.id === j.employerId)); });
   return { candidateIds: newCandidates, jobIds: newJobs, extraJobIds };
+}
+
+const SEA = ['Vietnam', 'Philippines', 'Indonesia', 'Thailand', 'Malaysia', 'Singapore'];
+/** Fill what a demo role is missing: full job description, contract duration, visa / nationality rule, languages,
+ *  nice-to-haves, responsibilities, openings, benefits. Only empty fields are filled; text says it is a demo. */
+export function completeDemoRole(j, recruiter) {
+  const must = j.requiredSkillsDetail?.map((s) => s.name) || j.requiredSkills || [];
+  const company = j.company || recruiter?.company || 'the company';
+  const remote = j.workMode === 'Remote';
+  if (!j.niceToHaves?.length) j.niceToHaves = [...new Set([...(recruiter?.techStack || []).filter((s) => !must.includes(s)), 'CI/CD', 'Remote collaboration'])].slice(0, 3);
+  if (!j.responsibilities?.length) j.responsibilities = [
+    `Design, build and ship ${must.slice(0, 2).join(' and ') || 'product'} features end to end`,
+    'Review code, write tests and keep production healthy',
+    `Work 4 overlapping hours a day with the ${remote ? 'US' : 'product'} team and share progress in writing`,
+  ];
+  if (!j.requiredLanguages?.length) j.requiredLanguages = ['English'];
+  if (!remote && /ho chi minh|hanoi|da nang|vietnam/i.test(j.location || '') && !j.requiredLanguages.includes('Vietnamese')) j.requiredLanguages = [...j.requiredLanguages, 'Vietnamese'];
+  if (!j.contractDuration) j.contractDuration = /contract|freelance/i.test(j.type || '') ? '6 months, renewable' : /intern/i.test(j.type || '') ? '3 months' : 'Permanent';
+  if (j.workVisaRequired === undefined) {
+    if (remote) { j.workVisaRequired = false; j.authorizedNationalities = { mode: 'custom', custom: SEA }; }
+    else j.workVisaRequired = true;
+  }
+  if (j.openings === undefined) j.openings = 1;
+  if (!j.startDate) j.startDate = remote ? 'As soon as possible' : 'Within 1 month';
+  if (!j.benefits?.length && recruiter?.benefits?.length) j.benefits = recruiter.benefits;
+  if (!j.fullDescription) {
+    j.fullDescription = [
+      'About the job',
+      `This is a demo job description written for JobsMatchNow. ${company} is hiring a ${j.title}.${recruiter?.about ? ` ${recruiter.about}` : ''}`,
+      '',
+      'The role',
+      j.description || `You will join a small engineering team and own ${must[0] || 'core'} work from idea to production.`,
+      '',
+      'What you will do',
+      ...j.responsibilities.map((r) => `- ${r}`),
+      '',
+      'What we are looking for',
+      ...must.map((s) => `- Solid, recent experience with ${s}`),
+      ...(j.requiredLanguages.length ? [`- ${j.requiredLanguages.join(' and ')} for daily work`] : []),
+      '',
+      'Nice to have',
+      ...j.niceToHaves.map((s) => `- ${s}`),
+      '',
+      'How to apply',
+      'Like this role on JobsMatchNow. If the team likes you back, a conversation opens and you can talk right away.',
+    ].join('\n');
+  }
+  return j;
 }
