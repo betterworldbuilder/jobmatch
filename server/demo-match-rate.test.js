@@ -59,6 +59,27 @@ test('demo recruiter: 9 likes on candidates who never liked their roles = exactl
   assert.deepEqual([at[1] - at[0], at[2] - at[1]], [3, 3], `pattern ${pattern.join('')}`);
 });
 
+test('demo: a recruiter who already PASSED on the job seeker does not block the 3rd-like match', async () => {
+  const { ck, me } = await login('candidate-demo-4');
+  const d = db();
+  const likedMe = new Set(d.swipes.filter((s) => s.targetType === 'candidate' && s.targetId === me && s.direction === 'like').map((s) => s.actorId));
+  const mySwiped = new Set(d.swipes.filter((s) => s.actorId === me).map((s) => s.targetId));
+  const loginable = new Set(d.users.filter((u) => /^employer-demo-\d+$/.test(u.id)).map((u) => u.id));
+  const fresh = d.jobs.filter((j) => j.demo && String(j.status).toLowerCase() === 'active' && loginable.has(j.employerId) && !likedMe.has(j.employerId) && !mySwiped.has(j.id));
+  assert.ok(fresh.length >= 3, `${fresh.length} fresh roles`);
+  const lastMatchAt = d.matches.reduce((t, m) => (m.candidateId === me && m.createdAt > t ? m.createdAt : t), 0);
+  const k = d.swipes.filter((s) => s.actorId === me && s.direction === 'like' && (s.createdAt || 0) > lastMatchAt).length;
+  const roles = fresh.slice(0, Math.max(1, 3 - k));
+  for (const emp of new Set(roles.map((j) => j.employerId))) {
+    const e = await login(emp);
+    const r = await call('POST', '/api/swipes', { actorId: e.me, targetId: me, targetType: 'candidate', direction: 'pass' }, e.ck);
+    assert.ok([201, 200].includes(r.status), JSON.stringify(r.body));
+  }
+  let last = null;
+  for (const j of roles) last = (await call('POST', '/api/swipes', { actorId: me, targetId: j.id, targetType: 'job', direction: 'like' }, ck)).body;
+  assert.ok(last.match, `3rd like since the last match matches even after a pass (${k} earlier likes)`);
+});
+
 test('demo: liking someone who already liked you matches at once and restarts the count', async () => {
   const { ck, me } = await login('candidate-demo-2');
   const d = db();

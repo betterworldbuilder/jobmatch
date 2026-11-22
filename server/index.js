@@ -2166,12 +2166,16 @@ app.post('/api/swipes', async (req, res, next) => {
               || db.jobs.find((job) => job.employerId === actorId && String(job.status).toLowerCase() === 'active' && !db.matches.some((m) => m.candidateId === targetId && m.jobId === job.id));
             if (roleJob) counter = { id: crypto.randomUUID(), actorId: targetId, targetId: roleJob.id, targetType: 'job', direction: 'like', createdAt: now, demoAutoLike: true };
           }
-          // One auto like-back per role: a recruiter's earlier auto like for another role does not block this one.
-          const sameLike = (s) => s.actorId === counter.actorId && s.targetType === counter.targetType && s.targetId === counter.targetId
-            && (counter.targetType === 'job' || !s.demoAutoLike || s.jobId === counter.jobId);
-          if (counter && !db.swipes.some(sameLike)) {
-            db.swipes.push(counter);
-            mutual = detectMutualMatch(swipe, db);
+          // The 3rd like ALWAYS matches: an earlier pass (or a like for another role) by the demo counterpart must not
+          // block it, so the match is built directly; the auto like-back is only recorded when none exists yet.
+          if (counter) {
+            const pair = counter.targetType === 'candidate'
+              ? { candidateId: actorId, jobId: counter.jobId, employerId: counter.actorId }
+              : { candidateId: targetId, jobId: counter.targetId, employerId: actorId };
+            const sameLike = (s) => s.actorId === counter.actorId && s.targetType === counter.targetType && s.targetId === counter.targetId && s.direction === 'like'
+              && (counter.targetType === 'job' || s.jobId === counter.jobId);
+            if (!db.swipes.some(sameLike)) db.swipes.push(counter);
+            mutual = pair;
           }
         }
       }
