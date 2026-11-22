@@ -1,5 +1,5 @@
 // Candidate subscription: Free forever (the core) + optional Premium ($10/month:
-// 3 target roles + 10 direct messages without a match). Candidate payments are not
+// 3 target roles + 10 direct messages without a match + AI interview preparation with your own chatbot). Candidate payments are not
 // open yet, so "Get Premium" records interest only — nothing is charged.
 import { useState } from 'react';
 import { ArrowRight, Check, Crown, Send, Target } from 'lucide-react';
@@ -8,7 +8,7 @@ import type { Bootstrap, View } from '../../types';
 
 export const PREMIUM = { price: 10, currency: 'USD', roles: 3, directMessages: 10 } as const;
 const FREE_FEATURES = ['Full profile and resume', 'Mutual-likes job matching', 'Messaging with recruiters after a match', 'Interview scheduling and Hiring Stages', 'Salary shown up front', 'You control what employers see', '1 target role', 'AI analyst preview and Reports'];
-const PREMIUM_FEATURES = [`${PREMIUM.roles} target roles at once, each with its own matches and report`, `${PREMIUM.directMessages} direct messages a month — reach a team before any match`, 'Everything in Free'];
+const PREMIUM_FEATURES = [`${PREMIUM.roles} target roles at once, each with its own matches and report`, `${PREMIUM.directMessages} direct messages a month — reach a team before any match`, 'AI interview preparation with your own chatbot (ChatGPT or Claude): a skills refresh plan for every role', 'Everything in Free'];
 
 export function usePremiumInterest(userId: string) {
   const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');

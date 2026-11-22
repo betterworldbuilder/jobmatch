@@ -1,5 +1,5 @@
 export type Role = 'candidate' | 'employer' | 'admin';
-export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired';
+export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired' | 'prep';
 export type EmployerKind = 'company' | 'headhunter';
 /** A recommendation letter the candidate uploaded (PDF, Word or image). Opens for matched recruiters only. */
 export interface RecommendationDoc { id: string; originalName: string; ext: string; size: number; uploadedAt: number }
