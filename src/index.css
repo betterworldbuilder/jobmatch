@@ -3654,6 +3654,13 @@ img.avatar-mini { object-fit:cover; }
 .meeting-cancelled { color:#be123c; font-weight:800; }
 .rp-status-wrap { width:min(560px,100%); margin:6px auto 0; }
 .rp-status-wrap .job-status.js-card { margin:0; }
+/* "I got hired" in the conversation */
+.hired-quick-btn { background:#eef4ff !important; color:#1d4ed8 !important; border-color:#c7d7fe !important; }
+.hired-here-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; background:#eef4ff; color:#1d4ed8; font-size:13px; font-weight:800; }
+.hired-confirm { margin:8px 16px; padding:12px 14px; border:1px solid #c7d7fe; border-radius:14px; background:#f2f6ff; font-size:13px; color:#1e2a4a; }
+.hired-confirm p { margin:0 0 6px; }
+.hired-confirm ul { margin:0 0 10px; padding-left:20px; line-height:1.5; }
+.hired-confirm-actions { display:flex; justify-content:flex-end; gap:8px; }
 .js-compact { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px 10px; font-size:13px; }
 .js-compact-label { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#7a8296; }
 .js-card-head .text-button { margin-left:8px; }

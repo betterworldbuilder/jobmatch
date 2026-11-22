@@ -832,6 +832,23 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
     } catch (e) { alert(e instanceof Error ? e.message : 'Could not create that invite'); }
     finally { setSchedulingCoffee(false); }
   };
+  // "I got hired" in the conversation (candidates): sets the job status to hired for THIS match; the server
+  // marks it Hired, closes the other processes, cancels their meetings and thanks each recruiter.
+  const [hiredConfirm, setHiredConfirm] = useState(false);
+  const [hiredBusy, setHiredBusy] = useState(false);
+  useEffect(() => { setHiredConfirm(false); }, [match?.id]);
+  const confirmHired = async () => {
+    if (!match) return;
+    setHiredBusy(true);
+    try {
+      const res = await api.updateProfile(data.viewer.id, { jobStatus: { kind: 'hired', matchId: match.id, role: match.job?.title, company: match.job?.company, recruiter: match.employer?.name } }) as { user: Person; effects?: { closed: number; meetingsCancelled: number; messages: number } };
+      const e = res.effects;
+      setActionSent(e?.closed ? `Congratulations! ${e.closed} other process${e.closed === 1 ? '' : 'es'} closed, ${e.meetingsCancelled} meeting${e.meetingsCancelled === 1 ? '' : 's'} cancelled, ${e.messages} thank-you message${e.messages === 1 ? '' : 's'} sent.` : 'Congratulations! You are marked as hired here.');
+      setHiredConfirm(false);
+      const fresh = await api.bootstrap(data.viewer.id); setData(fresh);
+    } catch (err) { alert(err instanceof Error ? err.message : 'Could not save'); }
+    finally { setHiredBusy(false); }
+  };
   const calls = data.calls.filter((c) => c.matchId === match?.id).sort((a, b) => a.startAt - b.startAt);
   return <div className="messages-page">
     <aside className="threads">
@@ -870,10 +887,28 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
         })}
       </div>
       {actionSent && <p className="action-sent-note"><Check size={13} /> {actionSent}</p>}
+      {hiredConfirm && role === 'candidate' && (() => {
+        const others = data.matches.filter((m) => m.id !== match.id && m.stage !== 'Hired' && m.stage !== 'Archived').length;
+        return <div className="hired-confirm" role="dialog" aria-label="Confirm you got hired">
+          <p><b>Congratulations! You got the {match.job?.title} role at {match.job?.company}?</b></p>
+          <p>When you confirm, following the recruitment process rules:</p>
+          <ul>
+            <li>this process is marked <b>Hired</b> and you leave recruiter search;</li>
+            <li>{others === 1 ? 'your other hiring process closes and its upcoming meetings are cancelled;' : others ? `your ${others} other hiring processes close and their upcoming meetings are cancelled;` : 'any other open process closes and its meetings are cancelled;'}</li>
+            <li>each of those recruiters gets an automatic thank-you message from you for their time.</li>
+          </ul>
+          <div className="hired-confirm-actions"><button type="button" className="secondary-button small" onClick={() => setHiredConfirm(false)} disabled={hiredBusy}>Not yet</button>
+            <button type="button" className="primary-button small" onClick={() => void confirmHired()} disabled={hiredBusy}>{hiredBusy ? <Loader2 size={14} className="spin" /> : <><BadgeCheck size={14} /> Yes, I got hired</>}</button></div>
+        </div>;
+      })()}
       <div className="coffee-quick-row">
         <button type="button" className="coffee-quick-btn" onClick={() => void quickCoffee()} disabled={schedulingCoffee}>
           <Coffee size={15} /> {schedulingCoffee ? 'Creating invite…' : "Let's have a cup of Coffee"}
         </button>
+        {/* "I got hired" (candidates): runs the recruitment-process rule on this match. */}
+        {role === 'candidate' && match.stage === 'Hired' && <span className="hired-here-chip"><BadgeCheck size={15} /> You were hired here</span>}
+        {role === 'candidate' && match.stage !== 'Hired' && match.stage !== 'Archived' && data.viewer.jobStatus?.kind !== 'hired' &&
+          <button type="button" className="coffee-quick-btn hired-quick-btn" onClick={() => setHiredConfirm(true)}><BadgeCheck size={15} /> I got hired</button>}
         {role === 'employer' && <>
           <button type="button" className="coffee-quick-btn feedback-quick-btn" onClick={() => setFeedbackOpen(true)}><Mail size={15} /> Send Feedback</button>
           <button type="button" className="coffee-quick-btn recommend-quick-btn" onClick={() => setRecommendOpen(true)}><Send size={15} /> Recommendation Email</button>
