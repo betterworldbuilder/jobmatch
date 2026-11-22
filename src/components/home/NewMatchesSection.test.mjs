@@ -22,7 +22,8 @@ test('renders the section, the deck region with a real counter and the 4 deck bu
   assert.match(html, /role="region" aria-label="New matches deck"/);
   assert.match(html, /tabindex="0"/);
   assert.match(html, /1 \/ 3/);
-  for (const label of ['Undo last swipe', 'Rewind', 'Pass', 'Super Like', 'Like', 'Direct message \\(premium\\)']) assert.match(html, new RegExp(`aria-label="${label}"`));
+  for (const label of ['Undo last swipe', 'Rewind', 'Pass', 'Forward to a friend', 'Like', 'Direct message \\(premium\\)']) assert.match(html, new RegExp(`aria-label="${label}"`));
+  assert.match(html, /class="nm-action-labels"/, 'title bar above the buttons');
   // JobsMatchNow logo at the top of the phone.
   assert.match(html, /nm-brand.*<b>Jobs<\/b><b>Match<\/b><b>Now<\/b>/);
   // Top card is the best score, with salary, fit reason from real skills + score, and distance.
@@ -62,10 +63,10 @@ test('remote roles say Remote instead of a distance', async () => {
   assert.ok(!/500 km/.test(html));
 });
 
-test('when no likes are left, heart and star are disabled and the note shows', async () => {
+test('when no likes are left, the heart is disabled, forwarding still works, and the note shows', async () => {
   const html = await render(baseData([job('a', 70)], { likesRemaining: 0 }));
   assert.match(html, /No likes left today/);
-  assert.match(html, /disabled="" aria-label="Super Like"/);
+  assert.doesNotMatch(html, /disabled="" aria-label="Forward to a friend"/);
   assert.match(html, /disabled="" aria-label="Like"/);
   assert.doesNotMatch(html, /disabled="" aria-label="Pass"/);
 });

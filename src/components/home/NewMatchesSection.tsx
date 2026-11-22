@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
 import type { PanInfo } from 'motion/react';
-import { ArrowRight, Check, ChevronLeft, ChevronRight, ChevronsRight, Heart, MapPin, MessageCircle, RotateCcw, Send, Star, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, ChevronRight, ChevronsRight, Copy, Forward, Heart, Mail, MapPin, MessageCircle, RotateCcw, Send, Star, User, X } from 'lucide-react';
 import { api, apiBase } from '../../api';
 import type { Bootstrap, Job, JobMatch, Person, View } from '../../types';
 import { JobDetailModal, ScreeningModal } from '../coach/CoachModals';
@@ -142,6 +142,30 @@ export function PhoneMatch({ match, viewer, onTalk, onKeepSwiping }: { match: Jo
 
 /** Direct message (premium, $5/month for 10). Payments for candidates aren't open: the paid button
  *  records interest; the free path sends the note with a Super Like (it opens the chat only on a match). */
+/** "Forward to a friend": share the role by the phone's share sheet, WhatsApp, email or a copied link. */
+export function ForwardSheet({ job, onClose }: { job: Job; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : 'https://jobsmatchnow.com/app/';
+  const pay = !job.salaryHidden && job.salary ? job.salary : 'salary shown up front';
+  const text = `Thought of you: ${job.title} at ${job.company} (${job.workMode || 'role'}, ${pay}). It's on JobsMatchNow: you both have to like each other before a chat opens.`;
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const copy = async () => { try { await navigator.clipboard.writeText(`${text}\n${url}`); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ } };
+  return <div className="modal-scrim" onClick={onClose}>
+    <div className="coach-modal nm-forward" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Forward to a friend">
+      <button className="modal-close" onClick={onClose} aria-label="Close"><X /></button>
+      <h2><span className="nm-fwd-ico big"><Forward size={22} /><User size={12} /></span> Forward to a friend</h2>
+      <p className="nm-forward-text">{text}</p>
+      <div className="nm-forward-actions">
+        {canShare && <button type="button" className="primary-button small" onClick={() => void navigator.share({ title: `${job.title} at ${job.company}`, text, url }).catch(() => undefined)}><Forward size={14} /> Share…</button>}
+        <a className="secondary-button small" href={`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`} target="_blank" rel="noreferrer"><MessageCircle size={14} /> WhatsApp</a>
+        <a className="secondary-button small" href={`mailto:?subject=${encodeURIComponent(`A role for you: ${job.title} at ${job.company}`)}&body=${encodeURIComponent(`${text}\n\n${url}`)}`}><Mail size={14} /> Email</a>
+        <button type="button" className="secondary-button small" onClick={() => void copy()}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}</button>
+      </div>
+      <small className="nm-forward-note">Your friend signs up for free to see the role. Nothing about you is shared.</small>
+    </div>
+  </div>;
+}
+
 export function DirectMessageSheet({ job, viewerId, canLike, busy, onClose, onSendNote }: { job: Job; viewerId: string; canLike: boolean; busy: boolean; onClose: () => void; onSendNote: (note: string) => void }) {
   const [note, setNote] = useState('');
   const [interest, setInterest] = useState<'idle' | 'busy' | 'done'>('idle');
@@ -188,6 +212,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
   // A role picked from "Recommended Roles" is shown in the phone until it is swiped (or closed).
   const [picked, setPicked] = useState<Job | null>(null);
   const [dmOpen, setDmOpen] = useState(false);
+  const [forwardOpen, setForwardOpen] = useState(false);
   const phoneRef = useRef<HTMLDivElement>(null);
   const carouselRef = useRef<HTMLUListElement>(null);
   const canLike = data.likesRemaining > 0;
@@ -219,6 +244,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
     const action = swipeFromKey(event.key);
     if (!action || (action !== 'undo' && !job)) return;
     event.preventDefault();
+    if (action === 'super') { setForwardOpen(true); return; } // ↑ now forwards the role to a friend
     run(action);
   };
   const likeFromList = (item: Job) => {
@@ -256,10 +282,12 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
                     </EmptyDeck>}
                 </AnimatePresence>
               </div>
+              {/* Title bar: what each button does. */}
+              {job && <div className="nm-action-labels" aria-hidden="true"><span>Rewind</span><span>Pass</span><span>Forward</span><span>Like</span><span>Message</span></div>}
               {job && <div className="nm-actions">
                 <button type="button" className="nm-btn sm rewind" onClick={() => run('undo')} disabled={busy || (index === 0 && !picked)} aria-label="Rewind"><RotateCcw size={18} /></button>
                 <button type="button" className="nm-btn pass" onClick={() => run('pass')} disabled={busy} aria-label="Pass"><X size={28} strokeWidth={3} /></button>
-                <button type="button" className="nm-btn super" onClick={() => run('super')} disabled={busy || !canLike} aria-label="Super Like"><Star size={22} fill="currentColor" /></button>
+                <button type="button" className="nm-btn forward" onClick={() => setForwardOpen(true)} aria-label="Forward to a friend"><span className="nm-fwd-ico"><Forward size={20} /><User size={11} /></span></button>
                 <button type="button" className="nm-btn like" onClick={() => run('like')} disabled={busy || !canLike} aria-label="Like"><Heart size={26} fill="currentColor" /></button>
                 <button type="button" className="nm-btn sm dm" onClick={() => setDmOpen(true)} disabled={busy} aria-label="Direct message (premium)"><Send size={18} /><i className="nm-pro" aria-hidden="true">PRO</i></button>
               </div>}
@@ -269,7 +297,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
             <AnimatePresence>{match && <PhoneMatch key={match.id} match={match} viewer={data.viewer} onTalk={() => talk(match)} onKeepSwiping={() => setMatch(null)} />}</AnimatePresence>
           </div>
         </div>
-        <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Super Like</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>
+        <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>
       </div>
       <aside className="nm-list" id="td-recommended" aria-label="Recommended Roles">
         <div className="nm-carousel-head">
@@ -304,6 +332,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
       </aside>
     </div>
 
+    {forwardOpen && job && <ForwardSheet job={job} onClose={() => setForwardOpen(false)} />}
     {dmOpen && job && <DirectMessageSheet job={job} viewerId={data.viewer.id} canLike={canLike} busy={busy} onClose={() => setDmOpen(false)}
       onSendNote={(note) => { const target = job; setDmOpen(false); if (picked) { setPicked(null); setLikedFromList((ids) => [...ids, target.id]); } void commitSwipe('like', target, { superLike: true, note }); }} />}
     <AnimatePresence>{screeningFor && <ScreeningModal job={screeningFor} onCancel={() => setScreeningFor(null)} onSubmit={(answers) => { const target = screeningFor; setScreeningFor(null); if (target.id !== current?.id) setLikedFromList((ids) => [...ids, target.id]); void commitSwipe('like', target, { answers }); }} />}</AnimatePresence>

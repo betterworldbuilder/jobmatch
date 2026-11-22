@@ -3403,6 +3403,23 @@ img.avatar-mini { object-fit:cover; }
 .nm-btn.sm { width:44px; height:44px; }
 .nm-btn.rewind { color:#f5c518; }
 .nm-btn.dm { position:relative; color:#3ea6ff; }
+/* "Forward to a friend" (replaced the star) + title bar above the buttons */
+.nm-btn.forward { width:52px; height:52px; color:#34d399; }
+.nm-fwd-ico { position:relative; display:inline-grid; place-items:center; }
+.nm-fwd-ico svg:last-child { position:absolute; right:-7px; bottom:-5px; background:#1d1d23; border-radius:50%; padding:1px; box-sizing:content-box; }
+.nm-fwd-ico.big svg:last-child { background:#fff; color:#0f8a5f; }
+.nm-action-labels { display:flex; justify-content:center; gap:14px; margin:4px 0 -10px; }
+.nm-action-labels span { font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:rgba(255,255,255,.62); text-align:center; }
+.nm-action-labels span:nth-child(1), .nm-action-labels span:nth-child(5) { width:44px; }
+.nm-action-labels span:nth-child(2), .nm-action-labels span:nth-child(4) { width:64px; }
+.nm-action-labels span:nth-child(3) { width:52px; }
+.nm-forward { max-width:480px; }
+.nm-forward h2 { display:flex; align-items:center; gap:12px; margin:0 0 10px; font-size:20px; }
+.nm-forward .nm-fwd-ico.big { color:#0f8a5f; }
+.nm-forward-text { margin:0 0 14px; padding:12px 14px; border-radius:12px; background:#f6f7fb; font-size:14px; line-height:1.5; color:#2b3245; }
+.nm-forward-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.nm-forward-actions a { text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+.nm-forward-note { display:block; margin-top:10px; color:#7a8296; font-size:12px; }
 .nm-pro { position:absolute; top:-6px; right:-8px; padding:1px 5px; border-radius:6px; background:linear-gradient(135deg,#f5c518,#ff8a00); color:#111; font:900 8px 'Manrope'; font-style:normal; letter-spacing:.04em; }
 .nm-dm-input { width:100%; margin-top:6px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; font:500 14px 'Manrope'; resize:vertical; }
 .nm-dm-options { display:grid; gap:10px; margin-top:12px; }
