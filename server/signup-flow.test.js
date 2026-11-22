@@ -2,7 +2,7 @@ import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { unlinkSync } from 'node:fs';
 import { createSeed } from './seed.js';
-import { DEMO_CANDIDATE_TARGET, DEMO_RECRUITER_TARGET } from './demo-crowd.js';
+import { DEMO_CANDIDATE_TARGET, DEMO_JOB_TARGET, DEMO_RECRUITER_TARGET } from './demo-crowd.js';
 
 /* (1) The demo crowd: at least 50 candidates and 25 recruiters, every profile filled.
    (2) The full sign-up journeys, start to first conversation, for a candidate and a recruiter. */
@@ -27,6 +27,10 @@ test('demo crowd: 50+ candidates and 25+ recruiters, all demo, every key field f
   const recruiters = seed.users.filter((u) => u.role === 'employer' && u.demo);
   assert.ok(candidates.length >= DEMO_CANDIDATE_TARGET, `candidates: ${candidates.length}`);
   assert.ok(recruiters.length >= DEMO_RECRUITER_TARGET, `recruiters: ${recruiters.length}`);
+  const demoJobs = seed.jobs.filter((j) => j.demo);
+  assert.ok(demoJobs.length >= DEMO_JOB_TARGET, `demo job offers: ${demoJobs.length}`);
+  assert.ok(demoJobs.every((j) => String(j.status).toLowerCase() === 'active'), 'every demo job offer is active');
+  assert.ok(demoJobs.every((j) => seed.users.some((u) => u.id === j.employerId)), 'every demo job has its recruiter');
   for (const col of ['users', 'jobs', 'matches', 'swipes', 'messages']) {
     const ids = seed[col].map((x) => x.id);
     assert.equal(new Set(ids).size, ids.length, `${col} ids are unique`);

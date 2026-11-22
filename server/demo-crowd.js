@@ -9,6 +9,7 @@
 
 export const DEMO_CANDIDATE_TARGET = 50;
 export const DEMO_RECRUITER_TARGET = 25;
+export const DEMO_JOB_TARGET = 50;
 
 const portrait = (gender, n) => `https://randomuser.me/api/portraits/${gender === 'f' ? 'women' : 'men'}/${n}.jpg`;
 
@@ -218,9 +219,20 @@ export function withDemoCrowd(seed, nowMs = Date.now()) {
   const newCandidates = [];
   for (let i = 0; have('candidate') < DEMO_CANDIDATE_TARGET; i += 1) { const c = makeCandidate(i, now); seed.users.push(c); newCandidates.push(c.id); }
   const newJobs = [];
+  const recruiters = [];
   for (let i = 0; have('employer') < DEMO_RECRUITER_TARGET; i += 1) {
-    const r = makeRecruiter(i); seed.users.push(r);
+    const r = makeRecruiter(i); seed.users.push(r); recruiters.push(r);
     const job = makeJob(r, i); seed.jobs.push(job); newJobs.push(job.id);
   }
-  return { candidateIds: newCandidates, jobIds: newJobs };
+  // Top demo job offers up to DEMO_JOB_TARGET with a SECOND role for generated recruiters (a different track).
+  // Kept out of `jobIds` on purpose: the match/like rotation stays on the first roles, so existing demo
+  // matches keep their ids and nothing is duplicated in a live database (the seed merge never deletes).
+  const extraJobIds = [];
+  const demoJobs = () => seed.jobs.filter((j) => j.demo).length;
+  for (let k = 0; recruiters.length && demoJobs() < DEMO_JOB_TARGET; k += 1) {
+    const r = recruiters[k % recruiters.length];
+    const job = { ...makeJob(r, k + 3), id: `j-demo-extra-${k + 1}` };
+    seed.jobs.push(job); extraJobIds.push(job.id);
+  }
+  return { candidateIds: newCandidates, jobIds: newJobs, extraJobIds };
 }
