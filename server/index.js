@@ -8,7 +8,9 @@ import { createSeed } from './seed.js';
 import { matchingPool, targetIsInMatchingPool } from './matching-pool.js';
 import { buildIcs, meetingsFor, newFeedToken, validFeedToken, REMINDER_MINUTES } from './calendar-feed.js';
 import { onCandidateHired, onRoleFilled, stopProcess } from './hiring-rules.js';
-import { buildContext as buildAiContext, callProvider as callAiProvider, citedSources as citedAiSources, providerConfig as aiProviderConfig, today as aiToday } from './ai-chat.js';
+import { buildContext as buildAiContext, callProvider as callAiProvider, citedSources as citedAiSources, ownKeyConfig as aiOwnKeyConfig, providerConfig as aiProviderConfig, today as aiToday } from './ai-chat.js';
+import { PREMIUM_TRIAL_DAYS, premiumActive, premiumState, startPremiumTrial } from './premium.js'; // eslint-disable-line no-unused-vars
+import { KEY_LINKS as AI_KEY_LINKS, decryptKey as decryptAiKey, encryptKey as encryptAiKey, keyFormatError as aiKeyFormatError, pickModel as pickAiModel, publicKeyInfo as publicAiKeyInfo, verifyKey as verifyAiKey } from './ai-keys.js';
 import { importMetadata, normalizeLinkedInImports, parseJobImportFile } from './job-import.js';
 import { detectMutualMatch, isStrongRoleMatch, likesRemainingToday, scoreCandidateForJob, ValidationError, reqString, optString, optStringArray, oneOf } from './matching.js';
 import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, recruiterCompleteness } from './profile.js';
@@ -859,6 +861,7 @@ app.delete('/api/me', async (req, res, next) => {
       db.messages = db.messages.filter((m) => !myMatchIds.has(m.matchId) && m.senderId !== me.id);
       db.calls = db.calls.filter((c) => !myMatchIds.has(c.matchId) && c.createdBy !== me.id);
       db.bookmarks = db.bookmarks.filter((b) => b.userId !== me.id);
+      if (Array.isArray(db.aiKeys)) db.aiKeys = db.aiKeys.filter((k) => k.id !== me.id); // own AI key goes with the account
       // Funnel counters (db.eventCounts) hold no user ids, so nothing to unlink.
     });
     setCookie(res, AUTH_COOKIE, '', { maxAge: 0 });
@@ -3269,16 +3272,116 @@ async function aiChatUser(req) {
   const db = await store.read();
   const user = db.users.find((u) => u.id === session.sub && !u.suspendedAt);
   if (!user) { const error = new Error('Sign in to use Ask AI'); error.status = 401; throw error; }
-  if (user.role !== 'candidate') { const error = new Error('Ask AI is for job seekers for now'); error.status = 403; throw error; }
+  if (user.role !== 'candidate' && user.role !== 'employer') { const error = new Error('Ask AI is for job seekers and hiring teams'); error.status = 403; throw error; }
   return { user, db };
 }
-const aiUsageOf = (db, userId) => (db.aiChatUsage || []).find((u) => u.id === `${userId}:${aiToday()}`)?.count || 0;
+/* Premium for this user. Candidates: the 7-day Premium add-on (server/premium.js).
+ * Hiring teams: their plan — the 4-week trial and every paid plan include the AI Hiring Assistant. */
+function premiumFor(db, user, now = Date.now()) {
+  if (user.role !== 'employer') return premiumState(user, now);
+  const sub = findSubscription(db, user.id);
+  const status = sub ? computeEffectiveStatus(sub, now) : null;
+  const onPlan = ['trialing', 'active', 'grace_period'].includes(status);
+  const exempt = isBillingExempt(user) || user.demo === true;
+  const endsAt = status === 'trialing' ? sub.trialEndsAt : (sub?.currentPeriodEndsAt || null);
+  return {
+    active: onPlan || exempt || premiumActive(user, now),
+    source: exempt ? 'demo' : status === 'trialing' ? 'trial' : onPlan ? 'paid' : null,
+    trialUsed: Boolean(sub?.trialStartedAt), trialDays: TRIAL_DAYS, plan: 'recruiter',
+    trialEndsAt: sub?.trialEndsAt || null, paidUntil: sub?.currentPeriodEndsAt || null,
+    daysLeft: onPlan && endsAt ? Math.max(0, Math.ceil((endsAt - now) / DAY_MS)) : null,
+  };
+}
+const aiUsageOf = (db, userId) =>(db.aiChatUsage || []).find((u) => u.id === `${userId}:${aiToday()}`)?.count || 0;
+// Members' own keys are encrypted with AI_KEY_SECRET (or the session secret when it is not set).
+const aiKeySecret = () => process.env.AI_KEY_SECRET || sessionSecret;
+const aiKeyRecOf = (db, userId) => (db.aiKeys || []).find((k) => k.id === userId) || null;
+/** The member's own key wins; else the server's provider (if configured). */
+function aiChatConfig(db, user) {
+  const rec = aiKeyRecOf(db, user.id);
+  if (rec) {
+    const key = decryptAiKey(rec.enc, aiKeySecret());
+    if (key) return { cfg: aiOwnKeyConfig(rec, key), rec };
+    return { cfg: { enabled: false, reason: 'own_key_unreadable' }, rec };
+  }
+  return { cfg: aiProviderConfig(), rec: null };
+}
 
 app.get('/api/ai/chat/status', async (req, res, next) => {
   try {
     const { user, db } = await aiChatUser(req);
-    const cfg = aiProviderConfig();
-    res.json(cfg.enabled ? { enabled: true, provider: cfg.provider, providerLabel: cfg.label, dailyLimit: cfg.limit, remaining: Math.max(0, cfg.limit - aiUsageOf(db, user.id)) } : { enabled: false, reason: cfg.reason });
+    const { cfg, rec } = aiChatConfig(db, user);
+    const base = { ownKey: publicAiKeyInfo(rec), canSaveKey: user.demo !== true, keyLinks: AI_KEY_LINKS, premium: premiumFor(db, user) };
+    res.json(cfg.enabled ? { ...base, enabled: true, source: cfg.source, provider: cfg.provider, providerLabel: cfg.label, model: cfg.model, dailyLimit: cfg.limit, remaining: Math.max(0, cfg.limit - aiUsageOf(db, user.id)) } : { ...base, enabled: false, reason: cfg.reason });
+  } catch (error) { next(error); }
+});
+
+// The member's own AI key: checked with the provider, stored encrypted, never sent back (last 4 only).
+const aiKeyLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: Number(process.env.AI_KEY_SAVES_PER_HOUR) || 10, bucket: 'ai-key' });
+app.get('/api/ai/key', async (req, res, next) => {
+  try {
+    const { user, db } = await aiChatUser(req);
+    res.json({ key: publicAiKeyInfo(aiKeyRecOf(db, user.id)), canSave: user.demo !== true, links: AI_KEY_LINKS });
+  } catch (error) { next(error); }
+});
+app.put('/api/ai/key', aiKeyLimiter, async (req, res, next) => {
+  try {
+    const { user } = await aiChatUser(req);
+    if (user.demo === true) return res.status(403).json({ error: 'Demo accounts are shared, so they cannot save an AI key. Create your own free account to connect your chatbot.', code: 'demo_account' });
+    const provider = String(req.body?.provider || '');
+    const apiKey = String(req.body?.apiKey || '').trim();
+    const tier = req.body?.tier === 'fast' ? 'fast' : 'best';
+    const formatError = aiKeyFormatError(provider, apiKey);
+    if (formatError) throw new ValidationError('apiKey', formatError);
+    const check = await verifyAiKey(provider, apiKey);
+    const who = provider === 'anthropic' ? 'Anthropic (Claude)' : 'OpenAI (ChatGPT)';
+    if (!check.ok) {
+      const msg = check.code === 'key_refused' ? `${who} refused this key. Check that you copied the whole key and that it is still active.` : `We could not reach ${who} to check the key. Try again in a minute.`;
+      return res.status(check.status).json({ error: msg, code: check.code, field: 'apiKey' });
+    }
+    const rec = { id: user.id, userId: user.id, provider, tier, model: pickAiModel(provider, tier, check.models), last4: apiKey.slice(-4), enc: encryptAiKey(apiKey, aiKeySecret()), savedAt: Date.now() };
+    await store.transaction((tx) => {
+      if (!Array.isArray(tx.aiKeys)) tx.aiKeys = [];
+      tx.aiKeys = tx.aiKeys.filter((k) => k.id !== user.id);
+      tx.aiKeys.push(rec);
+    });
+    res.json({ key: publicAiKeyInfo(rec) });
+  } catch (error) { next(error); }
+});
+// Premium add-on: state + one-time free trial (no card, no auto-renewal). See server/premium.js.
+app.get('/api/premium', async (req, res, next) => {
+  try {
+    const session = authSession(req);
+    if (!session) { const error = new Error('Sign in first'); error.status = 401; throw error; }
+    const db = await store.read();
+    const user = db.users.find((u) => u.id === session.sub && !u.suspendedAt);
+    if (!user) { const error = new Error('Sign in first'); error.status = 401; throw error; }
+    res.json(premiumFor(db, user));
+  } catch (error) { next(error); }
+});
+app.post('/api/premium/trial', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, bucket: 'premium-trial' }), async (req, res, next) => {
+  try {
+    const session = authSession(req);
+    if (!session) { const error = new Error('Sign in first'); error.status = 401; throw error; }
+    const state = await store.transaction((tx) => {
+      const user = tx.users.find((u) => u.id === session.sub && !u.suspendedAt);
+      if (!user) { const error = new Error('Sign in first'); error.status = 401; throw error; }
+      if (user.role === 'employer') { // hiring teams: the plan's free trial (idempotent, never restarts the clock)
+        if (findSubscription(tx, user.id)) { const error = new Error('Your free trial was already used.'); error.status = 409; throw error; }
+        getOrCreateTrialSubscription(tx, user.id);
+        return premiumFor(tx, user);
+      }
+      return startPremiumTrial(user);
+    });
+    res.json(state);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/ai/key', async (req, res, next) => {
+  try {
+    const { user } = await aiChatUser(req);
+    await store.transaction((tx) => { tx.aiKeys = (tx.aiKeys || []).filter((k) => k.id !== user.id); });
+    res.json({ ok: true });
   } catch (error) { next(error); }
 });
 
@@ -3289,15 +3392,23 @@ app.post('/api/ai/chat', aiChatLimiter, async (req, res, next) => {
     if (!question) throw new ValidationError('question', 'Ask a question');
     if (question.length > 1000) throw new ValidationError('question', 'Keep the question under 1000 characters');
     const history = Array.isArray(req.body?.history) ? req.body.history.slice(-6) : [];
-    const cfg = aiProviderConfig();
-    if (!cfg.enabled) return res.status(503).json({ error: 'Ask AI is not set up yet on this server.', code: cfg.reason });
+    const prem = premiumFor(db, user);
+    if (!prem.active) return res.status(402).json({ error: user.role === 'employer'
+      ? (prem.trialUsed ? 'Your trial has ended. Ask AI is included in every recruiter plan.' : `Ask AI is included in every recruiter plan. Start your free ${TRIAL_DAYS}-day trial to use it.`)
+      : (prem.trialUsed ? 'Your Premium trial has ended. Ask AI is part of Premium.' : `Ask AI is part of Premium. Start your free ${PREMIUM_TRIAL_DAYS}-day trial to use it.`), code: 'premium_required' });
+    const { cfg } = aiChatConfig(db, user);
+    if (!cfg.enabled) return res.status(503).json(cfg.reason === 'own_key_unreadable'
+      ? { error: 'Your saved AI key can no longer be read. Please connect your chatbot again.', code: cfg.reason }
+      : { error: 'Ask AI is not set up yet. Connect your own Claude or ChatGPT key to start.', code: cfg.reason });
     if (aiUsageOf(db, user.id) >= cfg.limit) return res.status(429).json({ error: `You reached today's limit of ${cfg.limit} questions. It resets tomorrow.`, code: 'daily_limit' });
     // The member's own data, through the same bootstrap the app shows them (session user only).
     const cookie = `${AUTH_COOKIE}=${signedValue({ sub: user.id, role: user.role, expiresAt: Date.now() + 60000 }, sessionSecret)}`;
     const r = await fetch(`http://127.0.0.1:${req.socket.localPort}/api/bootstrap?userId=${encodeURIComponent(user.id)}`, { headers: { Cookie: cookie } });
     if (!r.ok) return res.status(503).json({ error: 'Your JobsMatchNow data could not be loaded right now. Try again in a minute.', code: 'data_unavailable' });
     const ctx = buildAiContext(await r.json());
-    if (ctx.empty) return res.json({ answer: 'I don\'t have enough of your data yet to answer: your profile has no skills, and you have no matching roles or matches. Add your skills and target roles in your profile, then ask again.', sources: [], provider: null, remaining: Math.max(0, cfg.limit - aiUsageOf(db, user.id)) });
+    if (ctx.empty) return res.json({ answer: user.role === 'employer'
+      ? 'I don\'t have enough of your data yet to answer: you have no active roles and no matches. Post a role, then ask again.'
+      : 'I don\'t have enough of your data yet to answer: your profile has no skills, and you have no matching roles or matches. Add your skills and target roles in your profile, then ask again.', sources: [], provider: null, remaining: Math.max(0, cfg.limit - aiUsageOf(db, user.id)) });
     // Count the question before calling the provider (failed calls still count; protects cost).
     const used = await store.transaction((tx) => {
       if (!Array.isArray(tx.aiChatUsage)) tx.aiChatUsage = [];
@@ -3308,8 +3419,17 @@ app.post('/api/ai/chat', aiChatLimiter, async (req, res, next) => {
       return rec.count;
     });
     let answerText;
-    try { answerText = await callAiProvider(cfg, { context: ctx.text, question, history }); }
-    catch (e) { return res.status(e.status || 502).json({ error: e.code === 'provider_busy' ? 'The AI service is busy. Try again in a moment.' : 'The AI service is not answering right now. Try again in a moment.', code: e.code || 'provider_error', remaining: Math.max(0, cfg.limit - used) }); }
+    try { answerText = await callAiProvider(cfg, { context: ctx.text, question, history, role: user.role }); }
+    catch (e) {
+      const own = cfg.source === 'own';
+      const msg = {
+        provider_busy: 'The AI service is busy. Try again in a moment.',
+        key_refused: own ? 'Your AI provider refused your key. Open "My AI chatbot" and connect it again.' : 'The AI service is not answering right now. Try again in a moment.',
+        no_credit: own ? 'Your AI provider account has no credit left. Add credit on your provider\'s billing page, then retry.' : 'The AI service is not answering right now. Try again in a moment.',
+        model_unavailable: own ? 'Your account cannot use the chosen model. Open "My AI chatbot" and switch to the other option.' : 'The AI service is not answering right now. Try again in a moment.',
+      }[e.code] || 'The AI service is not answering right now. Try again in a moment.';
+      return res.status(e.status || 502).json({ error: msg, code: e.code || 'provider_error', remaining: Math.max(0, cfg.limit - used) });
+    }
     res.json({ answer: answerText, sources: citedAiSources(answerText, ctx.sources), provider: cfg.label, remaining: Math.max(0, cfg.limit - used) });
   } catch (error) { next(error); }
 });

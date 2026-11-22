@@ -19,7 +19,7 @@ export const RECRUITER_OFFERS: LaunchOffer[] = [
 ];
 
 export const CANDIDATE_OFFERS: LaunchOffer[] = [
-  { icon: BadgeCheck, badge: 'Always free', title: 'Free forever, genuinely', body: 'Profile, resume, matching, messaging and interview scheduling stay free forever. Optional Premium (more target roles, direct messages) is coming soon.' },
+  { icon: BadgeCheck, badge: 'Always free', title: 'Free forever, genuinely', body: 'Profile, resume, matching, messaging and interview scheduling stay free forever. Optional Premium (more target roles, your own AI chatbot) comes with a free 7-day trial.' },
   { icon: Sparkles, badge: 'Mutual only', title: 'You choose who reaches you', body: 'A conversation opens only when you and the company both say yes. No cold outreach, no salary guessing.' },
 ];
 

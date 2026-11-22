@@ -57,9 +57,9 @@ test('the charge never quotes a plan that is not in the catalogue', () => {
 test('selecting a plan records the intent but grants nothing', () => {
   const d = db();
   const subscription = sub();
-  const result = selectPlan(d, subscription, 'team', 'annual', 'r1');
+  const result = selectPlan(d, subscription, 'trio', 'annual', 'r1'); // "Team" (3 accounts) since 2026-11-22
   assert.equal(result.outcome, 'selected');
-  assert.equal(subscription.selectedPlanKey, 'team');
+  assert.equal(subscription.selectedPlanKey, 'trio');
   assert.equal(subscription.billingInterval, 'annual');
   // planCode is what entitlements read, and it has NOT moved.
   assert.equal(subscription.planCode, 'trial', 'choosing Team must not hand out Team before it is paid for');

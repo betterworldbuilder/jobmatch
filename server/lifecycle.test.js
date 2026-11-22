@@ -181,8 +181,8 @@ test('an admin override verifies an account a regex would refuse', () => {
 
 /* ── Trial terms ─────────────────────────────────────────────────────────── */
 
-test('there is one trial length, 60 days, for everybody', () => {
-  assert.equal(TRIAL_DAYS, 60);
+test('there is one trial length, 4 weeks (28 days), for everybody', () => {
+  assert.equal(TRIAL_DAYS, 28);
 });
 
 test('every trial checkpoint fires inside the trial, never after it ends', () => {
@@ -192,8 +192,8 @@ test('every trial checkpoint fires inside the trial, never after it ends', () =>
   }
 });
 
-test('the trial allows three live jobs — a real test, not a single-job demo', () => {
-  assert.equal(TRIAL_ACTIVE_JOB_LIMIT, 3);
+test('the trial allows five live jobs (full Solo features) — a real test, not a single-job demo', () => {
+  assert.equal(TRIAL_ACTIVE_JOB_LIMIT, 5);
   assert.ok(TRIAL_ACTIVE_JOB_LIMIT > FREE_ACTIVE_JOB_LIMIT, 'the trial must be worth more than the free tier');
 });
 

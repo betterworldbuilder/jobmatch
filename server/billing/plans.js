@@ -24,27 +24,31 @@ export const PLANS = {
     outboundMessaging: false, analytics: false, atsExport: false, priorityPlacement: false,
     prices: { USD: { monthly: 0 }, VND: { monthly: 0 } },
   },
+  // Pricing 2026-11-22 (founder): Solo USD 49, Duo USD 80, Team (3 seats) USD 140; every paid plan
+  // includes all features + the AI Hiring Assistant (Ask AI). VND prices were not part of the change
+  // and are unchanged pending a founder decision.
   solo: {
     key: 'solo', display: 'Solo', order: 1,
     seats: 1, liveJobSlots: 5, monthlyMatchCap: UNLIMITED,
-    outboundMessaging: true, analytics: false, atsExport: false, priorityPlacement: false,
-    prices: { USD: { monthly: 20 }, VND: { monthly: 490000 } },
+    outboundMessaging: true, analytics: true, atsExport: false, priorityPlacement: false, aiAssistant: true,
+    prices: { USD: { monthly: 49 }, VND: { monthly: 490000 } },
   },
   duo: {
     key: 'duo', display: 'Duo', order: 2,
     seats: 2, liveJobSlots: 10, monthlyMatchCap: UNLIMITED,
-    outboundMessaging: true, analytics: false, atsExport: false, priorityPlacement: false,
-    prices: { USD: { monthly: 35 }, VND: { monthly: 850000 } },
+    outboundMessaging: true, analytics: true, atsExport: false, priorityPlacement: false, aiAssistant: true,
+    prices: { USD: { monthly: 80 }, VND: { monthly: 850000 } },
   },
+  // Key stays `trio` so existing rows keep working; it is sold as "Team" (3 recruiter accounts).
   trio: {
-    key: 'trio', display: 'Trio', order: 3,
+    key: 'trio', display: 'Team', order: 3,
     seats: 3, liveJobSlots: 15, monthlyMatchCap: UNLIMITED,
-    outboundMessaging: true, analytics: true, atsExport: false, priorityPlacement: false,
-    prices: { USD: { monthly: 49 }, VND: { monthly: 1190000 } },
+    outboundMessaging: true, analytics: true, atsExport: false, priorityPlacement: false, aiAssistant: true,
+    prices: { USD: { monthly: 140 }, VND: { monthly: 1190000 } },
   },
-  // Top of the ladder. Anything larger is a conversation, not a checkout.
+  // Legacy 5-seat tier: no longer sold on the pricing page (kept so any existing row still resolves).
   team: {
-    key: 'team', display: 'Team', order: 4,
+    key: 'team', display: 'Team 5 (legacy)', order: 4, legacy: true, aiAssistant: true,
     seats: 5, liveJobSlots: 25, monthlyMatchCap: UNLIMITED,
     outboundMessaging: true, analytics: true, atsExport: true, priorityPlacement: false,
     prices: { USD: { monthly: 75 }, VND: { monthly: 1790000 } },
@@ -89,7 +93,7 @@ export function seatPlanKey(planCode) {
 export const SINGLE_POSTING = {
   key: 'single_posting', display: 'Single job posting',
   termDays: 60, liveJobSlots: 1,
-  prices: { USD: { once: 25 }, VND: { once: 590000 } },
+  prices: { USD: { once: 29 }, VND: { once: 590000 } },
 };
 
 /* No subscription, no monthly fee: pay a percentage of first-year salary when a
@@ -119,7 +123,7 @@ export function currencyForCountry(country) {
 }
 
 /** Paid, recurring tiers in ascending seat order — the ladder the invariant guards. */
-export const SEAT_LADDER = ['solo', 'duo', 'trio', 'team'];
+export const SEAT_LADDER = ['solo', 'duo', 'trio'];
 
 /**
  * Cheapest total cost to assemble at least `targetSeats` by stacking any

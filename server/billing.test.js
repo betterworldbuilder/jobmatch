@@ -36,12 +36,12 @@ test('candidate remains free and never receives recruiter billing restrictions',
   assert.equal(canPublishJob(candidate, undefined), true);
 });
 
-// 2. Every recruiter gets the same 60-day trial — no cohorts, no second tier.
-test('every recruiter receives the same 60-day trial', () => {
+// 2. Every recruiter gets the same 4-week trial (28 days since 2026-11-22) — no cohorts, no second tier.
+test('every recruiter receives the same 4-week trial', () => {
   const db = makeDb();
   const first = getOrCreateTrialSubscription(db, 'r1');
   const later = getOrCreateTrialSubscription(db, 'r2');
-  assert.equal(TRIAL_DAYS, 60);
+  assert.equal(TRIAL_DAYS, 28);
   assert.equal(first.trialEndsAt - first.trialStartedAt, TRIAL_DAYS * DAY_MS);
   assert.equal(later.trialEndsAt - later.trialStartedAt, TRIAL_DAYS * DAY_MS);
 });

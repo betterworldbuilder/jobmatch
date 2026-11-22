@@ -73,6 +73,7 @@ const CANDIDATE_REQUIRED_STEPS = 4;
 type Form = {
   name: string; photo: string; headline: string; email: string; phone: string; city: string; country: string;
   nationality: string; birthdate: string; agePrivacy: AgePrivacy; workAuthorization: string; visaSponsorship: boolean;
+  citizenship: string[]; visaCountries: string[];
   pronouns: string; contactChannels: ContactChannel[];
   distanceRangeKm: number; geo?: { lat: number; lng: number }; languageDetail: LanguageTag[];
   title: string; yearsExperience: string; seniority?: Seniority; skillsDetail: SkillTag[]; industries: string[];
@@ -94,6 +95,7 @@ function fromPerson(p: Person): Form {
     city: p.city || (p.location ? p.location.split('·')[0].trim() : ''), country: p.country || '',
     nationality: p.nationality || '', birthdate: p.birthdate || '', agePrivacy: p.agePrivacy || (p.discloseAge ? 'public' : 'private'),
     workAuthorization: p.workAuthorization || '', visaSponsorship: p.visaSponsorship ?? false, pronouns: p.pronouns || '',
+    citizenship: p.citizenship?.length ? p.citizenship : (p.nationality ? [p.nationality] : []), visaCountries: p.visaCountries || [],
     contactChannels: p.contactChannels || (p.phone ? [{ type: 'phone', value: p.phone }] : []),
     distanceRangeKm: p.distanceRangeKm ?? 25, geo: p.geo,
     languageDetail: p.languageDetail || (p.languages || []).map((name) => ({ name, level: 'Fluent/C2' })),
@@ -126,6 +128,7 @@ function stepPayload(step: number, form: Form, finishing: boolean) {
     city: form.city, country: form.country, nationality: form.nationality || undefined,
     birthdate: form.birthdate || undefined, agePrivacy: form.agePrivacy,
     workAuthorization: form.workAuthorization || undefined, visaSponsorship: form.visaSponsorship, pronouns: form.pronouns || undefined,
+    citizenship: form.citizenship, visaCountries: form.visaCountries,
     contactChannels: form.contactChannels.filter((c) => c.value.trim()),
     distanceRangeKm: form.distanceRangeKm, geo: form.geo, languageDetail: form.languageDetail,
   };
@@ -356,6 +359,10 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
         <div className="wz-row">
           <Field label="Work authorization" required hint="Your status relative to where you'll work — shown as a status, never a document."><select className="wz-input wz-select" value={form.workAuthorization} onChange={(e) => patch({ workAuthorization: e.target.value })}><option value="">Select one…</option>{WORK_AUTH_OPTIONS.map((o) => <option key={o}>{o}</option>)}</select></Field>
           <Field label="Visa sponsorship"><Toggle checked={form.visaSponsorship} onChange={(visaSponsorship) => patch({ visaSponsorship })} label={form.visaSponsorship ? 'I need sponsorship' : 'No sponsorship needed'} /></Field>
+        </div>
+        <div className="wz-row">
+          <Field label="Citizenship (countries)" hint="Every country you are a citizen of. Never affects your match score."><TagInput value={form.citizenship} onChange={(citizenship) => patch({ citizenship: citizenship.slice(0, 5) })} placeholder="e.g. Vietnam — press Enter" /></Field>
+          <Field label="Visa status (countries)" hint="Countries where you already hold a valid work visa or permit."><TagInput value={form.visaCountries} onChange={(visaCountries) => patch({ visaCountries: visaCountries.slice(0, 10) })} placeholder="e.g. Singapore — press Enter" /></Field>
         </div>
         {/* "Verified account" (optional): ID check preview — the document never leaves the device. */}
         <IdVerification viewer={{ ...viewer, idVerification: idv }} onSaved={(v) => setIdv(v.idVerification)} />

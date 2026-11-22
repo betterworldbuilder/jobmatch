@@ -1,6 +1,12 @@
 import type { AdminKpi, ConnectorKey, IntegrationStatus, RecommendationDoc, WebAnalyticsReport } from './types';
 import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewKit, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
+/** What the browser may know about a member's own AI key (never the key itself). */
+export type AiKeyInfo = { provider: 'anthropic' | 'openai'; tier: 'best' | 'fast'; model: string; last4: string; savedAt: number };
+
+/** Premium add-on state (server/premium.js). */
+export type PremiumState = { active: boolean; source: 'paid' | 'trial' | 'demo' | null; trialUsed: boolean; trialDays: number; trialEndsAt: number | null; paidUntil: number | null; daysLeft: number | null; roleLimit?: number };
+
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -40,7 +46,12 @@ export const api = {
   resendVerification: () => request<{ ok: boolean; mailer: boolean }>('/api/auth/resend-verification', { method: 'POST' }),
   deleteAccount: () => request<{ ok: boolean }>('/api/me', { method: 'DELETE' }),
   // Ask AI (job seekers): the server uses the session user only; keys stay server-side.
-  aiChatStatus: () => request<{ enabled: boolean; reason?: string; provider?: string; providerLabel?: string; dailyLimit?: number; remaining?: number }>('/api/ai/chat/status'),
+  aiChatStatus: () => request<{ enabled: boolean; reason?: string; source?: 'own' | 'server'; provider?: string; providerLabel?: string; model?: string; dailyLimit?: number; remaining?: number; ownKey: AiKeyInfo | null; canSaveKey: boolean; premium: PremiumState }>('/api/ai/chat/status'),
+  premium: () => request<PremiumState>('/api/premium'),
+  startPremiumTrial: () => request<PremiumState>('/api/premium/trial', { method: 'POST', body: '{}' }),
+  aiKey: () =>request<{ key: AiKeyInfo | null; canSave: boolean }>('/api/ai/key'),
+  saveAiKey: (provider: 'anthropic' | 'openai', apiKey: string, tier: 'best' | 'fast') => request<{ key: AiKeyInfo }>('/api/ai/key', { method: 'PUT', body: JSON.stringify({ provider, apiKey, tier }) }),
+  deleteAiKey: () => request<{ ok: boolean }>('/api/ai/key', { method: 'DELETE' }),
   aiChat: (question: string, history: { role: 'user' | 'assistant'; content: string }[]) => request<{ answer: string; sources: { ref: string; kind: string; label: string }[]; provider: string | null; remaining: number }>('/api/ai/chat', { method: 'POST', body: JSON.stringify({ question, history }) }),
   calendarFeed: (userId: string, reset = false) => request<{ url: string; webcal: string; reminders: number[] }>(`/api/users/${encodeURIComponent(userId)}/calendar-feed`, { method: 'POST', body: JSON.stringify({ reset }) }),
   updateProfile: (userId: string, payload: Partial<Person> & { onboarding?: boolean }) => request<{ user: Person }>(`/api/users/${encodeURIComponent(userId)}`, { method: 'PATCH', body: JSON.stringify(payload) }),

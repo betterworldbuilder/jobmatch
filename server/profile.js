@@ -64,6 +64,9 @@ export function applyCandidateProfile(user, body) {
   if (body.discloseAge !== undefined) user.discloseAge = Boolean(body.discloseAge);
   set('workAuthorization', str(body.workAuthorization, 120));
   if (body.visaSponsorship !== undefined) user.visaSponsorship = Boolean(body.visaSponsorship);
+  // Citizenship and visa status as country lists (founder, 2026-11-22). Never used in the match score.
+  if (body.citizenship !== undefined) user.citizenship = strArray(body.citizenship, 5, 60) || [];
+  if (body.visaCountries !== undefined) user.visaCountries = strArray(body.visaCountries, 10, 60) || [];
   set('pronouns', str(body.pronouns, 40));
   if (body.contactChannels !== undefined) {
     user.contactChannels = objArray(body.contactChannels, {

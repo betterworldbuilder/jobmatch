@@ -21,8 +21,9 @@ export function FindMyMatchPage({ data, setData, navigate, onOpenMessages }: Pro
   const targets = useMemo(() => (data.viewer.preferences?.desiredRoles?.length ? data.viewer.preferences.desiredRoles : [data.viewer.title].filter(Boolean) as string[]), [data.viewer]);
   const myJobs = useMemo(() => (data.roleMatches || []).map((g) => g.job), [data.roleMatches]);
   const options = candidate
-    ? targets.map((t) => ({ key: t, label: t, sub: `${data.jobs.filter((j) => roleFor(j.title, targets) === t).length} roles` }))
-    : myJobs.map((j) => ({ key: j.id, label: j.title, sub: `${j.company} · ${data.candidates.length} candidates` }));
+    // No counts in the dropdown (founder, 2026-11-22): just the role names.
+    ? targets.map((t) => ({ key: t, label: t, sub: '' }))
+    : myJobs.map((j) => ({ key: j.id, label: j.title, sub: j.company || '' }));
   const selected = options.find((o) => o.key === roleKey);
 
   const candidateItems: Job[] | undefined = candidate && selected ? data.jobs.filter((j) => roleFor(j.title, targets) === selected.key) : undefined;
@@ -40,8 +41,8 @@ export function FindMyMatchPage({ data, setData, navigate, onOpenMessages }: Pro
       <label className="fmm-role-select">
         <span className="fmm-role-label">{candidate ? 'Swipe for role' : 'Swipe candidates for'}</span>
         <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} aria-label={candidate ? 'Choose a target role' : 'Choose one of your roles'}>
-          <option value="all">{candidate ? `All my target roles (${data.jobs.length} roles)` : `All my roles (${data.candidates.length} candidates)`}</option>
-          {options.map((o) => <option key={o.key} value={o.key}>{o.label} — {o.sub}</option>)}
+          <option value="all">{candidate ? 'All my target roles' : 'All my roles'}</option>
+          {options.map((o) => <option key={o.key} value={o.key}>{o.sub ? `${o.label} · ${o.sub}` : o.label}</option>)}
         </select>
         <ChevronDown size={16} className="fmm-role-chev" aria-hidden="true" />
       </label>

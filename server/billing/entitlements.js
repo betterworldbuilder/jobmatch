@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { logBillingEvent } from './audit.js';
 import { computeEffectiveStatus, DAY_MS, isBillingExempt } from './subscriptions.js';
+import { PREMIUM_ACTIVE_JOB_LIMIT, premiumActive } from '../premium.js';
 
 /* Recruiter entitlements: the single server-side authority for "may this
  * recruiter publish / edit this job right now". Every decision is derived live
@@ -32,7 +33,8 @@ const intFromEnv = (name, fallback) => {
 /* Three live jobs during the trial. Enough to be a real test of the matching
  * across several roles rather than a single-job demo, and small enough that the
  * jump to a paid plan is a genuine step up rather than a formality. */
-export const TRIAL_ACTIVE_JOB_LIMIT = intFromEnv('TRIAL_ACTIVE_JOB_LIMIT', 3);
+// The trial gives full Solo features (founder, 2026-11-22): 5 live jobs.
+export const TRIAL_ACTIVE_JOB_LIMIT = intFromEnv('TRIAL_ACTIVE_JOB_LIMIT', 5);
 export const FREE_ACTIVE_JOB_LIMIT = intFromEnv('RECRUITER_FREE_JOB_LIMIT', 1);
 export const FREE_JOB_PERIOD_DAYS = intFromEnv('RECRUITER_FREE_JOB_DAYS', 30);
 export const REFERRAL_JOB_CREDIT_MAX = intFromEnv('REFERRAL_JOB_CREDIT_MAX', 10);
@@ -129,9 +131,12 @@ export function getRecruiterEntitlements(db, recruiter, subscription, now = Date
     ? (index.creditsByRecruiter.get(recruiter.id) || 0)
     : jobCreditBalance(db, recruiter.id);
   const nextFreeJobAvailableAt = subscription?.nextFreeJobAvailableAt ?? null;
+  // Premium add-on (own 7-day trial or paid) raises the live-role limit to PREMIUM_ACTIVE_JOB_LIMIT (default 5).
+  const premium = premiumActive(recruiter, now);
   return {
     planCode,
-    activeJobLimit: activeJobLimitFor(planCode),
+    premium,
+    activeJobLimit: premium ? Math.max(activeJobLimitFor(planCode), PREMIUM_ACTIVE_JOB_LIMIT) : activeJobLimitFor(planCode),
     activeJobCount,
     jobCreditBalance: creditBalance,
     nextFreeJobAvailableAt,

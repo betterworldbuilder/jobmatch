@@ -1,10 +1,10 @@
 // "Use your chatbot here": where the AI features are in JobsMatchNow, and how to plug the
 // member's OWN assistant (Claude, ChatGPT, any MCP client) in, read-only, with a personal key.
 import { useEffect, useState } from 'react';
-import { BarChart3, Bot, Check, Copy, KeyRound, Lock, Plug, Sparkles, Trash2 } from 'lucide-react';
+import { BarChart3, Bot, Check, Copy, Crown, KeyRound, Lock, Plug, Sparkles, Trash2 } from 'lucide-react';
 import { api, apiBase } from '../../api';
 import type { Bootstrap, ConnectorKey, View } from '../../types';
-import { AgentSettingsModal } from './AiAnalyst';
+import { AgentSettingsModal, openAskAi } from './AiAnalyst';
 
 export const MCP_URL = `${apiBase || 'https://jobsmatchnow.com'}/api/mcp`;
 const ASK = ['What are my matches?', 'Where am I in each hiring process?', 'Which skills should I learn next, and where?', 'When is my next interview?'];
@@ -39,11 +39,11 @@ export function ChatbotPage({ data, navigate }: { data: Bootstrap; navigate: (v:
     <section className="cb-card">
       <h2><Sparkles size={18} /> Where the chatbot is in JobsMatchNow</h2>
       <div className="cb-where">
-        <button type="button" onClick={() => navigate('analytics')}><BarChart3 size={18} /><strong>Reports → AI analyst</strong><small>Ready questions: skill gaps, where to learn them, who can teach you, easiest other roles.</small></button>
-        <div><Bot size={18} /><strong>“AI analyst” button</strong><small>Bottom-right on every page — ask a quick question wherever you are.</small></div>
-        <button type="button" onClick={() => navigate('home')}><Plug size={18} /><strong>Home → Use personal AI agent</strong><small>Choose ChatGPT or Claude for the in-app analyst (preview).</small></button>
+        <button type="button" onClick={() => setAgentOpen(true)}><KeyRound size={18} /><strong>1. Connect your Claude or ChatGPT</strong><small>Get an API key from Anthropic or OpenAI (links inside) and paste it. Stored encrypted, never shown again.</small></button>
+        <button type="button" onClick={() => openAskAi()}><Bot size={18} /><strong>2. “Ask AI” button</strong><small>Bottom-right on every page: ask about your {data.viewer.role === 'employer' ? 'roles, candidates and hiring' : 'matches, skills and interviews'}.</small></button>
+        <button type="button" onClick={() => navigate('analytics')}><BarChart3 size={18} /><strong>Reports → AI analyst</strong><small>Ready questions that open Ask AI.</small></button>
       </div>
-      <p className="cb-note">The in-app analyst is a preview: it answers on your device from your own JobsMatchNow data.</p>
+      <p className="cb-note"><Crown size={12} /> Premium feature, with a free 7-day trial. You pay Anthropic or OpenAI directly for what you use.</p>
     </section>
 
     <section className="cb-card">
@@ -69,7 +69,7 @@ export function ChatbotPage({ data, navigate }: { data: Bootstrap; navigate: (v:
         <button type="button" className="secondary-button small" onClick={() => void revoke(k.id)}><Trash2 size={13} /> Revoke</button></li>)}</ul>
         : <p className="tp-muted">No keys yet.</p>}
       <p className="cb-note">Read-only and only your own data — never other members. Revoke a key and your assistant loses access at once. Your AI account and its cost stay with you; we never see your ChatGPT or Claude password.</p>
-      <button type="button" className="tp-link" onClick={() => setAgentOpen(true)}>In-app analyst settings (ChatGPT / Claude preview)</button>
+      <button type="button" className="tp-link" onClick={() => setAgentOpen(true)}>My AI chatbot (Claude / ChatGPT key)</button>
     </section>
     {agentOpen && <AgentSettingsModal onClose={() => setAgentOpen(false)} />}
   </div>;

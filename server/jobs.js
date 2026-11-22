@@ -103,6 +103,13 @@ export function applyJob(job, body, { strict = false } = {}) {
   if (body.salaryNegotiable !== undefined) job.salaryNegotiable = Boolean(body.salaryNegotiable);
   set('hybridDays', num(body.hybridDays, 0, 5));
   if (body.visaSponsorship !== undefined) job.visaSponsorship = Boolean(body.visaSponsorship);
+  // "Required valid work visa and nationality" (founder, 2026-11-22): yes/no, and when no, who may apply.
+  if (body.workVisaRequired !== undefined) job.workVisaRequired = body.workVisaRequired === null ? undefined : Boolean(body.workVisaRequired);
+  if (body.authorizedNationalities !== undefined) {
+    const a = body.authorizedNationalities || {};
+    const mode = ['any', 'us', 'europe', 'custom'].includes(a.mode) ? a.mode : 'any';
+    job.authorizedNationalities = { mode, ...(mode === 'custom' ? { custom: strArray(a.custom, 30, 60) || [] } : {}) };
+  }
   if (body.relocationSupport !== undefined) job.relocationSupport = Boolean(body.relocationSupport);
   set('travel', str(body.travel, 60));
   set('onCall', str(body.onCall, 60));

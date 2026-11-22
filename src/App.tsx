@@ -16,7 +16,7 @@ import { FeaturesTable, FeedbackSection, JourneyPipeline, LatestShowcase } from 
 import { HeroAlt, HeroDefault, HeroImage } from './components/landing/HeroBanners';
 import { CANDIDATE_OFFERS, LaunchOffers } from './components/LaunchOffers';
 import { PlanCardView } from './components/landing/PlanCards';
-import { ANNUAL_MONTHS_CHARGED, BOOST, HEADLINE_PLANS, MORE_SEAT_PLANS, PAY_PER_HIRE, planCard, POSTING_TERM_DAYS, SINGLE_POSTING, TRIAL, usd, vnd } from './lib/plans';
+import { ANNUAL_MONTHS_CHARGED, BOOST, HEADLINE_PLANS, planCard, POSTING_TERM_DAYS, SINGLE_POSTING, TRIAL } from './lib/plans';
 import { CandidateWizard } from './components/profile/CandidateWizard';
 import { CandidateProfilePage } from './components/profile/CandidateProfilePage';
 import { RecruiterWizard } from './components/profile/RecruiterWizard';
@@ -58,7 +58,7 @@ import { featureOn } from './lib/flags';
 import { installAdminHotkey, trackView } from './lib/tracker';
 import { scoreOf } from './lib/report';
 import { CandidateReport, RecruiterReport, downloadText, reportCsv } from './components/home/ReportSections';
-import { AiAnalyst, AiAnalystInline } from './components/home/AiAnalyst';
+import { AiAnalystInline } from './components/home/AiAnalyst';
 import { CandidateSubscription } from './components/home/CandidateSubscription';
 import { ChatbotPage } from './components/home/ChatbotPage';
 import { FeedbackPage } from './components/home/FeedbackPage';
@@ -128,14 +128,15 @@ const employerNav: NavItem[] = [
   { label: 'My dashboard', short: 'Dashboard', icon: Compass, view: 'home' },
   // "Find My Match": the candidate swipe deck + Recommended Candidates, the page recruiters open on too.
   { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
-  { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
+  // Order (founder, 2026-11-22): My JobMatches, then Conversations, then Coffee Invitations.
   { label: 'My JobMatches', icon: BriefcaseBusiness, anchor: 'td-roles' },
+  { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
+  { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   { label: 'Selected Candidates', short: 'Candidates', icon: Users, view: 'selected' },
   // "Saved" left the recruiter menu (founder, 2026-11-22); "Hired Results" sits after Hiring Stages.
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
   { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
   { label: 'Hired Results', short: 'Hired', icon: Trophy, view: 'hired' },
-  { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: 'Use your chatbot here', short: 'Chatbot', icon: Bot, view: 'assistant' },
   { label: 'Feedback', icon: Lightbulb, view: 'feedback' },
@@ -313,7 +314,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
         <header>
           <h2 className="pricing-side-tag">For candidates</h2>
           <h3>Free forever</h3>
-          <p>Everything below is free forever — the core never goes behind a paywall. We are paid by the companies doing the hiring. An optional Premium for candidates (3 target roles + 10 direct messages, $10/month) is coming soon.</p>
+          <p>Everything below is free forever — the core never goes behind a paywall. We are paid by the companies doing the hiring. An optional Premium for candidates (3 target roles + your own AI chatbot, $10/month) starts with a free 7-day trial.</p>
         </header>
         <ul className="pricing-side-perks">
           <li><Check size={15} /> Full profile and resume</li>
@@ -329,40 +330,25 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
       <section className="pricing-side pricing-recruiters">
         <header>
           <h2 className="pricing-side-tag">For recruiters</h2>
-          <h3>Start with a {TRIAL.days}-day trial — {TRIAL.liveJobs} live jobs per recruiter</h3>
-          <p>See if it works for you. Then pick the plan that matches what you actually need — every plan below costs less per seat than the one before it.</p>
+          <h3>Find the right people faster</h3>
+          <p>Start free. Upgrade as your hiring grows. No fee per hire.</p>
         </header>
-        <div className="plan-grid">
+        {/* Recruiter pricing (founder design, 2026-11-22). Prices come from src/lib/plans.ts (synced with the server). */}
+        <p className="plan-trial-banner"><Gift size={20} /> <b>{Math.round(TRIAL.days / 7)} weeks free</b> · Full features including AI</p>
+        <div className="plan-grid three">
           {HEADLINE_PLANS.map((key) => <PlanCardView key={key} plan={planCard(key)} onRegister={openRegister} />)}
         </div>
-        <details className="plan-more">
-          <summary>Hiring with a bigger team? See Team seats</summary>
-          <div className="plan-grid">
-            {MORE_SEAT_PLANS.map((key) => <PlanCardView key={key} plan={planCard(key)} onRegister={openRegister} />)}
-          </div>
-          <p className="plan-addon-note">
-            Need more than {planCard('team').seats} seats? <a href="mailto:support@jobsmatchnow.com?subject=Larger%20recruiter%20plan">Talk to us</a> —
-            we have larger plans, we would just rather work out what you actually need than sell you a tier off a page.
-          </p>
-        </details>
-        <div className="plan-alt-row">
-          <article>
-            <span className="plan-name">One role only</span>
-            <p className="plan-price">{usd(SINGLE_POSTING.usd)}<small> once</small></p>
-            <p className="plan-vnd">{vnd(SINGLE_POSTING.vnd)}</p>
-            <p>A single job posting, live for {SINGLE_POSTING.termDays} days. No subscription.</p>
-          </article>
-          <article>
-            <span className="plan-name">Pay per hire</span>
-            <p className="plan-price">{usd(0)}<small> up front</small></p>
-            <p className="plan-vnd">then {PAY_PER_HIRE.feePercent}% of first-year salary</p>
-            <p>Nothing to pay until someone is actually hired through the platform.</p>
-          </article>
+        <div className="plan-one-role">
+          <span className="plan-one-icon"><BriefcaseBusiness size={20} /></span>
+          <strong>Hiring for one role?</strong>
+          <span>${SINGLE_POSTING.usd} once · 1 job for {SINGLE_POSTING.termDays} days · No subscription</span>
+          <button type="button" className="primary-button" onClick={openRegister}>Get started</button>
         </div>
+        <p className="plan-all-include"><b>All packages include candidate matching, messaging, scheduling, AI candidate insights and outreach drafts.</b><br />Job seekers use JobsMatchNow for free.</p>
         <p className="plan-footnote">
           Every posting runs {POSTING_TERM_DAYS} days and then pauses — renewing is free, one click, as often as you like.
-          Annual billing charges {ANNUAL_MONTHS_CHARGED} months, so two are free. Vietnam accounts are billed in đồng at the prices shown.
-          Boost any job to the top of the deck for {BOOST.hours} hours for {usd(BOOST.usd)}; boosted cards are labelled <b>Promoted</b> and
+          Annual billing charges {ANNUAL_MONTHS_CHARGED} months, so two are free.
+          Boost any job to the top of the deck for {BOOST.hours} hours for ${BOOST.usd}; boosted cards are labelled <b>Promoted</b> and
           keep the exact match score they earned.
         </p>
       </section>
@@ -527,12 +513,11 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
           : <ViewRouter view={view} role={role} data={data} setData={setData} navigate={setView} onEditProfile={setEditStep} profileCard={profileCard} onProfileCardChange={setProfileCard} reload={load} onAddJobs={() => setJobImportOpen(true)} manualJobRequest={manualJobRequest} openMatchId={openMatchId} onOpenMessages={openMessages} editJobId={editJobId} onEditJob={openJobEditor} paymentResult={vnpayResult} onDismissResult={() => setVnpayResult(null)} />
       )}
     </section>
-    {/* Job seekers: real "Ask AI" (server-side provider, own data only). Recruiters keep the AI analyst preview. */}
-    {data && !data.viewer.onboarding && role === 'candidate' && <AskAi />}
-    {data && !data.viewer.onboarding && role !== 'candidate' && view !== 'analytics' && view !== 'match' && <AiAnalyst data={data} />}
+    {/* Real "Ask AI" for job seekers and hiring teams (own data only; member's own key or the server's provider). */}
+    {data && !data.viewer.onboarding && (role === 'candidate' || role === 'employer') && <AskAi role={role} />}
     {profileSaved && <div className="profile-saved-toast" role="status"><Check size={15} /> Profile updated. Recruiter view refreshed.</div>}
     {jobImportOpen && data && <JobImportModal viewer={data.viewer} onClose={() => setJobImportOpen(false)} onImported={() => { setJobImportOpen(false); setView('jobs'); load(); }} onManual={() => { setJobImportOpen(false); setView('jobs'); setManualJobRequest((value) => value + 1); }} />}
-    <nav className="mobile-bottom-nav" aria-label="Primary navigation">{nav.slice(0, 5).map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)}><Icon size={19} /><span>{item.short || item.label}</span></button>; })}</nav>
+    <nav className="mobile-bottom-nav" aria-label="Primary navigation">{(role === 'employer' ? [...nav.slice(0, 4), ...nav.filter((i) => i.view === 'selected')] : nav.slice(0, 5)).map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)}><Icon size={19} /><span>{item.short || item.label}</span></button>; })}</nav>
     <AnimatePresence>{settingsOpen && <SettingsModal user={session} onClose={() => setSettingsOpen(false)} onDeleted={() => { setSettingsOpen(false); onExit(); }} />}</AnimatePresence>
   </div>;
 }

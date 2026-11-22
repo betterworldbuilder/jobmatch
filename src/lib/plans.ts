@@ -25,33 +25,36 @@ export const PLAN_CARDS: PlanCard[] = [
     tagline: 'One job, live free forever.',
     perks: ['1 live job', '1 recruiter seat', 'Mutual-likes matching', 'Messaging and interview scheduling'],
   },
+  // Pricing 2026-11-22 (founder): Solo 49, Duo 80, Team (3 accounts, key `trio`) 140 — all with the AI Hiring Assistant.
   {
-    key: 'solo', display: 'Solo', seats: 1, liveJobSlots: 5, usd: 20, vnd: 490000,
+    key: 'solo', display: 'Solo', seats: 1, liveJobSlots: 5, usd: 49, vnd: 490000,
     tagline: 'For one recruiter hiring steadily.',
-    perks: ['5 live jobs', '1 recruiter seat', 'Unlimited matches', 'Message candidates first', 'Cancel anytime'],
+    perks: ['1 recruiter account', '5 live jobs at the same time', 'All features + AI Hiring Assistant', 'No bundle discount'],
   },
   {
-    key: 'duo', display: 'Duo', seats: 2, liveJobSlots: 10, usd: 35, vnd: 850000,
+    key: 'duo', display: 'Duo', seats: 2, liveJobSlots: 10, usd: 80, vnd: 850000,
     tagline: 'Two people, one pipeline.',
-    perks: ['10 live jobs', '2 recruiter seats', 'Everything in Solo'],
+    perks: ['2 recruiter accounts', '10 live jobs at the same time', 'All features + AI Hiring Assistant', 'Save USD 18/month vs 2 Solo accounts'],
   },
   {
-    key: 'trio', display: 'Trio', seats: 3, liveJobSlots: 15, usd: 49, vnd: 1190000,
-    tagline: 'A small hiring team with reporting.',
-    perks: ['15 live jobs', '3 recruiter seats', 'Hiring analytics', 'Everything in Duo'],
+    key: 'trio', display: 'Team', seats: 3, liveJobSlots: 15, usd: 140, vnd: 1190000,
+    tagline: 'A small hiring team.',
+    perks: ['3 recruiter accounts', '15 live jobs at the same time', 'All features + AI Hiring Assistant', 'Save USD 7/month vs 3 Solo accounts'],
   },
   {
-    key: 'team', display: 'Team', seats: 5, liveJobSlots: 25, usd: 75, vnd: 1790000,
-    tagline: 'In-house teams hiring across roles.',
-    perks: ['25 live jobs', '5 recruiter seats', 'Hiring analytics', 'ATS export', 'Everything in Trio'],
+    key: 'team', display: 'Team 5 (legacy)', seats: 5, liveJobSlots: 25, usd: 75, vnd: 1790000,
+    tagline: 'No longer sold; kept for existing accounts.',
+    perks: ['25 live jobs', '5 recruiter seats'],
   },
 ];
 
-/* The ladder tops out at Team. Anyone needing more seats than that is a
- * conversation, not a self-serve checkout. */
-export const HEADLINE_PLANS: PlanKey[] = ['starter', 'solo', 'duo', 'trio'];
-export const MORE_SEAT_PLANS: PlanKey[] = ['team'];
-export const POPULAR_PLAN: PlanKey = 'solo';
+/** What every package includes (pricing card footer). */
+export const PLAN_INCLUDES = 'Candidate matching, messaging, scheduling, AI candidate insights and outreach drafts.';
+
+/* Sold plans: Solo, Duo, Team. Starter (one free job) stays as the free floor. */
+export const HEADLINE_PLANS: PlanKey[] = ['solo', 'duo', 'trio'];
+export const MORE_SEAT_PLANS: PlanKey[] = [];
+export const POPULAR_PLAN: PlanKey = 'duo';
 
 /** Annual bills 10 months — two free. */
 export const ANNUAL_MONTHS_CHARGED = 10;
@@ -61,14 +64,13 @@ export const BOOST = { hours: 72, usd: 12, vnd: 300000 };
 /** A posting runs this long and then pauses. Renewal is free and unlimited. */
 export const POSTING_TERM_DAYS = 60;
 
-/* Priced above Solo on purpose: USD 25 for one job against USD 20/month for
- * five makes the subscription the obvious choice. It sells the plan. */
-export const SINGLE_POSTING = { termDays: 60, usd: 25, vnd: 590000 };
+/* "Hiring for one role?" USD 29 once, 1 job for 60 days, no subscription (founder, 2026-11-22). */
+export const SINGLE_POSTING = { termDays: 60, usd: 29, vnd: 590000 };
 
 export const PAY_PER_HIRE = { feePercent: 5 };
 
 /** One trial, one length, the same for everybody. */
-export const TRIAL = { days: 60, liveJobs: 3 };
+export const TRIAL = { days: 28, liveJobs: 5 };
 
 export const planCard = (key: PlanKey) => PLAN_CARDS.find((plan) => plan.key === key)!;
 

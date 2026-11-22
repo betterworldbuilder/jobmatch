@@ -6,6 +6,8 @@ import { ContactBarEditor } from '../ContactBarEditor';
 import { CandidateCards } from './CandidateCards';
 import { DemoBadge } from '../DemoBadge';
 import { ContactBar } from '../home/TodayPanel';
+import { MyChatbotCard } from '../home/PremiumTrial';
+import { NationalityVisaCard } from './NationalityVisaCard';
 
 // On your own profile page "My Dream Job" comes first (founder request), then the usual cards.
 // ORDER lists CandidateCards' card numbers (0 Who I am, 1 Human Stack, 2 Skills, 3 Built, 4 Dream Job,
@@ -69,6 +71,7 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
         {/* Contact bar: what teams can use once you match. */}
         <div className="rp-contact-wrap">{onViewerSaved ? <ContactBarEditor key={viewer.id} viewer={viewer} onSaved={onViewerSaved} /> : <ContactBar person={viewer} onAdd={() => onEdit(0)} />}</div>
       </div>
+      <div className="rp-right">
       <aside className="rp-context">
         <div className="rp-completion-head"><div className="mh-ring" style={{ '--value': `${completion * 3.6}deg` } as React.CSSProperties}><strong>{completion}%</strong></div><div><span className="overline">Profile strength</span><h2>Make recruiters fall in love with your profile</h2></div></div>
         <div className="rp-strength-list">{strengths.map((item) => <button key={item.label} onClick={() => onEdit(item.step)}><span><strong>{item.label}</strong><small>{item.value >= 100 ? 'Complete' : `${item.value}%`}</small></span><i><b style={{ width: `${item.value}%` }} /></i></button>)}</div>
@@ -83,6 +86,12 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
           : <div className="rp-comparison neutral"><span className="overline">General recruiter view</span><strong>No fabricated match score</strong><p>Select a matched role to inspect skills, salary, work-mode, and availability compatibility.</p></div>}
         <button className="primary-button wide" onClick={() => onEdit(EDIT_STEPS[activeCard])}>Edit This Card</button>
       </aside>
+      {/* Owner-only cards under Profile strength (founder, 2026-11-22): "Use my chatbot" (Premium) and Nationality & visa. */}
+      {onViewerSaved && <div className="rp-side-cards">
+        <MyChatbotCard />
+        <NationalityVisaCard key={viewer.id} viewer={viewer} onSaved={onViewerSaved} />
+      </div>}
+      </div>
     </section>
   </main>;
 }

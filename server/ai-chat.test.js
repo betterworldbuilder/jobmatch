@@ -13,6 +13,10 @@ before(async () => {
   fake = http.createServer((req, res) => {
     let body = ''; req.on('data', (c) => { body += c; });
     req.on('end', () => {
+      if (req.method === 'GET' && req.url.startsWith('/v1/models')) { // key check
+        if (String(req.headers['x-api-key']).includes('refused')) { res.writeHead(401); res.end('{}'); return; }
+        res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ data: [{ id: 'claude-haiku-5-5' }, { id: 'claude-opus-5-5' }] })); return;
+      }
       const json = JSON.parse(body || '{}'); seen.push({ headers: req.headers, json });
       if (fakeMode === 'fail') { res.writeHead(500); res.end('{"error":"boom"}'); return; }
       const user = json.messages.at(-1).content;
@@ -23,7 +27,7 @@ before(async () => {
   });
   await new Promise((r) => fake.listen(0, r));
   fakeUrl = `http://127.0.0.1:${fake.address().port}/v1/messages`;
-  Object.assign(process.env, { NODE_ENV: 'test', DB_PATH, AI_CHAT_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'test-key-never-logged', AI_CHAT_ANTHROPIC_URL: fakeUrl, AI_CHAT_DAILY_LIMIT: '3', AI_CHAT_BURST_PER_MIN: '100' });
+  Object.assign(process.env, { NODE_ENV: 'test', DB_PATH, AI_CHAT_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'test-key-never-logged', AI_CHAT_ANTHROPIC_URL: fakeUrl, AI_CHAT_ANTHROPIC_MODELS_URL: fakeUrl.replace('/messages', '/models'), AI_CHAT_DAILY_LIMIT: '3', AI_CHAT_BURST_PER_MIN: '100' });
   const { app } = await import('./index.js');
   server = app.listen(0); await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -68,6 +72,11 @@ test('cross-user: the body cannot switch whose data is used', async () => {
 
 test('a member with no relevant data gets a clear answer without calling the provider', async () => {
   const reg = await call('POST', '/api/auth/register', { role: 'candidate', name: 'Empty Member', email: `empty-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+  const locked = await call('POST', '/api/ai/chat', { question: 'Help me prepare for my next interview.' }, reg.session);
+  assert.equal(locked.status, 402, 'Ask AI is Premium'); assert.equal(locked.body.code, 'premium_required');
+  const trial = await call('POST', '/api/premium/trial', {}, reg.session);
+  assert.equal(trial.status, 200); assert.equal(trial.body.source, 'trial'); assert.equal(trial.body.daysLeft, 7);
+  assert.equal((await call('POST', '/api/premium/trial', {}, reg.session)).status, 409, 'trial is one-time');
   const before = seen.length;
   const r = await call('POST', '/api/ai/chat', { question: 'Help me prepare for my next interview.' }, reg.session);
   assert.equal(r.status, 200);
@@ -95,8 +104,66 @@ test('burst guard is on by default (10 a minute) and configurable', async () => 
   assert.equal(blocked, 1, 'third request in the window is blocked');
 });
 
-test('recruiters and unconfigured servers get clear refusals', async () => {
-  assert.equal((await call('POST', '/api/ai/chat', { question: 'hi' }, await loginDemo('employer-demo'))).status, 403);
+test('recruiters get answers from their own roles, with candidates by title only', async () => {
+  const r = await call('POST', '/api/ai/chat', { question: 'Which candidates fit my roles best?' }, await loginDemo('employer-demo'));
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const sent = seen.at(-1).json;
+  assert.match(sent.system, /hiring team/);
+  assert.match(sent.messages.at(-1).content, /MY OPEN ROLES/);
+  assert.match(sent.messages.at(-1).content, /\[R1\]/);
+  assert.ok(!JSON.stringify(sent).includes('@demo.jobsmatchnow.app'), 'no candidate emails');
+});
+
+test('own key: format checks, refused key, demo accounts blocked, stored encrypted, used for the chat, removable', async () => {
+  const demo = await loginDemo('candidate-demo');
+  assert.equal((await call('PUT', '/api/ai/key', { provider: 'anthropic', apiKey: 'sk-ant-api03-demo-account-key-000000' }, demo)).status, 403);
+  const reg = await call('POST', '/api/auth/register', { role: 'candidate', name: 'Key Owner', email: `keys-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+  const ck = reg.session;
+  await call('POST', '/api/premium/trial', {}, ck);
+  const wrong =await call('PUT', '/api/ai/key', { provider: 'anthropic', apiKey: 'sk-proj-abcdefghijklmnopqrstuvwxyz' }, ck);
+  assert.equal(wrong.status, 400); assert.match(JSON.stringify(wrong.body), /OpenAI/);
+  const refused = await call('PUT', '/api/ai/key', { provider: 'anthropic', apiKey: 'sk-ant-api03-refused-0000000000000000' }, ck);
+  assert.equal(refused.status, 400); assert.match(refused.body.error, /refused this key/);
+  const KEY = 'sk-ant-api03-member-own-key-abcdefghij1234';
+  const saved = await call('PUT', '/api/ai/key', { provider: 'anthropic', apiKey: KEY, tier: 'fast' }, ck);
+  assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  assert.deepEqual({ p: saved.body.key.provider, m: saved.body.key.model, l: saved.body.key.last4 }, { p: 'anthropic', m: 'claude-haiku-5-5', l: '1234' });
+  assert.ok(!JSON.stringify(saved.body).includes(KEY), 'full key never returned');
+  const { readFileSync } = await import('node:fs');
+  assert.ok(!readFileSync(DB_PATH, 'utf8').includes(KEY), 'key is encrypted at rest');
+  const st = await call('GET', '/api/ai/chat/status', undefined, ck);
+  assert.equal(st.body.source, 'own'); assert.equal(st.body.ownKey.last4, '1234'); assert.ok(!JSON.stringify(st.body).includes(KEY));
+  // Give the member a skill so the chat has data, then check the member's key is the one used.
+  const me = (await call('GET', '/api/auth/me', undefined, ck)).body.user;
+  const patched = await call('PATCH', `/api/users/${me.id}`, { skillsDetail: [{ name: 'Python', level: 4 }, { name: 'AWS', level: 3 }] }, ck);
+  assert.equal(patched.status, 200, JSON.stringify(patched.body));
+  const r = await call('POST', '/api/ai/chat', { question: 'What skills am I missing?' }, ck);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.provider, 'your Claude account', 'the provider was called with the member\'s own key');
+  assert.equal(seen.at(-1).headers['x-api-key'], KEY); assert.equal(seen.at(-1).json.model, 'claude-haiku-5-5');
+  assert.deepEqual(seen.at(-1).json.output_config, { effort: 'low' });
+  assert.equal((await call('DELETE', '/api/ai/key', undefined, ck)).status, 200);
+  const after = await call('GET', '/api/ai/chat/status', undefined, ck);
+  assert.equal(after.body.ownKey, null); assert.equal(after.body.source, 'server');
+});
+
+test('premium: trial lasts 7 days, ends on time, demo accounts included, recruiters get 5 live roles', async () => {
+  const { premiumState, startPremiumTrial } = await import('./premium.js');
+  const { getRecruiterEntitlements } = await import('./billing/entitlements.js');
+  const t0 = Date.UTC(2026, 10, 22);
+  const u = { id: 'x', role: 'employer' };
+  assert.equal(premiumState(u, t0).active, false);
+  startPremiumTrial(u, t0);
+  assert.equal(premiumState(u, t0 + 6.9 * 86400000).active, true);
+  assert.equal(premiumState(u, t0 + 7 * 86400000 + 1).active, false, 'ends after 7 days');
+  assert.throws(() => startPremiumTrial(u, t0 + 8 * 86400000), /already used/);
+  assert.equal(premiumState({ demo: true }, t0).source, 'demo');
+  const db = { jobs: [], jobPostCredits: [] };
+  assert.equal(getRecruiterEntitlements(db, u, null, t0 + 86400000).activeJobLimit, 5, 'premium recruiter: 5 roles');
+  assert.equal(getRecruiterEntitlements(db, u, null, t0 + 8 * 86400000).activeJobLimit, 1, 'back to the free limit after the trial');
+});
+
+test('unconfigured servers get clear refusals', async () => {
   process.env.AI_CHAT_PROVIDER = '';
   const off = await call('POST', '/api/ai/chat', { question: 'hi' }, await loginDemo('candidate-demo-3'));
   assert.equal(off.status, 503); assert.match(off.body.error, /not set up/);

@@ -136,6 +136,8 @@ export function JobCards({ job: j, onEdit, unlocked = false, showHeader = true }
           {j.onCall ? <div><dt>On-call</dt><dd>{j.onCall}</dd></div> : null}
           {j.startDate ? <div><dt><CalendarClock size={12} /> Start date</dt><dd>{j.startDate}</dd></div> : null}
           {j.visaSponsorship !== undefined ? <div><dt><ShieldCheck size={12} /> Visa</dt><dd>{j.visaSponsorship ? 'Sponsorship available' : 'No sponsorship'}</dd></div> : null}
+          {j.workVisaRequired !== undefined ? <div><dt><ShieldCheck size={12} /> Work visa &amp; nationality</dt><dd>{j.workVisaRequired ? 'Valid work visa required'
+            : `Open to: ${j.authorizedNationalities?.mode === 'custom' ? (j.authorizedNationalities.custom || []).join(', ') || 'selected countries' : j.authorizedNationalities?.mode === 'us' ? 'US nationals' : j.authorizedNationalities?.mode === 'europe' ? 'European nationals' : 'any nationality'}`}</dd></div> : null}
           {j.relocationSupport !== undefined ? <div><dt>Relocation</dt><dd>{j.relocationSupport ? 'Support available' : 'Not offered'}</dd></div> : null}
         </dl>
         {j.benefits?.length ? <><span className="tcard-sub">Benefits</span><div className="skill-list soft">{j.benefits.map((s) => <span key={s}>{s}</span>)}</div></> : null}

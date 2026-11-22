@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Award, Upload, Zap, BadgeCheck, Brain, Briefcase, CalendarClock, CheckCircle2, Code2, Coffee, Download, FileText, Github, Globe, Hammer, Heart, Home, Languages, Link2, Lock, MapPin, MessageCircle, Music2, Pencil, Phone, Plane, PlusCircle, Quote, Send, ShieldCheck, Smartphone, Sparkles, Star, Target, User, Wallet, X, XCircle } from 'lucide-react';
+import { Award, Upload, Zap, BadgeCheck, Brain, Briefcase, CalendarClock, CheckCircle2, Code2, Coffee, Download, FileText, Flag, Github, Globe, Hammer, Heart, Home, Languages, Link2, Lock, MapPin, MessageCircle, Music2, Pencil, Phone, Plane, PlusCircle, Quote, Send, ShieldCheck, Smartphone, Sparkles, Star, Target, User, Wallet, X, XCircle } from 'lucide-react';
 import { api, apiBase } from '../../api';
 import { jobStatusText } from '../JobStatusPicker';
 import type { ContactChannel, MatchEvidence, Person } from '../../types';
@@ -108,6 +108,7 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
   const parts = (p.name || '').trim().split(/\s+/);
   const displayName = unlocked || parts.length < 2 ? p.name : `${parts[0]} ${parts[parts.length - 1][0]}.`;
   const languages = p.languageDetail?.length ? p.languageDetail : (p.languages || []).map((name) => ({ name, level: '' }));
+  const citizenship = p.citizenship?.length ? p.citizenship : (p.nationality ? [p.nationality] : []);
   const availability = p.preferences?.availability || p.availability;
   const salary = p.preferences?.salary;
   const wm = p.preferences?.workMode;
@@ -195,6 +196,11 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
               {p.visaSponsorship !== undefined && <span>{p.visaSponsorship ? 'Needs visa sponsorship' : 'No sponsorship needed'}</span>}
             </div>}
             {languages.length > 0 && <div className="tcard-langs"><Languages size={13} />{languages.map((l) => <span key={l.name}>{l.name}{l.level ? <i>{l.level}</i> : null}</span>)}</div>}
+            {/* Citizenship + visa status (countries), founder 2026-11-22. Citizenship falls back to nationality. */}
+            {(citizenship.length > 0 || (p.visaCountries?.length ?? 0) > 0) && <div className="tcard-langs tcard-visa">
+              {citizenship.length > 0 && <><Flag size={13} /><span>Citizenship<i>{citizenship.join(', ')}</i></span></>}
+              {(p.visaCountries?.length ?? 0) > 0 && <span><ShieldCheck size={11} /> Work visa<i>{p.visaCountries!.join(', ')}</i></span>}
+            </div>}
             <div className="tcard-contacts">
               {unlocked
                 ? (p.contactChannels?.length || p.email)

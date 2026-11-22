@@ -50,6 +50,8 @@ export interface Person {
   headline?: string; phone?: string; city?: string; country?: string; distanceRangeKm?: number;
   birthdate?: string; discloseAge?: boolean; agePrivacy?: AgePrivacy; nationality?: string; contactChannels?: ContactChannel[];
   workAuthorization?: string; visaSponsorship?: boolean; pronouns?: string;
+  /** Citizenship and visa status as country lists (never used in the match score). */
+  citizenship?: string[]; visaCountries?: string[];
   languageDetail?: LanguageTag[]; yearsExperience?: number; seniority?: Seniority; skillsDetail?: SkillTag[];
   industries?: string[]; workExperience?: WorkExperience[]; education?: Education[]; certifications?: string[];
   /** "My super power": what the candidate is exceptionally good at, in their own words (≤ 300 chars). */
@@ -90,6 +92,8 @@ export interface Job {
   remoteScope?: 'country' | 'worldwide'; country?: string; geo?: { lat: number; lng: number };
   hiringRadiusKm?: number; salaryRange?: SalaryRange; responsibilities?: string[]; interviewProcess?: string[];
   startDate?: string; externalUrl?: string; createdAt?: number; coverImage?: string;
+  /** "Required valid work visa and nationality": yes/no; when no, which nationalities may apply. */
+  workVisaRequired?: boolean; authorizedNationalities?: { mode: 'any' | 'us' | 'europe' | 'custom'; custom?: string[] };
   /** true when the exact range is withheld pre-match (mutual salary reveal) */
   salaryHidden?: boolean;
   screeningQuestions?: string[];

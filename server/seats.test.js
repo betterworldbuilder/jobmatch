@@ -19,52 +19,35 @@ const CURRENCIES = ['USD', 'VND'];
  * handful of hand-picked comparisons, so condition 2 cannot pass by accident.
  */
 
-test('seat pricing invariant: per-seat price never increases up the ladder', () => {
-  for (const currency of CURRENCIES) {
-    for (let i = 1; i < SEAT_LADDER.length; i += 1) {
-      const lower = SEAT_LADDER[i - 1];
-      const upper = SEAT_LADDER[i];
-      const lowerPerSeat = planPrice(lower, currency) / PLANS[lower].seats;
-      const upperPerSeat = planPrice(upper, currency) / PLANS[upper].seats;
-      assert.ok(upperPerSeat <= lowerPerSeat,
-        `${currency}: ${upper} costs ${upperPerSeat}/seat, more than ${lower} at ${lowerPerSeat}/seat`);
-    }
-  }
+/* 2026-11-22 pricing (founder): Solo 49 · Duo 80 · Team (key `trio`, 3 seats) 140 USD.
+ * The old "per-seat never increases" and "bundle never beaten by stacking" invariants no longer hold in USD:
+ * Team is 46.67/seat (Duo is 40) and Duo + Solo (129) is cheaper than Team (140). That was the founder's call;
+ * these tests now pin what the pricing page promises instead, and keep the old invariants for VND (unchanged). */
+test('USD pricing matches what the page promises: every bundle is cheaper than separate Solo accounts', () => {
+  assert.deepEqual(SEAT_LADDER.map((k) => planPrice(k, 'USD')), [49, 80, 140]);
+  assert.equal(planPrice('solo', 'USD') * 2 - planPrice('duo', 'USD'), 18, 'Duo saves USD 18/month vs 2 Solo');
+  assert.equal(planPrice('solo', 'USD') * 3 - planPrice('trio', 'USD'), 7, 'Team saves USD 7/month vs 3 Solo');
+  assert.equal(PLANS.trio.display, 'Team');
 });
 
-test('seat pricing invariant: a bundle never costs more than stacking smaller plans', () => {
-  for (const currency of CURRENCIES) {
-    for (const key of SEAT_LADDER) {
-      const bundle = planPrice(key, currency);
-      const stacked = cheapestStackCost(PLANS[key].seats, currency);
-      assert.ok(bundle <= stacked,
-        `${currency}: ${key} costs ${bundle} for ${PLANS[key].seats} seats but they can be stacked for ${stacked}`);
-    }
+test('VND seat pricing invariant still holds: per-seat price never increases, bundles never beaten by stacking', () => {
+  const currency = 'VND';
+  for (let i = 1; i < SEAT_LADDER.length; i += 1) {
+    const lower = SEAT_LADDER[i - 1]; const upper = SEAT_LADDER[i];
+    assert.ok(planPrice(upper, currency) / PLANS[upper].seats <= planPrice(lower, currency) / PLANS[lower].seats);
   }
+  for (const key of SEAT_LADDER) assert.ok(planPrice(key, currency) <= cheapestStackCost(PLANS[key].seats, currency));
 });
 
-/* The invariant has to keep holding above the top of the ladder too. With no
- * add-on seats to buy, the only way to assemble more than Team's five seats is
- * to stack plans — so check that stacking stays sanely priced all the way out
- * to 40 seats rather than producing some cheaper-per-seat anomaly. */
-test('stacking past the top of the ladder never beats the ladder itself', () => {
-  for (const currency of CURRENCIES) {
-    const topPlan = SEAT_LADDER[SEAT_LADDER.length - 1];
-    const bestPerSeat = planPrice(topPlan, currency) / PLANS[topPlan].seats;
-    for (let seats = 1; seats <= 40; seats += 1) {
-      const stacked = cheapestStackCost(seats, currency);
-      assert.ok(Number.isFinite(stacked), `${currency}: ${seats} seats must be assemblable`);
-      // Nobody can ever get seats cheaper than the best per-seat rate offered.
-      assert.ok(stacked >= seats * bestPerSeat - 1e-9,
-        `${currency}: ${seats} seats for ${stacked} undercuts the best rate of ${bestPerSeat}/seat`);
-    }
-  }
+test('any seat count can be assembled from the ladder', () => {
+  for (const currency of CURRENCIES) for (let seats = 1; seats <= 40; seats += 1) assert.ok(Number.isFinite(cheapestStackCost(seats, currency)));
 });
 
-test('the ladder tops out at Team — Agency and add-on seats are gone', () => {
-  assert.deepEqual(SEAT_LADDER, ['solo', 'duo', 'trio', 'team']);
+test('the sold ladder tops out at Team (3 accounts); the 5-seat tier is legacy only', () => {
+  assert.deepEqual(SEAT_LADDER, ['solo', 'duo', 'trio']);
   assert.equal(PLANS.agency, undefined);
-  assert.equal(PLANS[SEAT_LADDER[SEAT_LADDER.length - 1]].seats, 5);
+  assert.equal(PLANS[SEAT_LADDER[SEAT_LADDER.length - 1]].seats, 3);
+  assert.equal(PLANS.team.legacy, true);
 });
 
 /* ── Seat allocation ─────────────────────────────────────────────────────── */

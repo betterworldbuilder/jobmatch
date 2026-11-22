@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  ArrowRight, Bell, Bookmark, BriefcaseBusiness, Building2, Check, ChevronDown, Coffee,
+  ArrowRight, Bell, Bookmark, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, Coffee,
   Eye, Heart, MapPin, MessageCircle, Pencil, RotateCcw, Sparkles, Star, Target, TrendingUp, User, X,
 } from 'lucide-react';
 import { api } from '../../api';
@@ -99,9 +99,12 @@ export function EmptyRow({ children }: { children: React.ReactNode }) {
 
 /** Lightweight candidate row for the recruiter's per-job Matches / Loves-this-job lists. */
 function CandidateRow({ person, matched, onView, onTalk }: { person: Person; matched?: boolean; onView: () => void; onTalk: () => void }) {
+  // Photo + name open the candidate's full profile (founder, 2026-11-22).
   return <div className="td-cand-row">
-    <img src={person.photo} alt="" />
-    <div className="td-cand-row-info"><strong>{person.name}</strong><small>{person.title}{person.company ? ` · ${person.company}` : ''}</small></div>
+    <button type="button" className="td-cand-row-open" onClick={onView} aria-label={`Open ${person.name}'s full profile`}>
+      <img src={person.photo} alt="" />
+      <span className="td-cand-row-info"><strong>{person.name}</strong><small>{person.title}{person.company ? ` · ${person.company}` : ''}</small></span>
+    </button>
     <span className="td-cand-row-score">{person.match?.score || 0}%</span>
     <button className="td-cand-row-view" onClick={onView} aria-label={`View ${person.name}`}><Eye size={14} /></button>
     <button className={matched ? 'td-cand-row-talk matched' : 'td-cand-row-talk'} onClick={onTalk}>
@@ -336,10 +339,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
   const upcomingCalls = [...data.calls].filter((call) => call.startAt >= Date.now()).sort((a, b) => a.startAt - b.startAt);
 
   return <main className="td-dashboard td-recruiter">
-    {/* Recruiter home template (same for every hiring team): today → pipeline → candidates to review → roles. */}
-    <TodayPanel data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onOpenMessages={onOpenMessages} onScroll={scrollTo} />
-    <HiringPipelineBoard data={data} navigate={navigate} />
-    <CandidatesToReview data={data} setData={setData} onView={setSelected} onOpenMessages={onOpenMessages} />
+    {/* Recruiter home template (same for every hiring team): roles first (founder, 2026-11-22) → today → pipeline → candidates to review. */}
     <header className="td-recruiter-head">
       <div><h1 className="td-recruiter-title">Your roles today</h1><p>Here’s who loves your jobs today.</p></div>
       <button className="primary-button" onClick={onAddJobs}>+ Add New Job Offers</button>
@@ -357,6 +357,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
           return <article className={open ? 'td-role open' : 'td-role'} key={group.job.id}>
             <div className="td-role-head" role="button" tabIndex={0} onClick={() => setExpandedId(open ? '__none__' : group.job.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? '__none__' : group.job.id); } }} aria-expanded={open}>
               <JobHeaderBadge job={group.job} compact actions={<button className="td-role-edit" onClick={(event) => { event.stopPropagation(); onEditJob?.(group.job.id); }} aria-label={`Edit ${group.job.title}`}><Pencil size={12} /></button>} />
+              {group.job.createdAt ? <span className="td-role-date" title="Date created"><Calendar size={12} /> Created {new Date(group.job.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> : null}
               <span><Check size={12} /> {matchedForJob.length} matched</span>
               <span><Heart size={12} /> {lovesNotMatched.length} love this job</span>
               <button onClick={(event) => { event.stopPropagation(); navigate('discover'); }}>Review candidates <ArrowRight size={11} /></button>
@@ -381,6 +382,9 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
       </div>
     </section>
 
+    <TodayPanel data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onOpenMessages={onOpenMessages} onScroll={scrollTo} />
+    <HiringPipelineBoard data={data} navigate={navigate} />
+    <CandidatesToReview data={data} setData={setData} onView={setSelected} onOpenMessages={onOpenMessages} />
 
     <section className="td-bottom-grid recruiter">
       <article className="td-list-panel" id="td-recent"><DashboardTitle icon={Eye} title="Recently Viewed Your Jobs" />{allPeople.slice(0, 4).map((person) => <button key={person.id} onClick={() => setSelected(person)}><img src={person.photo} alt="" /><span><strong>{person.name}</strong><small>Viewed a role recently</small></span><ArrowRight size={12} /></button>)}</article>

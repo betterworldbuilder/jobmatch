@@ -62,10 +62,9 @@ test('pricing page shows the same one-off posting the server sells', () => {
   assert.equal(num('termDays'), SINGLE_POSTING.termDays);
   assert.equal(num('usd'), SINGLE_POSTING.prices.USD.once);
   assert.equal(num('vnd'), SINGLE_POSTING.prices.VND.once);
-  // The one-off has to stay more expensive than a month of Solo, or it stops
-  // selling the subscription and starts cannibalising it.
-  assert.ok(SINGLE_POSTING.prices.USD.once > PLANS.solo.prices.USD.monthly);
-  assert.ok(SINGLE_POSTING.prices.VND.once > PLANS.solo.prices.VND.monthly);
+  // 2026-11-22 pricing: the one-off (USD 29) is deliberately cheaper than a month of Solo (USD 49):
+  // one job for 60 days versus five live jobs, all features and the AI assistant.
+  assert.ok(SINGLE_POSTING.prices.USD.once < PLANS.solo.prices.USD.monthly);
 });
 
 test('pricing page shows the same posting term, trial lengths and hire fee', () => {

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Check, Copy, Loader2, Mail } from 'lucide-react';
+import { Check, Copy, Gift, Loader2, Mail } from 'lucide-react';
 import { api } from '../../api';
 import { Field, TextInput } from '../profile/fields';
 import { isAndroidNative, isIosNative, purchaseAppleSubscription, purchaseGooglePlaySubscription } from '../../lib/nativeBilling';
 import { LaunchOffers } from '../LaunchOffers';
-import { TRIAL } from '../../lib/plans';
+import { PlanCardView } from '../landing/PlanCards';
+import { HEADLINE_PLANS, planCard, SINGLE_POSTING, TRIAL } from '../../lib/plans';
 import type { Bootstrap, Payment, PaymentMethod, TeamInfo } from '../../types';
 
 function money(amount: number, currency: string) {
@@ -52,8 +53,15 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
   };
 
   if (!data.billing) {
-    return <div className="page"><div className="page-title"><div><span className="overline">Recruiter plan</span><h1>Subscription</h1></div></div>
-      <div className="billing-empty"><p>No subscription yet.</p><button className="primary-button" onClick={startTrial}>Start your free {TRIAL.days}-day trial</button></div>
+    // No subscription yet: the same plans as the pricing page, with the 4-week free trial up front.
+    return <div className="page billing-page"><div className="page-title"><div><span className="overline">Recruiter plan</span><h1>Subscription</h1>
+      <p>Find the right people faster. Start free, upgrade as your hiring grows. No fee per hire.</p></div></div>
+      <div className="billing-empty">
+        <p className="plan-trial-banner"><Gift size={20} /> <b>{Math.round(TRIAL.days / 7)} weeks free</b> · Full features including AI</p>
+        <button className="primary-button" onClick={startTrial}>Start your free {Math.round(TRIAL.days / 7)}-week trial</button>
+      </div>
+      <div className="plan-grid three billing-plan-cards">{HEADLINE_PLANS.map((key) => <PlanCardView key={key} plan={planCard(key)} onRegister={startTrial} cta={`Start free, then ${planCard(key).display}`} />)}</div>
+      <p className="plan-all-include">All packages include candidate matching, messaging, scheduling, AI candidate insights and outreach drafts. One role only? ${SINGLE_POSTING.usd} once for 1 job for {SINGLE_POSTING.termDays} days.</p>
     </div>;
   }
 
@@ -173,9 +181,10 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
 
     {selectablePlans && selectablePlans.length > 0 && <section className="billing-plan-picker">
       <h3>Choose your plan</h3>
+      <p className="plan-trial-banner small"><Gift size={16} /> <b>{Math.round(TRIAL.days / 7)} weeks free</b> · Full features including AI</p>
       <p className="muted">
-        Every plan costs less per seat than the one below it. Picking one here only sets what you'll be charged —
-        nothing changes on your account until a payment goes through.
+        Every plan includes all features and the AI Hiring Assistant (Ask AI with your own Claude or ChatGPT). No fee per hire.
+        Picking one here only sets what you'll be charged — nothing changes on your account until a payment goes through.
       </p>
       <div className="billing-plan-options">
         {selectablePlans.map((option) => {
@@ -189,7 +198,7 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
           >
             <span className="plan-name">{option.display}</span>
             <strong>{option.monthly === null ? '—' : money(option.monthly, charge?.currency || 'USD')}<small> / mo</small></strong>
-            <em>{option.seats} seat{option.seats > 1 ? 's' : ''} · {option.liveJobSlots} live jobs</em>
+            <em>{option.seats} recruiter account{option.seats > 1 ? 's' : ''} · {option.liveJobSlots} live jobs · AI assistant</em>
             {chosen && <span className="billing-plan-chosen">Selected</span>}
           </button>;
         })}

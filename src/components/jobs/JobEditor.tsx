@@ -11,6 +11,8 @@ const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contract', 'Freelance', 'In
 const WORK_MODES = ['Remote', 'Hybrid', 'On-site', 'Flexible'] as const;
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'VND', 'SGD', 'AUD'] as const;
 const STATUSES = ['draft', 'active', 'paused', 'filled'] as const;
+const NATIONALITY_MODES = ['any', 'us', 'europe', 'custom'] as const;
+export const NATIONALITY_LABEL = { any: 'Any nationality', us: 'US', europe: 'Europe', custom: 'Selected countries' } as const;
 const MANAGEMENT_STYLE_SUGGESTIONS = ['Hands-off', 'Coaching', 'Directive', 'Data-driven', 'Servant leadership', 'Async-first'];
 const TEAM_STYLE_SUGGESTIONS = ['Autonomous', 'Collaborative', 'Fast-paced', 'Structured', 'Async-first', 'Mentorship'];
 const VALUES_SUGGESTIONS = ['Ownership', 'Transparency', 'Customer obsession', 'Craftsmanship', 'Diversity & inclusion', 'Sustainability', 'Speed', 'Quality'];
@@ -28,6 +30,7 @@ type Form = {
   salaryMin: string; salaryMax: string; currency: string; salaryNegotiable: boolean; bonus: string; equity: string;
   benefits: string[]; workingHours: string; flexibleHours: string; probation: string; hybridDays: number;
   visaSponsorship: boolean; relocationSupport: boolean; travel: string; onCall: string;
+  workVisaRequired: '' | 'yes' | 'no'; natMode: typeof NATIONALITY_MODES[number]; natCustom: string[];
   description: string; fullDescription: string; responsibilities: string[]; interviewProcess: string[]; startDate: string; externalUrl: string;
   status: typeof STATUSES[number]; screeningQuestions: string[];
   mission: string; culture: string[]; values: string[]; teamSize: string; teamComposition: string[]; teamLocations: string;
@@ -42,6 +45,7 @@ const emptyForm = (): Form => ({
   salaryMin: '', salaryMax: '', currency: 'USD', salaryNegotiable: false, bonus: '', equity: '',
   benefits: [], workingHours: '', flexibleHours: '', probation: '', hybridDays: 2,
   visaSponsorship: false, relocationSupport: false, travel: '', onCall: '',
+  workVisaRequired: '', natMode: 'any', natCustom: [],
   description: '', fullDescription: '', responsibilities: [], interviewProcess: [], startDate: '', externalUrl: '', status: 'draft', screeningQuestions: [],
   mission: '', culture: [], values: [], teamSize: '', teamComposition: [], teamLocations: '',
   managerName: '', managerTitle: '', managerStyle: '', managementStyleTags: [], teamStyle: [], teamSong: '',
@@ -62,6 +66,8 @@ function fromJob(job: Job): Form {
     currency: job.salaryRange?.currency || 'USD', salaryNegotiable: job.salaryNegotiable ?? false, bonus: job.bonus || '', equity: job.equity || '',
     benefits: job.benefits || [], workingHours: job.workingHours || '', flexibleHours: job.flexibleHours || '', probation: job.probation || '',
     hybridDays: job.hybridDays ?? 2, visaSponsorship: job.visaSponsorship ?? false, relocationSupport: job.relocationSupport ?? false,
+    workVisaRequired: job.workVisaRequired === undefined ? '' : job.workVisaRequired ? 'yes' : 'no',
+    natMode: job.authorizedNationalities?.mode || 'any', natCustom: job.authorizedNationalities?.custom || [],
     travel: job.travel || '', onCall: job.onCall || '',
     description: job.description, fullDescription: job.fullDescription || '',
     responsibilities: job.responsibilities || [], interviewProcess: job.interviewProcess || [],
@@ -178,6 +184,8 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
       benefits: form.benefits, workingHours: form.workingHours || undefined, flexibleHours: form.flexibleHours || undefined,
       probation: form.probation || undefined, hybridDays: form.workMode === 'Hybrid' ? form.hybridDays : undefined,
       visaSponsorship: form.visaSponsorship, relocationSupport: form.relocationSupport,
+      ...(form.workVisaRequired ? { workVisaRequired: form.workVisaRequired === 'yes' } : {}),
+      ...(form.workVisaRequired === 'no' ? { authorizedNationalities: { mode: form.natMode, ...(form.natMode === 'custom' ? { custom: form.natCustom } : {}) } } : {}),
       travel: form.travel || undefined, onCall: form.onCall || undefined,
       description: form.description.trim() || undefined, fullDescription: form.fullDescription, responsibilities: form.responsibilities, interviewProcess: form.interviewProcess,
       startDate: form.startDate || undefined, externalUrl: form.externalUrl || undefined, status: form.status,
@@ -267,6 +275,16 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
           <Field label="Location" required><TextInput value={form.location} onChange={(e) => patch({ location: e.target.value })} placeholder="City, country" /></Field>
           <Field label={`Max distance: ${form.hiringRadiusKm} km`} hint="How far you'll consider on-site/hybrid candidates."><input className="wz-slider" type="range" min={5} max={500} step={5} value={form.hiringRadiusKm} onChange={(e) => patch({ hiringRadiusKm: Number(e.target.value) })} /></Field>
         </div>}
+        {/* "Required valid work visa and nationality" (founder, 2026-11-22). When No: which nationalities may apply. */}
+        <div className="wz-row">
+          <Field label="Required valid work visa and nationality" hint="Yes: candidates must already have the right to work where this role is based.">
+            <Segmented options={['yes', 'no'] as const} value={form.workVisaRequired || undefined} onChange={(workVisaRequired) => patch({ workVisaRequired })} labels={{ yes: 'Yes', no: 'No' }} />
+          </Field>
+          {form.workVisaRequired === 'no' && <Field label="Authorized nationalities">
+            <Segmented options={NATIONALITY_MODES} value={form.natMode} onChange={(natMode) => patch({ natMode })} labels={{ any: 'Any', us: 'US', europe: 'Europe', custom: 'Custom' }} />
+          </Field>}
+        </div>
+        {form.workVisaRequired === 'no' && form.natMode === 'custom' && <Field label="Custom nationality list" hint="Countries whose citizens may apply — press Enter after each."><TagInput value={form.natCustom} onChange={(natCustom) => patch({ natCustom: natCustom.slice(0, 30) })} placeholder="e.g. Vietnam" /></Field>}
         <Field label="Status"><Segmented options={STATUSES} value={form.status} onChange={(status) => patch({ status })} labels={{ draft: 'Draft', active: 'Active', paused: 'Paused', filled: 'Filled' }} /></Field>
       </div>}
 

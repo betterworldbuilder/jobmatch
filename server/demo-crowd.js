@@ -234,5 +234,7 @@ export function withDemoCrowd(seed, nowMs = Date.now()) {
     const job = { ...makeJob(r, k + 3), id: `j-demo-extra-${k + 1}` };
     seed.jobs.push(job); extraJobIds.push(job.id);
   }
+  // Demo roles get a stable "date created" (the recruiter dashboard shows it); fixed dates so restarts never move them.
+  seed.jobs.forEach((j, i) => { if (!j.createdAt) j.createdAt = Date.UTC(2026, 9, 1) + ((i * 7) % 50) * 86400000; });
   return { candidateIds: newCandidates, jobIds: newJobs, extraJobIds };
 }
