@@ -3961,6 +3961,11 @@ img.avatar-mini { object-fit:cover; }
 .demo-check { color:#fd267a; flex:none; }
 .demo-empty { padding:12px; text-align:center; font-size:12px; color:#7a8296; }
 @media (max-width:520px) { .demo-list { max-height:190px; } .demo-ava { width:28px; height:28px; } .demo-txt b { font-size:12px; } }
+/* "Test demo account" stays pinned at the bottom of the sign-in window (visible right after picking an account). */
+.auth-form.demo-form .demo-submit { position:sticky; bottom:8px; z-index:2; box-shadow:0 10px 24px rgba(253,38,122,.28),0 0 0 10px #fff; }
+.demo-loading { min-height:150px; justify-content:center; }
+.demo-loading span { display:block; height:36px; border-radius:10px; background:linear-gradient(90deg,#f1edf6 0,#faf8fc 50%,#f1edf6 100%); background-size:200% 100%; animation:demoShimmer 1.1s linear infinite; }
+@keyframes demoShimmer { to { background-position:-200% 0; } }
 /* Phone dropdowns: one clean format, same family as the demo-account picker (founder, 2026-11-22).
    Soft border, rounded, light background, custom chevron, no harsh black focus box. */
 @media (max-width: 640px) {

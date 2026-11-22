@@ -12,8 +12,9 @@ import { apiBase } from './api';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { App as NativeApp } from '@capacitor/app';
-import { LoginModal, RegisterModal, ResetPasswordModal, SettingsModal } from './components/AuthModals';
+import { LoginModal, RegisterModal, ResetPasswordModal, SettingsModal, prefetchDemoProfiles } from './components/AuthModals';
 import { FeaturesTable, FeedbackSection, JourneyPipeline, LatestShowcase } from './components/LandingSections';
+import { ForWhoSection, HowSection, ProblemSection, SoWhatSection, WhatNowSection } from './components/landing/StorySections';
 import { HeroAlt, HeroDefault, HeroImage } from './components/landing/HeroBanners';
 import { CANDIDATE_OFFERS, LaunchOffers } from './components/LaunchOffers';
 import { PlanCardView, TrialCardView } from './components/landing/PlanCards';
@@ -86,7 +87,9 @@ type NotificationItem = {
 /** Billing notifications about a posting belong on the Jobs screen; everything
  *  else (trials, plans, credits, payments) belongs on Subscription. Unknown or
  *  future kinds fall through to Subscription, which is the safe default. */
-const JOB_NOTIFICATION_KINDS = new Set(['job_expiring_7', 'job_expiring_1', 'job_expired', 'free_job_published', 'referral_job_credit_consumed']);
+// The floating "Ask AI" button is off on every screen (founder, 2026-11-22); true brings it back.
+const ASK_AI_BUTTON = false;
+const JOB_NOTIFICATION_KINDS =new Set(['job_expiring_7', 'job_expiring_1', 'job_expired', 'free_job_published', 'referral_job_credit_consumed']);
 
 function billingNotificationIcon(billingKind?: string) {
   if (billingKind && JOB_NOTIFICATION_KINDS.has(billingKind)) return <BriefcaseBusiness size={14} />;
@@ -215,7 +218,10 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
   // ?admin=1 (the Left Shift + A shortcut) opens sign-in straight away.
   const [authModal, setAuthModal] = useState<'login' | 'register' | null>(() => new URLSearchParams(window.location.search).get('admin') === '1' ? 'login' : null);
   useEffect(() => { trackView('/'); }, []);
+  // Load the demo accounts in the background so "Test demo account" is ready the moment sign-in opens.
+  useEffect(() => { prefetchDemoProfiles().catch(() => undefined); }, []);
   const [conductOpen, setConductOpen] = useState(false);
+  const isPhone = usePhoneWidth();
   const openLogin = () => setAuthModal('login');
   const openRegister = () => setAuthModal('register');
   const complete = (user: SessionUser) => { setAuthModal(null); onLogin(user); };
@@ -282,30 +288,39 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
       <a href="#feedback">Reviews</a>
       <a href="#pricing">Pricing</a>
     </nav>}
-    <section className="comparison-section" id="compare">
-      <div className="comparison-intro"><div><h2>A Better, Faster, Easier, Friendlier Way of Hiring</h2></div><div className="comparison-copy"><p>Traditional hiring creates hurdles: endless searching, slow applications, repeated screenings, multiple exchanges, long delays — and too often, silence, no feedback. No sign of due respect.</p><p>JobsMatchNow removes the friction and creates Respect, Mutual Alignment, and a Clear, Fast Decision Cycle with Feedback.</p><p>Everything candidates and hiring teams need — from first discovery and mutual interest to a qualified conversation — is brought together in one simple, respectful, and intelligent experience.</p><p className="comparison-tagline">Less chasing. Fewer hurdles. Faster, better hires with feedback — more personalized, respectful hires with a human touch.</p></div></div>
-      <div className="comparison-table-wrap">
-        <table className="comparison-table">
-          <thead><tr><th>Experience</th><th><span className="old-dot" />Traditional hiring</th><th><span className="new-dot" />JobsMatchNow</th><th>What changes</th></tr></thead>
-          <tbody>{comparisonRows.map((row) => <tr key={row.feature}><th scope="row">{row.feature}</th><td data-label="Traditional hiring"><X size={15} />{row.traditional}</td><td data-label="JobsMatchNow"><Check size={15} />{row.jobmatch}</td><td data-label="What changes"><span>{row.impact}</span></td></tr>)}</tbody>
-        </table>
-      </div>
-      <div className="comparison-cta"><div><Sparkles size={19} /><span><strong>See the difference yourself.</strong> Switch between candidate and recruiter views in the live product.</span></div><button className="primary-button" onClick={openLogin}>Explore every feature <ArrowRight size={17} /></button></div>
-    </section>
-    <FeaturesTable />
-    <JourneyPipeline />
-    <section className="value-section" id="how"><div className="section-heading centered"><span className="eyebrow"><Sparkles size={14} /> A better signal</span><h2>Hiring works better when<br />both sides choose.</h2></div><div className="value-grid"><Feature icon={BarChart3} title="Fit, explained" text="Go beyond keywords with transparent skill, experience, and preference signals." /><Feature icon={Handshake} title="Intent, confirmed" text="A conversation opens only after both sides express interest. No cold outreach." /><Feature icon={MapIcon} title="Geolocation of Opportunities" text="Choose a city and private distance range, then meet for coffee only when both sides agree." /><Feature icon={ShieldCheck} title="People, respected" text="Salary and work style are clear up front. Candidate controls stay at the center." /></div></section>
-    <section className="trust-section" id="trust"><div className="trust-copy"><span className="section-kicker light">Fewer steps</span><h2>Hiring where both sides choose — with a human touch.</h2><p>Every recommendation carries its reason. Every connection starts with consent. Every candidate gets control over what employers can see.</p><button className="primary-button trust-try-button" onClick={openLogin}>LET ME TRY NOW!</button></div><div className="trust-pipeline"><h3>Classic Hiring vs. New JobsMatchNow Process</h3><p>The first four steps of classic hiring happen in one connected step. Interviews, checks and offers stay the same.</p><div className="pipeline-rows">{trustPipeline.map((row) => { const max = Math.max(row.classic, row.jobsmatch) || 1; const deltaPct = row.classic ? Math.round(Math.abs(row.jobsmatch - row.classic) / row.classic * 100) : 0; return <Fragment key={row.label}><div className="pipeline-row"><span className="pipeline-row-label">{row.label}</span><div className="pipeline-bar-track classic"><i style={{ width: `${(row.classic / max) * 100}%` }} /><b>{row.classicDisplay || `${row.classic}${row.unit}`}</b></div><div className="pipeline-bar-track jobsmatch"><i style={{ width: `${(row.jobsmatch / max) * 100}%`, background: row.color }} /><b>{row.jobsmatchDisplay || `${row.jobsmatch}${row.unit}`}</b></div><span className="pipeline-delta" style={{ color: row.color }}>{row.deltaText || `${deltaPct}% better`}</span></div><p className="pipeline-feature-note">Powered by <b>{row.feature}</b> — {row.note}</p></Fragment>; })}<div className="pipeline-legend"><span><i className="classic" /> Classic hiring</span><span><i className="jobsmatch" /> JobsMatchNow</span></div></div>
-      <div className="trust-detail">
-        <h4>Traditional Hiring vs. JobsMatchNow Steps</h4>
-        <div className="trust-detail-table-wrap">
-          <table className="trust-detail-table colorful">
-            <thead><tr><th className="trad-head">Traditional Hiring</th><th className="new-head">JobsMatchNow</th></tr></thead>
-            <tbody>{traditionalSteps.map((step, i) => { const jm = jobsmatchNowSteps[i]; return <tr key={step} className={i === 0 ? 'combined-row' : undefined}><td className="step-cell"><span className="step-num trad">{i + 1}</span>{step}</td><td className="step-cell">{jm && <><span className="step-num new">{i + 1}</span>{jm}{i === 0 && <b className="combo-badge">4-in-1 ⚡</b>}</>}</td></tr>; })}</tbody>
+    {/* Phones get the concise story (founder, 2026-11-22): what it is (hero) → problem → for who → how → so what →
+        pricing → what now. Desktop keeps its original sections unchanged (founder: "keep the desktop UI as is"). */}
+    {isPhone ? <>
+      <ProblemSection />
+      <ForWhoSection onRegister={openRegister} />
+      <HowSection />
+      <SoWhatSection />
+    </> : <>
+      <section className="comparison-section" id="compare">
+        <div className="comparison-intro"><div><h2>A Better, Faster, Easier, Friendlier Way of Hiring</h2></div><div className="comparison-copy"><p>Traditional hiring creates hurdles: endless searching, slow applications, repeated screenings, multiple exchanges, long delays — and too often, silence, no feedback. No sign of due respect.</p><p>JobsMatchNow removes the friction and creates Respect, Mutual Alignment, and a Clear, Fast Decision Cycle with Feedback.</p><p>Everything candidates and hiring teams need — from first discovery and mutual interest to a qualified conversation — is brought together in one simple, respectful, and intelligent experience.</p><p className="comparison-tagline">Less chasing. Fewer hurdles. Faster, better hires with feedback — more personalized, respectful hires with a human touch.</p></div></div>
+        <div className="comparison-table-wrap">
+          <table className="comparison-table">
+            <thead><tr><th>Experience</th><th><span className="old-dot" />Traditional hiring</th><th><span className="new-dot" />JobsMatchNow</th><th>What changes</th></tr></thead>
+            <tbody>{comparisonRows.map((row) => <tr key={row.feature}><th scope="row">{row.feature}</th><td data-label="Traditional hiring"><X size={15} />{row.traditional}</td><td data-label="JobsMatchNow"><Check size={15} />{row.jobmatch}</td><td data-label="What changes"><span>{row.impact}</span></td></tr>)}</tbody>
           </table>
         </div>
-      </div>
-    </div></section>
+        <div className="comparison-cta"><div><Sparkles size={19} /><span><strong>See the difference yourself.</strong> Switch between candidate and recruiter views in the live product.</span></div><button className="primary-button" onClick={openLogin}>Explore every feature <ArrowRight size={17} /></button></div>
+      </section>
+      <FeaturesTable />
+      <JourneyPipeline />
+      <section className="value-section" id="how"><div className="section-heading centered"><span className="eyebrow"><Sparkles size={14} /> A better signal</span><h2>Hiring works better when<br />both sides choose.</h2></div><div className="value-grid"><Feature icon={BarChart3} title="Fit, explained" text="Go beyond keywords with transparent skill, experience, and preference signals." /><Feature icon={Handshake} title="Intent, confirmed" text="A conversation opens only after both sides express interest. No cold outreach." /><Feature icon={MapIcon} title="Geolocation of Opportunities" text="Choose a city and private distance range, then meet for coffee only when both sides agree." /><Feature icon={ShieldCheck} title="People, respected" text="Salary and work style are clear up front. Candidate controls stay at the center." /></div></section>
+      <section className="trust-section" id="trust"><div className="trust-copy"><span className="section-kicker light">Fewer steps</span><h2>Hiring where both sides choose — with a human touch.</h2><p>Every recommendation carries its reason. Every connection starts with consent. Every candidate gets control over what employers can see.</p><button className="primary-button trust-try-button" onClick={openLogin}>LET ME TRY NOW!</button></div><div className="trust-pipeline"><h3>Classic Hiring vs. New JobsMatchNow Process</h3><p>The first four steps of classic hiring happen in one connected step. Interviews, checks and offers stay the same.</p><div className="pipeline-rows">{trustPipeline.map((row) => { const max = Math.max(row.classic, row.jobsmatch) || 1; const deltaPct = row.classic ? Math.round(Math.abs(row.jobsmatch - row.classic) / row.classic * 100) : 0; return <Fragment key={row.label}><div className="pipeline-row"><span className="pipeline-row-label">{row.label}</span><div className="pipeline-bar-track classic"><i style={{ width: `${(row.classic / max) * 100}%` }} /><b>{row.classicDisplay || `${row.classic}${row.unit}`}</b></div><div className="pipeline-bar-track jobsmatch"><i style={{ width: `${(row.jobsmatch / max) * 100}%`, background: row.color }} /><b>{row.jobsmatchDisplay || `${row.jobsmatch}${row.unit}`}</b></div><span className="pipeline-delta" style={{ color: row.color }}>{row.deltaText || `${deltaPct}% better`}</span></div><p className="pipeline-feature-note">Powered by <b>{row.feature}</b> — {row.note}</p></Fragment>; })}<div className="pipeline-legend"><span><i className="classic" /> Classic hiring</span><span><i className="jobsmatch" /> JobsMatchNow</span></div></div>
+        <div className="trust-detail">
+          <h4>Traditional Hiring vs. JobsMatchNow Steps</h4>
+          <div className="trust-detail-table-wrap">
+            <table className="trust-detail-table colorful">
+              <thead><tr><th className="trad-head">Traditional Hiring</th><th className="new-head">JobsMatchNow</th></tr></thead>
+              <tbody>{traditionalSteps.map((step, i) => { const jm = jobsmatchNowSteps[i]; return <tr key={step} className={i === 0 ? 'combined-row' : undefined}><td className="step-cell"><span className="step-num trad">{i + 1}</span>{step}</td><td className="step-cell">{jm && <><span className="step-num new">{i + 1}</span>{jm}{i === 0 && <b className="combo-badge">4-in-1 ⚡</b>}</>}</td></tr>; })}</tbody>
+            </table>
+          </div>
+        </div>
+      </div></section>
+    </>}
     <section className="section pricing-section" id="pricing">
       <div className="section-heading centered"><span className="eyebrow"><Sparkles size={14} /> Pricing</span><h2>Hire faster. Pay less than one agency placement.</h2></div>
       {/* Two sides of the marketplace, two visually separate panels. A candidate
@@ -336,6 +351,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
         </header>
         {/* Recruiter pricing (founder design, 2026-11-22). Prices come from src/lib/plans.ts (synced with the server). */}
         <p className="plan-trial-banner"><Gift size={20} /> <b>{Math.round(TRIAL.days / 7)} weeks free</b> · Full features including AI</p>
+        <p className="plan-swipe-hint" aria-hidden="true">Swipe to compare plans <ArrowRight size={14} /></p>
         <div className="plan-grid four">
           <TrialCardView onStart={openRegister} />
           {HEADLINE_PLANS.map((key) => <PlanCardView key={key} plan={planCard(key)} onRegister={openRegister} />)}
@@ -358,12 +374,25 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
 
       <LaunchOffers onRegister={openRegister} />
     </section>
-    <LatestShowcase onRegister={openRegister} onLogin={openLogin} />
+    {isPhone ? <WhatNowSection onRegister={openRegister} onLogin={openLogin} /> : <LatestShowcase onRegister={openRegister} onLogin={openLogin} />}
     <FeedbackSection />
     <footer><Brand /><span>Perfect matches should feel human.</span><button type="button" className="text-button footer-conduct-link" onClick={() => setConductOpen(true)}>Code of Conduct</button><small>© 2026 JobsMatchNow</small></footer>
     {modals}
     <AnimatePresence>{conductOpen && <ConductModal onClose={() => setConductOpen(false)} />}</AnimatePresence>
   </main>;
+}
+
+/** True on phone widths (≤760px, same breakpoint as the phone CSS); follows rotation and window resizes. */
+function usePhoneWidth() {
+  const query = '(max-width: 760px)';
+  const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setPhone(mq.matches);
+    mq.addEventListener('change', on); on();
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return phone;
 }
 
 function Feature({ icon: Icon, title, text }: { icon: typeof Target; title: string; text: string }) {
@@ -517,8 +546,9 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
           : <ViewRouter view={view} role={role} data={data} setData={setData} navigate={setView} onEditProfile={setEditStep} profileCard={profileCard} onProfileCardChange={setProfileCard} reload={load} onAddJobs={() => setJobImportOpen(true)} manualJobRequest={manualJobRequest} openMatchId={openMatchId} onOpenMessages={openMessages} editJobId={editJobId} onEditJob={openJobEditor} paymentResult={vnpayResult} onDismissResult={() => setVnpayResult(null)} />
       )}
     </section>
-    {/* Real "Ask AI" for job seekers and hiring teams (own data only; member's own key or the server's provider). */}
-    {data && !data.viewer.onboarding && (role === 'candidate' || role === 'employer') && <AskAi role={role} hideFabOnPhone={view === 'match'} />}
+    {/* "Ask AI" floating button removed from every screen (founder, 2026-11-22). The feature (server + profile key
+        card) stays; set ASK_AI_BUTTON = true to bring the button back. */}
+    {ASK_AI_BUTTON && data && !data.viewer.onboarding && (role === 'candidate' || role === 'employer') && <AskAi role={role} hideFabOnPhone={view === 'match'} />}
     {profileSaved && <div className="profile-saved-toast" role="status"><Check size={15} /> Profile updated. Recruiter view refreshed.</div>}
     {jobImportOpen && data && <JobImportModal viewer={data.viewer} onClose={() => setJobImportOpen(false)} onImported={() => { setJobImportOpen(false); setView('jobs'); load(); }} onManual={() => { setJobImportOpen(false); setView('jobs'); setManualJobRequest((value) => value + 1); }} />}
     {/* Phone action bar + Global Menu (founder, 2026-11-22), job seekers and recruiters: configurable, saved per person. */}

@@ -53,7 +53,17 @@ function detectNativeWebview() {
 }
 const isNativeWebview = detectNativeWebview();
 
-const defaultConfig: AuthConfig = { demoAuth: true, mockSso: false, passwordMinLength: 8, sso: { google: false, linkedin: false } };
+// One shared request for the demo accounts, started early (landing page load) and reused by the login window.
+let demoProfilesPromise: Promise<SessionUser[]> | null = null;
+export function prefetchDemoProfiles(): Promise<SessionUser[]> {
+  if (!demoProfilesPromise) {
+    demoProfilesPromise = api.authProfiles().then(({ profiles }) => profiles || []);
+    demoProfilesPromise.catch(() => { demoProfilesPromise = null; }); // retry next time after a failure
+  }
+  return demoProfilesPromise;
+}
+
+const defaultConfig: AuthConfig ={ demoAuth: true, mockSso: false, passwordMinLength: 8, sso: { google: false, linkedin: false } };
 
 function useAuthConfig() {
   const [config, setConfig] = useState<AuthConfig>(defaultConfig);
@@ -111,10 +121,13 @@ export function LoginModal({ onClose, onComplete }: { onClose: () => void; onCom
   const [forgot, setForgot] = useState(false);
   const [forgotDone, setForgotDone] = useState<string | null>(null);
 
+  // Demo profiles come from a cache started when the landing page loads (prefetchDemoProfiles), so the list and the
+  // "Test demo account" button are there at once instead of after two slow calls in a row.
   useEffect(() => {
-    if (!config.demoAuth) return;
-    api.authProfiles().then(({ profiles: list }) => { setProfiles(list); if (list[0]) setSelected(list[0].id); }).catch(() => undefined);
-  }, [config.demoAuth]);
+    let alive = true;
+    prefetchDemoProfiles().then((list) => { if (!alive) return; setProfiles(list); setSelected((s) => s || list[0]?.id || ''); }).catch(() => undefined);
+    return () => { alive = false; };
+  }, []);
 
   const run = async (action: () => Promise<SessionUser>) => {
     setError('');
@@ -142,11 +155,13 @@ export function LoginModal({ onClose, onComplete }: { onClose: () => void; onCom
     </form>
     <div className="auth-divider"><span>or</span></div>
     <SsoButtons config={config} busy={busy} onMockSso={(provider) => { setBusy(provider); run(() => authProviders[provider].signIn()); }} />
-    {config.demoAuth && profiles.length > 0 && <>
+    {config.demoAuth && <>
       <div className="auth-divider"><span>test the matching experience</span></div>
-      <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!selected) return; setSubmitting('demo'); run(() => authProviders.demo.signIn({ userId: selected })); }}>
-        <DemoPicker profiles={profiles} selected={selected} onSelect={setSelected} />
-        <button type="submit" className="secondary-button auth-submit" disabled={submitting !== null || !selected}>{submitting === 'demo' ? <Loader2 size={16} className="spin" /> : <>Test demo matching <ArrowRight size={16} /></>}</button>
+      <form className="auth-form demo-form" onSubmit={(event) => { event.preventDefault(); if (!selected) return; setSubmitting('demo'); run(() => authProviders.demo.signIn({ userId: selected })); }}>
+        {profiles.length ? <DemoPicker profiles={profiles} selected={selected} onSelect={setSelected} />
+          : <div className="demo-picker demo-loading" aria-busy="true"><span /><span /><span /></div>}
+        {/* Pinned to the bottom of the window, so it is visible right after picking an account. */}
+        <button type="submit" className="primary-button auth-submit demo-submit" disabled={submitting !== null || !selected}>{submitting === 'demo' ? <Loader2 size={16} className="spin" /> : <>Test demo account <ArrowRight size={16} /></>}</button>
       </form>
     </>}
     {error && <p className="auth-error">{error}</p>}
