@@ -426,7 +426,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const [jobImportOpen, setJobImportOpen] = useState(false);
   const [manualJobRequest, setManualJobRequest] = useState(0);
   // Candidates land on "Look for new Matches" (the top section of their home).
-  const [activeAnchor, setActiveAnchor] = useState(session.role === 'candidate' ? '' : featureOn('findMatches') ? 'td-new-matches' : '');
+  const [activeAnchor, setActiveAnchor] = useState('');
   const [openMatchId, setOpenMatchId] = useState<string | undefined>(undefined);
   const openMessages = (matchId: string) => { setOpenMatchId(matchId); setView('messages'); };
   const [editJobId, setEditJobId] = useState<string | undefined>(undefined);
@@ -471,8 +471,9 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   }, []);
   // Demo convenience: jump between the flagship candidate and recruiter personas.
   const changeRole = (next: Role) => { api.login(`${next}-demo`).then(({ user }) => onSwitchUser(user)); };
-  // Headhunting swipe studio for recruiters, behind the findMatches flag (preview: ?fm=1).
-  const nav = role === 'candidate' ? candidateNav : featureOn('findMatches') ? [{ label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' as View }, ...employerNav] : employerNav;
+  // Same menu on every device (founder, 2026-11-22). The old `?fm=1` preview (used by the phone app's start URL)
+  // no longer changes the menu: it used to add a second "Find My Match" and make phone and desktop differ.
+  const nav = role === 'candidate' ? candidateNav : employerNav;
   // Anchor items scroll to a home-dashboard section; view items open a page.
   const gotoNav = (item: NavItem) => {
     setMobileNav(false);
@@ -516,7 +517,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
       )}
     </section>
     {/* Real "Ask AI" for job seekers and hiring teams (own data only; member's own key or the server's provider). */}
-    {data && !data.viewer.onboarding && (role === 'candidate' || role === 'employer') && <AskAi role={role} />}
+    {data && !data.viewer.onboarding && (role === 'candidate' || role === 'employer') && <AskAi role={role} hideFabOnPhone={view === 'match'} />}
     {profileSaved && <div className="profile-saved-toast" role="status"><Check size={15} /> Profile updated. Recruiter view refreshed.</div>}
     {jobImportOpen && data && <JobImportModal viewer={data.viewer} onClose={() => setJobImportOpen(false)} onImported={() => { setJobImportOpen(false); setView('jobs'); load(); }} onManual={() => { setJobImportOpen(false); setView('jobs'); setManualJobRequest((value) => value + 1); }} />}
     <nav className="mobile-bottom-nav" aria-label="Primary navigation">{(role === 'employer' ? [...nav.slice(0, 4), ...nav.filter((i) => i.view === 'selected')] : nav.slice(0, 5)).map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)}><Icon size={19} /><span>{item.short || item.label}</span></button>; })}</nav>
@@ -537,9 +538,8 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'analytics') return <Analytics role={role} data={data} />;
   if (view === 'jobs') return <Jobs data={data} reload={reload} onAddJobs={onAddJobs} manualJobRequest={manualJobRequest} onOpenMessages={onOpenMessages} editJobId={editJobId} />;
   if (view === 'matches') return <Matches data={data} navigate={navigate} onOpenMessages={onOpenMessages} />;
-  if (view === 'match') return <main className="td-dashboard td-candidate td-match-page">{featureOn('findMatches')
-    ? <FindMatches role={role === 'candidate' ? 'candidate' : 'employer'} data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={<DashboardTitle icon={Sparkles} title="Find My Match" subtitle="Swipe right to show interest. A chat opens only if they like you back." action="Open Discover" onAction={() => navigate('discover')} />} />
-    : <FindMyMatchPage data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} />}</main>;
+  // One Find My Match page on every device (role dropdown + swipe deck); the old ?fm=1 studio is retired.
+  if (view === 'match') return <main className="td-dashboard td-candidate td-match-page"><FindMyMatchPage data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} /></main>;
   if (view === 'assistant') return <ChatbotPage data={data} navigate={navigate} />;
   if (view === 'feedback') return <FeedbackPage data={data} />;
   if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;

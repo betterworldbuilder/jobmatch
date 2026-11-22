@@ -12,7 +12,7 @@ type Msg = { role: 'user' | 'assistant'; content: string; sources?: { ref: strin
 export const ASK_AI_SUGGESTIONS = ['What are my best job matches?', 'Why does this job match my profile?', 'What skills am I missing?', 'Help me prepare for my next interview.'];
 type Status = Awaited<ReturnType<typeof api.aiChatStatus>>;
 
-export function AskAi({ role = 'candidate' }: { role?: 'candidate' | 'employer' }) {
+export function AskAi({ role = 'candidate', hideFabOnPhone = false }: { role?: 'candidate' | 'employer'; hideFabOnPhone?: boolean }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status | null>(null);
   const [statusError, setStatusError] = useState('');
@@ -69,7 +69,7 @@ export function AskAi({ role = 'candidate' }: { role?: 'candidate' | 'employer' 
   const usingLabel = status?.source === 'own' ? `${status.providerLabel}${status.model ? ` · ${modelName(status.model)}` : ''}` : status?.providerLabel;
 
   return <>
-    {!open && <button type="button" className="askai-fab" onClick={() => setOpen(true)} aria-label="Ask AI about your data"><Sparkles size={17} /> Ask AI</button>}
+    {!open && <button type="button" className={hideFabOnPhone ? 'askai-fab hide-phone' : 'askai-fab'} onClick={() => setOpen(true)} aria-label="Ask AI about your data"><Sparkles size={17} /> Ask AI</button>}
     {open && <section className="askai-panel" role="dialog" aria-label="Ask AI">
       <header><span className="askai-icon"><Bot size={17} /></span>
         <div><strong>Ask AI <em className="askai-premium"><Crown size={10} /> Premium</em></strong><small>{enabled ? `Using ${usingLabel}` : role === 'employer' ? 'About your roles, candidates and hiring' : 'About your profile, matches, skills and interviews'}</small></div>

@@ -4,7 +4,8 @@ import { ActivityIndicator, Platform, Pressable, SafeAreaView, StyleSheet, Text,
 import { WebView } from 'react-native-webview';
 
 // Expo Go is the founder's test shell: ?fm=1 previews features still switched off for visitors.
-const appUrl = process.env.EXPO_PUBLIC_APP_URL || 'https://jobsmatchnow.com/app/?fm=1';
+// Same app as the website (no preview switches), so the phone shows exactly the desktop sections.
+const appUrl = process.env.EXPO_PUBLIC_APP_URL || 'https://jobsmatchnow.com/app/';
 
 export default function JobsMatchNowPreview() {
   const webView = useRef<WebView>(null);

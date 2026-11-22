@@ -3697,6 +3697,8 @@ img.avatar-mini { object-fit:cover; }
   .askai-panel { inset:0; right:0; bottom:0; width:100vw; height:100dvh; border-radius:0; }
 }
 @media print { .askai-fab, .askai-panel { display:none !important; } }
+/* Phone swipe deck: the floating Ask AI button would cover the Like / Message buttons. */
+@media (max-width: 640px) { .askai-fab.hide-phone { display:none; } }
 /* Interview preparation */
 .ip-agent { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 16px; border-radius:16px; border:1px solid #e3dcf7; background:linear-gradient(135deg,#fff,#f6f2ff); margin-bottom:14px; }
 .ip-agent > div { flex:1; min-width:220px; display:flex; flex-direction:column; gap:2px; }
