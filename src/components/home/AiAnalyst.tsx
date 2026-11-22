@@ -4,7 +4,7 @@
 // The old browser-only mock answers (answer()) stay exported for the report tests.
 import { useEffect, useState } from 'react';
 import { AlertCircle, Bot, Check, Crown, ExternalLink, KeyRound, Loader2, Lock, Sparkles, X } from 'lucide-react';
-import { api, readTabAiKey, writeTabAiKey, type AiKeyInfo } from '../../api';
+import { api, type AiKeyInfo } from '../../api';
 import type { Bootstrap } from '../../types';
 import { likesWaiting, nextInterview, repliesWaiting, urgentItems } from '../../lib/today';
 import { recruiterFeedback, roleKpis, skillGaps } from '../../lib/report';
@@ -55,31 +55,20 @@ export function AgentSettingsModal({ onClose, onChange }: { onClose: () => void;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [changing, setChanging] = useState(false);
-  // Demo accounts (canSave false): the key lives in this browser tab only and is never saved on the server.
-  const tabInfo = (): AiKeyInfo | null => { const t = readTabAiKey(); return t ? { provider: t.provider, tier: t.tier, model: t.model, last4: t.last4, savedAt: Date.now() } : null; };
   useEffect(() => {
-    api.aiKey().then((r) => {
-      const info = r.canSave ? r.key : tabInfo();
-      setCurrent(info); setCanSave(r.canSave); if (info) setProvider(info.provider === 'anthropic' ? 'claude' : 'chatgpt'); onChange?.(rememberAgent(info));
-    }).catch((e) => setError(e instanceof Error ? e.message : 'Could not load your chatbot settings')).finally(() => setLoaded(true));
+    api.aiKey().then((r) => { setCurrent(r.key); setCanSave(r.canSave); if (r.key) setProvider(r.key.provider === 'anthropic' ? 'claude' : 'chatgpt'); onChange?.(rememberAgent(r.key)); })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load your chatbot settings')).finally(() => setLoaded(true));
   }, []);
   const p = PROVIDERS[provider];
   const connect = async () => {
     setBusy(true); setError('');
-    try {
-      if (canSave) { const r = await api.saveAiKey(p.api, key.trim(), tier); setCurrent(r.key); onChange?.(rememberAgent(r.key)); }
-      else {
-        const r = await api.checkAiKey(p.api, key.trim(), tier);
-        writeTabAiKey({ provider: r.provider, key: key.trim(), tier: r.tier, model: r.model, last4: r.last4 });
-        const info = tabInfo(); setCurrent(info); onChange?.(rememberAgent(info));
-      }
-      setKey(''); setChanging(false);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not connect'); }
+    try { const r = await api.saveAiKey(p.api, key.trim(), tier); setCurrent(r.key); setKey(''); setChanging(false); onChange?.(rememberAgent(r.key)); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not connect'); }
     finally { setBusy(false); }
   };
   const disconnect = async () => {
     setBusy(true); setError('');
-    try { if (canSave) await api.deleteAiKey(); else writeTabAiKey(null); setCurrent(null); onChange?.(rememberAgent(null)); }
+    try { await api.deleteAiKey(); setCurrent(null); onChange?.(rememberAgent(null)); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not disconnect'); }
     finally { setBusy(false); }
   };
@@ -93,7 +82,7 @@ export function AgentSettingsModal({ onClose, onChange }: { onClose: () => void;
       {!loaded && <p className="askai-state"><Loader2 size={16} className="spin" /> Loading…</p>}
       {loaded && current && !changing && <div className="ai-connected">
         <span className="ai-ok"><Check size={14} /></span>
-        <div><strong>Connected: {current.provider === 'anthropic' ? 'Claude' : 'ChatGPT'}</strong><small>{modelName(current.model)} · key ending …{current.last4} · {canSave ? `since ${new Date(current.savedAt).toLocaleDateString()}` : 'this browser tab only (demo account, not saved)'}</small></div>
+        <div><strong>Connected: {current.provider === 'anthropic' ? 'Claude' : 'ChatGPT'}</strong><small>{modelName(current.model)} · key ending …{current.last4} · since {new Date(current.savedAt).toLocaleDateString()}</small></div>
         <div className="ai-connected-actions">
           <button type="button" className="secondary-button small" onClick={() => setChanging(true)} disabled={busy}>Change</button>
           <button type="button" className="secondary-button small" onClick={() => void disconnect()} disabled={busy}>Disconnect</button>
@@ -110,15 +99,15 @@ export function AgentSettingsModal({ onClose, onChange }: { onClose: () => void;
           <li><b>3</b><span>Paste it here and connect.</span></li>
         </ol>
         <label className="int-field"><span>Your {p.label} API key</span>
-          <input type="password" autoComplete="off" spellCheck={false} value={key} onChange={(e) => { setKey(e.target.value); setError(''); }} placeholder={`${p.prefix}…`} disabled={busy} /></label>
+          <input type="password" autoComplete="off" spellCheck={false} value={key} onChange={(e) => { setKey(e.target.value); setError(''); }} placeholder={`${p.prefix}…`} disabled={!canSave || busy} /></label>
         <div className="ai-tiers" role="radiogroup" aria-label="Model">
           {(['best', 'fast'] as const).map((t) => <label key={t} className={tier === t ? 'on' : ''}><input type="radio" name="ai-tier" checked={tier === t} onChange={() => setTier(t)} /> {TIERS[provider][t]}</label>)}
         </div>
-        {!canSave && <p className="ai-demo-note"><Lock size={13} /> Demo account (shared): your key is checked, then used in <b>this browser tab only</b>. It is never saved on our server and is gone when you close the tab. On your own account it is saved encrypted.</p>}
+        {!canSave && <p className="auth-error"><AlertCircle size={14} /> Demo accounts are shared, so they cannot save a key. Create your own free account to connect your chatbot.</p>}
         {error && <p className="auth-error" role="alert"><AlertCircle size={14} /> {error}</p>}
         <div className="ai-form-actions">
           {changing && <button type="button" className="secondary-button" onClick={() => { setChanging(false); setError(''); }} disabled={busy}>Cancel</button>}
-          <button type="button" className="fm-black" onClick={() => void connect()} disabled={busy || key.trim().length < 20}>{busy ? <><Loader2 size={16} className="spin" /> Checking your key…</> : canSave ? `Check and connect ${p.label}` : `Check and use ${p.label} in this tab`}</button>
+          <button type="button" className="fm-black" onClick={() => void connect()} disabled={!canSave || busy || key.trim().length < 20}>{busy ? <><Loader2 size={16} className="spin" /> Checking your key…</> : `Check and connect ${p.label}`}</button>
         </div>
       </>}
       {loaded && !showForm && error && <p className="auth-error" role="alert"><AlertCircle size={14} /> {error}</p>}

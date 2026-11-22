@@ -163,26 +163,6 @@ test('premium: trial lasts 7 days, ends on time, demo accounts included, recruit
   assert.equal(getRecruiterEntitlements(db, u, null, t0 + 8 * 86400000).activeJobLimit, 1, 'back to the free limit after the trial');
 });
 
-test('demo accounts: key checked without saving, used from the tab header only, ignored for real accounts', async () => {
-  const demo = await loginDemo('c-2'); // a demo candidate no earlier test has used
-  const KEY = 'sk-ant-api03-demo-tab-only-key-zyxwvut9876';
-  const chk = await call('POST', '/api/ai/key/check', { provider: 'anthropic', apiKey: KEY, tier: 'fast' }, demo);
-  assert.equal(chk.status, 200, JSON.stringify(chk.body)); assert.equal(chk.body.model, 'claude-haiku-5-5'); assert.equal(chk.body.last4, '9876');
-  const { readFileSync } = await import('node:fs');
-  assert.ok(!readFileSync(DB_PATH, 'utf8').includes(KEY), 'checked key is never stored');
-  // Send it with the request (as the tab does): the provider gets the visitor's key.
-  const res = await fetch(`${base}/api/ai/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: demo, 'x-ai-provider': 'anthropic', 'x-ai-key': KEY, 'x-ai-tier': 'fast', 'x-ai-model': 'claude-haiku-5-5' }, body: JSON.stringify({ question: 'What are my best job matches?' }) });
-  const body = await res.json();
-  assert.equal(res.status, 200, JSON.stringify(body));
-  assert.equal(seen.at(-1).headers['x-api-key'], KEY, 'the provider got the visitor’s own key');
-  assert.match(body.provider, /this tab only/);
-  assert.ok(!readFileSync(DB_PATH, 'utf8').includes(KEY), 'tab key is never stored');
-  // A real account ignores the header (uses its own saved key or the server's).
-  const reg = await call('POST', '/api/auth/register', { role: 'candidate', name: 'Header Ignored', email: `hdr-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
-  const st = await fetch(`${base}/api/ai/chat/status`, { headers: { Cookie: reg.session, 'x-ai-provider': 'anthropic', 'x-ai-key': KEY } }).then((r) => r.json());
-  assert.notEqual(st.source, 'own', 'real accounts never use a header key');
-});
-
 test('unconfigured servers get clear refusals', async () => {
   process.env.AI_CHAT_PROVIDER = '';
   const off = await call('POST', '/api/ai/chat', { question: 'hi' }, await loginDemo('candidate-demo-3'));

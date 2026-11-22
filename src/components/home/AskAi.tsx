@@ -88,7 +88,7 @@ export function AskAi({ role = 'candidate', hideFabOnPhone = false }: { role?: '
         {status && status.premium?.active && !status.enabled && <div className="askai-gate">
           <KeyRound size={22} />
           <strong>{status.reason === 'own_key_unreadable' ? 'Please connect your chatbot again' : 'Connect your own Claude or ChatGPT'}</strong>
-          <p>It takes a minute: get an API key from Anthropic or OpenAI and paste it. You pay them directly for what you use (usually well under a cent per question). {!status.canSaveKey && 'Demo account: your key is used in this browser tab only and is never saved.'}</p>
+          <p>It takes a minute: get an API key from Anthropic or OpenAI and paste it. You pay them directly for what you use (usually well under a cent per question). {!status.canSaveKey && 'Demo accounts are shared, so create your own free account to connect a key.'}</p>
           <button type="button" className="fm-black" onClick={() => setSetup(true)}><KeyRound size={16} /> Connect my chatbot</button>
         </div>}
         {enabled && status?.premium?.source === 'trial' && msgs.length === 0 && <p className="askai-trial"><Crown size={12} /> Premium trial: {status.premium.daysLeft} {status.premium.daysLeft === 1 ? 'day' : 'days'} left.</p>}
