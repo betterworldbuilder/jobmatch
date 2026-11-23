@@ -1249,6 +1249,13 @@ img.avatar-mini { object-fit:cover; }
 .empty-deck h2 { font:800 25px 'Manrope'; margin:18px 0 8px; }
 .empty-deck p { color:var(--muted); max-width:310px; font-size:12px; line-height:1.6; }
 .empty-deck button { margin-top:14px; }
+/* "Try the demo" on a real account's empty deck (founder, 2026-11-23). */
+.empty-deck .try-demo-button { margin-top:8px; display:inline-flex; align-items:center; gap:6px; }
+.try-demo-confirm { margin-top:12px; max-width:310px; padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:#fffaf0; }
+.empty-deck .try-demo-confirm p { margin:0 0 8px; font-size:12px; color:var(--ink, #1d2b22); }
+.try-demo-actions { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+.empty-deck .try-demo-actions button { margin-top:0; display:inline-flex; align-items:center; gap:6px; }
+.try-demo-error { display:block; margin-top:6px; color:#c62828; font-size:11px; }
 
 /* Modal */
 .modal-scrim { position:fixed; inset:0; z-index:100; background:rgba(9,20,13,.72); backdrop-filter:blur(8px); display:grid; place-items:center; padding:20px; }

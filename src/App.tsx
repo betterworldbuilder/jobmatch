@@ -40,7 +40,7 @@ import { AdminActionQueuePage } from './components/billing/AdminActionQueuePage'
 import { AdminIntegrationsPage, AdminKpisPage, AdminTrafficPage } from './components/billing/AdminInsightsPages';
 import { NotesBox } from './components/NotesBox';
 import { useDiscoverDeck } from './components/discover/useDiscoverDeck';
-import { EmptyDeck, MatchModal, SalaryBadge } from './components/discover/DeckParts';
+import { EmptyDeck, MatchModal, SalaryBadge, TryDemoContext } from './components/discover/DeckParts';
 // Lazy-loaded: pulls in pdf.js only when a resume is actually opened.
 const ResumeViewerModal = lazy(() => import('./components/ResumeViewerModal').then((m) => ({ default: m.ResumeViewerModal })));
 import { JobEditor } from './components/jobs/JobEditor';
@@ -521,6 +521,9 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   }, []);
   // Demo convenience: jump between the flagship candidate and recruiter personas.
   const changeRole = (next: Role) => { api.login(`${next}-demo`).then(({ user }) => onSwitchUser(user)); };
+  // "Try the demo" on a real account's empty deck: signs in to the flagship demo persona of the same role.
+  const tryDemo = useMemo(() => (session.demo === true || !featureOn('tryDemo') ? null
+    : async () => { const { user } = await api.login(`${role}-demo`); onSwitchUser(user); }), [session.demo, role, onSwitchUser]);
   // Same menu on every device (founder, 2026-11-22). The old `?fm=1` preview (used by the phone app's start URL)
   // no longer changes the menu: it used to add a second "Find My Match" and make phone and desktop differ.
   const nav = role === 'candidate' ? candidateNav : employerNav;
@@ -543,7 +546,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     : view === item.view && !(item.view === 'home' && activeAnchor);
   const initials = (session.name || '?').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase();
 
-  return <div className={`app-shell role-${role}`}>
+  return <TryDemoContext.Provider value={tryDemo}><div className={`app-shell role-${role}`}>
     <aside className={mobileNav ? 'sidebar open' : 'sidebar'}><div className="sidebar-head"><Brand /><button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close menu"><X /></button></div>
       <div className="workspace-switch"><span>Profile</span><button onClick={() => { setView('profile'); setMobileNav(false); }}>{data?.viewer.photo ? <img className="avatar-mini" src={data.viewer.photo} alt="" /> : <div className="avatar-mini">{initials}</div>}<div><strong>{data?.viewer.name || session.name}</strong><small>{role === 'candidate' ? 'Candidate' : 'Recruiter'}</small></div><ArrowRight size={15} /></button></div>
       <nav className="sidebar-nav">{nav.map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)} style={{ ['--c' as string]: NAV_COLORS[item.label] || '#9fb3d9' }}><i className="nav-ico"><Icon size={18} /></i><span>{item.label}</span>{item.view === 'messages' && notifications.length > 0 && <em>{Math.min(notifications.length, 9)}</em>}</button>; })}</nav>
@@ -574,7 +577,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     {/* Phone action bar + Global Menu (founder, 2026-11-22), job seekers and recruiters: configurable, saved per person. */}
     <MobileTabs role={role} userId={session.id} nav={nav} navColors={NAV_COLORS} view={view} activeAnchor={activeAnchor} unread={notifications.length} likes={data ? likesWaiting(data) : 0} gotoNav={gotoNav} setView={setView} openFullMenu={() => setMobileNav(true)} />
     <AnimatePresence>{settingsOpen && <SettingsModal user={session} onClose={() => setSettingsOpen(false)} onDeleted={() => { setSettingsOpen(false); onExit(); }} />}</AnimatePresence>
-  </div>;
+  </div></TryDemoContext.Provider>;
 }
 
 function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profileCard, onProfileCardChange, reload, onAddJobs, manualJobRequest, openMatchId, onOpenMessages, editJobId, onEditJob, paymentResult, onDismissResult }: { view: View; role: Role; data: Bootstrap; setData: (d: Bootstrap) => void; navigate: (v: View) => void; onEditProfile: (step: number) => void; profileCard: number; onProfileCardChange: (card: number) => void; reload: () => void; onAddJobs: () => void; manualJobRequest: number; openMatchId?: string; onOpenMessages: (matchId: string) => void; editJobId?: string; onEditJob: (jobId: string) => void; paymentResult?: 'success' | 'failed' | null; onDismissResult?: () => void }) {

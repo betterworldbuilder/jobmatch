@@ -1,7 +1,7 @@
 // Deck pieces shared by the Discover page and the home "Look for new matches" section.
-import { useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { BriefcaseBusiness, Check, Heart, Loader2, MessageCircle, RotateCcw, Send, X } from 'lucide-react';
+import { BriefcaseBusiness, Check, Heart, Loader2, MessageCircle, PlayCircle, RotateCcw, Send, X } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { api } from '../../api';
 import type { JobMatch, Person, Role } from '../../types';
@@ -44,11 +44,33 @@ function formatRange(range?: { min: number; max: number; currency: string }) {
 }
 
 
+/** "Try the demo" (founder, 2026-11-23): the signed-in app provides this for REAL accounts only (null for demo
+ * accounts or when the tryDemo flag is off). Real decks hold only real people, so an empty deck offers the demo. */
+export const TryDemoContext = createContext<(() => Promise<void>) | null>(null);
+
+export function TryDemoButton() {
+  const tryDemo = useContext(TryDemoContext);
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  if (!tryDemo) return null;
+  if (!asking) return <button type="button" className="secondary-button try-demo-button" onClick={() => setAsking(true)}><PlayCircle size={16} />Try the demo</button>;
+  // A <section>, not a <div>: `.empty-deck>div` styles direct child divs as the round icon.
+  return <section className="try-demo-confirm" role="alertdialog" aria-label="Open the demo">
+    <p>This signs you out of your account and opens a shared demo account. Sign back in anytime with your email.</p>
+    <span className="try-demo-actions">
+      <button type="button" className="primary-button small" disabled={busy} onClick={() => { setBusy(true); setError(''); tryDemo().catch((e) => { setError(e?.message || 'Could not open the demo'); setBusy(false); }); }}>{busy ? <Loader2 size={15} className="spin" /> : <PlayCircle size={15} />}Open the demo</button>
+      <button type="button" className="ghost-button small" disabled={busy} onClick={() => setAsking(false)}>Cancel</button>
+    </span>
+    {error && <small className="try-demo-error">{error}</small>}
+  </section>;
+}
+
 /** Deck finished. Discover uses the default copy; the home phone deck passes its own copy and buttons. */
 export function EmptyDeck({ role, onReset, title, text, resetLabel, children }: { role: Role; onReset: () => void; title?: string; text?: string; resetLabel?: string; children?: React.ReactNode }) {
-  if (title) return <div className="empty-deck"><div><Heart /></div><h2>{title}</h2>{text && <p>{text}</p>}<button className="primary-button" onClick={onReset}><RotateCcw size={16} />{resetLabel || 'Start over'}</button>{children}</div>;
-  if (role === 'candidate') return <div className="empty-deck"><div><Check /></div><h2>You’ve seen every role for now</h2><p>New roles appear here as soon as teams post them.</p><button className="primary-button" onClick={onReset}><RotateCcw size={16} />Review again (demo)</button></div>;
-  return <div className="empty-deck"><div><Check /></div><h2>You’re all caught up</h2><p>We’ll bring you fresh recommendations as soon as the fit is strong enough.</p><button className="primary-button" onClick={onReset}><RotateCcw size={16} />Review again</button></div>;
+  if (title) return <div className="empty-deck"><div><Heart /></div><h2>{title}</h2>{text && <p>{text}</p>}<button className="primary-button" onClick={onReset}><RotateCcw size={16} />{resetLabel || 'Start over'}</button>{children}<TryDemoButton /></div>;
+  if (role === 'candidate') return <div className="empty-deck"><div><Check /></div><h2>You’ve seen every role for now</h2><p>New roles appear here as soon as teams post them.</p><button className="primary-button" onClick={onReset}><RotateCcw size={16} />Review again</button><TryDemoButton /></div>;
+  return <div className="empty-deck"><div><Check /></div><h2>You’re all caught up</h2><p>We’ll bring you fresh recommendations as soon as the fit is strong enough.</p><button className="primary-button" onClick={onReset}><RotateCcw size={16} />Review again</button><TryDemoButton /></div>;
 }
 
 export function MatchModal({ match, viewer, onClose, onMessage }: { match: JobMatch; viewer: Person; onClose: () => void; onMessage: () => void }) {

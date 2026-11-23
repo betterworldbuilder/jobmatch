@@ -4,6 +4,8 @@
 const FLAGS = {
   /** "Find your Matches": the full swipe studio (sidebar + card + safety + verification). */
   findMatches: { param: 'fm', defaultOn: false },
+  /** "Try the demo" button on a real account's empty deck. Enabled for everyone by the founder, 2026-11-23 (?trydemo=0 hides it). */
+  tryDemo: { param: 'trydemo', defaultOn: true },
 } as const;
 
 export type FlagName = keyof typeof FLAGS;
