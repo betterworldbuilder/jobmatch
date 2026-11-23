@@ -35,7 +35,7 @@ export function JourneyPipeline() {
 
 const CANDIDATE_FEATURES = [
   { icon: Heart, title: 'Mutual Matching', text: 'No cold applications, no recruiter spam — a conversation only opens once both sides say yes.' },
-  { icon: Target, title: 'Explainable Match Score', text: 'See exactly why you matched — a transparent skills, salary, location, and work-mode breakdown.' },
+  { icon: Target, title: 'Explainable Match Score', text: 'See exactly why you matched — a transparent skills, salary, location, and work-mode breakdown. Scores never reject anyone: both sides decide.' },
   { icon: Sparkles, title: 'Salary Revealed Up Front', text: 'Salary fit is scored before you ever talk, so you don’t invest in a conversation over a comp mismatch.' },
   { icon: MapPin, title: 'Geolocation of Opportunities', text: 'Set a private distance range for on-site or hybrid roles, then meet nearby for a real coffee — your exact address stays yours.' },
   { icon: FileText, title: 'Resume Autofill', text: 'Upload once, and your whole profile fills itself in — skip the retyping.' },

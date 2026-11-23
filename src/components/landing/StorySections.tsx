@@ -48,7 +48,7 @@ export function ForWhoSection({ onRegister }: Pick<Cta, 'onRegister'>) {
 
 const STEPS = [
   { icon: UserRound, title: 'Create one profile', text: 'Your skills, experience, salary and location, or your role and company. Once.' },
-  { icon: Target, title: 'Swipe with a reason', text: 'Every card shows a fit score from 0 to 100 and the skills that match.' },
+  { icon: Target, title: 'Swipe with a reason', text: 'Every card shows a fit score from 0 to 100, based on skills, salary and location, with the reasons. Scores never reject anyone: you and the hiring team both decide.' },
   { icon: Heart, title: 'It’s a Match', text: 'A chat opens only when both sides say yes. Schedule an interview or meet for coffee nearby.' },
 ];
 

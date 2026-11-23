@@ -258,6 +258,12 @@ export function SettingsModal({ user, onClose, onDeleted }: { user: SessionUser;
           ? <div className="settings-confirm"><button className="danger-button settings-btn" onClick={del} disabled={busy === 'del'}>{busy === 'del' ? <Loader2 size={14} className="spin" /> : 'Confirm delete'}</button><button className="text-button" onClick={() => setConfirmDelete(false)}>Cancel</button></div>
           : <button className="danger-button settings-btn" onClick={() => setConfirmDelete(true)} disabled={user.demo}>{user.demo ? 'Demo' : 'Delete'}</button>}
       </div>
+      {/* Legal pages reachable inside the app (Google Play / App Store ask for the privacy policy in-app). */}
+      <div className="settings-row">
+        <div><strong><ShieldCheck size={15} /> Privacy &amp; AI</strong><small>How we use your data, where AI helps, and your rights where you live.</small></div>
+        <a className="secondary-button settings-btn" href="/privacy.html">Read</a>
+      </div>
+      <p className="settings-note"><a href="/privacy.html#ai">AI features</a> · <a href="/privacy.html#regional">Your rights by region</a> · <a href="/delete-account.html">How to delete your account</a></p>
       {note && <p className="settings-note">{note}</p>}
       {error && <p className="auth-error">{error}</p>}
     </div>
