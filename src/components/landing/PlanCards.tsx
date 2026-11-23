@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import { PLAN_INCLUDES, POPULAR_PLAN, TRIAL, TRIAL_CARD_PERKS, type PlanCard } from '../../lib/plans';
 
-/** "Starter · Free for 4 weeks" — the free trial, shown before the paid plans. */
+/** "Starter · Free for 8 weeks" — the free trial, shown before the paid plans. */
 export function TrialCardView({ onStart, cta = 'Start free trial' }: { onStart: () => void; cta?: string }) {
   return <article className="plan-card plan-card-trial">
     <span className="plan-name">Starter</span>
@@ -12,7 +12,7 @@ export function TrialCardView({ onStart, cta = 'Start free trial' }: { onStart: 
 }
 
 /** One recruiter tier on the pricing page (design 2026-11-22). Every CTA registers rather than
- *  charging: the 4-week trial starts first and the plan is chosen at the end of it,
+ *  charging: the 8-week trial starts first and the plan is chosen at the end of it,
  *  so no card is ever asked for on this page. */
 export function PlanCardView({ plan, onRegister, cta }: { plan: PlanCard; onRegister: () => void; cta?: string }) {
   const free = plan.usd === 0;

@@ -22,8 +22,8 @@ const intFromEnv = (name, fallback) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-// 4 weeks free with full features including AI (founder, 2026-11-22; was 60 days).
-export const TRIAL_DAYS = intFromEnv('RECRUITER_TRIAL_DAYS', 28);
+// 8 weeks free with full features including AI (founder, 2026-11-23; was 4 weeks, before that 60 days).
+export const TRIAL_DAYS = intFromEnv('RECRUITER_TRIAL_DAYS', 56);
 /** Granted once, when a hire is still in flight as the trial runs out. */
 export const HIRE_IN_FLIGHT_EXTENSION_DAYS = intFromEnv('HIRE_IN_FLIGHT_EXTENSION_DAYS', 30);
 
@@ -79,10 +79,10 @@ export function trialEndsAt(startedAt, days, windows = pauseWindows()) {
 export const TRIAL_CHECKPOINTS = [
   { day: 2, key: 'day_2', kind: 'trial_checkpoint_start', text: 'Post your first job to start seeing matched candidates — it takes about three minutes.', onlyIfNoJobs: true },
   { day: 7, key: 'day_7', kind: 'trial_checkpoint_week', text: 'One week in. Have a look at who matched your roles this week.' },
-  // 4-week trial (2026-11-22): mid-point, one week left, final days.
-  { day: 14, key: 'day_14', kind: 'trial_checkpoint_mid', text: 'Halfway through your trial. Have you tried Ask AI on your roles and candidates yet?' },
-  { day: 21, key: 'day_21', kind: 'trial_checkpoint_late', text: 'One week of trial left — you can run up to five roles at once with the AI Hiring Assistant.' },
-  { day: 25, key: 'day_25', kind: 'trial_checkpoint_final', text: 'Your trial ends in three days. One job stays live free forever — subscribe to keep them all.' },
+  // 8-week trial (2026-11-23): mid-point, one week left, final days (new keys, so the 4-week ones never repeat).
+  { day: 28, key: 'day_28', kind: 'trial_checkpoint_mid', text: 'Halfway through your trial. Have you tried Ask AI on your roles and candidates yet?' },
+  { day: 49, key: 'day_49', kind: 'trial_checkpoint_late', text: 'One week of trial left — you can run up to five roles at once with the AI Hiring Assistant.' },
+  { day: 53, key: 'day_53', kind: 'trial_checkpoint_final', text: 'Your trial ends in three days. One job stays live free forever — subscribe to keep them all.' },
 ];
 
 /** Checkpoints due now and not already sent. `hasJobs` suppresses the day-2

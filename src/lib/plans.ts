@@ -48,7 +48,7 @@ export const PLAN_CARDS: PlanCard[] = [
   },
 ];
 
-/** The free-trial card shown first on the pricing page ("Starter · Free for 4 weeks"). */
+/** The free-trial card shown first on the pricing page ("Starter · Free for 8 weeks"). */
 export const TRIAL_CARD_PERKS = ['Full feature access', 'AI Hiring Assistant', 'Candidate matching', 'Messaging & scheduling', 'Team analytics'];
 
 /** Extra live roles on every plan: +USD 20 per role per month (mirror of server EXTRA_JOB_SLOT_PRICE). */
@@ -76,7 +76,7 @@ export const SINGLE_POSTING = { termDays: 60, usd: 29, vnd: 590000 };
 export const PAY_PER_HIRE = { feePercent: 5 };
 
 /** One trial, one length, the same for everybody. */
-export const TRIAL = { days: 28, liveJobs: 5 };
+export const TRIAL = { days: 56, liveJobs: 5 }; // 8 weeks free (founder, 2026-11-23); mirrors server TRIAL_DAYS
 
 export const planCard = (key: PlanKey) => PLAN_CARDS.find((plan) => plan.key === key)!;
 

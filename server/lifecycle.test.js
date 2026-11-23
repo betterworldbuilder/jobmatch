@@ -181,8 +181,8 @@ test('an admin override verifies an account a regex would refuse', () => {
 
 /* ── Trial terms ─────────────────────────────────────────────────────────── */
 
-test('there is one trial length, 4 weeks (28 days), for everybody', () => {
-  assert.equal(TRIAL_DAYS, 28);
+test('there is one trial length, 8 weeks (56 days), for everybody', () => {
+  assert.equal(TRIAL_DAYS, 56);
 });
 
 test('every trial checkpoint fires inside the trial, never after it ends', () => {

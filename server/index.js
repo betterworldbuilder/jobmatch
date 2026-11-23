@@ -44,7 +44,7 @@ import { activeMembers, addMember, findTeam, getOrCreateTeam, reconcileSeats, se
 import { currencyForCountry, PAY_PER_HIRE_FEE_PERCENT, PLANS, planPrice, seatPlanKey, SINGLE_POSTING, singlePostingPrice } from './billing/plans.js';
 import { assertNeverZeroLiveJobs, downgradeToFree, applyLiveJobLimit } from './billing/downgrade.js';
 import { clearSlotLocks, confirmHire, hasVerifiedHire, HIRE_OUTCOMES, POSTING_TERM_DAYS, recordHire, renewPosting, startPostingTerm } from './billing/postings.js';
-import { extendForHireInFlight, TRIAL_DAYS } from './billing/trial.js';
+import { extendForHireInFlight, TRIAL_DAYS, trialEndsAt } from './billing/trial.js';
 import { recruiterVerification } from './billing/verification.js';
 import { chargeFor, monthlyRecurringRevenue, selectPlan, SELECTABLE_PLANS, setExtraJobSlots } from './billing/charge.js';
 import { attachReferralOnRegister, findReferrerByCode, getOrCreateReferralCode, revokeReferralCreditForPayment } from './billing/referrals.js';
@@ -108,6 +108,18 @@ await store.transaction((db) => {
   // Billing collections were introduced after the store may already exist on disk.
   for (const collection of ['subscriptions', 'subscriptionCredits', 'jobPostCredits', 'referrals', 'payments', 'billingEvents', 'billingNotifications', 'teams', 'boosts']) {
     if (!Array.isArray(db[collection])) db[collection] = [];
+  }
+  // Trial is 8 weeks since 2026-11-23 (founder: "extend current trials"): trials still running on a shorter length
+  // are moved to the current TRIAL_DAYS from their own start date. Idempotent: trialDays becomes TRIAL_DAYS.
+  {
+    const now = Date.now();
+    for (const sub of db.subscriptions) {
+      if (sub.status !== 'trialing' || !sub.trialStartedAt || !(sub.trialEndsAt > now) || Number(sub.trialDays || 0) >= TRIAL_DAYS) continue;
+      const before = sub.trialEndsAt;
+      sub.trialEndsAt = Math.max(before, trialEndsAt(sub.trialStartedAt, TRIAL_DAYS));
+      sub.trialDays = TRIAL_DAYS; sub.updatedAt = now;
+      logBillingEvent(db, sub.recruiterUserId, 'trial_extended_to_current_length', 'subscription', sub.id, { from: before, to: sub.trialEndsAt, days: TRIAL_DAYS });
+    }
   }
   // Trust & safety / support collections, same "may already exist on disk" reasoning.
   for (const collection of ['reports', 'supportRequests']) {
@@ -3327,7 +3339,7 @@ async function aiChatUser(req) {
   return { user, db };
 }
 /* Premium for this user. Candidates: the 7-day Premium add-on (server/premium.js).
- * Hiring teams: their plan — the 4-week trial and every paid plan include the AI Hiring Assistant. */
+ * Hiring teams: their plan — the 8-week trial and every paid plan include the AI Hiring Assistant. */
 function premiumFor(db, user, now = Date.now()) {
   if (user.role !== 'employer') return premiumState(user, now);
   const sub = findSubscription(db, user.id);

@@ -53,7 +53,7 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
   };
 
   if (!data.billing) {
-    // No subscription yet: the same plans as the pricing page, with the 4-week free trial up front.
+    // No subscription yet: the same plans as the pricing page, with the 8-week free trial up front.
     return <div className="page billing-page"><div className="page-title"><div><span className="overline">Recruiter plan</span><h1>Subscription</h1>
       <p>Find the right people faster. Start free, upgrade as your hiring grows. No fee per hire.</p></div></div>
       <div className="billing-empty">
