@@ -270,6 +270,8 @@ export function AdminBillingPage() {
             <Field label="Account number"><TextInput value={bank.bankAccountNumber} onChange={(event) => setBank({ ...bank, bankAccountNumber: event.target.value })} /></Field>
             <Field label="SWIFT code (for international transfers)"><TextInput value={bank.bankSwift} onChange={(event) => setBank({ ...bank, bankSwift: event.target.value })} /></Field>
             <Field label="VietQR image URL"><TextInput value={bank.vietQrImageUrl} onChange={(event) => setBank({ ...bank, vietQrImageUrl: event.target.value })} /></Field>
+            <Field label="USDT wallet of JobsMatchNow SARL (TRON / TRC-20)"><TextInput value={bank.usdtTrc20Address || ''} onChange={(event) => setBank({ ...bank, usdtTrc20Address: event.target.value.trim() })} placeholder="T… (34 characters). Leave empty to keep USDT off." /></Field>
+            <p className="muted">USDT is offered only to companies outside Vietnam (crypto is not a lawful means of payment in Vietnam), and only with the ?pay=1 preview until it is switched on.</p>
             <Field label="Support email"><TextInput value={bank.supportEmail} onChange={(event) => setBank({ ...bank, supportEmail: event.target.value })} /></Field>
             <button type="button" className="primary-button small" disabled={bankSaving} onClick={saveBank}>{bankSaving ? <Loader2 size={13} className="spin" /> : bankSaved ? 'Saved' : 'Save'}</button>
           </>}
@@ -281,7 +283,9 @@ export function AdminBillingPage() {
             <thead><tr><th>Recruiter</th><th>Invoice</th><th>Amount</th><th>Method</th><th>Reference</th><th>Submitted</th><th></th></tr></thead>
             <tbody>{overview.pendingPayments.map((payment) => <tr key={payment.id}>
               <td>{payment.recruiter?.name || payment.recruiterUserId}<br /><small className="muted">{payment.recruiter?.email}</small></td>
-              <td>{payment.invoiceNumber}</td><td>{payment.currency} {payment.amount}</td><td>{payment.paymentMethod.replace(/_/g, ' ')}</td><td>{payment.paymentReference}</td><td>{fmt(payment.createdAt)}</td>
+              <td>{payment.invoiceNumber}</td><td>{payment.currency} {payment.amount}</td><td>{payment.paymentMethod.replace(/_/g, ' ')}</td><td>{payment.paymentMethod === 'usdt_trc20'
+                ? (payment.txHash ? <a href={`https://tronscan.org/#/transaction/${payment.txHash}`} target="_blank" rel="noopener noreferrer" title="Check on Tronscan: amount, USDT, and our wallet">TxID {payment.txHash.slice(0, 10)}… ↗</a> : 'TxID missing')
+                : payment.paymentReference}</td><td>{fmt(payment.createdAt)}</td>
               <td className="admin-actions">
                 <button type="button" className="primary-button small" disabled={busyId === payment.id} onClick={() => run(payment.id, () => api.adminConfirmPayment(payment.id))}>{busyId === payment.id ? <Loader2 size={13} className="spin" /> : 'Confirm'}</button>
                 <input className="admin-reason-input" placeholder="Reject reason" value={reasonFor(payment.id)} onChange={(event) => setReason(payment.id, event.target.value)} />

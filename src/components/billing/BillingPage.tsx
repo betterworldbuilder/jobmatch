@@ -7,6 +7,7 @@ import { LaunchOffers } from '../LaunchOffers';
 import { PlanCardView, TrialCardView } from '../landing/PlanCards';
 import { HEADLINE_PLANS, planCard, SINGLE_POSTING, TRIAL } from '../../lib/plans';
 import type { Bootstrap, Payment, PaymentMethod, TeamInfo } from '../../types';
+import { featureOn } from '../../lib/flags';
 
 function money(amount: number, currency: string) {
   if (amount === 0) return 'Free';
@@ -31,6 +32,7 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
   const [payerName, setPayerName] = useState('');
   const [bankName, setBankName] = useState('');
   const [transferDate, setTransferDate] = useState('');
+  const [txHash, setTxHash] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [proofPaymentId, setProofPaymentId] = useState<string | null>(null);
@@ -66,6 +68,11 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
   }
 
   const { subscription, effectiveStatus, credits, referralCode, instructions, vnpayEnabled, vnpayAmountVnd, stripeEnabled, paypalEnabled, googlePlayEnabled, googlePlayProductId, appleEnabled, appleProductId, plan, charge, selectablePlans, trial, entitlements } = data.billing;
+  // New methods (founder, 2026-11-24): shown only when configured on the server AND the ?pay=1 preview is on.
+  const payPreview = featureOn('pay');
+  const payosOn = payPreview && Boolean(data.billing.payosEnabled);
+  const usdtOn = payPreview && Boolean(data.billing.usdtEnabled);
+  const usdtUsd = charge ? (charge.currency === 'USD' ? charge.amount : null) : null;
   const team = teamOverride ?? data.billing.team;
   const accessEndsAt = subscription.currentPeriodEndsAt || subscription.trialEndsAt;
   const referralLink = `${window.location.origin}/ref/${referralCode}`;
@@ -103,7 +110,7 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
   const submit = async () => {
     setSubmitting(true); setError('');
     try {
-      const payment = await api.submitPayment({ userId: viewer.id, paymentMethod: method, payerName: payerName || undefined, bankName: bankName || undefined, transferDate: transferDate || undefined });
+      const payment = await api.submitPayment({ userId: viewer.id, paymentMethod: method, payerName: payerName || undefined, bankName: bankName || undefined, transferDate: transferDate || undefined, txHash: method === 'usdt_trc20' ? txHash.trim() || undefined : undefined });
       setPayments((prev) => [payment, ...prev]);
       setProofPaymentId(payment.id);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not submit payment'); }
@@ -121,11 +128,12 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
   // Redirects to the provider's own hosted page — card numbers are entered
   // there, never on our site. Confirmation happens server-side via each
   // provider's webhook (or VNPay's IPN), never from this redirect alone.
-  const payVia = async (provider: 'vnpay' | 'stripe' | 'paypal') => {
+  const payVia = async (provider: 'vnpay' | 'stripe' | 'paypal' | 'payos') => {
     setCardRedirecting(true); setError('');
     try {
       const { redirectUrl } = provider === 'vnpay' ? await api.startVnpayPayment(viewer.id)
         : provider === 'stripe' ? await api.startStripeCheckout(viewer.id)
+        : provider === 'payos' ? await api.startPayosPayment(viewer.id)
         : await api.startPaypalSubscription(viewer.id);
       if (!redirectUrl) throw new Error('Could not start checkout');
       window.location.href = redirectUrl;
@@ -269,6 +277,12 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
 
     <section className="billing-grid">
       <div className="billing-pay-card">
+        {payosOn && <div className="billing-card-pay billing-payos">
+          {/* payOS: VietQR, confirmed automatically. VND only (the plan's VND price). */}
+          <h3>Pay by VietQR — {(vndCharge ?? vnpayAmountVnd?.toLocaleString('en-US'))} ₫</h3>
+          <p className="muted">Scan with any Vietnamese banking app, ZaloPay or MoMo. Your plan activates automatically within seconds.</p>
+          <button type="button" className="primary-button" onClick={() => payVia('payos')} disabled={cardRedirecting}>{cardRedirecting ? <Loader2 size={16} className="spin" /> : 'Pay by VietQR'}</button>
+        </div>}
         {vnpayEnabled && <div className="billing-card-pay">
           {/* VNPay settles in VND only, so this rail always shows the plan's
               stored VND price rather than a converted USD figure. */}
@@ -296,15 +310,24 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
           <p className="muted">Billed through your Apple account.</p>
           <button type="button" className="primary-button" onClick={() => purchaseNative('apple_iap')} disabled={cardRedirecting}>{cardRedirecting ? <Loader2 size={16} className="spin" /> : 'Subscribe via App Store'}</button>
         </div>}
-        <h3>{vnpayEnabled || stripeEnabled || paypalEnabled ? `Or pay by bank transfer — ${chargeLabel}` : `Submit a payment — ${chargeLabel}`}</h3>
+        <h3>{vnpayEnabled || stripeEnabled || paypalEnabled || payosOn ? `Or pay by bank transfer${usdtOn ? ' or USDT' : ''} — ${chargeLabel}` : `Submit a payment — ${chargeLabel}`}</h3>
         <Field label="Payment method">
           <select className="wz-input wz-select" value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)}>
             <option value="vietqr">VietQR</option>
             <option value="bank_transfer">Vietnam bank transfer</option>
             <option value="international_bank_transfer">International bank transfer</option>
+            {usdtOn && <option value="usdt_trc20">USDT (TRC-20), companies outside Vietnam</option>}
           </select>
         </Field>
-        {instructions && <div className="billing-instructions">
+        {method === 'usdt_trc20' && usdtOn && instructions?.usdtTrc20Address && <div className="billing-instructions billing-usdt">
+          <p><b>Send exactly:</b> {usdtUsd ?? charge?.amount} USDT <small>(1 USDT = 1 USD)</small></p>
+          <p><b>Network:</b> TRON (TRC-20) only. Other networks are lost.</p>
+          <p><b>To JobsMatchNow SARL wallet:</b> <code className="billing-wallet">{instructions.usdtTrc20Address}</code>
+            <button type="button" className="text-button" onClick={() => navigator.clipboard.writeText(instructions.usdtTrc20Address || '').catch(() => undefined)}><Copy size={13} /> Copy</button></p>
+          <p className="muted">For companies outside Vietnam only. We confirm your plan after checking the transaction on the blockchain (usually within one business day).</p>
+          <Field label="Transaction ID (TxID)"><TextInput value={txHash} onChange={(event) => setTxHash(event.target.value)} placeholder="64 characters, from your wallet" /></Field>
+        </div>}
+        {instructions && method !== 'usdt_trc20' && <div className="billing-instructions">
           {method === 'vietqr' && instructions.vietQrImageUrl && <img src={instructions.vietQrImageUrl} alt="VietQR code" />}
           {instructions.bankAccountName && <p><b>Account name:</b> {instructions.bankAccountName}</p>}
           {instructions.bankName && <p><b>Bank:</b> {instructions.bankName}</p>}
@@ -312,9 +335,11 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
           {method === 'international_bank_transfer' && instructions.bankSwift && <p><b>SWIFT:</b> {instructions.bankSwift}</p>}
           {instructions.supportEmail && <p><b>Questions:</b> {instructions.supportEmail}</p>}
         </div>}
-        <Field label="Payer name (optional)"><TextInput value={payerName} onChange={(event) => setPayerName(event.target.value)} /></Field>
-        <Field label="Sending bank (optional)"><TextInput value={bankName} onChange={(event) => setBankName(event.target.value)} /></Field>
-        <Field label="Transfer date (optional)"><TextInput type="date" value={transferDate} onChange={(event) => setTransferDate(event.target.value)} /></Field>
+        {method !== 'usdt_trc20' && <>
+          <Field label="Payer name (optional)"><TextInput value={payerName} onChange={(event) => setPayerName(event.target.value)} /></Field>
+          <Field label="Sending bank (optional)"><TextInput value={bankName} onChange={(event) => setBankName(event.target.value)} /></Field>
+          <Field label="Transfer date (optional)"><TextInput type="date" value={transferDate} onChange={(event) => setTransferDate(event.target.value)} /></Field>
+        </>}
         {error && <p className="auth-error">{error}</p>}
         <button type="button" className="primary-button" onClick={submit} disabled={submitting}>{submitting ? <Loader2 size={16} className="spin" /> : 'Submit payment'}</button>
         {proofPaymentId && <Field label="Upload payment proof (optional)"><input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={(event) => event.target.files?.[0] && uploadProof(event.target.files[0])} /></Field>}

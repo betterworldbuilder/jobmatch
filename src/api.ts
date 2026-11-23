@@ -30,8 +30,8 @@ export const api = {
   reviews: () => request<{ reviews: Review[] }>('/api/feedback'),
   siteSettings: () => request<{ activeLandingBanner: 'default' | 'alt' | 'image'; bannerImage: { url: string; updatedAt: number | null } | null; trialDays?: number }>('/api/site-settings'),
   adminSetSiteSettings: (activeLandingBanner: 'default' | 'alt' | 'image') => request<{ activeLandingBanner: 'default' | 'alt' | 'image' }>('/api/admin/site-settings', { method: 'POST', body: JSON.stringify({ activeLandingBanner }) }),
-  adminBankInstructions: () => request<{ bankAccountName: string; bankName: string; bankAccountNumber: string; bankSwift: string; vietQrImageUrl: string; supportEmail: string }>('/api/admin/bank-instructions'),
-  adminSetBankInstructions: (payload: { bankAccountName: string; bankName: string; bankAccountNumber: string; bankSwift: string; vietQrImageUrl: string; supportEmail: string }) => request<typeof payload>('/api/admin/bank-instructions', { method: 'POST', body: JSON.stringify(payload) }),
+  adminBankInstructions: () => request<{ bankAccountName: string; bankName: string; bankAccountNumber: string; bankSwift: string; vietQrImageUrl: string; supportEmail: string; usdtTrc20Address?: string }>('/api/admin/bank-instructions'),
+  adminSetBankInstructions: (payload: { bankAccountName: string; bankName: string; bankAccountNumber: string; bankSwift: string; vietQrImageUrl: string; supportEmail: string; usdtTrc20Address?: string }) => request<typeof payload>('/api/admin/bank-instructions', { method: 'POST', body: JSON.stringify(payload) }),
   adminUploadBannerImage: async (file: File): Promise<{ bannerImage: { url: string; updatedAt: number } }> => {
     const response = await fetch(`${apiBase}/api/admin/site-settings/banner-image`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type || 'image/png' }, body: file });
     const body = await response.json().catch(() => ({}));
@@ -156,7 +156,8 @@ export const api = {
   startTrial: (userId: string) => request<BillingInfo>('/api/billing/start-trial', { method: 'POST', body: JSON.stringify({ userId }) }),
   billingReferral: (userId: string) => request<{ referralCode: string; successfulReferrals: number; pendingReferrals: number; credits: BillingInfo['credits'] }>(`/api/billing/referral?userId=${encodeURIComponent(userId)}`),
   trackReferral: (code: string) => request<{ ok: boolean }>('/api/billing/referral/track', { method: 'POST', body: JSON.stringify({ code }) }),
-  submitPayment: (payload: { userId: string; paymentMethod: PaymentMethod; payerName?: string; bankName?: string; transferDate?: string }) => request<Payment>('/api/billing/payments', { method: 'POST', body: JSON.stringify(payload) }),
+  startPayosPayment: (userId: string) => request<{ payment: Payment; redirectUrl: string | null }>('/api/billing/payments/payos/create', { method: 'POST', body: JSON.stringify({ userId }) }),
+  submitPayment: (payload: { userId: string; paymentMethod: PaymentMethod; payerName?: string; bankName?: string; transferDate?: string; txHash?: string }) => request<Payment>('/api/billing/payments', { method: 'POST', body: JSON.stringify(payload) }),
   startVnpayPayment: (userId: string) => request<{ payment: Payment; redirectUrl: string }>('/api/billing/payments/vnpay/create', { method: 'POST', body: JSON.stringify({ userId }) }),
   startStripeCheckout: (userId: string) => request<{ payment: Payment; redirectUrl: string }>('/api/billing/payments/stripe/create-checkout-session', { method: 'POST', body: JSON.stringify({ userId }) }),
   startPaypalSubscription: (userId: string) => request<{ payment: Payment; redirectUrl: string | null }>('/api/billing/payments/paypal/create-subscription', { method: 'POST', body: JSON.stringify({ userId }) }),

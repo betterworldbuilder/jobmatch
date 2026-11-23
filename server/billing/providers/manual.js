@@ -6,9 +6,21 @@ import crypto from 'node:crypto';
  * (methodIds + instructions()) without reworking the subscription/payment
  * model above it — see PLAN "Known limitations". */
 
-export const MANUAL_METHOD_IDS = ['vietqr', 'bank_transfer', 'international_bank_transfer'];
+export const MANUAL_METHOD_IDS = ['vietqr', 'bank_transfer', 'international_bank_transfer', 'usdt_trc20'];
 
-export const BANK_INSTRUCTION_FIELDS = ['bankAccountName', 'bankName', 'bankAccountNumber', 'bankSwift', 'vietQrImageUrl', 'supportEmail'];
+/* USDT (founder, 2026-11-24, option "SARL only"): paid to JobsMatchNow SARL's wallet, ONLY by customers outside
+ * Vietnam (crypto is not a lawful means of payment there). Confirmed by an admin after checking the transaction
+ * hash on the blockchain, like a bank transfer. Off until the SARL wallet address is set (admin or env). */
+export const USDT_METHOD = 'usdt_trc20';
+export const isVietnam = (country) => /^(viet ?nam|vn)$/i.test(String(country || '').trim());
+/** The company's country: the profile's country, else the last part of "headquarters" ("Paris, France" → France). */
+export function companyCountry(recruiter) {
+  if (recruiter?.country) return String(recruiter.country).trim();
+  const hq = String(recruiter?.headquarters || '').split(',').map((s) => s.trim()).filter(Boolean);
+  return hq.length > 1 ? hq[hq.length - 1] : '';
+}
+
+export const BANK_INSTRUCTION_FIELDS = ['bankAccountName', 'bankName', 'bankAccountNumber', 'bankSwift', 'vietQrImageUrl', 'supportEmail', 'usdtTrc20Address'];
 
 /** Bank/VietQR instructions shown on the billing page — admin-editable
  * (db.siteSettings.bankInstructions, set from the admin dashboard) with env
@@ -24,8 +36,14 @@ export function paymentInstructions(db) {
     bankSwift: stored.bankSwift || process.env.BILLING_BANK_SWIFT || '',
     vietQrImageUrl: stored.vietQrImageUrl || process.env.BILLING_VIETQR_IMAGE_URL || '',
     supportEmail: stored.supportEmail || process.env.BILLING_SUPPORT_EMAIL || '',
+    usdtTrc20Address: stored.usdtTrc20Address || process.env.BILLING_USDT_TRC20_ADDRESS || '',
   };
 }
+
+/** A TRON (TRC-20) address: starts with T, 34 base58 characters. */
+export const isTrc20Address = (s) => /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(String(s || ''));
+/** A TRON transaction id: 64 hex characters. */
+export const isTronTxHash = (s) => /^[0-9a-fA-F]{64}$/.test(String(s || ''));
 
 /** `INV-YYYYMM-XXXXXX`: human-readable, not sequential/guessable (the suffix
  * is random), collision-checked against existing payments before use. */

@@ -48,7 +48,8 @@ import { extendForHireInFlight, TRIAL_DAYS, trialEndsAt } from './billing/trial.
 import { recruiterVerification } from './billing/verification.js';
 import { chargeFor, monthlyRecurringRevenue, selectPlan, SELECTABLE_PLANS, setExtraJobSlots } from './billing/charge.js';
 import { attachReferralOnRegister, findReferrerByCode, getOrCreateReferralCode, revokeReferralCreditForPayment } from './billing/referrals.js';
-import { BANK_INSTRUCTION_FIELDS, generateInvoiceNumber, generateTransferReference, MANUAL_METHOD_IDS, paymentInstructions } from './billing/providers/manual.js';
+import { BANK_INSTRUCTION_FIELDS, companyCountry, generateInvoiceNumber, generateTransferReference, isTrc20Address, isTronTxHash, isVietnam, MANUAL_METHOD_IDS, paymentInstructions, USDT_METHOD } from './billing/providers/manual.js';
+import { createPaymentLink as createPayosLink, isPayosConfigured, isPayosPaid, newOrderCode, payosDescription, verifyWebhook as verifyPayosWebhook } from './billing/providers/payos.js';
 import { buildPaymentUrl, isVnpayConfigured, isVnpaySuccess, VNPAY_AMOUNT_VND, verifySignature as verifyVnpaySignature } from './billing/providers/vnpay.js';
 import { createCheckoutSession, isStripeConfigured, verifyWebhookSignature as verifyStripeSignature } from './billing/providers/stripe.js';
 import { approveLink, createSubscription as createPaypalSubscription, isPaypalConfigured, verifyWebhookSignature as verifyPaypalSignature } from './billing/providers/paypal.js';
@@ -376,11 +377,31 @@ app.post('/api/billing/paypal/webhook', express.raw({ type: 'application/json', 
     const event = JSON.parse(rawBody);
     if (!(await verifyPaypalSignature(req.headers, event))) return res.status(400).json({ error: 'Invalid signature' });
     const result = await store.transaction((db) => {
-      if (event.event_type !== 'PAYMENT.SALE.COMPLETED' && event.event_type !== 'BILLING.SUBSCRIPTION.ACTIVATED') return { ignored: true };
-      const paypalSubscriptionId = event.resource?.billing_agreement_id || event.resource?.id;
-      if (!paypalSubscriptionId) return { ignored: true };
-      const payment = db.payments.find((entry) => entry.paymentMethod === 'paypal' && entry.paymentReference === paypalSubscriptionId && entry.status !== 'confirmed');
-      if (!payment) return { skipped: true };
+      // Each completed sale = one paid period (founder, 2026-11-24: renewals were ignored before). Confirmation is
+      // keyed by the sale id, so a resent webhook never extends twice. ACTIVATED alone confirms nothing.
+      if (event.event_type !== 'PAYMENT.SALE.COMPLETED') return { ignored: true };
+      const paypalSubscriptionId = event.resource?.billing_agreement_id;
+      const saleId = event.resource?.id;
+      if (!paypalSubscriptionId || !saleId) return { ignored: true };
+      const saleKey = `paypal-sale-${saleId}`;
+      if (db.payments.some((entry) => entry.paymentMethod === 'paypal' && entry.invoiceNumber === saleKey)) return { alreadyProcessed: true };
+      let payment = db.payments.find((entry) => entry.paymentMethod === 'paypal' && entry.paymentReference === paypalSubscriptionId && entry.status === 'pending');
+      if (payment) {
+        payment.invoiceNumber = saleKey;
+      } else {
+        // A renewal: copy the first payment's recruiter and plan into a new record.
+        const first = db.payments.find((entry) => entry.paymentMethod === 'paypal' && entry.paymentReference === paypalSubscriptionId);
+        const subscription = first && db.subscriptions.find((entry) => entry.id === first.subscriptionId);
+        if (!subscription) return { skipped: true };
+        const now = Date.now();
+        payment = {
+          id: crypto.randomUUID(), recruiterUserId: subscription.recruiterUserId, subscriptionId: subscription.id,
+          ...paymentAmountFields(db, subscription), paymentMethod: 'paypal', status: 'pending',
+          paymentReference: paypalSubscriptionId, invoiceNumber: saleKey, payerName: null, bankName: null,
+          transferDate: null, proofFileUrl: null, adminNote: null, confirmedByAdminId: null, confirmedAt: null, createdAt: now, updatedAt: now,
+        };
+        db.payments.push(payment);
+      }
       return confirmPayment(db, payment, { source: 'paypal' });
     });
     if (result?.payment && !result.alreadyConfirmed && result.recruiterEmail) {
@@ -2053,6 +2074,7 @@ app.get('/api/bootstrap', async (req, res, next) => {
         vnpayAmountVnd: VNPAY_AMOUNT_VND,
         stripeEnabled: isStripeConfigured(),
         paypalEnabled: isPaypalConfigured(),
+        payosEnabled: isPayosConfigured(),
         googlePlayEnabled: isGooglePlayConfigured(),
         googlePlayProductId: googlePlaySubscriptionProductId(),
         appleEnabled: isAppleConfigured(),
@@ -2291,6 +2313,10 @@ function billingPayload(db, recruiter) {
     vnpayAmountVnd: VNPAY_AMOUNT_VND,
     stripeEnabled: isStripeConfigured(),
     paypalEnabled: isPaypalConfigured(),
+    payosEnabled: isPayosConfigured(),
+    // USDT: only when the SARL wallet is set, and never for companies in Vietnam (founder, 2026-11-24).
+    usdtEnabled: isTrc20Address(paymentInstructions(db).usdtTrc20Address) && Boolean(companyCountry(recruiter)) && !isVietnam(companyCountry(recruiter)),
+    usdtBlockedReason: !isTrc20Address(paymentInstructions(db).usdtTrc20Address) ? 'not_configured' : (!companyCountry(recruiter) || isVietnam(companyCountry(recruiter))) ? 'country' : null,
     googlePlayEnabled: isGooglePlayConfigured(),
     googlePlayProductId: googlePlaySubscriptionProductId(),
     appleEnabled: isAppleConfigured(),
@@ -2532,18 +2558,29 @@ app.post('/api/billing/payments', rateLimit({ windowMs: 3600000, max: 20, bucket
     const payerName = optString(req.body, 'payerName', { max: 160 });
     const bankName = optString(req.body, 'bankName', { max: 160 });
     const transferDate = optString(req.body, 'transferDate', { max: 40 });
+    const txHash = optString(req.body, 'txHash', { max: 80 });
     const payment = await store.transaction((db) => {
       const recruiter = db.users.find((user) => user.id === recruiterId);
       if (!recruiter) { const error = new Error('User not found'); error.status = 404; throw error; }
       assertDemoActor(req, db, recruiterId);
       if (recruiter.role !== 'employer') { const error = new Error('Only recruiter accounts submit payments'); error.status = 400; throw error; }
+      if (paymentMethod === USDT_METHOD) {
+        // SARL only, never from Vietnam (crypto is not a lawful means of payment there). Founder, 2026-11-24.
+        if (!isTrc20Address(paymentInstructions(db).usdtTrc20Address)) { const error = new Error('USDT payment is not available yet'); error.status = 503; throw error; }
+        if (!companyCountry(recruiter) || isVietnam(companyCountry(recruiter))) { const error = new Error('USDT payment is only available to companies outside Vietnam. Please add your company country in your profile, or pay by bank transfer or PayPal.'); error.status = 403; throw error; }
+        if (txHash && !isTronTxHash(txHash)) throw new ValidationError('txHash', 'Enter the 64-character TRON transaction ID');
+        if (txHash && db.payments.some((p) => p.txHash === txHash.toLowerCase())) { const error = new Error('This transaction was already submitted'); error.status = 409; throw error; }
+      }
       const subscription = getOrCreateTrialSubscription(db, recruiterId);
       const now = Date.now();
+      const amountFields = paymentAmountFields(db, subscription);
       const created = {
         id: crypto.randomUUID(),
         recruiterUserId: recruiterId,
         subscriptionId: subscription.id,
-        ...paymentAmountFields(db, subscription),
+        ...amountFields,
+        // USDT is a USD stablecoin: always billed as the plan's USD price, 1 USDT = 1 USD.
+        ...(paymentMethod === USDT_METHOD ? { currency: 'USDT', amount: chargeFor(db, recruiter, subscription, { currency: 'USD' }).amount, txHash: txHash ? txHash.toLowerCase() : null, network: 'TRC-20' } : {}),
         paymentMethod,
         status: 'submitted',
         paymentReference: generateTransferReference(db),
@@ -2734,6 +2771,81 @@ app.get('/api/billing/vnpay/ipn', async (req, res) => {
   }
 });
 
+// --- payOS: VietQR checkout, automatic confirmation (founder, 2026-11-24) ---
+// Customers scan the VietQR with any Vietnamese banking app, ZaloPay or MoMo. VND only (the plan's VND price).
+// The browser return is UX only; the signed webhook below is the only path that confirms a payment.
+
+app.post('/api/billing/payments/payos/create', rateLimit({ windowMs: 3600000, max: 20, bucket: 'payos-create' }), async (req, res, next) => {
+  try {
+    if (!isPayosConfigured()) { const error = new Error('VietQR payment (payOS) is not configured yet'); error.status = 503; throw error; }
+    const recruiterId = resolveActor(req, reqString(req.body, 'userId', { max: 128 }));
+    const { payment, recruiterEmail } = await store.transaction((db) => {
+      const recruiter = db.users.find((user) => user.id === recruiterId);
+      if (!recruiter) { const error = new Error('User not found'); error.status = 404; throw error; }
+      assertDemoActor(req, db, recruiterId);
+      if (recruiter.role !== 'employer') { const error = new Error('Only recruiter accounts submit payments'); error.status = 400; throw error; }
+      const subscription = getOrCreateTrialSubscription(db, recruiterId);
+      const vnd = vnpayAmount(db, subscription);
+      if (!(vnd.amount > 0)) { const error = new Error('This plan has no VND price'); error.status = 400; throw error; }
+      const existing = new Set(db.payments.filter((p) => p.paymentMethod === 'payos').map((p) => Number(p.paymentReference)));
+      const now = Date.now();
+      const created = {
+        id: crypto.randomUUID(), recruiterUserId: recruiterId, subscriptionId: subscription.id,
+        ...paymentAmountFields(db, subscription), ...vnd, paymentMethod: 'payos', status: 'pending',
+        paymentReference: String(newOrderCode(existing)), invoiceNumber: generateInvoiceNumber(db), payerName: null, bankName: null,
+        transferDate: null, proofFileUrl: null, adminNote: null, confirmedByAdminId: null, confirmedAt: null,
+        createdAt: now, updatedAt: now,
+      };
+      db.payments.push(created);
+      logBillingEvent(db, recruiterId, 'payos_payment_created', 'payment', created.id, { invoiceNumber: created.invoiceNumber });
+      return { payment: created, recruiterEmail: recruiter.email };
+    });
+    const base = process.env.WEB_APP_URL || 'https://jobsmatchnow.com';
+    const link = await createPayosLink({
+      orderCode: Number(payment.paymentReference), amount: payment.amount, description: payosDescription(payment.invoiceNumber),
+      returnUrl: `${base}/api/billing/payos/return`, cancelUrl: `${base}/?billing=failed`, buyerEmail: recruiterEmail,
+      items: [{ name: `JobsMatchNow ${payment.planKey || 'plan'}`, quantity: 1, price: Math.round(payment.amount) }],
+    });
+    res.status(201).json({ payment, redirectUrl: link.checkoutUrl });
+  } catch (error) { next(error); }
+});
+
+// Browser return after the payOS page: UX only (never confirms), the webhook does.
+app.get('/api/billing/payos/return', (req, res) => {
+  res.redirect(String(req.query.status || '').toUpperCase() === 'PAID' || req.query.code === '00' ? '/?billing=success' : '/?billing=failed');
+});
+
+// payOS server-to-server webhook: the authoritative confirmation. Always answers 200 JSON so payOS stops retrying
+// (and so its "test webhook" on registration, for an unknown order, succeeds).
+app.post('/api/billing/payos/webhook', async (req, res) => {
+  try {
+    if (!verifyPayosWebhook(req.body)) return res.status(400).json({ success: false, error: 'Invalid signature' });
+    const data = req.body.data || {};
+    const result = await store.transaction((db) => {
+      const payment = db.payments.find((p) => p.paymentMethod === 'payos' && p.paymentReference === String(data.orderCode));
+      if (!payment) return { skipped: true };
+      if (payment.status === 'confirmed') return { alreadyConfirmed: true };
+      if (Math.round(Number(data.amount)) !== Math.round(payment.amount)) {
+        payment.adminNote = `payOS amount mismatch: received ${data.amount}, expected ${payment.amount}`;
+        payment.updatedAt = Date.now();
+        logBillingEvent(db, payment.recruiterUserId, 'payos_amount_mismatch', 'payment', payment.id, { received: data.amount });
+        return { mismatch: true };
+      }
+      if (!isPayosPaid(req.body)) return { notPaid: true };
+      payment.payerName = data.counterAccountName || null;
+      payment.bankName = data.counterAccountBankName || null;
+      payment.transferDate = data.transactionDateTime || null;
+      return confirmPayment(db, payment, { source: 'payos' });
+    });
+    if (result?.payment && !result.alreadyConfirmed && result.recruiterEmail) {
+      await sendMail({ to: result.recruiterEmail, subject: 'Payment confirmed — JobsMatchNow', text: `Hi ${result.recruiterName || ''},\n\nYour VietQR payment has been confirmed. Your recruiter access is active through ${new Date(result.subscription.currentPeriodEndsAt).toDateString()}.\n\n— JobsMatchNow` }).catch(() => undefined);
+    }
+    res.json({ success: true });
+  } catch {
+    res.json({ success: false });
+  }
+});
+
 // --- Stripe: recruiter subscription checkout (France-registered merchant) --
 // The webhook (registered earlier, before express.json()) is the sole
 // confirmation authority; this route only starts the checkout.
@@ -2797,7 +2909,7 @@ app.post('/api/billing/payments/paypal/create-subscription', rateLimit({ windowM
     });
     const returnBase = process.env.WEB_APP_URL || 'https://jobsmatchnow.com';
     const subscription = await createPaypalSubscription({
-      customId: payment.id, returnUrl: `${returnBase}/?billing=success`, cancelUrl: `${returnBase}/?billing=failed`,
+      customId: payment.id, planKey: payment.planKey, returnUrl: `${returnBase}/?billing=success`, cancelUrl: `${returnBase}/?billing=failed`,
     });
     await store.transaction((db) => {
       const item = db.payments.find((entry) => entry.id === payment.id);
@@ -3752,6 +3864,8 @@ app.post('/api/admin/bank-instructions', async (req, res, next) => {
     const session = requireAdminRole(authSession(req));
     const bankInstructions = {};
     for (const field of BANK_INSTRUCTION_FIELDS) bankInstructions[field] = optString(req.body, field, { max: 500 }) || '';
+    // A mistyped wallet loses customers' money: only a valid TRON address (or empty = USDT off) is saved.
+    if (bankInstructions.usdtTrc20Address && !isTrc20Address(bankInstructions.usdtTrc20Address)) throw new ValidationError('usdtTrc20Address', 'Enter a valid TRON (TRC-20) address: T followed by 33 characters');
     await store.transaction((db) => {
       db.siteSettings = { ...db.siteSettings, bankInstructions };
       logBillingEvent(db, session.sub, 'bank_instructions_updated', 'site_settings', 'bank_instructions', {});

@@ -7,12 +7,18 @@
 
 function clientId() { return process.env.PAYPAL_CLIENT_ID || ''; }
 function clientSecret() { return process.env.PAYPAL_CLIENT_SECRET || ''; }
-function planId() { return process.env.PAYPAL_PLAN_ID || ''; }
+/** One PayPal plan per price (founder, 2026-11-24): PAYPAL_PLAN_ID_SOLO / _DUO / _TRIO (the "Team" plan), with
+ *  PAYPAL_PLAN_ID as the fallback for any plan without its own id. */
+export function planId(planKey) {
+  const own = planKey ? process.env[`PAYPAL_PLAN_ID_${String(planKey).toUpperCase()}`] : '';
+  return own || process.env.PAYPAL_PLAN_ID || '';
+}
 function webhookId() { return process.env.PAYPAL_WEBHOOK_ID || ''; }
 function apiBase() { return process.env.PAYPAL_ENV === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'; }
 
-export function isPaypalConfigured() {
-  return Boolean(clientId() && clientSecret() && planId());
+export function isPaypalConfigured(planKey) {
+  const anyPlan = planKey ? planId(planKey) : (process.env.PAYPAL_PLAN_ID || ['SOLO', 'DUO', 'TRIO'].some((k) => process.env[`PAYPAL_PLAN_ID_${k}`]));
+  return Boolean(clientId() && clientSecret() && anyPlan);
 }
 
 async function getAccessToken() {
@@ -34,14 +40,14 @@ async function getAccessToken() {
  * the resulting PayPal subscription back to it. Returns the PayPal
  * subscription object; callers redirect the recruiter to the `approve`
  * link in its `links` array. */
-export async function createSubscription({ customId, returnUrl, cancelUrl }) {
-  if (!isPaypalConfigured()) { const error = new Error('PayPal is not configured'); error.status = 503; throw error; }
+export async function createSubscription({ customId, planKey, returnUrl, cancelUrl }) {
+  if (!isPaypalConfigured(planKey)) { const error = new Error('PayPal is not configured for this plan'); error.status = 503; throw error; }
   const token = await getAccessToken();
   const response = await fetch(`${apiBase()}/v1/billing/subscriptions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      plan_id: planId(),
+      plan_id: planId(planKey),
       custom_id: customId,
       application_context: { return_url: returnUrl, cancel_url: cancelUrl, user_action: 'SUBSCRIBE_NOW' },
     }),

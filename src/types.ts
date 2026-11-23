@@ -164,19 +164,22 @@ export interface SubscriptionCredit {
   id: string; recruiterUserId: string; sourceType: 'referral' | 'admin_credit'; sourceReferenceId: string; durationDays: number;
   status: 'available' | 'consumed' | 'revoked' | 'expired'; grantedAt: number; consumedAt: number | null; revokedAt: number | null;
 }
-export type PaymentMethod = 'vietqr' | 'bank_transfer' | 'international_bank_transfer' | 'admin_credit' | 'vnpay' | 'google_play' | 'apple_iap' | 'stripe' | 'paypal';
+export type PaymentMethod = 'vietqr' | 'bank_transfer' | 'international_bank_transfer' | 'admin_credit' | 'vnpay' | 'google_play' | 'apple_iap' | 'stripe' | 'paypal' | 'payos' | 'usdt_trc20';
 export type PaymentStatus = 'pending' | 'submitted' | 'confirmed' | 'rejected' | 'refunded' | 'reversed';
 export interface Payment {
   id: string; recruiterUserId: string; subscriptionId: string; amount: number; currency: string; paymentMethod: PaymentMethod;
   status: PaymentStatus; paymentReference: string | null; invoiceNumber: string; payerName: string | null; bankName: string | null;
   transferDate: string | null; proofFileUrl: string | null; adminNote: string | null; confirmedByAdminId: string | null;
-  confirmedBySource?: 'admin' | 'vnpay' | 'google_play' | 'apple_iap' | 'stripe' | 'paypal'; confirmedAt: number | null; createdAt: number; updatedAt: number;
+  confirmedBySource?: 'admin' | 'vnpay' | 'google_play' | 'apple_iap' | 'stripe' | 'paypal' | 'payos'; confirmedAt: number | null; createdAt: number; updatedAt: number;
+  /** USDT payments: the TRON transaction id the payer submitted, and the network. */
+  txHash?: string | null; network?: string;
   recruiter?: { id: string; name: string; email?: string; company?: string } | null;
 }
-export interface PaymentInstructions { bankAccountName: string; bankName: string; bankAccountNumber: string; bankSwift: string; vietQrImageUrl: string; supportEmail: string }
+export interface PaymentInstructions { bankAccountName: string; bankName: string; bankAccountNumber: string; bankSwift: string; vietQrImageUrl: string; supportEmail: string; usdtTrc20Address?: string }
 export interface BillingInfo {
   subscription: Subscription; effectiveStatus: SubscriptionStatus; canPublishJob?: boolean; credits: SubscriptionCredit[]; referralCode: string;
   instructions?: PaymentInstructions; vnpayEnabled?: boolean; vnpayAmountVnd?: number; stripeEnabled?: boolean; paypalEnabled?: boolean;
+  payosEnabled?: boolean; usdtEnabled?: boolean; usdtBlockedReason?: 'not_configured' | 'country' | null;
   googlePlayEnabled?: boolean; googlePlayProductId?: string; appleEnabled?: boolean; appleProductId?: string;
   entitlements?: RecruiterEntitlements;
   plan?: PlanSummary; team?: TeamInfo;

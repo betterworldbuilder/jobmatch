@@ -216,6 +216,7 @@ export function applyRecruiterProfile(user, body) {
   set('industry', str(body.industry, 80));
   if (body.companySize !== undefined) set('companySize', str(body.companySize, 30));
   set('headquarters', str(body.headquarters, 120));
+  set('country', str(body.country, 80)); // company country (billing rules, e.g. USDT only outside Vietnam)
   set('officeLocations', strArray(body.officeLocations, 15, 80));
   setGeo(user, body.geo);
   set('foundedYear', num(body.foundedYear, 1800, 2100));
