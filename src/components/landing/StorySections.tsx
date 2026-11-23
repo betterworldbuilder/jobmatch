@@ -24,6 +24,38 @@ export function ProblemSection() {
   </section>;
 }
 
+// Features (founder, 2026-11-23): only what the app really does today, plus the optional AI help. AI never scores,
+// ranks or decides; its suggestions are marked and need a person's review (see the privacy policy, section 5).
+const APP_FEATURES: { icon: typeof Heart; title: string; text: string }[] = [
+  { icon: Heart, title: 'Swipe and mutual match', text: 'Like or pass in seconds. A chat opens only when both sides choose: “It’s a Match”.' },
+  { icon: Target, title: 'Fit score with reasons', text: 'A 0–100 score from skills, salary, location and work mode, with the reasons shown.' },
+  { icon: ShieldCheck, title: 'Salary up front', text: 'Pay ranges are visible before you talk, so nobody wastes a conversation.' },
+  { icon: Search, title: 'See who already likes you', text: 'Hiring teams see the candidates who like their roles first; candidates see the teams that like them.' },
+  { icon: MessageCircle, title: 'Chat and meetings', text: 'Message after a match, book a call, add it to Google Calendar or your phone.' },
+  { icon: Clock3, title: 'Hiring stages and results', text: 'Follow each match round by round; export your hires to Excel or PDF.' },
+  { icon: EyeOff, title: 'Privacy you control', text: 'Private distance range, contact details only after a match, delete your account anytime.' },
+  { icon: Check, title: 'Verified and safe', text: 'Verified selfie badge, report button and safety tips in the app.' },
+];
+const AI_FEATURES: { title: string; text: string }[] = [
+  { title: 'CV scan', text: 'Upload your CV and get your profile filled in. You check everything before saving.' },
+  { title: 'Job-ad import', text: 'Paste or upload a job description and the role’s fields are suggested for you.' },
+  { title: 'Interview prep', text: 'Topics and practice questions for each role you are interviewing for.' },
+  { title: 'Conversation starters', text: 'Friendly first messages after a match, which you edit before sending.' },
+  { title: 'Your own AI chatbot', text: 'Connect your own Claude or ChatGPT account and ask questions about your matches. Read-only.' },
+];
+
+export function AppFeaturesSection() {
+  return <section className="story story-features" id="app-features">
+    <div className="story-head"><span className="story-kicker">How it works better</span><h2>Features Designed for a Faster Hiring Process</h2></div>
+    <div className="feat-grid">{APP_FEATURES.map(({ icon: Icon, title, text }) => <article key={title}><span className="feat-icon"><Icon size={18} /></span><strong>{title}</strong><p>{text}</p></article>)}</div>
+    <div className="feat-ai">
+      <h3><Sparkles size={17} /> Optional AI help</h3>
+      <p className="feat-ai-note">AI only saves you time. It never scores, ranks or rejects anyone: people decide. Every AI suggestion is marked so you can review it.</p>
+      <ul>{AI_FEATURES.map((f) => <li key={f.title}><b>{f.title}</b><span>{f.text}</span></li>)}</ul>
+    </div>
+  </section>;
+}
+
 export function ForWhoSection({ onRegister }: Pick<Cta, 'onRegister'>) {
   return <section className="story story-who" id="for-who">
     <div className="story-head"><span className="story-kicker">Who it’s for</span><h2>Built for both sides of the hire.</h2></div>

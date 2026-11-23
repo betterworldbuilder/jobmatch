@@ -75,6 +75,32 @@
 .trust-points li { display:flex; align-items:center; gap:7px; color:#3b4454; font-size:14px; font-weight:650; }
 .trust-points svg { color:#0a66c2; }
 
+/* Features (2026-11-23): real app features + optional AI help */
+.feat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.feat-grid article { background:#fff; border:1px solid #eee6ee; border-radius:18px; padding:18px; box-shadow:0 8px 24px rgba(15,23,42,.05); }
+.feat-icon { display:inline-grid; place-items:center; width:36px; height:36px; border-radius:12px; background:#eaf3fd; color:#0a66c2; margin-bottom:10px; }
+.feat-grid strong { display:block; font:800 15.5px 'Manrope'; color:#0b102b; margin-bottom:6px; }
+.feat-grid p { margin:0; color:#5b6573; font-size:14px; line-height:1.45; }
+.feat-ai { margin-top:22px; border-radius:22px; padding:24px; background:linear-gradient(135deg,#f3f8ff,#fff4f8); border:1px solid #dfeaf7; }
+.feat-ai h3 { display:flex; align-items:center; gap:8px; margin:0 0 6px; font:800 18px 'Manrope'; color:#0b102b; }
+.feat-ai h3 svg { color:#0a66c2; }
+.feat-ai-note { margin:0 0 14px; color:#4a5463; font-size:14px; }
+.feat-ai ul { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; }
+.feat-ai li { background:#fff; border-radius:14px; padding:12px 14px; border:1px solid #e6eef8; display:flex; flex-direction:column; gap:3px; }
+.feat-ai li b { font:800 14px 'Manrope'; color:#0a66c2; }
+.feat-ai li span { color:#4a5463; font-size:13.5px; line-height:1.4; }
+@media (min-width:1001px) { .feat-ai ul { grid-template-columns:repeat(5,1fr); } }
+@media (max-width:1000px) { .feat-grid { grid-template-columns:repeat(2,1fr); } }
+@media (max-width:760px) {
+  .story-features { padding:36px 16px; }
+  .feat-grid { gap:10px; }
+  .feat-grid article { padding:14px; border-radius:16px; min-width:0; }
+  .feat-grid strong { font-size:14px; }
+  .feat-grid p { font-size:12.5px; }
+  .feat-ai { padding:16px; }
+  .feat-ai ul { grid-template-columns:1fr; }
+}
+
 /* What now */
 .story-now { max-width:1080px; margin:20px auto 56px; text-align:center; color:#fff; border-radius:28px; padding:54px 28px; background:radial-gradient(circle at 85% 10%,rgba(255,255,255,.16),transparent 40%),linear-gradient(135deg,#0a66c2,#004182); box-shadow:0 26px 60px rgba(10,102,194,.32); }
 .story-now h2 { font:800 clamp(24px,3.6vw,38px)/1.18 'Manrope'; letter-spacing:-.03em; max-width:760px; margin:16px auto 24px; }

@@ -753,6 +753,18 @@ button { cursor:pointer; }
 .landing-subnav a { color:#4a5560; transition:.15s; }
 .landing-subnav a:hover { color:var(--green); }
 .landing-subnav .mobile-toggle { margin-left:auto; }
+/* Header (founder, 2026-11-23): logo 20% bigger on desktop (44→53px, 98→118px), tagline under it, 3 centred links. */
+.landing-tagline { max-width:1260px; margin:0 auto; padding:0 32px 10px; color:#3d4757; font:700 17px/1.4 'Manrope'; letter-spacing:-.01em; }
+@media (min-width:761px) {
+  .landing-header .landing-nav .brand { font-size:53px; gap:22px; }
+  .landing-header .landing-nav .brand-heart-mark { width:118px; height:118px; }
+  .landing-subnav.main3 { justify-content:center; gap:10px; padding-top:6px; }
+  .landing-subnav.main3 a { padding:9px 20px; border-radius:999px; background:rgba(255,255,255,.75); border:1px solid #efe3ea; color:#1f2937; font:800 14.5px 'Manrope'; box-shadow:0 4px 12px rgba(82,52,76,.06); }
+  .landing-subnav.main3 a:hover { color:#e0115f; border-color:#f6c6d8; }
+}
+@media (max-width:760px) {
+  .landing-tagline { text-align:center; padding:0 16px 2px; font-size:12.5px; font-weight:700; color:#4a5463; }
+}
 /* Long-form hero eyebrow reads as a sentence, not a shouty label */
 .hero-copy .eyebrow { text-transform:none; letter-spacing:-.005em; font-size:15px; line-height:1.45; max-width:560px; align-items:flex-start; }
 .hero-copy .eyebrow svg { margin-top:3px; flex:none; }

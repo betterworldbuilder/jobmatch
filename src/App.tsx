@@ -16,7 +16,7 @@ import { App as NativeApp } from '@capacitor/app';
 import { LoginModal, RegisterModal, ResetPasswordModal, SettingsModal, prefetchDemoProfiles } from './components/AuthModals';
 import { FeaturesTable, FeedbackSection, JourneyPipeline, LatestShowcase } from './components/LandingSections';
 import { GetAppButton, InstallPopup } from './components/InstallAppBar';
-import { ForWhoSection, HowSection, ProblemSection, SoWhatSection, WhatNowSection } from './components/landing/StorySections';
+import { AppFeaturesSection, ForWhoSection, HowSection, ProblemSection, SoWhatSection, WhatNowSection } from './components/landing/StorySections';
 import { HeroAlt, HeroDefault, HeroImage } from './components/landing/HeroBanners';
 import { CANDIDATE_OFFERS, LaunchOffers } from './components/LaunchOffers';
 import { PlanCardView, TrialCardView } from './components/landing/PlanCards';
@@ -274,10 +274,10 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
   return <main className="landing">
     <header className={`landing-header${banner !== 'image' ? ' has-brand' : ''}`}>
       {banner !== 'image' && <nav className="landing-nav"><Brand /></nav>}
-      {/* Phones (founder, 2026-11-22): "Why JobsMatchNow" opens the problems we solve, "So what?" the benefits. */}
-      {banner !== 'image' && (isPhone
-        ? <nav className="landing-subnav"><a href="#how">How it works</a><a href="#problem">Why JobsMatchNow</a><a href="#compare">So what?</a></nav>
-        : <nav className="landing-subnav"><a href="#how">How it works</a><a href="#compare">Why JobsMatchNow</a><a href="#trust">Fewer steps</a></nav>)}
+      {/* Header (founder, 2026-11-23): tagline under the logo, then 3 centred links: Why (the problems we solve),
+          So what? (benefits), How it works better (the features designed for a faster hiring process). */}
+      {banner !== 'image' && <p className="landing-tagline">Find jobs and hire faster with smart matching, fewer steps and fast results.</p>}
+      {banner !== 'image' && <nav className="landing-subnav main3"><a href="#problem">Why</a><a href="#compare">So what?</a><a href="#app-features">How it works better</a></nav>}
     </header>
     {linkedinState && <div className="integration-notice">{linkedinState === 'connected' ? 'LinkedIn connected. Your professional identity is ready to use.' : 'Add LinkedIn app credentials to enable live account connection. The demo remains available.'}<button onClick={() => history.replaceState({}, '', '/')}>×</button></div>}
     {isPhone && <div className="get-app-row"><GetAppButton /></div>}
@@ -302,7 +302,9 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
       <ForWhoSection onRegister={openRegister} />
       <HowSection />
       <SoWhatSection />
+      <AppFeaturesSection />
     </> : <>
+      <ProblemSection />
       <section className="comparison-section" id="compare">
         <div className="comparison-intro"><div><h2>A Better, Faster, Easier, Friendlier Way of Hiring</h2></div><div className="comparison-copy"><p>Traditional hiring creates hurdles: endless searching, slow applications, repeated screenings, multiple exchanges, long delays — and too often, silence, no feedback. No sign of due respect.</p><p>JobsMatchNow removes the friction and creates Respect, Mutual Alignment, and a Clear, Fast Decision Cycle with Feedback.</p><p>Everything candidates and hiring teams need — from first discovery and mutual interest to a qualified conversation — is brought together in one simple, respectful, and intelligent experience.</p><p className="comparison-tagline">Less chasing. Fewer hurdles. Faster, better hires with feedback — more personalized, respectful hires with a human touch.</p></div></div>
         <div className="comparison-table-wrap">
@@ -314,6 +316,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
         <div className="comparison-cta"><div><Sparkles size={19} /><span><strong>See the difference yourself.</strong> Switch between candidate and recruiter views in the live product.</span></div><button className="primary-button" onClick={openLogin}>Explore every feature <ArrowRight size={17} /></button></div>
       </section>
       <FeaturesTable />
+      <AppFeaturesSection />
       <JourneyPipeline />
       <section className="value-section" id="how"><div className="section-heading centered"><span className="eyebrow"><Sparkles size={14} /> A better signal</span><h2>Hiring works better when<br />both sides choose.</h2></div><div className="value-grid"><Feature icon={BarChart3} title="Fit, explained" text="Go beyond keywords with transparent skill, experience, and preference signals." /><Feature icon={Handshake} title="Intent, confirmed" text="A conversation opens only after both sides express interest. No cold outreach." /><Feature icon={MapIcon} title="Geolocation of Opportunities" text="Choose a city and private distance range, then meet for coffee only when both sides agree." /><Feature icon={ShieldCheck} title="People, respected" text="Salary and work style are clear up front. Candidate controls stay at the center." /></div></section>
       <section className="trust-section" id="trust"><div className="trust-copy"><span className="section-kicker light">Fewer steps</span><h2>Hiring where both sides choose — with a human touch.</h2><p>Every recommendation carries its reason. Every connection starts with consent. Every candidate gets control over what employers can see.</p><button className="primary-button trust-try-button" onClick={openLogin}>LET ME TRY NOW!</button></div><div className="trust-pipeline"><h3>Classic Hiring vs. New JobsMatchNow Process</h3><p>The first four steps of classic hiring happen in one connected step. Interviews, checks and offers stay the same.</p><div className="pipeline-rows">{trustPipeline.map((row) => { const max = Math.max(row.classic, row.jobsmatch) || 1; const deltaPct = row.classic ? Math.round(Math.abs(row.jobsmatch - row.classic) / row.classic * 100) : 0; return <Fragment key={row.label}><div className="pipeline-row"><span className="pipeline-row-label">{row.label}</span><div className="pipeline-bar-track classic"><i style={{ width: `${(row.classic / max) * 100}%` }} /><b>{row.classicDisplay || `${row.classic}${row.unit}`}</b></div><div className="pipeline-bar-track jobsmatch"><i style={{ width: `${(row.jobsmatch / max) * 100}%`, background: row.color }} /><b>{row.jobsmatchDisplay || `${row.jobsmatch}${row.unit}`}</b></div><span className="pipeline-delta" style={{ color: row.color }}>{row.deltaText || `${deltaPct}% better`}</span></div><p className="pipeline-feature-note">Powered by <b>{row.feature}</b> — {row.note}</p></Fragment>; })}<div className="pipeline-legend"><span><i className="classic" /> Classic hiring</span><span><i className="jobsmatch" /> JobsMatchNow</span></div></div>
