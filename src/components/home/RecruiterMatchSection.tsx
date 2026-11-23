@@ -64,7 +64,7 @@ function PhoneCandidateCard({ person: c, reducedMotion, canLike, onSwipe, page, 
     </div>}
     <motion.span className="nm-stamp like" style={{ opacity: likeOpacity }} aria-hidden="true">LIKE</motion.span>
     <motion.span className="nm-stamp nope" style={{ opacity: nopeOpacity }} aria-hidden="true">NOPE</motion.span>
-    <SwipePager pages={CANDIDATE_PAGES} page={page} onPage={onPage} tapZones={page === 0} />
+    <SwipePager pages={CANDIDATE_PAGES} page={page} onPage={onPage} tapZones={page === 0} demo={Boolean(c.demo || c.sample)} />
     {page === 0 && <div className="nm-card-info">
       {/* Status pill removed with the profile status (founder, 2026-11-22: "noise"). */}
       {false && c.jobStatus?.kind && <p className={`nm-hiring rm-status st-${c.jobStatus!.kind}`}>{jobStatusText(c.jobStatus)}</p>}

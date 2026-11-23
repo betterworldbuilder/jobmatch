@@ -263,6 +263,29 @@ test('password hashes never leave the server — own record or anyone else\'s', 
   }
 });
 
+test('DEMO ACCOUNT stamp: every demo role and demo candidate in a deck is flagged demo, real ones are not', async () => {
+  const real = await registerReal('employer', 'stamp-check');
+  const posted = await call('POST', '/api/jobs', { employerId: real.id, title: 'Stamp Check Engineer', company: 'Stamp Ltd', location: 'Remote', description: 'Real role used to check the demo stamp stays off real postings.', skills: ['React'], mustHave: ['React'], niceToHave: [], languages: ['English'] }, real.cookie);
+  const users = () => JSON.parse(readFileSync(DB_PATH, 'utf8')).users;
+  const demoIds = new Set(users().filter((u) => u.demo === true || u.sample === true).map((u) => u.id));
+
+  const jobsDeck = await call('GET', '/api/bootstrap?userId=candidate-demo');
+  assert.equal(jobsDeck.status, 200);
+  const demoJobs = jobsDeck.body.jobs.filter((j) => demoIds.has(j.employerId));
+  assert.ok(demoJobs.length > 0, 'the demo deck has demo roles');
+  for (const job of demoJobs) assert.ok(job.demo === true || job.sample === true, `demo role ${job.id} must carry the stamp flag`);
+  if (posted.status === 201 || posted.status === 200) {
+    const mine = jobsDeck.body.jobs.find((j) => j.employerId === real.id);
+    if (mine) assert.notEqual(mine.demo, true, 'a real recruiter\'s role is never stamped demo');
+  }
+
+  const peopleDeck = await call('GET', '/api/bootstrap?userId=employer-demo');
+  const demoPeople = peopleDeck.body.candidates.filter((c) => demoIds.has(c.id));
+  assert.ok(demoPeople.length > 0, 'the demo deck has demo candidates');
+  for (const c of demoPeople) assert.ok(c.demo === true || c.sample === true, `demo candidate ${c.id} must carry the stamp flag`);
+  for (const c of peopleDeck.body.candidates.filter((p) => !demoIds.has(p.id))) assert.notEqual(c.demo, true);
+});
+
 test('weekly events endpoint is admin-only', async () => {
   const { status } = await call('GET', '/api/admin/analytics/events');
   assert.equal(status, 403);

@@ -3794,6 +3794,10 @@ img.avatar-mini { object-fit:cover; }
 .sp-label span { font-weight:600; opacity:.85; }
 .on-detail .sp-bars button i { background:#e3dcec; } .on-detail .sp-bars button.done i { background:#f6a3c3; } .on-detail .sp-bars button.on i { background:#fd267a; box-shadow:none; }
 .on-detail .sp-label { color:#0d1834; text-shadow:none; }
+/* DEMO ACCOUNT stamp under the page name (founder, 2026-11-23) */
+.sp-demo { display:inline-block; margin:6px 2px 0; padding:3px 9px; border:2px solid #fff; border-radius:6px; background:#f59e0b; color:#fff; font:900 10.5px/1.2 'Manrope',sans-serif; letter-spacing:.12em; text-transform:uppercase; transform:rotate(-4deg); transform-origin:left center; box-shadow:0 2px 8px rgba(0,0,0,.3); }
+.on-detail .sp-demo { border-color:#b45309; box-shadow:none; }
+.sp-card:has(.sp-demo) .sp-page { padding-top:74px; }
 .sp-zone { position:absolute; z-index:3; top:48px; bottom:42%; width:38%; border:0; background:transparent; cursor:pointer; }
 .sp-zone.left { left:0; } .sp-zone.right { right:0; width:62%; }
 .sp-arrow { position:absolute; z-index:6; top:50%; transform:translateY(-50%); width:30px; height:30px; border-radius:50%; border:0; display:grid; place-items:center; background:rgba(13,24,52,.38); color:#fff; cursor:pointer; opacity:.75; }

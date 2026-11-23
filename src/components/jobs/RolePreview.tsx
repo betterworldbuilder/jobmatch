@@ -36,7 +36,7 @@ export function RolePreview({ job, recruiter, onClose, onEdit }: { job: Job; rec
     <div className="rpv-stage">
       <article className={page > 0 ? 'nm-card sp-card on-detail rpv-card' : 'nm-card sp-card rpv-card'}>
         {page === 0 ? <RoleSummaryPage job={shown} photo={photo} /> : <div className="sp-page"><RoleDetailPage job={shown} page={page} company={company} /></div>}
-        <SwipePager pages={ROLE_PAGES} page={page} onPage={setPage} />
+        <SwipePager pages={ROLE_PAGES} page={page} onPage={setPage} demo={Boolean(job.demo || job.sample || recruiter.demo || recruiter.sample)} />
       </article>
       <nav className="tcards-nav rpv-nav" aria-label="Role pages">
         {ROLE_PAGES.map((label, i) => { const Icon = ICONS[i]; return <button key={label} type="button" className={i === page ? 'on' : ''} style={{ ['--nav-c' as string]: COLORS[i] }} onClick={() => setPage(i)} aria-current={i === page ? 'page' : undefined}><Icon size={16} /><span>{label}</span><i /></button>; })}

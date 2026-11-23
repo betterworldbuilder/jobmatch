@@ -1995,7 +1995,10 @@ app.get('/api/bootstrap', async (req, res, next) => {
       const recruiter = employer ? { name: employer.name, title: employer.title, photo: employer.photo, company: employer.company } : undefined;
       // Public company profile for the role's "Company" page (no contact details).
       const companyProfile = employer ? { about: employer.about, industry: employer.industry, companySize: employer.companySize, headquarters: employer.headquarters, website: employer.website, foundedYear: employer.foundedYear, officeLocations: employer.officeLocations, techStack: employer.techStack, benefits: employer.benefits } : undefined;
-      return { ...withDistance, companyLogo: employer?.companyLogo, recruiter, companyProfile, match, likedYou: Boolean(incomingLike), superLikedYou: Boolean(incomingLike?.superLike), verified: verifiedUser(employer), promoted: boostedJobIds.has(job.id) };
+      // A role posted by a demo recruiter is a demo role, even if the role record itself lacks the flag (DEMO ACCOUNT stamp).
+      // Starter sample roles (real accounts' starter deck) stay `sample`, never `demo`: the client stamps those too.
+      const demo = job.demo === true || (employer?.demo === true && !employer?.sample && !job.sample) || undefined;
+      return { ...withDistance, ...(demo ? { demo: true } : {}), companyLogo: employer?.companyLogo, recruiter, companyProfile, match, likedYou: Boolean(incomingLike), superLikedYou: Boolean(incomingLike?.superLike), verified: verifiedUser(employer), promoted: boostedJobIds.has(job.id) };
     });
     // Boosted cards ride to the front of the deck, keeping their own relative
     // order. The match score is never touched — a promoted card shows the same

@@ -3,7 +3,9 @@
 // Dragging the card is still Pass / Like (the card handles that); taps here only change the page.
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export function SwipePager({ pages, page, onPage, tapZones = false }: { pages: string[]; page: number; onPage: (p: number) => void; tapZones?: boolean }) {
+// `demo` (founder, 2026-11-23): every card that belongs to a demo account carries a DEMO ACCOUNT stamp under the
+// page name, on every page, so nobody mistakes a demo role or candidate for a real one.
+export function SwipePager({ pages, page, onPage, tapZones = false, demo = false }: { pages: string[]; page: number; onPage: (p: number) => void; tapZones?: boolean; demo?: boolean }) {
   const go = (p: number) => onPage(Math.max(0, Math.min(pages.length - 1, p)));
   const stop = (e: React.PointerEvent) => e.stopPropagation(); // a tap here never starts a card drag
   return <>
@@ -12,6 +14,7 @@ export function SwipePager({ pages, page, onPage, tapZones = false }: { pages: s
         {pages.map((label, i) => <button key={label} type="button" role="tab" aria-selected={i === page} aria-label={label} className={i < page ? 'done' : i === page ? 'on' : ''} onClick={() => go(i)}><i /></button>)}
       </div>
       <p className="sp-label" aria-live="polite">{pages[page]} <span>· {page + 1}/{pages.length}</span></p>
+      {demo && <p className="sp-demo" title="Demo account — not a real person or opening">Demo account</p>}
     </div>
     {tapZones && <>
       <button type="button" className="sp-zone left" aria-label="Previous page" onClick={() => go(page - 1)} />
