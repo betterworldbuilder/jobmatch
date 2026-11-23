@@ -100,12 +100,13 @@ export function trackView(path: string) {
   flush();
 }
 
-/** Owner shortcut: Left Shift + A opens the admin sign-in (ignored while typing). Access is still checked on the server. */
+/** Owner shortcut: Left Shift + Z opens the admin sign-in (ignored while typing). Access is still checked on the server. */
 export function installAdminHotkey(open: () => void) {
   let leftShift = false;
   const down = (e: KeyboardEvent) => {
     if (e.code === 'ShiftLeft') { leftShift = true; return; }
-    if (e.key.toLowerCase() !== 'a' || !e.shiftKey || !leftShift || e.ctrlKey || e.altKey || e.metaKey) return;
+    // Admin sign-in shortcut: Left Shift + Z (founder, 2026-11-23; was Left Shift + A).
+    if (e.key.toLowerCase() !== 'z' || !e.shiftKey || !leftShift || e.ctrlKey || e.altKey || e.metaKey) return;
     const el = e.target as HTMLElement | null;
     if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return;
     e.preventDefault();

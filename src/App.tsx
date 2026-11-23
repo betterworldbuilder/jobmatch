@@ -182,7 +182,7 @@ export default function App() {
   const clearQuery = (key: string) => { const url = new URL(window.location.href); url.searchParams.delete(key); window.history.replaceState({}, '', url.pathname + url.search); };
   const finishReset = (user?: SessionUser) => { setResetToken(''); clearQuery('reset'); if (user) signIn(user); };
 
-  // Owner shortcut: Left Shift + A opens the admin sign-in (Google SSO; checked on the server).
+  // Owner shortcut: Left Shift + Z opens the admin sign-in (Google SSO; checked on the server).
   // Only when signed out, so a stray key press never signs a member out.
   useEffect(() => installAdminHotkey(() => {
     if (session) return;
@@ -217,7 +217,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
     api.trackReferral(refCode).catch(() => undefined);
     if (window.location.pathname.startsWith('/ref/')) window.history.replaceState({}, '', '/');
   }, [refCode]);
-  // ?admin=1 (the Left Shift + A shortcut) opens sign-in straight away.
+  // ?admin=1 (the Left Shift + Z shortcut) opens sign-in straight away.
   const [authModal, setAuthModal] = useState<'login' | 'register' | null>(() => new URLSearchParams(window.location.search).get('admin') === '1' ? 'login' : null);
   useEffect(() => { trackView('/'); }, []);
   // Load the demo accounts in the background so "Test demo account" is ready the moment sign-in opens.
