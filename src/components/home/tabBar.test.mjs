@@ -12,6 +12,14 @@ test('defaults: invitations at the end, Profile not in the bar, Global Menu pres
   for (const r of ['candidate', 'employer']) assert.ok(!mod.defaultTabs(r).includes('profile'));
 });
 
+test('new bar (2026-11-24, preview): Surf · Filter · Likes · Chat · Interviews · Menu, same for both sides', async () => {
+  const { mod } = await loadTsx(new URL('../../lib/tabBar.ts', import.meta.url));
+  assert.deepEqual(mod.defaultTabsV2(), ['surf', 'filter', 'likes', 'chat', 'nav:Interviews', 'menu']);
+  assert.ok(!mod.defaultTabsV2().some((k) => /coffee/i.test(k)), 'Coffee is in the menu, not the bar');
+  const knownV2 = new Set(['menu', 'profile', 'surf', 'filter', 'likes', 'chat', 'nav:Interviews', 'nav:Coffee Invitations']);
+  assert.deepEqual(mod.normalizeTabs(mod.defaultTabsV2(), knownV2, 'employer'), mod.defaultTabsV2(), 'kept as is, Menu stays last');
+});
+
 test('drag a menu item onto the bar: inserts, replaces when full, never removes the Global Menu', async () => {
   const { mod } = await loadTsx(new URL('../../lib/tabBar.ts', import.meta.url));
   const bar = ['surf', 'menu', 'likes', 'chat'];

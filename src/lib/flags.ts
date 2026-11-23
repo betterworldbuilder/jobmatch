@@ -6,6 +6,8 @@ const FLAGS = {
   findMatches: { param: 'fm', defaultOn: false },
   /** "Try the demo" button on a real account's empty deck. Enabled for everyone by the founder, 2026-11-23 (?trydemo=0 hides it). */
   tryDemo: { param: 'trydemo', defaultOn: true },
+  /** Phone bar Surf · Filter · Likes · Chat · Interviews · Menu + the shared "Search & Filters" (founder, 2026-11-24). Preview: ?filters=1 */
+  filters: { param: 'filters', defaultOn: false },
 } as const;
 
 export type FlagName = keyof typeof FLAGS;

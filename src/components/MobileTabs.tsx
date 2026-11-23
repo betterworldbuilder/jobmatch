@@ -4,10 +4,10 @@
 //   the bar to remove it, or tap a tile to add/remove. Pointer events, so it works with touch and mouse.
 // - Saved per person and role on this device (localStorage); Global Menu always stays in the bar.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, GripVertical, Heart, LayoutGrid, MessageCircle, Pencil, User, Waves, X } from 'lucide-react';
+import { Check, GripVertical, Heart, LayoutGrid, MessageCircle, Pencil, SlidersHorizontal, User, Waves, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { View } from '../types';
-import { defaultTabs, MAX_TABS, MENU_KEY, normalizeTabs, placeTab, removeTab, toggleTab } from '../lib/tabBar';
+import { defaultTabs, defaultTabsV2, FILTER_KEY, MAX_TABS, MENU_KEY, normalizeTabs, placeTab, removeTab, toggleTab } from '../lib/tabBar';
 
 export type TabNavItem = { label: string; short?: string; icon: LucideIcon; view?: View; anchor?: string };
 type Item = { key: string; label: string; short: string; icon: LucideIcon; color: string; badge?: number; active: boolean; go: () => void };
@@ -16,11 +16,15 @@ type Props = {
   role: 'candidate' | 'employer' | string; userId: string; nav: TabNavItem[]; navColors: Record<string, string>;
   view: View; activeAnchor: string; unread: number; likes?: number;
   gotoNav: (item: TabNavItem) => void; setView: (v: View) => void; openFullMenu: () => void;
+  /** New bar + Filter button (founder, 2026-11-24; preview ?filters=1). */
+  filtersOn?: boolean; onFilter?: () => void; filterCount?: number; filterOpen?: boolean;
 };
 
-const storeKey = (role: string, userId: string) => `jm-tabbar-${role}-${userId}`;
+// v2 key with the new bar: everyone starts from Surf · Filter · Likes · Chat · Interviews · Menu once (one-time update).
+const storeKey = (role: string, userId: string, v2?: boolean) => `jm-tabbar-${v2 ? 'v2-' : ''}${role}-${userId}`;
 
-export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, unread, likes = 0, gotoNav, setView, openFullMenu }: Props) {
+export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, unread, likes = 0, gotoNav, setView, openFullMenu, filtersOn = false, onFilter, filterCount = 0, filterOpen = false }: Props) {
+  const defaults = () => (filtersOn ? defaultTabsV2() : defaultTabs(role));
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const likesAnchor = role === 'candidate' ? 'td-chasing' : 'td-review';
@@ -35,6 +39,7 @@ export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, u
     add({ key: 'surf', label: 'Find My Match', short: 'Surf', icon: Waves, color: navColors['Find My Match'] || '#ff7a45', active: !menuOpen && view === 'match', go: () => { close(); gotoNav({ label: 'Surf', icon: Waves, view: 'match' }); } });
     add({ key: 'likes', label: role === 'candidate' ? 'Recruiters that like you' : 'Candidates to review', short: 'Likes', icon: Heart, color: '#fd267a', badge: likes, active: !menuOpen && view === 'home' && activeAnchor === likesAnchor, go: () => { close(); gotoNav({ label: 'Likes', icon: Heart, anchor: likesAnchor }); } });
     add({ key: 'chat', label: 'Conversations', short: 'Chat', icon: MessageCircle, color: navColors.Conversations || '#3b82f6', badge: unread, active: !menuOpen && view === 'messages', go: () => { close(); setView('messages'); } });
+    if (filtersOn && onFilter) add({ key: FILTER_KEY, label: 'Search & Filters', short: 'Filter', icon: SlidersHorizontal, color: '#0a66c2', badge: filterCount, active: filterOpen, go: () => { close(); onFilter(); } });
     for (const n of nav) {
       if (n.view === 'match' || n.view === 'messages') continue; // = Surf / Chat
       add({ key: `nav:${n.label}`, label: n.label, short: n.short || n.label, icon: n.icon, color: navColors[n.label] || '#9fb3d9',
@@ -42,19 +47,22 @@ export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, u
         go: () => { close(); gotoNav(n); } });
     }
     return map;
-  }, [nav, navColors, view, activeAnchor, unread, likes, menuOpen, role, likesAnchor]);
+  }, [nav, navColors, view, activeAnchor, unread, likes, menuOpen, role, likesAnchor, filtersOn, onFilter, filterCount, filterOpen]);
 
   // Menu tiles: Profile first, then every section (Find My Match / Conversations shown under their bar names).
-  const tileKeys = useMemo(() => ['profile', 'surf', 'chat', 'likes', ...nav.filter((n) => n.view !== 'match' && n.view !== 'messages').map((n) => `nav:${n.label}`)], [nav]);
-  const known = useMemo(() => new Set(items.keys()), [items]);
+  const tileKeys = useMemo(() => ['profile', 'surf', ...(filtersOn ? [FILTER_KEY] : []), 'chat', 'likes', ...nav.filter((n) => n.view !== 'match' && n.view !== 'messages').map((n) => `nav:${n.label}`)], [nav, filtersOn]);
+  // Stable set of keys (not the items map, which changes with badges) so a saved bar is only re-read when needed.
+  const knownKey = [...items.keys()].join('|');
+  const known = useMemo(() => new Set(knownKey.split('|')), [knownKey]);
 
-  const [tabs, setTabs] = useState<string[]>(() => defaultTabs(role));
+  const [tabs, setTabs] = useState<string[]>(defaults);
   useEffect(() => {
     let saved: unknown = null;
-    try { saved = JSON.parse(localStorage.getItem(storeKey(role, userId)) || 'null'); } catch { /* blocked storage */ }
-    setTabs(normalizeTabs(saved ?? defaultTabs(role), known, role));
-  }, [role, userId, known]);
-  const save = (next: string[]) => { setTabs(next); try { localStorage.setItem(storeKey(role, userId), JSON.stringify(next)); } catch { /* blocked storage */ } };
+    try { saved = JSON.parse(localStorage.getItem(storeKey(role, userId, filtersOn)) || 'null'); } catch { /* blocked storage */ }
+    setTabs(normalizeTabs(saved ?? defaults(), known, role));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, userId, known, filtersOn]);
+  const save = (next: string[]) => { setTabs(next); try { localStorage.setItem(storeKey(role, userId, filtersOn), JSON.stringify(next)); } catch { /* blocked storage */ } };
 
   // ---- drag (pointer events) ----
   const drag = useRef<{ key: string; from: 'menu' | 'bar'; x0: number; y0: number; moved: boolean } | null>(null);
@@ -114,7 +122,7 @@ export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, u
         </button>;
       })}</div>
       <button type="button" className="secondary-button explore-more" onClick={() => { close(); openFullMenu(); }}>Settings, help and more</button>
-      {editing && <button type="button" className="text-button gm-reset" onClick={() => save(normalizeTabs(defaultTabs(role), known, role))}>Reset the bar</button>}
+      {editing && <button type="button" className="text-button gm-reset" onClick={() => save(normalizeTabs(defaults(), known, role))}>Reset the bar</button>}
     </section>}
     {ghost && ghostItem && <div className="tab-ghost" style={{ left: ghost.x, top: ghost.y, ['--c' as string]: ghostItem.color }} aria-hidden="true"><i><ghostItem.icon size={18} /></i>{ghostItem.short}</div>}
   </>;

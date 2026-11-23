@@ -41,6 +41,9 @@ import { AdminIntegrationsPage, AdminKpisPage, AdminTrafficPage } from './compon
 import { NotesBox } from './components/NotesBox';
 import { useDiscoverDeck } from './components/discover/useDiscoverDeck';
 import { EmptyDeck, MatchModal, SalaryBadge, TryDemoContext } from './components/discover/DeckParts';
+import { FilterFields, SearchFiltersSheet } from './components/discover/SearchFilters';
+import { resetSharedFilters, useSharedFilters } from './components/discover/filterStore';
+import { activeFilterCount } from './components/discover/deckLogic';
 // Lazy-loaded: pulls in pdf.js only when a resume is actually opened.
 const ResumeViewerModal = lazy(() => import('./components/ResumeViewerModal').then((m) => ({ default: m.ResumeViewerModal })));
 import { JobEditor } from './components/jobs/JobEditor';
@@ -127,7 +130,7 @@ const NAV_COLORS: Record<string, string> = {
   Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
   Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
-  'Coffee Invitations': '#e0a96d', 'Hired Results': '#fbbf24', 'Interview AI coach': '#a78bfa', 'Recruiter Invitation': '#2dd4bf',
+  'Coffee Invitations': '#e0a96d', 'Hired Results': '#fbbf24', 'Interview AI coach': '#a78bfa', 'Recruiter Invitation': '#2dd4bf', Interviews: '#2dd4bf',
 };
 // Mirrors the candidate menu (same order and pages), plus the recruiter-only lists.
 const employerNav: NavItem[] = [
@@ -463,6 +466,13 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const [view, setView] = useState<View>('match'); // both sides open on Find My Match
   const [data, setData] = useState<Bootstrap | null>(null);
   const [loading, setLoading] = useState(true);
+  // Bug fix (founder, 2026-11-24): signing in swaps the landing page for the app in the same document, so the
+  // browser kept the landing's scroll position and the app opened halfway down ("Recommended Roles") instead of
+  // on the swipe card. Start at the top on sign-in, on every page change, and once the data has loaded. Anchor
+  // links (Likes etc.) scroll afterwards, so they still land on their section.
+  useEffect(() => { try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch { /* old browser */ } }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, [view]);
+  useEffect(() => { if (!loading) window.scrollTo(0, 0); }, [loading]);
   const [error, setError] = useState('');
   const [mobileNav, setMobileNav] = useState(false);
   const [editStep, setEditStep] = useState<number | null>(null);
@@ -526,7 +536,13 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     : async () => { const { user } = await api.login(`${role}-demo`); onSwitchUser(user); }), [session.demo, role, onSwitchUser]);
   // Same menu on every device (founder, 2026-11-22). The old `?fm=1` preview (used by the phone app's start URL)
   // no longer changes the menu: it used to add a second "Find My Match" and make phone and desktop differ.
-  const nav = role === 'candidate' ? candidateNav : employerNav;
+  // New bar + Search & Filters (founder, 2026-11-24; preview ?filters=1): the meetings page is called "Interviews".
+  const filtersOn = featureOn('filters');
+  const baseNav = role === 'candidate' ? candidateNav : employerNav;
+  const nav = filtersOn ? baseNav.map((n) => (n.view === 'meetings' ? { ...n, label: 'Interviews', short: 'Interviews' } : n)) : baseNav;
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sharedFilters] = useSharedFilters(session.id, role);
+  const filterCount = filtersOn ? activeFilterCount(sharedFilters) : 0;
   // Anchor items scroll to a home-dashboard section; view items open a page.
   const gotoNav = (item: NavItem) => {
     setMobileNav(false);
@@ -575,7 +591,9 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     {profileSaved && <div className="profile-saved-toast" role="status"><Check size={15} /> Profile updated. Recruiter view refreshed.</div>}
     {jobImportOpen && data && <JobImportModal viewer={data.viewer} onClose={() => setJobImportOpen(false)} onImported={() => { setJobImportOpen(false); setView('jobs'); load(); }} onManual={() => { setJobImportOpen(false); setView('jobs'); setManualJobRequest((value) => value + 1); }} />}
     {/* Phone action bar + Global Menu (founder, 2026-11-22), job seekers and recruiters: configurable, saved per person. */}
-    <MobileTabs role={role} userId={session.id} nav={nav} navColors={NAV_COLORS} view={view} activeAnchor={activeAnchor} unread={notifications.length} likes={data ? likesWaiting(data) : 0} gotoNav={gotoNav} setView={setView} openFullMenu={() => setMobileNav(true)} />
+    <MobileTabs role={role} userId={session.id} nav={nav} navColors={NAV_COLORS} view={view} activeAnchor={activeAnchor} unread={notifications.length} likes={data ? likesWaiting(data) : 0} gotoNav={gotoNav} setView={setView} openFullMenu={() => setMobileNav(true)}
+      filtersOn={filtersOn} onFilter={() => setFilterOpen(true)} filterCount={filterCount} filterOpen={filterOpen} />
+    {filtersOn && filterOpen && data && <SearchFiltersSheet role={role} data={data} onClose={() => setFilterOpen(false)} onShow={() => { setFilterOpen(false); setView('match'); }} />}
     <AnimatePresence>{settingsOpen && <SettingsModal user={session} onClose={() => setSettingsOpen(false)} onDeleted={() => { setSettingsOpen(false); onExit(); }} />}</AnimatePresence>
   </div></TryDemoContext.Provider>;
 }
@@ -657,7 +675,12 @@ function Discover({ role, data, setData, navigate, onEditProfile }: { role: Role
     <div className="title-actions"><button className={filtersOpen ? 'ghost-button active' : 'ghost-button'} onClick={() => setFiltersOpen((v) => !v)}><SlidersHorizontal size={17} />Filters{filtersActive && <span>{[query.trim(), filterMode, filterType, minScore > 0].filter(Boolean).length}</span>}</button></div></div>
     {role === 'candidate' && <ReadyChecklist viewer={data.viewer} onEditProfile={onEditProfile} />}
     <div className="discover-search"><div className="ds-input"><Search size={16} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={role === 'candidate' ? 'Search roles, companies, skills…' : 'Search talent by name, title, skills…'} aria-label="Search" />{query && <button className="ds-clear" onClick={() => setQuery('')} aria-label="Clear search"><X size={14} /></button>}</div></div>
-    {filtersOpen && <div className="discover-filters">
+    {filtersOpen && featureOn('filters') && <div className="discover-filters df-shared">
+      {/* Same filters as the phone "Filter" sheet (shared, saved per person); distance stays in the slider above. */}
+      <FilterFields role={role} data={data} hideDistance hideSearch />
+      {filtersActive && <button className="df-clear" onClick={() => resetSharedFilters(data.viewer.id, role)}>Clear all</button>}
+    </div>}
+    {filtersOpen && !featureOn('filters') && <div className="discover-filters">
       <div className="df-group"><label>Minimum fit</label><div className="df-scores">{scoreOptions.map((s) => <button key={s} className={minScore === s ? 'active' : ''} onClick={() => setMinScore(s)}>{s === 0 ? 'Any' : `${s}%+`}</button>)}</div></div>
       {role === 'candidate' && <>
         <div className="df-group"><label>Work mode</label><div className="df-chips">{['Remote', 'Hybrid', 'On-site', 'Flexible'].map((m) => <button key={m} className={filterMode === m ? 'active' : ''} onClick={() => setFilterMode(filterMode === m ? '' : m)}>{m}</button>)}</div></div>
@@ -1048,7 +1071,7 @@ function Meetings({ role, data, setData, onOpenMessages }: { role: Role; data: B
   };
 
   return <div className="page meetings-page">
-    <div className="page-title"><div><span className="overline">Calendar</span><h1>{role === 'candidate' ? 'Recruiter Invitation' : 'Meetings'}</h1><p>{role === 'candidate' ? 'Every interview and call teams invited you to, with one-click add to Google, Outlook, or Apple Calendar.' : 'Every scheduled call across your matches, with one-click add to Google, Outlook, or Apple Calendar.'}</p></div></div>
+    <div className="page-title"><div><span className="overline">Calendar</span><h1>{featureOn('filters') ? 'Interviews' : role === 'candidate' ? 'Recruiter Invitation' : 'Meetings'}</h1><p>{role === 'candidate' ? 'Every interview and call teams invited you to, with one-click add to Google, Outlook, or Apple Calendar.' : 'Every scheduled call across your matches, with one-click add to Google, Outlook, or Apple Calendar.'}</p></div></div>
     <CalendarSync userId={data.viewer.id} />
 
     <section className="td-section" id="meetings-upcoming">
