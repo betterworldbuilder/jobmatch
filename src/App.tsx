@@ -16,7 +16,7 @@ import { App as NativeApp } from '@capacitor/app';
 import { LoginModal, RegisterModal, ResetPasswordModal, SettingsModal, prefetchDemoProfiles } from './components/AuthModals';
 import { FeaturesTable, FeedbackSection, JourneyPipeline, LatestShowcase } from './components/LandingSections';
 import { GetAppButton, InstallPopup } from './components/InstallAppBar';
-import { AppFeaturesSection, ForWhoSection, HowSection, ProblemSection, SoWhatSection, WhatNowSection } from './components/landing/StorySections';
+import { AppFeaturesSection, WhatItIsSection, ForWhoSection, HowSection, ProblemSection, SoWhatSection, WhatNowSection } from './components/landing/StorySections';
 import { HeroAlt, HeroDefault, HeroImage } from './components/landing/HeroBanners';
 import { CANDIDATE_OFFERS, LaunchOffers } from './components/LaunchOffers';
 import { PlanCardView, TrialCardView } from './components/landing/PlanCards';
@@ -277,7 +277,9 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
       {/* Header (founder, 2026-11-23): tagline under the logo, then 3 centred links: Why (the problems we solve),
           So what? (benefits), How it works better (the features designed for a faster hiring process). */}
       {banner !== 'image' && <p className="landing-tagline">Find jobs and hire faster with smart matching, fewer steps and fast results.</p>}
-      {banner !== 'image' && <nav className="landing-subnav main3"><a href="#problem">Why</a><a href="#compare">So what?</a><a href="#app-features">How it works better</a></nav>}
+      {/* Bar (founder, 2026-11-23, 2nd version): What is it? → summary, What problem do we solve? → problems,
+          How? → "A Better, Faster, Easier, Friendlier Way of Hiring" (benefits on phones), Try it now for free → pricing. */}
+      {banner !== 'image' && <nav className="landing-subnav main3"><a href="#what-is-it">What is it?</a><a href="#problem">What problem do we solve?</a><a href="#compare">How?</a><a href="#pricing">Try it now for free</a></nav>}
     </header>
     {linkedinState && <div className="integration-notice">{linkedinState === 'connected' ? 'LinkedIn connected. Your professional identity is ready to use.' : 'Add LinkedIn app credentials to enable live account connection. The demo remains available.'}<button onClick={() => history.replaceState({}, '', '/')}>×</button></div>}
     {isPhone && <div className="get-app-row"><GetAppButton /></div>}
@@ -298,12 +300,14 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
     {/* Phones get the concise story (founder, 2026-11-22): what it is (hero) → problem → for who → how → so what →
         pricing → what now. Desktop keeps its original sections unchanged (founder: "keep the desktop UI as is"). */}
     {isPhone ? <>
+      <WhatItIsSection />
       <ProblemSection />
       <ForWhoSection onRegister={openRegister} />
       <HowSection />
       <SoWhatSection />
       <AppFeaturesSection />
     </> : <>
+      <WhatItIsSection />
       <ProblemSection />
       <section className="comparison-section" id="compare">
         <div className="comparison-intro"><div><h2>A Better, Faster, Easier, Friendlier Way of Hiring</h2></div><div className="comparison-copy"><p>Traditional hiring creates hurdles: endless searching, slow applications, repeated screenings, multiple exchanges, long delays — and too often, silence, no feedback. No sign of due respect.</p><p>JobsMatchNow removes the friction and creates Respect, Mutual Alignment, and a Clear, Fast Decision Cycle with Feedback.</p><p>Everything candidates and hiring teams need — from first discovery and mutual interest to a qualified conversation — is brought together in one simple, respectful, and intelligent experience.</p><p className="comparison-tagline">Less chasing. Fewer hurdles. Faster, better hires with feedback — more personalized, respectful hires with a human touch.</p></div></div>

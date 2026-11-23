@@ -6,6 +6,32 @@ import './story.css';
 
 type Cta = { onRegister: () => void; onLogin: () => void };
 
+// "What is it?" (founder, 2026-11-23): one-screen summary of JobsMatchNow and how it makes hiring and job hunting
+// faster, easier and better. Only what the product really does; no outcome numbers.
+export function WhatItIsSection() {
+  return <section className="story story-what" id="what-is-it">
+    <div className="story-head"><span className="story-kicker">What is it?</span><h2>JobsMatchNow in one minute</h2>
+      <p>A hiring app where job seekers and hiring teams swipe on each other. A conversation opens only when <b>both sides choose</b>: “It’s a Match”. No cold applications, no unwanted messages.</p></div>
+    <div className="what-grid">
+      <article><span className="what-icon"><Clock3 size={20} /></span><h3>Faster</h3><ul>
+        <li>Search, apply, screen and first contact become one step: a mutual match.</li>
+        <li>The best fits come first, with a fit score from 0 to 100.</li>
+        <li>Chat and book the interview in the app right after the match.</li>
+      </ul></article>
+      <article><span className="what-icon"><Heart size={20} /></span><h3>Easier</h3><ul>
+        <li>Swipe on your phone: like or pass in seconds.</li>
+        <li>Try it with a demo account, no sign-up needed.</li>
+        <li>Optional AI help fills your profile from a CV or a job description.</li>
+      </ul></article>
+      <article><span className="what-icon"><ShieldCheck size={20} /></span><h3>Better</h3><ul>
+        <li>Salary up front and the reasons behind every fit.</li>
+        <li>Both sides choose, so every conversation starts with real interest.</li>
+        <li>When a process stops, the candidate gets a reason and feedback, not silence.</li>
+      </ul></article>
+    </div>
+  </section>;
+}
+
 export function ProblemSection() {
   return <section className="story story-problem" id="problem">
     <div className="story-head"><span className="story-kicker">The problems</span><h2>The Problems We Solve in Hiring</h2></div>
