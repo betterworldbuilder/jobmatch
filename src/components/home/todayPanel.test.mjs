@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import { loadTsx } from '../../test-utils/loadTsx.mjs';
 
 const DAY = 86400000;
-const now = new Date('2026-11-21T10:00:00').getTime();
+// Today at 10:00 (was a fixed 2026-11-21: the panel uses the real clock, so the "next interview" fell into the past
+// two days later and the test failed for no code reason).
+const now = (() => { const d = new Date(); d.setHours(10, 0, 0, 0); return d.getTime(); })();
 const iso = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const job = { id: 'j', employerId: 'e', title: 'Backend Engineer', company: 'Stripe' };
 const base = (extra = {}) => ({
