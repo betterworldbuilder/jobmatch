@@ -4840,3 +4840,24 @@ button.rs-row:hover { border-color:#fd267a; }
 .blocked-list { list-style:none; margin:8px 0 0; padding:0; display:grid; gap:6px; }
 .blocked-list li { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px; color:#26304a; }
 .conversation header .block-toggle:hover { color:#d92d20; }
+
+/* Phone landing hero (founder, 2026-11-23): compact mockup first → Register free (full width) → Log in + Try demo
+   (half width) → ticks → one-line consent → title + one sentence → geolocation. Only under .landing-phone (set from
+   the JS phone check), so the desktop hero is untouched. */
+.hero-short,.demo-label-short,.hero-consent { display:none; }
+.landing-phone .hero { padding:8px 18px 40px; gap:12px; }
+.landing-phone .hero .hero-copy { display:contents; }
+.landing-phone .hero .hero-visual { order:1; height:auto; transform:scale(.58); transform-origin:top center; margin:0 -60px -270px; }
+.landing-phone .hero .hero-actions { order:2; display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; max-width:380px; margin:0 auto; }
+.landing-phone .hero .hero-actions .primary-button { grid-column:1 / -1; }
+.landing-phone .hero .hero-actions .secondary-button { min-height:48px; font-size:15px; padding:0 10px; }
+.landing-phone .hero .demo-label-long { display:none; }
+.landing-phone .hero .demo-label-short { display:inline; }
+.landing-phone .hero .proof-row { order:3; margin:2px 0 0; justify-content:center; gap:6px 14px; font-size:11px; }
+.landing-phone .hero .hero-consent { display:block; order:4; margin:0 auto; max-width:340px; font-size:11.5px; line-height:1.5; color:#6b7280; text-align:center; }
+.landing-phone .hero .hero-consent a { color:inherit; font-weight:700; text-decoration:underline; text-underline-offset:2px; }
+.landing-phone .hero .eyebrow { display:none; }
+.landing-phone .hero h1 { order:5; margin:18px 0 0; }
+.landing-phone .hero .hero-long { display:none; }
+.landing-phone .hero .hero-short { display:block; order:6; margin:0 auto; max-width:340px; color:#58635b; font-size:15px; line-height:1.55; }
+.landing-phone .hero .location-pitch-app { order:7; }

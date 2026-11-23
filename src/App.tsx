@@ -271,7 +271,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
 
   // One responsive landing for every screen size — mobile gets the same hero,
   // stacked for phone width (no separate mobile layout).
-  return <main className="landing">
+  return <main className={isPhone ? 'landing landing-phone' : 'landing'}>
     <header className={`landing-header${banner !== 'image' ? ' has-brand' : ''}`}>
       {banner !== 'image' && <nav className="landing-nav"><Brand /></nav>}
       {/* Header (founder, 2026-11-23): tagline under the logo, then 3 centred links: Why (the problems we solve),
