@@ -5,6 +5,16 @@
 // deliberately cross the demo/live wall in both directions -- they're real
 // enough to appear in a live account's pool, but still visually labeled
 // "DEMO" in the UI so nobody mistakes one for an actual person or employer.
+/** Ids of everyone the user blocked or was blocked by. */
+export function blockedBetween(db, userId) {
+  const ids = new Set();
+  for (const b of db.blocks || []) {
+    if (b.blockerId === userId) ids.add(b.blockedId);
+    else if (b.blockedId === userId) ids.add(b.blockerId);
+  }
+  return ids;
+}
+
 export function matchingPool(db, viewer) {
   const demo = viewer.demo === true;
   // Sample records carry sampleFor: the specific account id they were
@@ -19,7 +29,11 @@ export function matchingPool(db, viewer) {
   // viewer's pool too -- otherwise the "employer liked you" swipe it comes
   // with would be filtered out and never show up.
   const sampleJobEmployerIds = new Set(mySampleJobs.map((job) => job.employerId));
+  // Block user (founder, 2026-11-23; Apple guideline 1.2): people blocked by the viewer, or who blocked the
+  // viewer, leave each other's pool — so their cards, likes, jobs and matches all disappear both ways.
+  const hidden = blockedBetween(db, viewer.id);
   const users = db.users.filter((user) => {
+    if (hidden.has(user.id)) return false;
     // Sample records have no demo field at all, so (user.demo===true)===demo
     // below would otherwise evaluate to true for ANY real viewer (undefined
     // !== true, and a real viewer's own `demo` is also false) -- an early

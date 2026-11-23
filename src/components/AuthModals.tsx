@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, BriefcaseBusiness, Check, Download, Linkedin, Loader2, LogIn, Mail, Search, ShieldCheck, Trash2, User, X } from 'lucide-react';
+import { ArrowRight, Ban, BriefcaseBusiness, Check, Download, Linkedin, Loader2, LogIn, Mail, Search, ShieldCheck, Trash2, User, X } from 'lucide-react';
 import { api, apiBase } from '../api';
 import { authProviders } from '../lib/auth';
 import { ConductModal } from './ConductModal';
@@ -172,6 +172,22 @@ export function LoginModal({ onClose, onComplete }: { onClose: () => void; onCom
   </ModalShell>;
 }
 
+/** Settings → people you blocked, with Unblock (founder, 2026-11-23). Demo accounts are shared, so no blocking there. */
+function BlockedList({ demo }: { demo: boolean }) {
+  const [list, setList] = useState<{ userId: string; name: string; title: string }[] | null>(null);
+  const [busy, setBusy] = useState('');
+  useEffect(() => { if (!demo) api.blocks().then((r) => setList(r.blocked)).catch(() => setList([])); }, [demo]);
+  const unblock = async (userId: string) => { setBusy(userId); try { await api.unblock(userId); setList((l) => (l || []).filter((b) => b.userId !== userId)); } finally { setBusy(''); } };
+  return <div className="settings-row blocked-row">
+    <div><strong><Ban size={15} /> Blocked people</strong>
+      <small>{demo ? 'Blocking is off in demo accounts (every visitor shares them). Sign up to use Block.'
+        : list === null ? 'Loading…' : list.length ? 'They can’t see you or message you.' : 'Nobody blocked. Use the Block button in a chat to block someone.'}</small>
+      {!demo && list && list.length > 0 && <ul className="blocked-list">{list.map((b) => <li key={b.userId}><span>{b.name}{b.title ? ` · ${b.title}` : ''}</span>
+        <button type="button" className="text-button" disabled={busy === b.userId} onClick={() => void unblock(b.userId)}>{busy === b.userId ? 'Unblocking…' : 'Unblock'}</button></li>)}</ul>}
+    </div>
+  </div>;
+}
+
 export function RegisterModal({ onClose, onComplete }: { onClose: () => void; onComplete: (user: SessionUser) => void }) {
   const config = useAuthConfig();
   const [role, setRole] = useState<Role>('candidate');
@@ -258,6 +274,7 @@ export function SettingsModal({ user, onClose, onDeleted }: { user: SessionUser;
           ? <div className="settings-confirm"><button className="danger-button settings-btn" onClick={del} disabled={busy === 'del'}>{busy === 'del' ? <Loader2 size={14} className="spin" /> : 'Confirm delete'}</button><button className="text-button" onClick={() => setConfirmDelete(false)}>Cancel</button></div>
           : <button className="danger-button settings-btn" onClick={() => setConfirmDelete(true)} disabled={user.demo}>{user.demo ? 'Demo' : 'Delete'}</button>}
       </div>
+      <BlockedList demo={Boolean(user.demo)} />
       {/* Legal pages reachable inside the app (Google Play / App Store ask for the privacy policy in-app). */}
       <div className="settings-row">
         <div><strong><ShieldCheck size={15} /> Privacy &amp; AI</strong><small>How we use your data, where AI helps, and your rights where you live.</small></div>

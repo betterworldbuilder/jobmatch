@@ -23,6 +23,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export const api = {
   bootstrap: (userId: string) => request<Bootstrap>(`/api/bootstrap?userId=${encodeURIComponent(userId)}`),
   authConfig: () => request<AuthConfig>('/api/auth/config'),
+  blocks: () => request<{ blocked: { userId: string; name: string; title: string; photo: string; createdAt: number }[] }>('/api/blocks'),
+  block: (userId: string) => request<{ ok: boolean }>('/api/blocks', { method: 'POST', body: JSON.stringify({ userId }) }),
+  unblock: (userId: string) => request<{ ok: boolean }>(`/api/blocks/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
   showcase: () => request<{ jobs: Job[]; candidates: Person[]; hires?: ShowcaseHire[] }>('/api/showcase'),
   reviews: () => request<{ reviews: Review[] }>('/api/feedback'),
   siteSettings: () => request<{ activeLandingBanner: 'default' | 'alt' | 'image'; bannerImage: { url: string; updatedAt: number | null } | null; trialDays?: number }>('/api/site-settings'),

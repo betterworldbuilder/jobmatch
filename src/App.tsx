@@ -7,7 +7,7 @@ import { AdminPasswordSetup } from './components/AdminPasswordSetup';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react';
 import { MobileTabs } from './components/MobileTabs';
 import { likesWaiting } from './lib/today';
-import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Flag, Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Ban, Flag,Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
 import { apiBase } from './api';
 import { Capacitor } from '@capacitor/core';
@@ -900,6 +900,17 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
     } catch (err) { alert(err instanceof Error ? err.message : 'Could not save'); }
     finally { setHiredBusy(false); }
   };
+  // Block user (founder, 2026-11-23; Apple guideline 1.2): confirm, then both people disappear for each other.
+  const blockOther = async () => {
+    if (!match) return;
+    const otherId = role === 'candidate' ? match.employerId : match.candidateId;
+    if (!window.confirm(`Block ${otherName || 'this person'}? You won’t see each other anywhere on JobsMatchNow and they can’t message you. You can unblock in Settings & privacy.`)) return;
+    try {
+      await api.block(otherId);
+      const fresh = await api.bootstrap(data.viewer.id); setData(fresh);
+      setSelectedMatchId('');
+    } catch (err) { alert(err instanceof Error ? err.message : 'Could not block'); }
+  };
   const calls = data.calls.filter((c) => c.matchId === match?.id).sort((a, b) => a.startAt - b.startAt);
   return <div className="messages-page">
     <aside className="threads">
@@ -920,6 +931,7 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
         <button className="starter-toggle" onClick={() => setScheduling(true)} title="Schedule a call"><Calendar size={16} /></button>
         {otherEmail && <a className="starter-toggle" href={`mailto:${otherEmail}`} title={`Email ${otherName || 'them'}`}><Mail size={16} /></a>}
         <button className="starter-toggle" onClick={() => setReporting(true)} title="Report this conversation"><Flag size={16} /></button>
+        <button className="starter-toggle block-toggle" onClick={() => void blockOther()} title={`Block ${otherName || 'this person'}`} aria-label={`Block ${otherName || 'this person'}`}><Ban size={16} /></button>
       </header>
       <div className="conversation-body">
         <div className="date-divider">Today</div>

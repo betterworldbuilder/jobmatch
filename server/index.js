@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { JsonStore } from './store.js';
 import { PgStore } from './store-pg.js';
 import { createSeed } from './seed.js';
-import { matchingPool, targetIsInMatchingPool } from './matching-pool.js';
+import { blockedBetween, matchingPool, targetIsInMatchingPool } from './matching-pool.js';
 import { buildIcs, meetingsFor, newFeedToken, validFeedToken, REMINDER_MINUTES } from './calendar-feed.js';
 import { onCandidateHired, onRoleFilled, stopProcess } from './hiring-rules.js';
 import { buildContext as buildAiContext, callProvider as callAiProvider, citedSources as citedAiSources, ownKeyConfig as aiOwnKeyConfig, providerConfig as aiProviderConfig, today as aiToday } from './ai-chat.js';
@@ -3885,6 +3885,51 @@ app.get('/api/admin/action-queue', async (req, res, next) => {
 
 const REPORT_CATEGORIES = ['fake_job', 'scam_or_fraud', 'harassment', 'discrimination', 'spam', 'payment_request', 'impersonation', 'other'];
 
+// Block user (founder, 2026-11-23; Apple guideline 1.2 for apps with chat/profiles). A block hides both people
+// from each other everywhere (see blockedBetween in matching-pool.js) and stops messages. Demo accounts are shared
+// by every visitor, so they can't block (one visitor's block would hide people for all the others).
+function blockerFor(req, db) {
+  const session = authSession(req);
+  if (!session) { const error = new Error('Sign in to continue'); error.status = 401; throw error; }
+  const me = db.users.find((user) => user.id === session.sub);
+  if (!me) { const error = new Error('Sign in to continue'); error.status = 401; throw error; }
+  if (me.demo === true) { const error = new Error('Blocking is turned off in demo accounts, which every visitor shares. Sign up to use Block.'); error.status = 403; throw error; }
+  return me;
+}
+app.get('/api/blocks', async (req, res, next) => {
+  try {
+    const db = await store.read();
+    const me = blockerFor(req, db);
+    const blocked = (db.blocks || []).filter((b) => b.blockerId === me.id).map((b) => {
+      const user = db.users.find((u) => u.id === b.blockedId);
+      return { userId: b.blockedId, name: user?.name || 'Member', title: user?.title || '', photo: user?.photo || '', createdAt: b.createdAt };
+    });
+    res.json({ blocked });
+  } catch (error) { next(error); }
+});
+app.post('/api/blocks', rateLimit({ windowMs: 3600000, max: 60, bucket: 'blocks' }), async (req, res, next) => {
+  try {
+    const userId = reqString(req.body, 'userId', { max: 128 });
+    await store.transaction((db) => {
+      const me = blockerFor(req, db);
+      if (userId === me.id) { const error = new Error('You can’t block yourself'); error.status = 400; throw error; }
+      if (!db.users.some((u) => u.id === userId)) { const error = new Error('Member not found'); error.status = 404; throw error; }
+      if (!Array.isArray(db.blocks)) db.blocks = [];
+      if (!db.blocks.some((b) => b.blockerId === me.id && b.blockedId === userId)) db.blocks.push({ id: crypto.randomUUID(), blockerId: me.id, blockedId: userId, createdAt: Date.now() });
+    });
+    res.status(201).json({ ok: true });
+  } catch (error) { next(error); }
+});
+app.delete('/api/blocks/:userId', async (req, res, next) => {
+  try {
+    await store.transaction((db) => {
+      const me = blockerFor(req, db);
+      db.blocks = (db.blocks || []).filter((b) => !(b.blockerId === me.id && b.blockedId === req.params.userId));
+    });
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
 app.post('/api/reports', rateLimit({ windowMs: 3600000, max: 20, bucket: 'reports' }), async (req, res, next) => {
   try {
     const reporterUserId = resolveActor(req, reqString(req.body, 'userId', { max: 128 }));
@@ -4249,6 +4294,8 @@ app.post('/api/messages', async (req, res, next) => {
       if (authSession(req) && senderId !== match.candidateId && senderId !== match.employerId) {
         const error = new Error('Only the matched parties can message this thread'); error.status = 403; throw error;
       }
+      const otherId = senderId === match.candidateId ? match.employerId : match.candidateId;
+      if (blockedBetween(db, senderId).has(otherId)) { const error = new Error('You can’t message this person.'); error.status = 403; throw error; }
       const item = { id: crypto.randomUUID(), matchId, senderId, text, createdAt: Date.now() };
       const isFirst = !match.firstMessageTracked && !db.messages.some((message) => message.matchId === matchId);
       db.messages.push(item);
