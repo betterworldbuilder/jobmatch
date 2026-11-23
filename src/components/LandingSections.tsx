@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, BarChart3, Bell, BriefcaseBusiness, Check, Coffee, Eye, FileText, Heart, Layers3, Loader2, LogIn, MapPin, MessageCircle, PenLine, Send, ShieldCheck, Sparkles, Star, Target, X } from 'lucide-react';
 import { api } from '../api';
+import type { ShowcaseHire } from '../api';
 import { appleColor } from '../lib/colors';
 import type { Job, Person, Review } from '../types';
 import { JobHeaderBadge } from './jobs/JobHeaderBadge';
@@ -97,9 +98,28 @@ function workModeShort(job: Job) {
 export function LatestShowcase({ onRegister, onLogin }: { onRegister?: () => void; onLogin?: () => void }) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [candidates, setCandidates] = useState<Person[]>([]);
+  const [hires, setHires] = useState<ShowcaseHire[]>([]);
   const [detail, setDetail] = useState<{ kind: 'job'; job: Job } | { kind: 'person'; person: Person } | null>(null);
-  useEffect(() => { api.showcase().then((data) => { setJobs(data.jobs); setCandidates(data.candidates); }).catch(() => undefined); }, []);
-  if (!jobs.length && !candidates.length) return null;
+  useEffect(() => { api.showcase().then((data) => { setJobs(data.jobs); setCandidates(data.candidates); setHires(data.hires || []); }).catch(() => undefined); }, []);
+  if (!jobs.length && !candidates.length && !hires.length) return null;
+  // "New Matches Hired" (founder, 2026-11-23): candidate + hiring team pairs that ended in a hire. Pre-launch demo
+  // examples (demo accounts only), said plainly under the section; real results will feed it after launch.
+  if (hires.length) return <section className="section showcase-section" id="latest">
+    <div className="section-heading"><div className="showcase-heading-text"><span className="eyebrow"><Sparkles size={14} /> Live on JobsMatchNow</span><h2>New Matches Hired</h2></div></div>
+    <div className="hired-grid">{hires.map((h) => <article className="hired-card" key={h.id} style={{ ['--accent' as string]: h.job.accent || appleColor(h.id) }}>
+      <div className="hired-pair">
+        <span className="hired-face">{h.candidate.photo ? <img src={h.candidate.photo} alt="" /> : h.candidate.name.slice(0, 1)}</span>
+        <span className="hired-heart" aria-hidden="true">♥</span>
+        <span className="hired-face">{h.recruiter.photo ? <img src={h.recruiter.photo} alt="" /> : h.recruiter.name.slice(0, 1)}</span>
+      </div>
+      <span className="hired-badge">Hired</span>
+      <strong>{h.candidate.name}</strong>
+      <small>{h.candidate.title}</small>
+      <p>joined <b>{h.job.company || h.recruiter.company}</b> as <b>{h.job.title}</b></p>
+      <small className="hired-by">Matched with {h.recruiter.name}{h.candidate.location ? ` · ${h.candidate.location}` : ''}</small>
+    </article>)}</div>
+    <p className="hired-demo-note">These are demo examples for pre-launch. This section will be fed with live results.</p>
+  </section>;
   return <section className="section showcase-section" id="latest">
     <div className="section-heading"><div className="showcase-heading-text"><span className="eyebrow"><Sparkles size={14} /> Live on JobsMatchNow</span><h2>The latest roles and people.</h2></div></div>
     <div className="showcase-columns">

@@ -101,6 +101,22 @@
   .feat-ai ul { grid-template-columns:1fr; }
 }
 
+/* New Matches Hired (2026-11-23): demo pairs that ended in a hire */
+.hired-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; max-width:1080px; margin:0 auto; }
+.hired-card { position:relative; background:#fff; border:1px solid #eee6ee; border-top:4px solid var(--accent,#fd267a); border-radius:20px; padding:20px; text-align:center; box-shadow:0 10px 28px rgba(15,23,42,.06); display:flex; flex-direction:column; align-items:center; gap:4px; }
+.hired-pair { display:flex; align-items:center; justify-content:center; margin-bottom:8px; }
+.hired-face { width:66px; height:66px; border-radius:50%; overflow:hidden; border:3px solid #fff; box-shadow:0 6px 16px rgba(15,23,42,.15); display:grid; place-items:center; background:#eaf3fd; color:#0a66c2; font:800 24px 'Manrope'; }
+.hired-face img { width:100%; height:100%; object-fit:cover; }
+.hired-heart { width:30px; height:30px; margin:0 -10px; z-index:1; border-radius:50%; background:#fff; color:#fd267a; display:grid; place-items:center; font-size:17px; box-shadow:0 4px 10px rgba(15,23,42,.15); }
+.hired-badge { display:inline-block; background:#e7f8ee; color:#127a3e; font:800 11px 'Manrope'; letter-spacing:.08em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
+.hired-card strong { font:800 17px 'Manrope'; color:#0b102b; margin-top:4px; }
+.hired-card > small { color:#5b6573; font-size:13px; }
+.hired-card p { margin:6px 0 2px; color:#26304a; font-size:14px; line-height:1.4; }
+.hired-card .hired-by { color:#8a93a8; font-size:12px; }
+.hired-demo-note { text-align:center; margin:18px auto 0; color:#8a93a8; font-size:13px; font-style:italic; }
+@media (max-width:900px) { .hired-grid { grid-template-columns:repeat(2,1fr); } }
+@media (max-width:560px) { .hired-grid { grid-template-columns:1fr; } }
+
 /* What now */
 .story-now { max-width:1080px; margin:20px auto 56px; text-align:center; color:#fff; border-radius:28px; padding:54px 28px; background:radial-gradient(circle at 85% 10%,rgba(255,255,255,.16),transparent 40%),linear-gradient(135deg,#0a66c2,#004182); box-shadow:0 26px 60px rgba(10,102,194,.32); }
 .story-now h2 { font:800 clamp(24px,3.6vw,38px)/1.18 'Manrope'; letter-spacing:-.03em; max-width:760px; margin:16px auto 24px; }

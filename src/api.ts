@@ -1,6 +1,9 @@
 import type { AdminKpi, ConnectorKey, IntegrationStatus, RecommendationDoc, WebAnalyticsReport } from './types';
 import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
+/** A demo hire shown on the landing ("New Matches Hired"); both people are demo accounts. */
+export type ShowcaseHire = { id: string; hiredAt?: number; candidate: { name: string; title?: string; photo?: string; location?: string }; recruiter: { name: string; photo?: string; company?: string }; job: { title: string; company?: string; accent?: string; location?: string } };
+
 /** What the browser may know about a member's own AI key (never the key itself). */
 export type AiKeyInfo = { provider: 'anthropic' | 'openai'; tier: 'best' | 'fast'; model: string; last4: string; savedAt: number };
 
@@ -20,7 +23,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export const api = {
   bootstrap: (userId: string) => request<Bootstrap>(`/api/bootstrap?userId=${encodeURIComponent(userId)}`),
   authConfig: () => request<AuthConfig>('/api/auth/config'),
-  showcase: () => request<{ jobs: Job[]; candidates: Person[] }>('/api/showcase'),
+  showcase: () => request<{ jobs: Job[]; candidates: Person[]; hires?: ShowcaseHire[] }>('/api/showcase'),
   reviews: () => request<{ reviews: Review[] }>('/api/feedback'),
   siteSettings: () => request<{ activeLandingBanner: 'default' | 'alt' | 'image'; bannerImage: { url: string; updatedAt: number | null } | null; trialDays?: number }>('/api/site-settings'),
   adminSetSiteSettings: (activeLandingBanner: 'default' | 'alt' | 'image') => request<{ activeLandingBanner: 'default' | 'alt' | 'image' }>('/api/admin/site-settings', { method: 'POST', body: JSON.stringify({ activeLandingBanner }) }),

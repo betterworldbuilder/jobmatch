@@ -755,10 +755,13 @@ button { cursor:pointer; }
 .landing-subnav .mobile-toggle { margin-left:auto; }
 /* Header (founder, 2026-11-23): logo 20% bigger on desktop (44→53px, 98→118px), tagline under it, 3 centred links. */
 .landing-tagline { max-width:1260px; margin:0 auto; padding:0 32px 10px; color:#3d4757; font:700 17px/1.4 'Manrope'; letter-spacing:-.01em; }
+/* 2026-11-23 (2nd pass): logo +20% again (53→64px, 118→142px), tagline ×2 (17→34px), the 3 links left-aligned
+   just above the hero, like the founder's red box. */
 @media (min-width:761px) {
-  .landing-header .landing-nav .brand { font-size:53px; gap:22px; }
-  .landing-header .landing-nav .brand-heart-mark { width:118px; height:118px; }
-  .landing-subnav.main3 { justify-content:center; gap:10px; padding-top:6px; }
+  .landing-header .landing-nav .brand { font-size:64px; gap:26px; }
+  .landing-header .landing-nav .brand-heart-mark { width:142px; height:142px; }
+  .landing-tagline { font-size:34px; line-height:1.2; letter-spacing:-.03em; color:#1f2937; padding-top:6px; padding-bottom:16px; }
+  .landing-subnav.main3 { justify-content:flex-start; gap:10px; padding-top:6px; padding-left:48px; }
   .landing-subnav.main3 a { padding:9px 20px; border-radius:999px; background:rgba(255,255,255,.75); border:1px solid #efe3ea; color:#1f2937; font:800 14.5px 'Manrope'; box-shadow:0 4px 12px rgba(82,52,76,.06); }
   .landing-subnav.main3 a:hover { color:#e0115f; border-color:#f6c6d8; }
 }

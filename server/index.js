@@ -397,7 +397,22 @@ app.get('/api/showcase', async (_req, res, next) => {
       .filter((user) => user.role === 'candidate' && user.demo)
       .slice(0, 10)
       .map((user) => ({ id: user.id, name: user.name, title: user.title, photo: user.photo, location: user.location, skills: (user.skills || []).slice(0, 4), availability: user.availability, experienceLevel: user.experienceLevel }));
-    res.json({ jobs, candidates });
+    // "New Matches Hired" (founder, 2026-11-23): pre-launch demo examples only — both people must be demo
+    // accounts, so no real member is ever shown publicly. Real hires will feed this later.
+    const userById = new Map(db.users.map((user) => [user.id, user]));
+    const hires = db.matches
+      .filter((m) => m.stage === 'Hired' || m.currentStepId === 'hire')
+      .map((m) => ({ m, c: userById.get(m.candidateId), e: userById.get(m.employerId), job: db.jobs.find((j) => j.id === m.jobId) }))
+      .filter(({ c, e, job }) => c?.demo === true && e?.demo === true && job)
+      .sort((a, b) => Number(b.m.stageChangedAt || b.m.createdAt || 0) - Number(a.m.stageChangedAt || a.m.createdAt || 0))
+      .slice(0, 6)
+      .map(({ m, c, e, job }) => ({
+        id: m.id, hiredAt: m.stageChangedAt || m.createdAt,
+        candidate: { name: c.name, title: c.title, photo: c.photo, location: c.location },
+        recruiter: { name: e.name, photo: e.photo, company: e.company || job.company },
+        job: { title: job.title, company: job.company, accent: job.accent, location: job.location },
+      }));
+    res.json({ jobs, candidates, hires, demo: true });
   } catch (error) { next(error); }
 });
 
