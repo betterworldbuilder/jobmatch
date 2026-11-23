@@ -4,6 +4,7 @@
  * ANTHROPIC_API_KEY is set, heuristic parser otherwise).
  */
 import { ValidationError } from './matching.js';
+import { serverAnthropicKey } from './server-ai.js';
 
 export const JOB_STATUSES = ['draft', 'active', 'paused', 'filled'];
 const SENIORITIES = ['junior', 'mid', 'senior', 'lead', 'exec'];
@@ -219,7 +220,7 @@ export function heuristicParse(text, url) {
 
 /** Parse with the Claude API when a key is configured. Falls back to heuristics on any failure. */
 export async function parseJobText(text, url) {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = serverAnthropicKey(); // off unless USE_SERVER_AI_KEY=true (founder, 2026-11-24)
   if (!key) return { parser: 'heuristic', parsed: heuristicParse(text, url) };
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {

@@ -13,6 +13,7 @@
 //     AI_CHAT_ANTHROPIC_URL / AI_CHAT_OPENAI_URL = endpoint override (tests / proxies)
 // - Logging: no keys, no questions, no answers, no CV — only provider status codes.
 import { runTool } from './mcp.js';
+import { serverAnthropicKey, serverOpenaiKey } from './server-ai.js';
 
 export const DEFAULT_DAILY_LIMIT = 20;
 export const DEFAULT_OWN_KEY_DAILY_LIMIT = 200;
@@ -30,7 +31,8 @@ export function ownKeyConfig(rec, key, env = process.env) {
 export function providerConfig(env = process.env) {
   const provider = String(env.AI_CHAT_PROVIDER || '').toLowerCase();
   if (!['anthropic', 'openai'].includes(provider)) return { enabled: false, reason: 'not_configured' };
-  const key = provider === 'anthropic' ? env.ANTHROPIC_API_KEY : env.OPENAI_API_KEY;
+  // Founder, 2026-11-24: the server's own key only when USE_SERVER_AI_KEY=true (server-ai.js); otherwise members use their own key.
+  const key = provider === 'anthropic' ? serverAnthropicKey(env) : serverOpenaiKey(env);
   if (!key) return { enabled: false, reason: 'missing_key', provider };
   const limit = Math.max(1, Math.min(500, Number(env.AI_CHAT_DAILY_LIMIT) || DEFAULT_DAILY_LIMIT));
   return { enabled: true, source: 'server', provider, label: LABEL[provider], model: env.AI_CHAT_MODEL || DEFAULT_MODELS[provider], key, limit, url: MESSAGES_URL(provider, env) };

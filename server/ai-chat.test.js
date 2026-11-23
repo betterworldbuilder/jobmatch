@@ -27,7 +27,7 @@ before(async () => {
   });
   await new Promise((r) => fake.listen(0, r));
   fakeUrl = `http://127.0.0.1:${fake.address().port}/v1/messages`;
-  Object.assign(process.env, { NODE_ENV: 'test', DB_PATH, AI_CHAT_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'test-key-never-logged', AI_CHAT_ANTHROPIC_URL: fakeUrl, AI_CHAT_ANTHROPIC_MODELS_URL: fakeUrl.replace('/messages', '/models'), AI_CHAT_DAILY_LIMIT: '3', AI_CHAT_BURST_PER_MIN: '100' });
+  Object.assign(process.env, { NODE_ENV: 'test', DB_PATH, AI_CHAT_PROVIDER: 'anthropic', USE_SERVER_AI_KEY: 'true', ANTHROPIC_API_KEY: 'test-key-never-logged', AI_CHAT_ANTHROPIC_URL: fakeUrl, AI_CHAT_ANTHROPIC_MODELS_URL: fakeUrl.replace('/messages', '/models'), AI_CHAT_DAILY_LIMIT: '3', AI_CHAT_BURST_PER_MIN: '100' });
   const { app } = await import('./index.js');
   server = app.listen(0); await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${server.address().port}`;

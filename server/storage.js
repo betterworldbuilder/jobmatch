@@ -30,6 +30,16 @@ export async function mirrorToS3(localPath, uploadsRoot) {
   } catch (error) { console.error('[s3] mirror failed:', error.message); }
 }
 
+/** Delete a file's S3 copy (account deletion, rejected selfie). Without this, restoreFromS3 would bring a
+ *  deleted file back on the next start. Never throws. */
+export async function removeFromS3(localPath, uploadsRoot) {
+  if (!s3Enabled()) return;
+  try {
+    const { m, client } = await s3();
+    await client.send(new m.DeleteObjectCommand({ Bucket: BUCKET, Key: keyFor(localPath, uploadsRoot) }));
+  } catch (error) { console.error('[s3] delete failed:', error.message); }
+}
+
 /** On startup, upload any local files that aren't in the bucket yet (back up
  *  pre-existing uploads the first time S3 is enabled). */
 export async function backupToS3(uploadsRoot) {

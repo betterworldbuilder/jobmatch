@@ -1,6 +1,6 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -82,6 +82,28 @@ test('a note without a Super Like is ignored, and long notes are refused', async
   const real2 = await registerReal('long');
   const tooLong = await call('POST', '/api/swipes', { actorId: real2.id, targetType: 'job', targetId: real2.jobId, direction: 'like', superLike: true, note: 'x'.repeat(281) }, real2.cookie);
   assert.equal(tooLong.status, 400);
+});
+
+test('deleting an account removes its uploaded files and the private notes about it (Privacy Policy, 2026-11-24)', async () => {
+  const real = await registerReal('erase');
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000000020001e221bc330000000049454e44ae426082', 'hex');
+  const root = process.env.UPLOADS_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), 'uploads');
+  assert.equal((await call('POST', `/api/users/${real.id}/verification-selfie`, undefined, real.cookie, png)).status, 201);
+  assert.equal((await call('POST', `/api/users/${real.id}/photo`, undefined, real.cookie, png)).status, 201);
+  const selfie = path.join(root, 'verification', `${real.id}.png`);
+  const photo = path.join(root, 'photos', `${real.id}.png`);
+  assert.ok(existsSync(selfie) && existsSync(photo), 'files are on disk before deletion');
+  // Someone else's private note about this person.
+  const other = await registerReal('erase-noter');
+  assert.equal((await call('POST', '/api/notes', { userId: other.id, targetId: real.id, targetType: 'candidate', text: 'Strong React' }, other.cookie)).status, 200);
+  const del = await call('DELETE', '/api/me', undefined, real.cookie);
+  assert.equal(del.status, 200, JSON.stringify(del.body));
+  assert.ok(del.body.filesRemoved >= 2, `files removed: ${del.body.filesRemoved}`);
+  assert.equal(existsSync(selfie), false, 'selfie deleted');
+  assert.equal(existsSync(photo), false, 'photo deleted');
+  const stored = JSON.parse(readFileSync(DB_PATH, 'utf8'));
+  assert.equal((stored.notes || []).some((n) => n.targetId === real.id), false, 'notes about the deleted person are gone');
+  assert.equal(stored.users.some((u) => u.id === real.id), false, 'account gone');
 });
 
 test('verification: a member sends a selfie (pending, no badge yet); review is admin-only', async () => {

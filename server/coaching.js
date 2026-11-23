@@ -5,6 +5,7 @@
  * Results are cached by the callers (per job / per match).
  */
 import { salaryCompatibility } from './matching.js';
+import { serverAnthropicKey } from './server-ai.js';
 
 // Skill-specific question banks; anything not listed falls back to templates.
 const SKILL_QUESTIONS = {
@@ -45,7 +46,7 @@ function topSkills(job, count) {
 }
 
 async function claudeJson(prompt, maxTokens = 1200) {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = serverAnthropicKey(); // off unless USE_SERVER_AI_KEY=true (founder, 2026-11-24)
   if (!key) return null;
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {

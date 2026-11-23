@@ -5,315 +5,300 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Privacy Policy — JobsMatchNow</title>
 <style>
-  body { font: 15px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1c1e21; max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
+  body { font: 15px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1c1e21; max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; }
   h1 { font-size: 26px; margin-bottom: 4px; }
-  h2 { font-size: 18px; margin-top: 36px; }
+  h2 { font-size: 18px; margin-top: 38px; scroll-margin-top: 16px; }
   h3 { font-size: 15.5px; margin: 22px 0 4px; }
   p, li { color: #3a3f4a; }
-  .updated { color: #8a93a8; font-size: 13px; margin-bottom: 28px; }
+  li { margin: 4px 0; }
+  .updated { color: #8a93a8; font-size: 13px; margin-bottom: 22px; }
   a { color: #0a75c7; }
-  table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; }
-  th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid #e4e6eb; font-size: 14px; color: #3a3f4a; }
-  th { color: #1c1e21; }
+  .short { background: #f3f6fb; border-left: 3px solid #0a75c7; padding: 8px 12px; border-radius: 0 8px 8px 0; color: #1c1e21; font-size: 14px; }
+  .short b { color: #0a75c7; }
+  .promise { border: 1px solid #b9e2c9; background: #f2fbf5; border-radius: 14px; padding: 14px 18px; margin: 18px 0 8px; }
+  .promise h2 { margin: 0 0 6px; font-size: 16px; color: #17803d; }
+  .promise ul { margin: 0; padding-left: 20px; }
+  .toc { columns: 2; column-gap: 28px; font-size: 14px; padding-left: 20px; }
+  .toc li { break-inside: avoid; }
+  .table-wrap { overflow-x: auto; margin: 12px 0 20px; }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px 9px 0; border-bottom: 1px solid #e4e6eb; font-size: 14px; color: #3a3f4a; }
+  th { color: #1c1e21; background: #fafbfc; }
+  td:first-child { font-weight: 600; color: #1c1e21; width: 28%; }
   .todo { background: #fff3d6; color: #9a6700; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+  @media (max-width: 560px) { .toc { columns: 1; } }
 </style>
 </head>
 <body>
+  <!-- Rewritten 2026-11-24 on the founder's go. Structure inspired by large consumer apps' policies (plain intro,
+       promises up front, data / purpose / legal-ground / sharing / retention / rights tables); every statement was
+       checked against the code (server/index.js, web-analytics.js, integrations.js, IdVerification.tsx, geo.ts).
+       Not legal advice: a lawyer should review before paid plans start. -->
   <h1>JobsMatchNow Privacy Policy</h1>
-  <p class="updated">Effective date: July 26, 2026 &middot; Last updated: November 23, 2026</p>
+  <p class="updated">Effective date: November 24, 2026 &middot; Replaces the version of November 23, 2026</p>
 
-  <p>JobsMatchNow respects your privacy and is committed to protecting your personal information.</p>
+  <p>Looking for a job, or for the right person to hire, means sharing personal things: your career, your salary
+  expectations, where you live. We built JobsMatchNow so that you stay in control of that information. This policy
+  explains, in plain words, what we collect, why, who sees it, how long we keep it, and how to use your rights. It
+  applies to the JobsMatchNow website, web app, and Android and iOS apps.</p>
 
-  <p>This Privacy Policy explains what information we collect, why we collect it, how we use and share it,
-  and the choices available to candidates, recruiters, and employers using the JobsMatchNow website, web
-  application, Android application, and iOS application.</p>
+  <section class="promise" aria-label="Our privacy promises">
+    <h2>Our privacy promises</h2>
+    <ul>
+      <li><strong>We never sell your personal data</strong> and never share it for advertising. There are no ads in JobsMatchNow.</li>
+      <li><strong>Your contact details stay hidden until a mutual match.</strong> Before that, the other side sees no email,
+        phone or contact links, no exact salary expectation, and only an anonymized preview of your CV.</li>
+      <li><strong>Your exact location is never shown.</strong> Other members only see an approximate distance.</li>
+      <li><strong>People decide, not software.</strong> Nothing in the app hires, rejects or filters out a person on its own.</li>
+      <li><strong>Your data is not sent to AI by default and is never used to train AI.</strong> The only AI is the optional chatbot you connect with your own account.</li>
+      <li><strong>You can delete your account at any time</strong>, in the app. Your profile, CV, photos and messages are deleted at once.</li>
+      <li><strong>Passwords are hashed</strong>, payment card numbers never reach us, and website statistics are kept without IP addresses.</li>
+    </ul>
+  </section>
 
-  <p>By using JobsMatchNow, you acknowledge the practices described in this Privacy Policy.</p>
+  <ol class="toc">
+    <li><a href="#who">Who we are</a></li>
+    <li><a href="#scope">Who can use JobsMatchNow</a></li>
+    <li><a href="#collect">Data we collect</a></li>
+    <li><a href="#use">Why we use it, and on what legal ground</a></li>
+    <li><a href="#ai">Matching, AI and automated decisions</a></li>
+    <li><a href="#visibility">What other members see</a></li>
+    <li><a href="#share">Who we share it with</a></li>
+    <li><a href="#transfers">Where your data is stored</a></li>
+    <li><a href="#retention">How long we keep it</a></li>
+    <li><a href="#account-deletion">Deleting your account</a></li>
+    <li><a href="#rights">Your rights and controls</a></li>
+    <li><a href="#regional">Your rights where you live</a></li>
+    <li><a href="#cookies">Cookies and similar technologies</a></li>
+    <li><a href="#security">Security</a></li>
+    <li><a href="#safety">Recruitment safety</a></li>
+    <li><a href="#changes">Changes to this policy</a></li>
+    <li><a href="#contact">Contact us</a></li>
+  </ol>
 
-  <h2>1. Who operates JobsMatchNow</h2>
-  <p>JobsMatchNow is operated by:</p>
+  <h2 id="who">1. Who we are</h2>
+  <p class="short"><b>In short:</b> JobsMatchNow SARL in Paris is responsible for your data (the "controller").</p>
   <ul>
-    <li>Legal name: JobsMatchNow</li>
-    <li>Trading name: JobsMatchNow</li>
-    <li>Registered address: 13 rue Primo Levi, 75013 Paris</li>
-    <li>Country: France</li>
-    <li>Privacy email: <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a></li>
-    <li>Support email: <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a></li>
-    <li>Website: <a href="https://jobsmatchnow.com">jobsmatchnow.com</a></li>
+    <li>Controller: JobsMatchNow SARL, 13 rue Primo Levi, 75013 Paris, France (details in the <a href="/legal.html">Legal notice</a>)</li>
+    <li>Privacy contact: <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a> (write "Privacy" in the subject)</li>
+    <li>Lead data protection authority: the CNIL, France (<a href="https://www.cnil.fr" rel="noopener">cnil.fr</a>)</li>
   </ul>
 
-  <h2>2. Who may use the service</h2>
-  <p>JobsMatchNow is intended only for people aged 18 years or older.</p>
-  <p>We do not knowingly collect personal information from children. Anyone who believes that a person
-  under 18 has created an account should contact us at <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>.</p>
+  <h2 id="scope">2. Who can use JobsMatchNow</h2>
+  <p class="short"><b>In short:</b> adults only.</p>
+  <p>JobsMatchNow is only for people aged 18 or older. We do not knowingly collect data from children. If you think
+  someone under 18 has an account, tell us at <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>
+  and we will close it.</p>
 
-  <h2>3. Information we collect</h2>
+  <h2 id="collect">3. Data we collect</h2>
+  <p class="short"><b>In short:</b> what you give us, what the app records while you use it, and data from a few services you choose to use.</p>
+  <h3>Data you give us</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Category</th><th>Examples</th></tr>
+    <tr><td>Account data</td><td>Name, email, account type (candidate or hiring team), password (stored only as a hash) or sign-in provider, country, language, acceptance of the Terms and Code of Conduct.</td></tr>
+    <tr><td>Candidate profile</td><td>Photo, headline, city, skills and levels, languages, work experience, education, CV/résumé and recommendation letters, salary expectations, desired roles, work mode, availability, work authorization, interests, contact links (for example WhatsApp, Zalo, Telegram, booking link), job status. Optional fields stay optional.</td></tr>
+    <tr><td>Hiring-team profile and roles</td><td>Name, job title, company, company details (industry, size, headquarters, website, benefits, logo), job descriptions, required skills, salary ranges, location, cover images.</td></tr>
+    <tr><td>Messages and activity you create</td><td>Likes and passes, Super Like notes, matches, messages, meeting and coffee invitations, hiring stages, feedback when a process stops, private notes (visible only to you), saved items.</td></tr>
+    <tr><td>Verification selfie</td><td>If you ask for the "Verified" badge, a selfie that our team compares with your profile photos. No face template or biometric identifier is created from it.</td></tr>
+    <tr><td>ID check (preview)</td><td>If you try the optional "ID checked" step, <strong>the document never leaves your device</strong>. We only save the document type and the date of the check.</td></tr>
+    <tr><td>Payment data</td><td>Plan, amounts, currency, payment status, invoices, and proof of a bank transfer if you upload one. Card numbers are handled by the payment provider; we never receive them.</td></tr>
+    <tr><td>Support, reports and appeals</td><td>Messages to support, reports you send about others, blocks, and appeals.</td></tr>
+    <tr><td>Your own AI key (optional)</td><td>If you connect your own Claude or ChatGPT key for the chatbot, the key, stored encrypted.</td></tr>
+  </table></div>
+  <h3>Data recorded while you use the app</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Category</th><th>Examples</th></tr>
+    <tr><td>Location (with your permission)</td><td>If you allow it, your device's approximate location (we ask for low accuracy) to calculate distances. You can type a city instead.</td></tr>
+    <tr><td>Technical and security data</td><td>IP address, browser and device type, app version, sign-in times, security events and errors, kept in server logs for security.</td></tr>
+    <tr><td>Website statistics</td><td>Pages viewed, clicks, referral source and device type, recorded <strong>without IP addresses or account ids</strong>: a visitor is counted with an anonymous code that changes every day.</td></tr>
+  </table></div>
+  <h3>Data from services you choose</h3>
+  <p>If you sign in with Google or LinkedIn, we receive your name, email and photo from that service. If you pay
+  through a payment provider, we receive the payment result.</p>
 
-  <p><strong>Account information.</strong> When you create an account, we may collect: name, email
-  address, account type, password or authentication credentials, language, country, email-verification
-  status, and account creation/login information. Passwords are stored using secure password-hashing
-  methods — we do not store passwords in readable plain text.</p>
+  <h2 id="use">4. Why we use it, and on what legal ground</h2>
+  <p class="short"><b>In short:</b> to run the matching service, keep members safe, and meet our legal duties. Never for advertising.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Purpose</th><th>Data used</th><th>Legal ground (GDPR)</th></tr>
+    <tr><td>Create and run your account; show your profile and roles; matching and fit scores; messages, meetings and hiring stages</td><td>Account, profile, roles, activity, location</td><td>Performance of our contract with you</td></tr>
+    <tr><td>Helper suggestions (reading a CV or job description, interview practice, conversation starters), built-in, no AI provider</td><td>The text the feature needs (see section 5)</td><td>Contract; you start each feature yourself</td></tr>
+    <tr><td>Your own AI chatbot</td><td>Your question and a short summary of your own JobsMatchNow data</td><td>Your consent (you connect it and can disconnect it)</td></tr>
+    <tr><td>"Verified" badge</td><td>Verification selfie, profile photos</td><td>Your consent (optional; you can withdraw it)</td></tr>
+    <tr><td>Safety: fake jobs, scams, harassment, reports, blocks, appeals, suspensions</td><td>Profile, roles, reports, and messages involved in a report</td><td>Our legitimate interest in a safe service, and members' safety</td></tr>
+    <tr><td>Security, fraud prevention, fixing errors</td><td>Technical and security data</td><td>Legitimate interest</td></tr>
+    <tr><td>Improving the service with statistics</td><td>Website statistics (anonymous), event counts</td><td>Legitimate interest</td></tr>
+    <tr><td>Plans, payments, invoices</td><td>Payment data</td><td>Contract, and legal obligations (accounting)</td></tr>
+    <tr><td>Service emails (for example password reset, new match)</td><td>Email, account data</td><td>Contract</td></tr>
+    <tr><td>Answering authorities and defending legal claims</td><td>Only what the request or claim requires</td><td>Legal obligation, legitimate interest</td></tr>
+  </table></div>
+  <p>We do not use protected characteristics (such as ethnicity, religion, health, pregnancy or sexual orientation) to
+  calculate job fit.</p>
 
-  <p><strong>Candidate information.</strong> Candidates may provide: profile photo, phone number, general
-  location, résumé/CV, employment history, education, skills and qualifications, languages, preferred
-  roles, salary expectations, work-location preferences, remote/hybrid preferences, availability and
-  notice period, work-authorization information, and job interests or deal-breakers. Unless clearly marked
-  as required, these fields are optional and controlled by the candidate.</p>
-
-  <p><strong>Recruiter and employer information.</strong> Recruiters and employers may provide:
-  professional name and contact details, company name, business email address, job title, company
-  website, company address and country, company-registration information, employer-verification
-  documents, job descriptions, salary ranges, and work-location and scheduling information.</p>
-
-  <p><strong>Matching and recruitment activity.</strong> We may process: jobs viewed, candidate and
-  recruiter interest, mutual matches, applications, messages, interview invitations, interview status,
-  feedback, offers, hiring outcomes, profile and job preferences, reasons supplied for accepting or
-  declining an opportunity, and recruiter activity/response information.</p>
-
-  <p><strong>Communications.</strong> We collect communications sent through JobsMatchNow, including
-  in-app messages, support requests, reports and complaints, candidate feedback, moderation appeals, and
-  email-notification status. Private messages are not intended to be routinely read by administrators.
-  Authorized personnel may access relevant messages when necessary to investigate a report, prevent
-  fraud, resolve a support issue, comply with law, or protect users.</p>
-
-  <p><strong>Payment and subscription information.</strong> For paid recruiter subscriptions, we may
-  receive: subscription plan, subscription status, billing period, transaction identifier, payment amount
-  and currency, payment status, refund or chargeback status, and limited billing-contact information.
-  Payments may be processed by Apple, Google Play, VNPay, Stripe, PayPal, or another payment provider
-  shown at checkout. <strong>JobsMatchNow does not store complete payment-card numbers, card security
-  codes, or raw Apple Pay/Google Pay credentials</strong> — payment providers process that information
-  under their own privacy policies.</p>
-
-  <p><strong>Device, technical, and usage information.</strong> We may automatically collect: IP address,
-  device and browser type, operating system, app version, login timestamps, security events, crash and
-  error information, pages and features used, referral source, cookie or session identifiers, and
-  approximate country or region. We do not use this information to sell targeted advertising.</p>
-
-  <p><strong>Information collected with device permission.</strong> When a feature requires device
-  access, the application may request permission for camera, photo library, files or documents,
-  notifications, or approximate/precise location. We request access only when needed for a feature, such
-  as uploading a profile photo, attaching a résumé, or receiving job notifications. You can change device
-  permissions through your operating-system settings at any time.</p>
-
-  <h2>4. How we use personal information</h2>
-  <p>We use personal information to: create and secure accounts; build candidate and recruiter profiles;
-  display relevant employment opportunities; generate and explain match recommendations; confirm mutual
-  interest; enable messaging; schedule interviews; manage applications and recruitment stages; verify
-  recruiters and employers; process recruiter subscriptions; provide customer support; deliver service and
-  security notifications; prevent fake jobs, fraud, abuse, and spam; enforce our Code of Good Conduct;
-  investigate reports and appeals; improve application performance and usability; and comply with legal,
-  accounting, and regulatory obligations.</p>
-  <p>We do not sell personal information to advertisers or data brokers.</p>
-
-  <h2 id="ai">5. Matching, AI features and automated assistance</h2>
-  <p><strong>People decide, not software.</strong> A conversation opens only when both the candidate and
-  the hiring team choose each other. JobsMatchNow never rejects, hires, or filters out a person on its own.</p>
-  <p><strong>Fit scores.</strong> The fit score shown on profiles and roles is calculated with a fixed set
-  of rules written by our team (skills, salary range, location or remote preference, experience). It is
-  not produced by an AI model. It is a recommendation, not a guarantee, and the reasons behind each score
-  are shown so you can judge it yourself.</p>
-  <p><strong>Where we use AI.</strong> We use AI only to help people save time:</p>
+  <h2 id="ai">5. Matching, AI and automated decisions</h2>
+  <p class="short"><b>In short:</b> scores follow fixed, visible rules; AI only suggests; people always decide.</p>
+  <p><strong>Fit scores</strong> are calculated with fixed rules written by our team (skills, salary range, location
+  or remote preference, experience), not by an AI model, and the reasons are shown next to each score. A boosted
+  ("promoted") card moves up the deck but its score never changes.</p>
+  <p><strong>Helper features</strong> save you time with suggestions you review before saving:</p>
   <ul>
-    <li><strong>Reading a résumé/CV</strong> you upload, to suggest entries for your profile. You review and
-      edit the suggestions; nothing is saved to your profile until you continue.</li>
-    <li><strong>Reading a job description</strong> a hiring team pastes or uploads, to suggest the role's
-      fields. The hiring team reviews and edits them before saving.</li>
-    <li><strong>Preparing interviews (candidates):</strong> suggested topics and practice questions for a
-      role. We do not give hiring teams AI-generated material about a candidate.</li>
-    <li><strong>Conversation starters</strong> after a mutual match, which you can edit before sending.</li>
+    <li>reading a CV you upload, to suggest profile entries;</li>
+    <li>reading a job description a hiring team pastes or uploads, to suggest the role's fields;</li>
+    <li>interview practice for candidates (topics and questions for a role);</li>
+    <li>conversation starters after a mutual match, which you can edit before sending.</li>
   </ul>
-  <p><strong>What AI never does here:</strong> it never scores, ranks, or recommends hiring or rejecting a
-  person. Everything it produces is marked &ldquo;AI-generated suggestions, please review&rdquo;.</p>
-  <p><strong>AI provider.</strong> To provide these features, the relevant text (the résumé text or job
-  description; for interview practice, the role; for conversation starters after a mutual match, the role,
-  and the candidate's name, job title and listed skills)
-  may be sent to our AI provider, <strong>Anthropic</strong> (the Claude API), which processes it on our
-  behalf to return the suggestions. Under Anthropic's commercial terms, content sent through its API is not
-  used to train its AI models. We send only what the feature needs, never payment details or passwords.
-  When an AI feature is not available, the app uses simple non-AI templates instead.</p>
-  <p><strong>Your own AI chatbot (optional, your choice).</strong> The in-app chatbot runs on <em>your own</em>
-  AI account: you connect your own Anthropic (Claude) or OpenAI (ChatGPT) key. Only when you ask it a
-  question do we send that question and a short summary of your own JobsMatchNow data (never your contact
-  details or CV file) to the provider you chose, under your account and that provider's terms; usage is
-  billed to you by that provider. Your key is stored encrypted and never shown again in full. The chatbot is
-  read-only: it cannot apply, message or change anything. You can disconnect it at any time.</p>
-  <p>We may also use automated checks to detect spam, suspicious activity, or inappropriate language.</p>
-  <p>We do not intentionally use physical appearance, ethnicity, religion, pregnancy, sexual orientation,
-  health status, or other protected characteristics to calculate job suitability.</p>
+  <p>These features run on <strong>our own built-in rules on our servers. They do not send your data to any AI
+  provider.</strong> If we ever connect them to an AI provider, we will update this policy and tell you before it
+  applies. Nothing in JobsMatchNow scores, ranks, or recommends hiring or rejecting a person with AI, and we never give
+  hiring teams AI-generated material about a candidate.</p>
+  <p><strong>Your own chatbot</strong> runs on your own Anthropic or OpenAI account. Only when you ask a question do we
+  send it, with a short summary of your own data (never your contact details or CV file), to the provider you chose.
+  It is read-only and you can disconnect it at any time.</p>
+  <p><strong>No solely automated decisions.</strong> A conversation opens only when people on both sides choose it.
+  We may use automated checks to detect spam or suspicious activity; any suspension is decided by a person.</p>
 
-  <h2>6. When information is shared</h2>
-  <p><strong>Between candidates and recruiters.</strong> When a candidate and recruiter interact, we may
-  share information necessary for the recruitment process. Depending on the user's privacy settings and
-  recruitment stage, this may include name, profile information, skills, work experience, résumé, salary
-  preferences, availability, messages, and interview information. We do not make private recruiter
-  feedback visible to unrelated employers.</p>
-  <p><strong>With service providers.</strong> We may use service providers for cloud hosting, database
-  infrastructure, authentication, email delivery, push notifications, file storage, product analytics,
-  error monitoring, payment processing, and security/fraud prevention. Providers receive only the
-  information reasonably necessary to perform their services and must handle it under appropriate
-  contractual or legal safeguards.</p>
-  <p><strong>With authorities or professional advisers.</strong> We may disclose information when
-  reasonably necessary to comply with applicable law, respond to a lawful request, protect users or the
-  public, investigate fraud or serious misconduct, establish or defend legal claims, or complete a
-  financing, restructuring, merger, or acquisition. Any prospective buyer would receive only information
-  necessary for due diligence and remain subject to confidentiality obligations.</p>
+  <h2 id="visibility">6. What other members see</h2>
+  <p class="short"><b>In short:</b> enough to decide, nothing more, until you both say yes.</p>
+  <div class="table-wrap"><table>
+    <tr><th>When</th><th>What the other side sees</th></tr>
+    <tr><td>Before a match</td><td>Your profile card: photo, name, headline, skills, experience, education, languages, approximate distance, an anonymized CV preview, your job status (for example "Open to work"). Your age only if you made it public.</td></tr>
+    <tr><td>Never before a match</td><td>Your email, phone, contact links and booking link; your exact salary expectation; your exact location; the recruiter or role named in your job status.</td></tr>
+    <tr><td>After a mutual match</td><td>Your contact details and full CV, so you can arrange interviews, plus your messages in that conversation.</td></tr>
+    <tr><td>Never</td><td>Your private notes, your password, your verification selfie, the reports you send, and other members' private feedback.</td></tr>
+  </table></div>
+  <p>You can edit or remove profile information, replace or delete your CV, hide your age, block a member, and
+  report a profile, role or conversation at any time. Your private calendar link (if you use the calendar feed) shows
+  your meetings to anyone who has it; you can reset it in the app.</p>
 
-  <h2>7. International data transfers</h2>
-  <p>JobsMatchNow may use cloud hosting, analytics, communications, authentication, payment, and support
-  providers located in different countries.</p>
-  <p>As a result, personal information may be processed outside the country where the user lives.</p>
-  <p>Where appropriate, JobsMatchNow will use contractual, technical, and organizational safeguards
-  designed to protect personal information during international processing.</p>
+  <h2 id="share">7. Who we share it with</h2>
+  <p class="short"><b>In short:</b> only with the other members you match with, and with the companies that help us run the service.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Recipient</th><th>What and why</th></tr>
+    <tr><td>Other members</td><td>As described in section 6.</td></tr>
+    <tr><td>Hosting and storage</td><td>Amazon Web Services (servers and file storage).</td></tr>
+    <tr><td>Email delivery</td><td>Our email provider, to send service emails such as password resets.</td></tr>
+    <tr><td>AI provider</td><td>Only the provider of your own chatbot (Anthropic or OpenAI), and only if you connect it and ask it a question (section 5). No other feature sends your data to an AI provider.</td></tr>
+    <tr><td>Sign-in providers</td><td>Google or LinkedIn, only if you choose to sign in with them.</td></tr>
+    <tr><td>Payment providers</td><td>The payment service shown at checkout, to process a payment you make.</td></tr>
+    <tr><td>Product analytics (if enabled)</td><td>Mixpanel, Amplitude or Heap may receive anonymous event counts (for example "a match was created"), with a random id per event and <strong>no user id, name, email or message text</strong>.</td></tr>
+    <tr><td>Authorities</td><td>When the law requires it, or to protect someone's safety, prevent fraud, or establish or defend legal claims.</td></tr>
+    <tr><td>A buyer or investor</td><td>If JobsMatchNow is merged or sold, under confidentiality, with this policy continuing to protect your data.</td></tr>
+  </table></div>
+  <p>Our service providers may only use your data to provide their service to us, under contracts that protect it.</p>
 
-  <h2>8. How long we retain information</h2>
-  <p>We retain personal information only for as long as reasonably necessary for providing the service,
-  maintaining an active account, completing recruitment activity, resolving disputes, preventing fraud and
-  abuse, meeting tax/accounting/legal requirements, and enforcing agreements.</p>
-  <table>
-    <tr><th>Information</th><th>Retention</th></tr>
-    <tr><td>Active account information</td><td>While the account remains active</td></tr>
-    <tr><td>Unsuccessful application information</td><td>Deleted or anonymized after 12 months, unless the candidate agrees otherwise</td></tr>
-    <tr><td>Private messages</td><td>While needed for recruitment, safety, or dispute resolution</td></tr>
-    <tr><td>Verification documents</td><td>Deleted after verification, or retained only for the minimum legally required period</td></tr>
-    <tr><td>Payment records</td><td>Retained for the legally required accounting period</td></tr>
-    <tr><td>Security and audit logs</td><td>24 months, unless required longer</td></tr>
-    <tr><td>Deleted accounts</td><td>Deleted or anonymized within 30 days, except legally-required records</td></tr>
-  </table>
+  <h2 id="transfers">8. Where your data is stored</h2>
+  <p class="short"><b>In short:</b> on servers in the United States, with legal safeguards for transfers.</p>
+  <p>Our servers are in the United States (Amazon Web Services). When your data is transferred from the European
+  Union, the UK, Switzerland or Asia to the United States or to our providers, we rely on the safeguards your law
+  provides, such as the European Commission's standard contractual clauses. You can ask us for a copy.</p>
 
-  <h2 id="account-deletion">9. Account deletion</h2>
-  <p>Users can delete their account through Settings &amp; privacy &rarr; Delete my account (see
-  <a href="/delete-account.html">how to delete your account</a>), or by
-  emailing <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>.</p>
-  <p>When an account is deleted, we delete or anonymize associated personal information unless retention
-  is necessary for legal obligations, accounting records, fraud prevention, safety investigations, active
-  disputes, or enforcement records.</p>
-  <p>Deleting an account does not automatically cancel an Apple App Store or Google Play subscription —
-  you may also need to cancel through your Apple or Google subscription settings.</p>
+  <h2 id="retention">9. How long we keep it</h2>
+  <p class="short"><b>In short:</b> as long as your account is open, then it is deleted, except what the law or safety requires us to keep.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Data</th><th>How long</th></tr>
+    <tr><td>Profile, CV, photos, roles, matches, messages, notes</td><td>While your account is open. Deleted immediately when you delete your account (database records and uploaded files). Conversations you had with that person disappear for both sides.</td></tr>
+    <tr><td>Verification selfie</td><td>Deleted after review if the request is refused; otherwise kept while your account is open, to support the badge, and deleted with your account.</td></tr>
+    <tr><td>ID document</td><td>Never received (it stays on your device).</td></tr>
+    <tr><td>Your own AI key</td><td>Until you disconnect it or delete your account.</td></tr>
+    <tr><td>Payments, invoices, transfer proofs</td><td>10 years, as French accounting law requires, even after your account is deleted.</td></tr>
+    <tr><td>Reports, blocks, suspensions</td><td>Kept after an account is closed, to protect members and handle legal claims, for up to 3 years.</td></tr>
+    <tr><td>Security logs (with IP addresses)</td><td>A short period, for security, then deleted.</td></tr>
+    <tr><td>Website statistics</td><td>Kept without IP addresses or account ids.</td></tr>
+    <tr><td>Backups</td><td>Copies of deleted data can remain in our backups for a limited time until those backups are deleted; we never use them except to recover from an incident.</td></tr>
+  </table></div>
 
-  <h2>10. Your choices and rights</h2>
-  <p>Subject to applicable law, users may request to: access their personal information; correct
-  inaccurate information; update profile information; download certain information; withdraw consent
-  where processing relies on consent; restrict certain processing; object to certain uses; delete their
-  account; report unauthorized use; and appeal significant moderation decisions.</p>
-  <p>Send requests to <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>. We may need
-  to verify your identity before completing a request.</p>
+  <h2 id="account-deletion">10. Deleting your account</h2>
+  <p class="short"><b>In short:</b> Settings &amp; privacy &rarr; Delete my account. It takes effect at once.</p>
+  <p>Delete your account in the app (Settings &amp; privacy &rarr; Delete my account; see
+  <a href="/delete-account.html">how to delete your account</a>) or by writing to
+  <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>. We delete your profile, CV and other uploaded
+  files, roles, likes, matches, messages, meetings, notes and saved items, and private notes others wrote about you.
+  Only the records in section 9 that the law or safety requires are kept. Deleting your account does not cancel an
+  Apple or Google subscription: cancel it in your store settings too.</p>
 
-  <!-- Regional rights (2026-11-23): written from the main laws' published rights; for Lex / a lawyer to check
-       before any public launch outside the US and Vietnam. Not legal advice. Operator is established in France
-       (2026-11-23), so no separate EU representative is needed; open points: UK representative, Vietnam
-       cross-border transfer dossier. -->
-  <h2 id="regional">10a. Your rights where you live</h2>
-  <p>Wherever you live, you can ask us to access, correct, export or delete your personal information, and
-  withdraw consent you gave. Write to <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>.
-  We answer within 30 days, or sooner or later where your local law sets a different time limit. We will not
-  treat you differently for using these rights. The sections below add what is specific to your region.</p>
+  <h2 id="rights">11. Your rights and controls</h2>
+  <p class="short"><b>In short:</b> you can see, fix, download or delete your data, and say no to optional uses.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Right</th><th>How</th></tr>
+    <tr><td>Access and copy</td><td>Your profile is visible to you in the app; for a full copy, write to us.</td></tr>
+    <tr><td>Correction</td><td>Edit your profile and roles in the app at any time.</td></tr>
+    <tr><td>Deletion</td><td>Delete your account in the app (section 10), or delete a CV, photo or role.</td></tr>
+    <tr><td>Portability</td><td>Write to us for your data in a machine-readable format.</td></tr>
+    <tr><td>Withdraw consent</td><td>Disconnect your AI chatbot, turn off location in your device settings, or ask us to remove your "Verified" badge and selfie.</td></tr>
+    <tr><td>Object or restrict</td><td>Write to us to object to a use based on our legitimate interest, or to restrict a use while we check a request.</td></tr>
+    <tr><td>Appeal a moderation decision</td><td>Write to us within 30 days; a person reviews it.</td></tr>
+    <tr><td>Complain</td><td>To the CNIL or the data protection authority where you live (section 12).</td></tr>
+  </table></div>
+  <p>Write to <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>. We may ask you to confirm your
+  identity, and we answer within 30 days (or the time your local law sets). We will never treat you differently for
+  using your rights.</p>
 
-  <h3>United States</h3>
-  <p>If you live in California, the California Consumer Privacy Act (as amended by the CPRA) gives you the
-  right to know what personal information we collect and why, to access, correct and delete it, and to
-  opt out of its &ldquo;sale&rdquo; or &ldquo;sharing&rdquo; for targeted advertising. <strong>We do not sell
-  your personal information and do not share it for targeted advertising.</strong> We use sensitive
-  information (such as account login details) only to provide the Service. You may use an authorized agent
-  to make a request. Residents of other US states with consumer privacy laws (for example Colorado,
-  Connecticut, Virginia, Texas and Oregon) have similar rights, including the right to appeal our answer to
-  a request by replying to it.</p>
-
+  <!-- Regional rights (2026-11-23): written from the main laws' published rights; for a lawyer to check before any
+       public launch outside the EU, US and Vietnam. Operator is established in France, so no separate EU representative
+       is needed; open points: UK representative, Vietnam cross-border transfer dossier. -->
+  <h2 id="regional">12. Your rights where you live</h2>
+  <p class="short"><b>In short:</b> the rights above apply everywhere; here is what your local law adds.</p>
   <h3>European Union, EEA and Switzerland</h3>
-  <p>Under the General Data Protection Regulation (GDPR) and the Swiss Federal Act on Data Protection, we
-  process your personal information on these legal bases: <strong>performing our contract with you</strong>
-  (your account, matching, messaging); <strong>our legitimate interests</strong> (security, fraud
-  prevention, improving the Service), balanced against your rights; <strong>your consent</strong> (optional
-  features such as connecting your own AI assistant, and any marketing emails), which you can withdraw at
-  any time; and <strong>legal obligations</strong> (for example accounting). You also have the right to
-  restrict processing, to data portability, and to object to processing based on legitimate interests.
-  JobsMatchNow does not make decisions about you based solely on automated processing that have legal or
-  similarly significant effects: a conversation opens only when people on both sides choose it. JobsMatchNow
-  is based in France, so our lead data protection authority is the CNIL (cnil.fr); you can also complain to
-  the data protection authority in the country where you live or work.</p>
-
+  <p>The GDPR and the Swiss Federal Act on Data Protection give you the rights in section 11, on the legal grounds in
+  section 4. JobsMatchNow is based in France, so our lead authority is the CNIL (cnil.fr); you can also complain to
+  the authority in the country where you live or work.</p>
   <h3>United Kingdom</h3>
-  <p>The UK GDPR and the Data Protection Act 2018 give you the same rights and legal bases described for the
-  European Union above. You can complain to the Information Commissioner's Office (ico.org.uk).</p>
-
+  <p>The UK GDPR and the Data Protection Act 2018 give you the same rights. You can complain to the Information
+  Commissioner's Office (ico.org.uk).</p>
+  <h3>United States</h3>
+  <p>If you live in California, the CCPA (as amended by the CPRA) gives you the right to know, access, correct and
+  delete your personal information, and to opt out of its "sale" or "sharing" for targeted advertising.
+  <strong>We do not sell your personal information and do not share it for targeted advertising.</strong> We use
+  sensitive information (such as login details) only to provide the Service. You may use an authorized agent.
+  Residents of other states with privacy laws (for example Colorado, Connecticut, Virginia, Texas and Oregon) have
+  similar rights, including appealing our answer by replying to it.</p>
   <h3>Vietnam</h3>
-  <p>Under Vietnam's personal data protection rules (the Law on Personal Data Protection and Decree
-  13/2023/ND-CP), we process your personal data with your consent or as otherwise permitted by law. You
-  have the right to be informed, to give and withdraw consent, to access, correct and delete your data, to
-  restrict processing and object to it, to receive your data, and to complain. Your data is stored on
-  servers outside Vietnam (see section 7); by creating an account you are informed of this transfer.</p>
-
+  <p>Under Vietnam's personal data protection rules (the Law on Personal Data Protection and Decree 13/2023/ND-CP), we
+  process your data with your consent or as the law permits. You have the right to be informed, to give and withdraw
+  consent, to access, correct and delete your data, to restrict and object, to receive your data, and to complain. Your
+  data is stored outside Vietnam (section 8); by creating an account you are informed of this transfer.</p>
   <h3>Singapore</h3>
-  <p>Under the Personal Data Protection Act 2012 (PDPA), we collect, use and disclose your personal data for
-  the purposes described in this policy with your consent or as permitted by the PDPA. You may ask to
-  access or correct your personal data and withdraw consent at any time; withdrawing consent may mean we can
-  no longer provide some features. You can complain to the Personal Data Protection Commission (pdpc.gov.sg).</p>
-
+  <p>Under the Personal Data Protection Act 2012, you may ask to access or correct your data and withdraw consent at any
+  time (some features may then stop working). You can complain to the PDPC (pdpc.gov.sg).</p>
   <h3>Thailand</h3>
-  <p>Under the Personal Data Protection Act B.E. 2562 (2019), you have the right to be informed, to access
-  and obtain a copy of your data, to data portability, to object, to have your data deleted or anonymized,
-  to restrict its use, to correct it, and to withdraw consent. You can complain to the Personal Data
-  Protection Committee of Thailand.</p>
-
+  <p>Under the Personal Data Protection Act B.E. 2562 (2019), you have the rights to be informed, access, portability,
+  objection, deletion or anonymization, restriction, correction and withdrawal of consent, and you can complain to the
+  Personal Data Protection Committee.</p>
   <h3>Malaysia</h3>
-  <p>Under the Personal Data Protection Act 2010 (as amended in 2024), you have the right to access and
-  correct your personal data, to withdraw consent, to limit processing likely to cause damage or distress,
-  to prevent direct marketing, and to ask for your data to be transmitted to another organization. You can
-  complain to the Personal Data Protection Commissioner of Malaysia.</p>
+  <p>Under the Personal Data Protection Act 2010 (as amended in 2024), you may access and correct your data, withdraw
+  consent, limit processing likely to cause damage or distress, prevent direct marketing, and ask for your data to be
+  sent to another organization. You can complain to the Personal Data Protection Commissioner.</p>
 
-  <h3>Where your data is stored</h3>
-  <p>Our servers are located in the United States. When we transfer personal information from the European
-  Union, the UK, Switzerland or Asia to the United States or to our service providers, we rely on the
-  safeguards your local law provides for such transfers, such as standard contractual clauses where they are
-  required.</p>
+  <h2 id="cookies">13. Cookies and similar technologies</h2>
+  <p class="short"><b>In short:</b> only what the app needs to work. No advertising cookies.</p>
+  <p>We use one necessary cookie to keep you signed in securely, and your browser's storage for things like your
+  current session, settings you chose and the website statistics session described in section 3. We do not use
+  advertising or third-party tracking cookies and show no ads. If we ever add optional analytics or marketing tools
+  that need consent, we will ask you first.</p>
 
-  <h2>11. Candidate profile visibility</h2>
-  <p>Candidates control relevant visibility settings. Where supported, candidates may: hide their profile;
-  limit profile visibility; remove their photo; replace or delete their résumé; disable job notifications;
-  block recruiters; report employers; and withdraw from a recruitment process.</p>
-  <p>Candidates should not upload confidential documents or information they are not authorized to
-  share.</p>
+  <h2 id="security">14. Security</h2>
+  <p class="short"><b>In short:</b> we protect your data, and ask you to protect your login.</p>
+  <p>We use encryption in transit (HTTPS), password hashing, encrypted storage of AI keys, access controls with admin
+  sign-in, audit logs of admin actions, rate limits against abuse, and backups. Only authorized people at JobsMatchNow
+  can access member data, and private messages are opened only to investigate a report, prevent fraud, resolve a
+  support request you made, or comply with the law. No system is perfectly secure: use a strong password and tell us
+  at once if you suspect someone accessed your account. If a breach puts your rights at risk, we will tell you and the
+  authorities as the law requires.</p>
 
-  <h2 id="cookies">12. Cookies and similar technologies</h2>
-  <p>JobsMatchNow uses necessary cookies and similar technologies for authentication, security, session
-  management, language preferences, application functionality, and basic performance measurement. Where
-  legally required, non-essential analytics or marketing technologies will not be activated without
-  appropriate consent.</p>
-  <p>JobsMatchNow does not currently display third-party advertising.</p>
+  <h2 id="safety">15. Recruitment safety</h2>
+  <p class="short"><b>In short:</b> a real employer never asks you for money.</p>
+  <p>Report any fake vacancy, request for an application fee, deposit, equipment purchase, gift card or
+  cryptocurrency, identity theft, harassment, discrimination or misuse of your data, using the Report option in the app
+  or by writing to <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>. Links to employer websites,
+  video-call or calendar services are governed by those services' own policies.</p>
 
-  <h2>13. Data security</h2>
-  <p>We use reasonable technical and organizational safeguards, which may include encryption in transit,
-  password hashing, access controls, administrator authentication, audit logging, secure hosting, backup
-  procedures, security monitoring, and restricted access to candidate information.</p>
-  <p>No system is completely secure. Users should use strong passwords, protect their devices, and notify
-  us immediately about suspected unauthorized access.</p>
+  <h2 id="changes">16. Changes to this policy</h2>
+  <p>We update this policy when the product, our providers or the law change. The date at the top shows the current
+  version. If a change matters to you, we will tell you in the app or by email before it applies, and ask for your
+  consent again where the law requires it.</p>
 
-  <h2>14. Recruitment safety</h2>
-  <p>Recruiters and employers must not request improper payments from candidates. Candidates should
-  report: fake vacancies; requests for application fees; requests for cryptocurrency; requests for gift
-  cards; suspicious equipment deposits; identity theft; harassment; discrimination; or misuse of personal
-  information.</p>
-  <p>Reports can be submitted through the application or by emailing
-  <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>.</p>
-
-  <h2>15. Third-party links</h2>
-  <p>JobsMatchNow may contain links to employer websites, video-interview services, calendar services, or
-  other third-party platforms. Their privacy practices are governed by their own policies. JobsMatchNow is
-  not responsible for information users provide directly to unrelated third parties.</p>
-
-  <h2>16. Changes to this Privacy Policy</h2>
-  <p>We may update this Privacy Policy when the product changes, new features or providers are
-  introduced, legal requirements change, or security/privacy practices improve. The latest version will
-  display its effective date above.</p>
-  <p>Material changes may be communicated through an in-app notice, email, a login notification, or a
-  request for renewed consent where required.</p>
-
-  <h2>17. Contact us</h2>
-  <p>For privacy questions, requests, or complaints:</p>
-  <ul>
-    <li>Privacy: <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a></li>
-    <li>Support: <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a></li>
-    <li>Website: <a href="https://jobsmatchnow.com">jobsmatchnow.com</a></li>
-  </ul>
+  <h2 id="contact">17. Contact us</h2>
+  <p>For any privacy question, request or complaint: <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>,
+  or by post to JobsMatchNow SARL, 13 rue Primo Levi, 75013 Paris, France.</p>
   <p style="margin-top:48px;padding-top:18px;border-top:1px solid #e6e8ee;font-size:13px;color:#8a93a8">&copy; 2026 JobsMatchNow SARL. All rights reserved. &middot; <a href="/legal.html">Legal notice &amp; copyright</a> &middot; <a href="/terms.html">Terms</a></p>
 </body>
 </html>

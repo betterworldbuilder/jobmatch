@@ -16,7 +16,7 @@ import { detectMutualMatch, isStrongRoleMatch, likesRemainingToday, scoreCandida
 import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, recruiterCompleteness } from './profile.js';
 import { anonymizeText, convertDocxToPdf, detectTools, docxToHtml, extractDocxText, extractPdfText, makeSimplePdf, pdfThumbnail } from './resume.js';
 import { applyJob, assertPublishable, parseJobText } from './jobs.js';
-import { backupToS3, mirrorToS3, restoreFromS3, s3Enabled } from './storage.js';
+import { backupToS3, mirrorToS3, removeFromS3, restoreFromS3, s3Enabled } from './storage.js';
 import { parseResumeToProfile } from './resume-parse.js';
 import os from 'node:os';
 import { generateIcebreakers, generatePrep, suggestScreeningQuestions } from './coaching.js';
@@ -878,11 +878,16 @@ app.delete('/api/me', async (req, res, next) => {
   try {
     const session = authSession(req);
     if (!session) { const error = new Error('Sign in first'); error.status = 401; throw error; }
+    let coverNames = [];
     await store.transaction((db) => {
       const me = db.users.find((item) => item.id === session.sub);
       if (!me) { const error = new Error('Account not found'); error.status = 404; throw error; }
       if (me.demo === true) { const error = new Error('Demo accounts cannot be deleted'); error.status = 403; throw error; }
+      coverNames = db.jobs.filter((j) => j.employerId === me.id && j.coverName).map((j) => j.coverName);
       const myMatchIds = new Set(db.matches.filter((m) => m.candidateId === me.id || m.employerId === me.id).map((m) => m.id));
+      const myJobIds = new Set(db.jobs.filter((j) => j.employerId === me.id).map((j) => j.id));
+      // Private notes written by this account, or by others about this person or their roles.
+      if (Array.isArray(db.notes)) db.notes = db.notes.filter((n) => n.userId !== me.id && n.targetId !== me.id && !myJobIds.has(n.targetId));
       db.users = db.users.filter((u) => u.id !== me.id);
       db.jobs = db.jobs.filter((j) => j.employerId !== me.id);
       db.swipes = db.swipes.filter((s) => s.actorId !== me.id && s.targetId !== me.id);
@@ -893,8 +898,10 @@ app.delete('/api/me', async (req, res, next) => {
       if (Array.isArray(db.aiKeys)) db.aiKeys = db.aiKeys.filter((k) => k.id !== me.id); // own AI key goes with the account
       // Funnel counters (db.eventCounts) hold no user ids, so nothing to unlink.
     });
+    // Uploaded files go too, on disk and in S3 (Privacy Policy: deleted with the account). Founder, 2026-11-24.
+    const filesRemoved = await removeAccountFiles(session.sub, coverNames);
     setCookie(res, AUTH_COOKIE, '', { maxAge: 0 });
-    res.json({ ok: true });
+    res.json({ ok: true, filesRemoved });
   } catch (error) { next(error); }
 });
 
@@ -948,6 +955,24 @@ const RESUME_DIR = path.join(UPLOADS_ROOT, 'resumes');
 const PHOTOS_DIR = path.join(UPLOADS_ROOT, 'photos');
 const SITE_DIR = path.join(UPLOADS_ROOT, 'site');
 const mirror = (localPath) => mirrorToS3(localPath, UPLOADS_ROOT); // durable copy to S3 when configured
+/** Delete an uploaded file on disk AND its S3 copy (else restoreFromS3 brings it back on the next start). */
+async function removeUpload(localPath) {
+  const existed = await fs.promises.unlink(localPath).then(() => true, () => false);
+  await removeFromS3(localPath, UPLOADS_ROOT);
+  return existed;
+}
+/** Every file an account uploaded (CVs and their previews, recommendation letters, photo, verification selfie,
+ *  covers of its roles). Payment proofs are kept: accounting law requires them. Real ids are `u-` + 8 hex, so the
+ *  `<id>-` / `<id>.` name prefixes can only match this account; other ids only clear exact names. */
+async function removeAccountFiles(userId, coverNames = []) {
+  const realId = /^u-[0-9a-f]{8}$/.test(userId);
+  const names = async (dir) => fs.promises.readdir(dir).catch(() => []);
+  let removed = 0;
+  if (realId) for (const name of await names(RESUME_DIR)) if (name.startsWith(`${userId}-`)) removed += Number(await removeUpload(path.join(RESUME_DIR, name)));
+  for (const dir of [PHOTOS_DIR, VERIFY_DIR]) for (const name of await names(dir)) if (name.startsWith(`${userId}.`)) removed += Number(await removeUpload(path.join(dir, name)));
+  for (const name of coverNames) if (name && !name.includes('/') && !name.includes('..')) removed += Number(await removeUpload(path.join(UPLOADS_ROOT, 'covers', name)));
+  return removed;
+}
 await fs.promises.mkdir(RESUME_DIR, { recursive: true });
 await fs.promises.mkdir(PHOTOS_DIR, { recursive: true });
 await fs.promises.mkdir(SITE_DIR, { recursive: true });
@@ -1106,7 +1131,7 @@ async function assertUploadAllowed(req, userId) {
   assertDemoActor(req, db, item.id);
 }
 async function removeSelfies(userId) {
-  for (const ext of new Set(Object.values(PHOTO_TYPES))) await fs.promises.unlink(path.join(VERIFY_DIR, `${userId}.${ext}`)).catch(() => {});
+  for (const ext of new Set(Object.values(PHOTO_TYPES))) await removeUpload(path.join(VERIFY_DIR, `${userId}.${ext}`));
 }
 
 app.post('/api/users/:id/verification-selfie', uploadLimiter, express.raw({ type: () => true, limit: '5mb' }), async (req, res, next) => {

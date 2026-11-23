@@ -4,110 +4,251 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex" />
-<title>Terms of Service — JobsMatchNow</title>
+<title>Terms of Use — JobsMatchNow</title>
 <style>
   body { font: 15px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1c1e21; max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
   h1 { font-size: 26px; margin-bottom: 4px; }
-  h2 { font-size: 18px; margin-top: 36px; }
+  h2 { font-size: 18px; margin-top: 36px; scroll-margin-top: 16px; }
   p, li { color: #3a3f4a; }
-  .updated { color: #8a93a8; font-size: 13px; margin-bottom: 28px; }
+  li { margin: 4px 0; }
+  .updated { color: #8a93a8; font-size: 13px; margin-bottom: 22px; }
   a { color: #0a75c7; }
+  .short { background: #f3f6fb; border-left: 3px solid #0a75c7; padding: 8px 12px; border-radius: 0 8px 8px 0; color: #1c1e21; font-size: 14px; }
+  .short b { color: #0a75c7; }
+  .keybox { border: 1px solid #f6c3d6; background: #fff6fa; border-radius: 14px; padding: 14px 18px; margin: 18px 0 8px; }
+  .keybox h2 { margin: 0 0 6px; font-size: 16px; color: #c2185b; }
+  .keybox ul { margin: 0; padding-left: 20px; }
+  .toc { columns: 2; column-gap: 28px; font-size: 14px; padding-left: 20px; }
+  .toc li { break-inside: avoid; }
+  ol.rules { padding-left: 22px; }
   .todo { background: #fff3d6; color: #9a6700; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+  @media (max-width: 560px) { .toc { columns: 1; } }
 </style>
 </head>
 <body>
-  <!-- Published 2026-11-23 on the founder's go (governing law France, free pilot for now). Lex / a lawyer should
-       still review before paid plans start. Not legal advice. -->
-  <h1>JobsMatchNow Terms of Service</h1>
-  <p class="updated">Effective date: November 23, 2026 &middot; Last updated: November 23, 2026</p>
+  <!-- Rewritten 2026-11-24 on the founder's go: same product facts as before, clearer structure (short summary per
+       section, "you agree to / not to" lists, content rules, enforcement and appeal), ideas taken from large consumer
+       apps' terms, written for a hiring product. Every feature named here exists in the app. Not legal advice:
+       a lawyer should review before paid plans start. Open point: name the consumer mediator (section 16). -->
+  <h1>JobsMatchNow Terms of Use</h1>
+  <p class="updated">Effective date: November 24, 2026 &middot; Last updated: November 24, 2026 &middot; Replaces the version of November 23, 2026</p>
 
-  <p>These Terms of Service ("Terms") govern your use of the JobsMatchNow website, web application,
-  Android application, and iOS application (the "Service"). By creating an account or using the
-  Service, you agree to these Terms. If you do not agree, do not use the Service.</p>
+  <p>These Terms are the agreement between you and JobsMatchNow SARL for the JobsMatchNow website, web app, and
+  Android and iOS apps (the "Service"). They work together with our <a href="/privacy.html">Privacy Policy</a> and
+  the Code of Conduct shown in the app. By creating an account or using the Service, you accept them. Each section
+  starts with a short summary in plain words; the full text below it is what applies.</p>
 
-  <h2>1. Who we are</h2>
+  <section class="keybox" aria-label="Key points">
+    <h2>Key points</h2>
+    <ul>
+      <li>JobsMatchNow connects candidates and hiring teams. A chat opens only when <strong>both sides</strong> choose each other.</li>
+      <li>We are not an employer or an employment agency, and we don't take part in your hiring decisions.</li>
+      <li>Be real, honest and respectful. <strong>Never ask a candidate for money.</strong> No fake jobs, no fake profiles.</li>
+      <li>Candidates use the core Service for free. Hiring teams start with a free trial; any price is shown before you pay.</li>
+      <li>We investigate reports. If you break these Terms we can suspend or close your account and cancel your
+        subscription without refund, to the extent the law allows.</li>
+      <li>You can delete your account at any time, and your data goes with it (see the <a href="/privacy.html#account-deletion">Privacy Policy</a>).</li>
+    </ul>
+  </section>
+
+  <ol class="toc">
+    <li><a href="#who">Who we are</a></li>
+    <li><a href="#service">What the Service is (and isn't)</a></li>
+    <li><a href="#eligibility">Who can use it</a></li>
+    <li><a href="#responsibilities">Your responsibilities</a></li>
+    <li><a href="#prohibited">What you must not do</a></li>
+    <li><a href="#content-rules">Content that isn't allowed</a></li>
+    <li><a href="#enforcement">Reports, investigations and enforcement</a></li>
+    <li><a href="#your-content">Your content</a></li>
+    <li><a href="#our-ip">Our intellectual property</a></li>
+    <li><a href="#payments">Plans, trials, payments and refunds</a></li>
+    <li><a href="#matching">Matching, AI and hiring decisions</a></li>
+    <li><a href="#safety">Safety and verification</a></li>
+    <li><a href="#changes">Availability and changes</a></li>
+    <li><a href="#liability">Liability</a></li>
+    <li><a href="#ending">Ending your account</a></li>
+    <li><a href="#law">Governing law and disputes</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ol>
+
+  <h2 id="who">1. Who we are</h2>
+  <p class="short"><b>In short:</b> JobsMatchNow SARL in Paris runs the Service.</p>
   <ul>
-    <li>Operator: JobsMatchNow SARL (see the <a href="/legal.html">Legal notice</a>)</li>
+    <li>Operator: JobsMatchNow SARL (company details in the <a href="/legal.html">Legal notice</a>)</li>
     <li>Address: 13 rue Primo Levi, 75013 Paris, France</li>
     <li>Support: <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a></li>
   </ul>
 
-  <h2>2. What the Service does</h2>
-  <p>JobsMatchNow helps candidates and hiring teams find each other. Both sides can express interest,
-  and a conversation opens only when both sides choose each other (a "match"). Match scores and fit
-  explanations are recommendations, not guarantees. JobsMatchNow is not an employer, an employment
-  agency, or a party to any job offer or employment contract between users.</p>
+  <h2 id="service">2. What the Service is (and isn't)</h2>
+  <p class="short"><b>In short:</b> we help people find each other; the hiring itself is between you and the other side.</p>
+  <p>Candidates swipe roles, hiring teams swipe candidates, and a conversation opens only after a mutual like (a
+  "match"). Match scores and fit explanations are recommendations, not guarantees. JobsMatchNow is not an employer,
+  an employment agency, or a party to any job offer or employment contract between users.</p>
 
-  <h2>3. Eligibility and accounts</h2>
+  <h2 id="eligibility">3. Who can use it</h2>
+  <p class="short"><b>In short:</b> adults, with one real account each, telling the truth.</p>
   <ul>
-    <li>You must be at least 18 years old.</li>
-    <li>You must give accurate information and keep it up to date.</li>
-    <li>You are responsible for keeping your login details secure and for activity on your account.</li>
+    <li>You must be at least 18 years old and legally able to accept these Terms.</li>
+    <li>One person, one account. Don't share your account or use someone else's.</li>
     <li>Hiring-team accounts must represent a real organization and be authorized to recruit for it.</li>
+    <li>You can't use the Service if we closed an account of yours for breaking these Terms, unless we agree in writing.</li>
+    <li>Demo accounts are shared showcase accounts with sample profiles; don't put real personal information in them.</li>
   </ul>
 
-  <h2>4. Rules for all users</h2>
-  <p>You agree not to:</p>
+  <h2 id="responsibilities">4. Your responsibilities</h2>
+  <p class="short"><b>In short:</b> follow the law, be professional, keep your account safe.</p>
+  <p>You agree to:</p>
+  <ol class="rules">
+    <li>follow these Terms and the Code of Conduct, and check this page from time to time for changes;</li>
+    <li>follow the laws that apply to you, including employment, anti-discrimination, privacy and anti-spam laws;</li>
+    <li>keep your profile, roles and company information accurate and up to date;</li>
+    <li>treat other members, and our team, with courtesy and respect, in the app and outside it;</li>
+    <li>use other members' information (CVs, messages, contact details) only for the recruitment process it was shared for;</li>
+    <li>keep your login details secure and tell us at once if you think someone else used your account.</li>
+  </ol>
+
+  <h2 id="prohibited">5. What you must not do</h2>
+  <p class="short"><b>In short:</b> no lying, no scams, no abuse, no scraping or copying.</p>
+  <p>You agree that you will not:</p>
+  <ol class="rules">
+    <li>misrepresent your identity, age, employer, job title, qualifications, experience or affiliations;</li>
+    <li>post a fake, misleading or non-existent job, or a job you are not authorized to fill;</li>
+    <li>ask a candidate for any payment, fee, deposit, equipment purchase, gift card or cryptocurrency;</li>
+    <li>harass, bully, threaten, stalk, intimidate, defame or pressure anyone, including romantic advances;</li>
+    <li>discriminate on age, gender, origin, religion, disability, pregnancy, sexual orientation or any other protected characteristic;</li>
+    <li>use the Service for fraud, money laundering, pyramid schemes or anything illegal;</li>
+    <li>ask for or collect other members' passwords, or share their personal data without permission;</li>
+    <li>contact members to sell products or services, or for anything other than recruitment;</li>
+    <li>scrape, crawl, copy or extract data or content, or use it to train artificial intelligence;</li>
+    <li>copy, frame, resell, modify, decompile or reverse engineer the Service, or build a copy of it;</li>
+    <li>upload viruses or malicious code, probe or attack our systems, or overload or get around our security;</li>
+    <li>use bots or automated tools to create accounts, swipe, like or message;</li>
+    <li>create a new account after a suspension or ban;</li>
+    <li>file false or abusive reports or appeals, or encourage anyone to break these rules.</li>
+  </ol>
+
+  <h2 id="content-rules">6. Content that isn't allowed</h2>
+  <p class="short"><b>In short:</b> keep everything professional and lawful.</p>
+  <p>You must not post or send content (profiles, photos, roles, CVs, messages) that is:</p>
+  <ol class="rules">
+    <li>offensive, hateful, harassing, threatening or discriminatory;</li>
+    <li>sexual, obscene or nude, or violent;</li>
+    <li>false, misleading or defamatory, including fake reviews or recommendations;</li>
+    <li>a scam, spam, advertising, or a link to an outside offer unrelated to the role;</li>
+    <li>someone else's photo, CV, likeness or personal data, shared without their permission;</li>
+    <li>protected by someone else's copyright, trademark or confidentiality (for example a former employer's secrets);</li>
+    <li>illegal, or promoting illegal activity, or containing malware.</li>
+  </ol>
+  <p>We may remove content that breaks these rules, with or without notice.</p>
+
+  <h2 id="enforcement">7. Reports, investigations and enforcement</h2>
+  <p class="short"><b>In short:</b> report what feels wrong; we look into it and can close accounts and cancel subscriptions.</p>
   <ul>
-    <li>post fake, misleading, or discriminatory jobs or profiles;</li>
-    <li>ask candidates for any payment, fee, deposit, gift card, or cryptocurrency;</li>
-    <li>harass, threaten, or spam other users;</li>
-    <li>collect other users' data by scraping, bots, or automated means;</li>
-    <li>use contact details or messages from the Service for anything other than the recruitment process;</li>
-    <li>try to break, overload, or get around the security of the Service.</li>
+    <li><strong>Report and block.</strong> Use the Report option on a profile, role or conversation, or write to
+      <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>. You can also block a member at any time;
+      blocked members disappear from each other's decks and can no longer message.</li>
+    <li><strong>We investigate.</strong> When a member is reported, or we see a possible breach of these Terms or the
+      Code of Conduct, we review the relevant profile, content and, where needed, the messages involved (see the
+      <a href="/privacy.html">Privacy Policy</a>). We may limit an account while we investigate.</li>
+    <li><strong>What we can do.</strong> Depending on how serious it is, we may warn you, remove content, limit
+      features (for example messaging or job posting), suspend your account, or close it permanently. Serious fraud,
+      payment requests to candidates, threats or other safety risks can lead to immediate closure without warning.</li>
+    <li><strong>Memberships.</strong> If we suspend or close your account because you broke these Terms or the Code
+      of Conduct, we may also cancel any subscription, trial, boost or credit on it, <strong>without refund</strong>,
+      to the extent the law allows. Payments already due (for example a per-hire fee for a hire already confirmed)
+      remain due.</li>
+    <li><strong>Authorities.</strong> We may keep and share information with the police or other authorities when
+      the law requires it or when someone's safety is at risk.</li>
+    <li><strong>Appeal.</strong> If you think we made a mistake, write to
+      <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a> within 30 days. A person on our team
+      reviews every appeal and tells you the outcome.</li>
   </ul>
-  <p>We may remove content, limit features, or suspend accounts that break these rules. You can appeal
-  by writing to <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>.</p>
 
-  <h2>5. Your content</h2>
-  <p>You keep ownership of what you upload (profiles, résumés, job posts, messages). You give
-  JobsMatchNow a limited license to store, display, and process that content only to run and improve
-  the Service, as described in our <a href="/privacy.html">Privacy Policy</a>. You confirm you have the
-  right to share it.</p>
+  <h2 id="your-content">8. Your content</h2>
+  <p class="short"><b>In short:</b> it stays yours; we only use it to run the Service.</p>
+  <p>You keep ownership of what you upload (profiles, photos, CVs, roles, messages). You give JobsMatchNow a
+  non-exclusive, worldwide, royalty-free licence to store, display and process it only to run, secure and improve
+  the Service, as described in the <a href="/privacy.html">Privacy Policy</a>, for as long as it is on the Service.
+  We do not sell your content and do not use it to train AI models. You confirm you have the right to share what
+  you upload. Content you send to other members (for example messages) is seen by them.</p>
 
-  <h2>5a. Our intellectual property</h2>
-  <p>The Service &mdash; its code, design, screens, texts, graphics, databases, and the JobsMatchNow&trade; name and logo
-  &mdash; belongs to JobsMatchNow SARL and is protected by copyright, database, trademark, trade secret and unfair
-  competition laws. Your account gives you a personal, non-exclusive, non-transferable right to use the Service for its
-  purpose only. You may not copy, clone, imitate, reverse engineer, scrape, frame, or use the Service or its content to
-  train artificial intelligence, without our prior written permission. Details and the laws that apply are in our
-  <a href="/legal.html">Legal notice &amp; copyright</a> page.</p>
+  <h2 id="our-ip">9. Our intellectual property</h2>
+  <p class="short"><b>In short:</b> the app is ours; you may use it, not copy it.</p>
+  <p>The Service &mdash; its code, design, screens, texts, graphics, databases, and the JobsMatchNow&trade; name and
+  logo &mdash; belongs to JobsMatchNow SARL and is protected by copyright, database, trademark, trade secret and unfair
+  competition laws. Your account gives you a personal, non-exclusive, non-transferable, revocable right to use the
+  Service for its purpose only. You may not copy, clone, imitate, reverse engineer, scrape, frame, or use the Service
+  or its content to train artificial intelligence, without our prior written permission. Details and the laws that
+  apply are on our <a href="/legal.html">Legal notice &amp; copyright</a> page.</p>
 
-  <h2>6. Pilots, fees, and payment</h2>
-  <p>Using the Service as a candidate is free. Hiring teams can start with a <strong>free trial or pilot</strong>
-  without being charged. A paid plan, subscription or per-hire fee applies only if you choose it, and its price
-  is shown to you before you pay. Payments may be handled by Apple, Google Play or another payment provider
-  shown at checkout, under their own terms. For a refund request, write to
-  <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>; we follow the refund rules of the store
-  or payment provider you used and any consumer law that applies to you.</p>
+  <h2 id="payments">10. Plans, trials, payments and refunds</h2>
+  <p class="short"><b>In short:</b> free for candidates, free trial for hiring teams, nothing charged without your choice.</p>
+  <ul>
+    <li><strong>Candidates</strong> use the core Service (profile, swiping, matches, messages) for free. Optional
+      Premium features may be offered with a free trial; their price is shown before you pay.</li>
+    <li><strong>Hiring teams</strong> start with a free trial, without being charged. After it, you choose a plan
+      (monthly subscriptions for one or more recruiters, or a pay-per-hire option with a success fee per confirmed
+      hire), or stay on the free Starter plan. Plan prices and what each includes are shown on the pricing page and
+      before you pay.</li>
+    <li><strong>Extras</strong> such as single job postings or boosts (which move a role or profile up the deck, and
+      are labelled as promoted) are optional and priced before purchase. A boost never changes a match score.</li>
+    <li><strong>Payment</strong> is handled by the payment method shown at checkout (for example bank transfer, a
+      local payment gateway, or Apple or Google for in-app purchases), under its own terms. We never see or store full
+      card numbers.</li>
+    <li><strong>Cancellation.</strong> You can cancel a subscription at any time; it stays active until the end of the
+      period you paid for. In-app purchases are cancelled in your Apple or Google settings.</li>
+    <li><strong>Refunds.</strong> Payments are non-refundable except where these Terms say otherwise or the law gives
+      you a right to a refund (for example a legal withdrawal period). For in-app purchases, the store's refund rules
+      apply. To ask, write to <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>. Accounts closed
+      for breaking these Terms: see section 7.</li>
+  </ul>
 
-  <h2>7. Hiring decisions</h2>
-  <p>Candidates and hiring teams make their own decisions. Hiring teams are responsible for complying
-  with employment, anti-discrimination, immigration, tax, and labor laws that apply to them and to the
-  people they hire.</p>
+  <h2 id="matching">11. Matching, AI and hiring decisions</h2>
+  <p class="short"><b>In short:</b> people decide; our tools only suggest.</p>
+  <p>Fit scores are calculated with fixed rules (skills, salary range, location or remote preference, experience)
+  and come with their reasons, so you can judge them. Helper features (reading a CV or job description, interview
+  practice, conversation starters) run on our built-in rules, and the optional chatbot runs on the AI account you
+  connect yourself; all of them produce suggestions you review before using. Nothing in the Service hires, rejects or filters out a person on its own. Candidates and hiring
+  teams make their own decisions, and hiring teams are responsible for complying with employment,
+  anti-discrimination, immigration, tax and labour laws.</p>
 
-  <h2>8. Availability and changes</h2>
-  <p>We work to keep the Service available but do not promise it will be uninterrupted or error-free.
-  We may change or stop features. If we change these Terms in a material way, we will tell you in the
-  app or by email before the changes apply.</p>
+  <h2 id="safety">12. Safety and verification</h2>
+  <p class="short"><b>In short:</b> we help with safety, but we can't vouch for every member.</p>
+  <p>We do not run criminal background checks on members and cannot guarantee anyone's identity, intentions or job
+  offer. A "Verified" badge means our team compared a selfie with the profile photos; it is not an identity or
+  employer check. The optional "ID checked" step is a preview: the document stays on your device and is not
+  verified by us, so it does not prove anyone's identity. Take care when meeting in person, never pay to get a job, and report anything suspicious.</p>
 
-  <h2>9. Disclaimers and limitation of liability</h2>
-  <p>The Service is provided "as is". To the extent permitted by law, JobsMatchNow is not liable for
-  indirect or consequential losses, or for the conduct of other users, and our total liability is
-  limited to the amount you paid us in the 12 months before the claim. Nothing in these Terms limits
-  rights you have under laws that cannot be changed by contract.</p>
+  <h2 id="changes">13. Availability and changes</h2>
+  <p class="short"><b>In short:</b> we keep improving the Service and will tell you about important changes.</p>
+  <p>We work to keep the Service available but do not promise it will be uninterrupted or error-free. We may change,
+  add or remove features. If we change these Terms in a way that matters to you, we will tell you in the app or by
+  email before the change applies; if you don't agree, you can delete your account before then.</p>
 
-  <h2>10. Ending your account</h2>
-  <p>You can delete your account at any time (see the
-  <a href="/privacy.html#account-deletion">Privacy Policy</a>). We may suspend or close accounts that
-  break these Terms or put other users at risk.</p>
+  <h2 id="liability">14. Liability</h2>
+  <p class="short"><b>In short:</b> our liability is limited, but your legal rights as a consumer stay intact.</p>
+  <p>The Service is provided "as is". To the extent permitted by law, JobsMatchNow is not liable for indirect or
+  consequential losses, lost profits or opportunities, or for the conduct of other members on or off the Service, and
+  our total liability is limited to the amount you paid us in the 12 months before the claim. Nothing in these Terms
+  limits liability that cannot be limited by law (for example for gross negligence or wilful misconduct) or removes
+  rights you have as a consumer.</p>
 
-  <h2>11. Governing law</h2>
-  <p>These Terms are governed by the laws of France. If you use the Service as a consumer, you also keep the
-  protection of the mandatory laws of the country where you live. Disputes go to the competent courts of
-  Paris, France, unless the law gives you the right to go to the courts where you live.</p>
+  <h2 id="ending">15. Ending your account</h2>
+  <p class="short"><b>In short:</b> you can leave at any time; we can close accounts that break the rules.</p>
+  <p>You can delete your account at any time in Settings &amp; privacy (see
+  <a href="/delete-account.html">how to delete your account</a>). Deleting your account doesn't cancel an Apple or
+  Google subscription by itself; cancel it in your store settings too. We may suspend or close accounts as described
+  in section 7.</p>
 
-  <h2>12. Contact</h2>
+  <h2 id="law">16. Governing law and disputes</h2>
+  <p class="short"><b>In short:</b> French law and Paris courts, with your local consumer protections kept.</p>
+  <p>These Terms are governed by French law. If you use the Service as a consumer, you also keep the protection of
+  the mandatory laws of the country where you live. Please contact us first, so we can try to solve the problem
+  together. If you are a consumer in the EU, you may also use a consumer mediator free of charge:
+  <span class="todo">mediator to be named</span>. Disputes go to the competent courts of Paris, France, unless the law
+  gives you the right to go to the courts where you live.</p>
+
+  <h2 id="contact">17. Contact</h2>
   <p>Questions about these Terms: <a href="mailto:support@jobsmatchnow.com">support@jobsmatchnow.com</a>.</p>
   <p style="margin-top:48px;padding-top:18px;border-top:1px solid #e6e8ee;font-size:13px;color:#8a93a8">&copy; 2026 JobsMatchNow SARL. All rights reserved. &middot; <a href="/legal.html">Legal notice &amp; copyright</a> &middot; <a href="/privacy.html">Privacy</a></p>
 </body>

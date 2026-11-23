@@ -4,6 +4,7 @@
  * otherwise. Returns fields the onboarding wizard pre-fills for review — never
  * persisted server-side without the user confirming.
  */
+import { serverAnthropicKey } from './server-ai.js';
 
 const SKILL_DICTIONARY = [
   // Engineering
@@ -132,7 +133,7 @@ function heuristicParse(text) {
 }
 
 async function claudeParse(text) {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = serverAnthropicKey(); // off unless USE_SERVER_AI_KEY=true (founder, 2026-11-24)
   if (!key) return null;
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
