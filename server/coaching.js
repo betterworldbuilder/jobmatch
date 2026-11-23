@@ -96,25 +96,4 @@ export async function generateIcebreakers(candidate, job) {
   return { icebreakers: options, generator: 'templates' };
 }
 
-/** Item 12: interview kit for a matched candidate. */
-export async function generateInterviewKit(candidate, job) {
-  const claimed = (candidate.skillsDetail || (candidate.skills || []).map((name) => ({ name, level: 3 })));
-  const matched = claimed.filter((skill) => (job.requiredSkills || []).some((required) => required.toLowerCase() === skill.name.toLowerCase()));
-  const gaps = (job.requiredSkills || []).filter((required) => !claimed.some((skill) => skill.name.toLowerCase() === required.toLowerCase()));
-  const salary = salaryCompatibility(candidate.preferences?.salary, job.salaryRange);
-  const format = (range) => range ? `${range.min.toLocaleString()}–${range.max.toLocaleString()} ${range.currency}` : 'not shared';
-  const salarySummary = `Candidate expects ${format(candidate.preferences?.salary)}; the role offers ${format(job.salaryRange)}. ${salary.evidence}`;
-
-  const generated = await claudeJson(`Create an interview kit for interviewing ${candidate.name} (${candidate.title}) for "${job.title}". Claimed skills: ${claimed.map((skill) => `${skill.name} (${skill.level}/5)`).join(', ')}. Skill gaps vs the role: ${gaps.join(', ') || 'none'}. Reply with ONLY JSON: {"skillQuestions": [{"skill": name, "questions": [2 probing questions grounded in their claimed level]} for up to 4 matched skills], "gapProbes": [{"skill": gap, "question": one honest question to assess it}]}`);
-  if (generated?.skillQuestions) return { ...generated, gaps, salarySummary, salaryStatus: salary.status, generator: 'claude' };
-
-  return {
-    generator: 'templates',
-    skillQuestions: (matched.length ? matched : claimed).slice(0, 4).map((skill) => ({
-      skill: skill.name,
-      questions: questionsForSkill(skill.name).slice(0, 2).map((question) => skill.level >= 4 ? `${question} (They rate themselves ${skill.level}/5 — push for depth.)` : question),
-    })),
-    gapProbes: gaps.slice(0, 4).map((skill) => ({ skill, question: `The role needs ${skill}, which isn't on their profile — ask how they would close that gap or what adjacent experience applies.` })),
-    gaps, salarySummary, salaryStatus: salary.status,
-  };
-}
+// Item 12 (AI interview kit about a matched candidate, for hiring teams) was removed, founder 2026-11-23.

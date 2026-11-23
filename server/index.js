@@ -19,7 +19,7 @@ import { applyJob, assertPublishable, parseJobText } from './jobs.js';
 import { backupToS3, mirrorToS3, restoreFromS3, s3Enabled } from './storage.js';
 import { parseResumeToProfile } from './resume-parse.js';
 import os from 'node:os';
-import { generateIcebreakers, generateInterviewKit, generatePrep, suggestScreeningQuestions } from './coaching.js';
+import { generateIcebreakers, generatePrep, suggestScreeningQuestions } from './coaching.js';
 import { PASSWORD_MIN_LENGTH, hashPassword, rateLimit, validPassword, verifyPassword } from './auth.js';
 import { mailerConfigured, sendMail } from './mailer.js';
 import fs from 'node:fs';
@@ -1921,22 +1921,10 @@ app.get('/api/matches/:id/icebreakers', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.get('/api/matches/:id/kit', async (req, res, next) => {
-  try {
-    const db = await store.read();
-    const match = db.matches.find((item) => item.id === req.params.id);
-    if (!match) { const error = new Error('Match not found'); error.status = 404; throw error; }
-    assertMatchParticipant(req, db, match);
-    if (match.kitCache) return res.json(match.kitCache);
-    const candidate = db.users.find((user) => user.id === match.candidateId);
-    const job = db.jobs.find((item) => item.id === match.jobId);
-    const kit = await generateInterviewKit(candidate || {}, job || {});
-    await store.transaction((inner) => {
-      const item = inner.matches.find((entry) => entry.id === req.params.id);
-      if (item) item.kitCache = kit;
-    });
-    res.json(kit);
-  } catch (error) { next(error); }
+// The AI interview kit for hiring teams was removed (founder, 2026-11-23): no AI-generated material about a
+// candidate is sent to hiring teams. Old clients get a clear 410 instead of a kit.
+app.get('/api/matches/:id/kit', (req, res) => {
+  res.status(410).json({ error: 'The interview kit feature was removed.' });
 });
 
 app.get('/api/bootstrap', async (req, res, next) => {

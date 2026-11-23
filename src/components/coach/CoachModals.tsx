@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { BookOpen, BriefcaseBusiness, Check, ClipboardList, Flag, GraduationCap, Loader2, MapPin, MessageSquareText, Plus, Sparkles, Wallet, X } from 'lucide-react';
+import { BookOpen, BriefcaseBusiness, Check, Flag, GraduationCap, Loader2, MapPin, MessageSquareText, Plus, Sparkles, X } from 'lucide-react';
 import { api } from '../../api';
-import type { InterviewKit, InterviewPrep, Job, JobMatch, Note, Person, ScreeningAnswer } from '../../types';
+import type { InterviewPrep, Job, JobMatch, Note, Person, ScreeningAnswer } from '../../types';
 import { JobCards } from '../jobs/JobCards';
 import { JobHeaderBadge } from '../jobs/JobHeaderBadge';
 import { NotesBox } from '../NotesBox';
@@ -106,45 +106,21 @@ export function ScreeningModal({ job, onSubmit, onCancel }: { job: Job; onSubmit
   </CoachModalShell>;
 }
 
-/** Items 11+12, recruiter side: screening answers + auto-generated interview kit. */
+/** Item 11, recruiter side: the candidate's screening answers. (The AI interview kit was removed, founder
+ *  2026-11-23: no AI-generated material about a candidate for hiring teams.) */
 export function MatchDetailModal({ match, onClose }: { match: JobMatch; onClose: () => void }) {
-  const [tab, setTab] = useState<'screening' | 'kit'>(match.screeningAnswers?.length ? 'screening' : 'kit');
-  const [kit, setKit] = useState<InterviewKit | null>(null);
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    if (tab !== 'kit' || kit) return;
-    setLoading(true);
-    api.matchKit(match.id).then(setKit).catch(() => setKit(null)).finally(() => setLoading(false));
-  }, [tab, kit, match.id]);
-
   return <CoachModalShell onClose={onClose} wide>
     <header className="coach-head">
       <img className="coach-avatar" src={match.candidate?.photo} alt="" />
       <div><span className="overline">{match.job?.title}</span><h2>{match.candidate?.name}</h2><p>{match.candidate?.title}{match.candidate?.location ? <> · <MapPin size={11} /> {match.candidate.location}</> : null}</p></div>
     </header>
     <div className="coach-tabs" role="tablist">
-      <button role="tab" aria-selected={tab === 'screening'} className={tab === 'screening' ? 'active' : ''} onClick={() => setTab('screening')}><MessageSquareText size={14} /> Screening answers</button>
-      <button role="tab" aria-selected={tab === 'kit'} className={tab === 'kit' ? 'active' : ''} onClick={() => setTab('kit')}><ClipboardList size={14} /> Interview kit</button>
+      <button role="tab" aria-selected className="active"><MessageSquareText size={14} /> Screening answers</button>
     </div>
-    {tab === 'screening' && <div className="coach-body">
+    <div className="coach-body">
       {match.screeningAnswers?.length ? match.screeningAnswers.map((entry) => <div className="screening-answer" key={entry.question}>
         <strong>{entry.question}</strong><p>{entry.answer}</p>
       </div>) : <p className="coach-empty">No screening answers — this match was made without the screening form.</p>}
-    </div>}
-    {tab === 'kit' && <div className="coach-body">
-      {loading && <div className="resume-loading"><Loader2 size={20} className="spin" /> Building the interview kit…</div>}
-      {kit && <>
-        <div className={`coach-salary salary-${kit.salaryStatus === 'within' ? 'good' : kit.salaryStatus === 'below' ? 'bad' : 'info'}`}><Wallet size={14} /> {kit.salarySummary}</div>
-        {kit.skillQuestions.map((entry) => <div key={entry.skill}>
-          <span className="card-label">Probe · {entry.skill}</span>
-          <ul className="coach-list numbered">{entry.questions.map((question) => <li key={question}>{question}</li>)}</ul>
-        </div>)}
-        {kit.gapProbes && kit.gapProbes.length > 0 && <>
-          <span className="card-label">Gaps to probe honestly</span>
-          <ul className="coach-list">{kit.gapProbes.map((probe) => <li key={probe.skill}><b>{probe.skill}:</b> {probe.question}</li>)}</ul>
-        </>}
-        <small className="coach-generator">{kit.generator === 'claude' ? 'AI-generated suggestions (Claude), please review. Interview questions only: it never rates the candidate' : 'Suggested from the coaching template bank, please review'} · cached for this match</small>
-      </>}
-    </div>}
+    </div>
   </CoachModalShell>;
 }
