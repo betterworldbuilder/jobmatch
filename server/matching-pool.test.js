@@ -42,7 +42,7 @@ test('demo matching is isolated and cross-pool swipe targets are rejected', () =
   assert.equal(targetIsInMatchingPool(db, db.users[2], 'candidate', 'real-candidate'), false);
 });
 
-test('sample candidates/jobs bridge into their OWN real viewer pool only, ordinary demo data still does not', () => {
+test('wall both ways: demo sees only demo, real never sees demo accounts or starter samples (founder, 2026-11-23)', () => {
   const sampleDb = {
     users: [
       ...db.users,
@@ -61,23 +61,22 @@ test('sample candidates/jobs bridge into their OWN real viewer pool only, ordina
     ],
     matches: db.matches,
   };
-  // The candidate this sample job was generated FOR sees it, and Sarah (its
-  // employer) is reachable so her "liked you" swipe on this candidate shows up.
-  const realPool = matchingPool(sampleDb, sampleDb.users.find((u) => u.id === 'real-candidate'));
-  assert.ok(realPool.jobIds.has('sample-job'), 'sample job is visible to the candidate it was generated for');
-  assert.ok(realPool.userIds.has('demo-employer'), 'that sample job\'s employer is reachable in this viewer\'s pool');
-  assert.ok(realPool.swipes.some((s) => s.id === 'sample-employer-like'), 'the sample job\'s employer swipe on this candidate is visible');
-  assert.ok(!realPool.jobIds.has('demo-job'), 'an ordinary (non-sample) demo job still does not leak into the real pool');
-
-  // A DIFFERENT real candidate must not see someone else's starter content,
-  // and Sarah's own demo dashboard must not get cluttered by it either.
-  const otherRealPool = matchingPool(sampleDb, sampleDb.users.find((u) => u.id === 'real-candidate-2'));
-  assert.ok(!otherRealPool.jobIds.has('sample-job'), 'a different real candidate does not see another account\'s sample job');
-  const sarahPool = matchingPool(sampleDb, sampleDb.users.find((u) => u.id === 'demo-employer'));
-  assert.ok(!sarahPool.jobIds.has('sample-job'), 'Sarah\'s own demo dashboard is not cluttered by jobs generated in her name');
-
-  // The recruiter whose job the sample candidate liked sees that candidate.
-  const employerPool = matchingPool(sampleDb, sampleDb.users.find((u) => u.id === 'real-employer'));
-  assert.ok(employerPool.userIds.has('sample-candidate'), 'sample candidate is visible to the recruiter she was generated for');
-  assert.ok(employerPool.swipes.some((s) => s.id === 'sample-like-swipe'), 'the sample candidate\'s swipe on this recruiter\'s job is visible');
+  const pool = (id) => matchingPool(sampleDb, sampleDb.users.find((u) => u.id === id));
+  // Real candidate: no demo recruiter, no starter role made "for" them, no swipe from a demo account.
+  const realPool = pool('real-candidate');
+  assert.ok(!realPool.jobIds.has('sample-job'), 'starter role is hidden from the candidate it was made for');
+  assert.ok(!realPool.userIds.has('demo-employer'), 'the demo recruiter behind it is not reachable');
+  assert.ok(!realPool.swipes.some((s) => s.id === 'sample-employer-like'), 'the demo recruiter\'s like is hidden');
+  assert.ok(realPool.users.every((u) => u.demo !== true && u.sample !== true), 'only real people');
+  assert.ok(realPool.jobs.every((j) => j.demo !== true && j.sample !== true), 'only real roles');
+  // Real recruiter: no invented starter candidate, no swipe from one.
+  const employerPool = pool('real-employer');
+  assert.ok(!employerPool.userIds.has('sample-candidate'), 'starter candidate is hidden');
+  assert.ok(!employerPool.swipes.some((s) => s.id === 'sample-like-swipe'), 'its like is hidden');
+  // Demo accounts: only demo people and demo roles, never real ones or samples.
+  for (const id of ['demo-employer', 'demo-candidate']) {
+    const demoPool = pool(id);
+    assert.ok(demoPool.users.every((u) => u.demo === true), `${id} sees only demo accounts`);
+    assert.ok(!demoPool.jobIds.has('sample-job') && !demoPool.jobIds.has('real-job'), `${id} sees only demo roles`);
+  }
 });

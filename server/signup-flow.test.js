@@ -94,14 +94,19 @@ test('candidate sign-up: register → profile wizard → deck → like → match
   }
   assert.equal(user.onboarding, false, 'wizard finished');
   assert.ok(user.completeness > 50, `completeness grew: ${user.completeness}`);
+  // A real recruiter posts a role and likes this candidate first.
+  const rec = await call('POST', '/api/auth/register', { role: 'employer', kind: 'company', name: 'Real Partner Recruiter', email: `signup-cr-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+  assert.equal(rec.status, 201, JSON.stringify(rec.body));
+  const role = await call('POST', '/api/jobs', { employerId: rec.body.user.id, postSource: 'quick_post', status: 'active', type: 'Full-time', title: 'Senior Frontend Engineer', company: 'Partner Co', location: 'Remote', workMode: 'Remote', salaryRange: { min: 40000, max: 60000, currency: 'USD' }, requiredSkillsDetail: [{ name: 'React', weight: 3 }], description: 'Own our React app.' }, rec.session);
+  assert.equal(role.status, 201, JSON.stringify(role.body));
+  assert.equal((await call('POST', '/api/swipes', { actorId: rec.body.user.id, targetType: 'candidate', targetId: me.id, jobId: role.body.job.id, direction: 'like' }, rec.session)).status, 201);
   const boot = await call('GET', `/api/bootstrap?userId=${me.id}`, undefined, ck);
   assert.equal(boot.status, 200);
-  // Real accounts never see demo profiles (demo/real wall): a new candidate gets 2 starter roles instead.
-  assert.ok(boot.body.jobs.length >= 2, `deck has roles: ${boot.body.jobs.length}`);
-  assert.ok(boot.body.jobs.every((j) => !j.demo), 'no demo roles in a real account\'s deck');
-  // Saving skills creates starter roles a demo recruiter already liked → liking one is a match.
-  const starter = boot.body.jobs.find((j) => j.id === `sample-job-${me.id}-0`);
-  assert.ok(starter, 'starter role in the deck');
+  // Demo/real wall (founder, 2026-11-23): only real roles, no demo or starter sample cards.
+  assert.ok(boot.body.jobs.every((j) => !j.demo && !j.sample), 'no demo or sample roles in a real account\'s deck');
+  assert.ok(!JSON.stringify(boot.body).includes('employer-demo'), 'the demo recruiter is nowhere in a real account\'s data');
+  const starter = boot.body.jobs.find((j) => j.id === role.body.job.id);
+  assert.ok(starter, 'the real recruiter\'s role is in the deck');
   const like = await call('POST', '/api/swipes', { actorId: me.id, targetType: 'job', targetId: starter.id, direction: 'like' }, ck);
   assert.equal(like.status, 201, JSON.stringify(like.body));
   assert.ok(like.body.match, 'it is a match');
@@ -124,13 +129,19 @@ test('recruiter sign-up: register → company profile → post a role → deck �
   const job = await call('POST', '/api/jobs', { employerId: me.id, postSource: 'quick_post', status: 'active', type: 'Full-time', title: 'Senior Frontend Engineer', location: 'Remote', workMode: 'Remote', hiringRadiusKm: 40, salaryRange: { min: 40000, max: 60000, currency: 'USD' }, requiredSkillsDetail: [{ name: 'React', weight: 3 }, { name: 'TypeScript', weight: 2 }], description: 'Own our React app.' }, ck);
   assert.equal(job.status, 201, JSON.stringify(job.body));
   const jobId = job.body.job.id;
+  // A real candidate likes the role first.
+  const cr = await call('POST', '/api/auth/register', { role: 'candidate', name: 'Real Partner Candidate', email: `signup-rc-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+  assert.equal(cr.status, 201, JSON.stringify(cr.body));
+  assert.equal((await call('PATCH', `/api/users/${cr.body.user.id}`, { title: 'Frontend Engineer', skillsDetail: [{ name: 'React', level: 4, years: 5 }] }, cr.session)).status, 200);
+  assert.equal((await call('POST', '/api/swipes', { actorId: cr.body.user.id, targetType: 'job', targetId: jobId, direction: 'like' }, cr.session)).status, 201);
   const boot = await call('GET', `/api/bootstrap?userId=${me.id}`, undefined, ck);
   assert.equal(boot.status, 200);
-  // Real accounts never see demo profiles (demo/real wall): posting a role adds 2 starter candidates who already like it.
-  assert.ok(boot.body.candidates.every((c) => !c.demo), 'no demo candidates in a real recruiter\'s deck');
+  // Demo/real wall (founder, 2026-11-23): only real candidates, no demo or invented starter candidates.
+  assert.ok(boot.body.candidates.every((c) => !c.demo && !c.sample), 'no demo or sample candidates in a real recruiter\'s deck');
+  assert.ok(!boot.body.candidates.some((c) => String(c.id).startsWith('sample-cand-')), 'posting a role no longer invents candidates');
   assert.ok(boot.body.candidates.every((c) => c.email === undefined && c.jobStatus?.recruiter === undefined), 'no contact details or private status details before a match');
-  const cand = boot.body.candidates.find((c) => c.id === `sample-cand-${jobId}-0`);
-  assert.ok(cand, 'starter candidate is in the deck');
+  const cand = boot.body.candidates.find((c) => c.id === cr.body.user.id);
+  assert.ok(cand, 'the real candidate is in the deck');
   const like = await call('POST', '/api/swipes', { actorId: me.id, targetType: 'candidate', targetId: cand.id, jobId, direction: 'like' }, ck);
   assert.equal(like.status, 201, JSON.stringify(like.body));
   assert.ok(like.body.match, 'it is a match');

@@ -226,23 +226,26 @@ test('undo retracts swipe, match and first message; re-swiping does not double c
   assert.deepEqual(snapshot(), { swipe: before.swipe + 1, match: before.match + 1, first: before.first + 1 }, 'net one of each, not two');
 });
 
-test('a real user matching a starter SAMPLE job is counted as demo, not real', async () => {
+test('real accounts get no starter sample cards and never see demo accounts (founder, 2026-11-23)', async () => {
   const real = await registerReal('candidate', 'sample-check');
-  // Saving skills generates two sample jobs that the demo recruiter has
-  // already "liked" this candidate for (generateSampleJobsForCandidate).
   const saved = await call('PATCH', `/api/users/${real.id}`, { skillsDetail: [{ name: 'React', level: 3 }], title: 'Frontend Engineer' }, real.cookie);
   assert.equal(saved.status, 200, JSON.stringify(saved.body));
-  const sampleJobId = `sample-job-${real.id}-0`;
-  const realBefore = { swipe: count('swipe', { demo: false }), match: count('match_created', { demo: false }), first: count('first_message', { demo: false }) };
-
-  const like = await call('POST', '/api/swipes', { actorId: real.id, targetType: 'job', targetId: sampleJobId, direction: 'like' }, real.cookie);
-  assert.equal(like.status, 201, JSON.stringify(like.body));
-  assert.ok(like.body.match, 'the sample recruiter pre-liked this candidate, so this is a match');
-  const msg = await call('POST', '/api/messages', { matchId: like.body.match.id, senderId: real.id, text: 'Hi there' }, real.cookie);
-  assert.equal(msg.status, 201, JSON.stringify(msg.body));
-
-  assert.deepEqual({ swipe: count('swipe', { demo: false }), match: count('match_created', { demo: false }), first: count('first_message', { demo: false }) }, realBefore,
-    'swipe, match and first message against a sample/demo party never inflate real counts');
+  const recruiter = await registerReal('employer', 'sample-check-rec');
+  const posted = await call('POST', '/api/jobs', quickPost({ employerId: recruiter.id, title: 'Sample Check Role' }), recruiter.cookie);
+  assert.equal(posted.status, 201, JSON.stringify(posted.body));
+  const stored = JSON.parse(readFileSync(DB_PATH, 'utf8'));
+  assert.ok(!stored.jobs.some((j) => j.sampleFor === real.id), 'saving skills creates no starter roles');
+  assert.ok(!stored.users.some((u) => u.sampleFor === recruiter.id), 'posting a role creates no invented candidates');
+  assert.ok(!stored.swipes.some((s) => s.targetId === real.id && s.actorId === 'employer-demo'), 'no like from the demo recruiter');
+  // A swipe at a demo role from a real account is refused (the wall holds on writes too).
+  const demoJob = stored.jobs.find((j) => j.demo === true);
+  const cross = await call('POST', '/api/swipes', { actorId: real.id, targetType: 'job', targetId: demoJob.id, direction: 'like' }, real.cookie);
+  assert.equal(cross.status, 403, JSON.stringify(cross.body));
+  for (const who of [real, recruiter]) {
+    const boot = await call('GET', `/api/bootstrap?userId=${who.id}`, undefined, who.cookie);
+    assert.equal(boot.status, 200);
+    assert.ok([...boot.body.jobs, ...boot.body.candidates].every((x) => !x.demo && !x.sample), 'only real cards in a real deck');
+  }
 });
 
 test('password hashes never leave the server — own record or anyone else\'s', async () => {

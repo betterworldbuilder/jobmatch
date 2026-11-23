@@ -1,10 +1,7 @@
-// "sample" is a distinct category from "demo": a small set of starter
-// candidates/jobs auto-generated for real accounts (see generateStarterContent
-// in index.js) so a brand-new real recruiter/candidate has something relevant
-// to see immediately. Unlike demo:true records, sample:true records
-// deliberately cross the demo/live wall in both directions -- they're real
-// enough to appear in a live account's pool, but still visually labeled
-// "DEMO" in the UI so nobody mistakes one for an actual person or employer.
+// Demo/live wall (founder, 2026-11-23): demo accounts see only demo candidates and demo recruiters' roles;
+// real accounts see only real accounts and real roles. Starter "sample" records (once auto-made for new real
+// accounts, posted under the demo recruiter) cross the wall in neither direction any more: they are hidden
+// from everyone (kept in the database, never shown), and no new ones are created.
 /** Ids of everyone the user blocked or was blocked by. */
 export function blockedBetween(db, userId) {
   const ids = new Set();
@@ -17,34 +14,18 @@ export function blockedBetween(db, userId) {
 
 export function matchingPool(db, viewer) {
   const demo = viewer.demo === true;
-  // Sample records carry sampleFor: the specific account id they were
-  // generated for (a candidate id on a sample job, an employer id on a
-  // sample candidate) -- they're only ever visible to THAT one account, not
-  // every real user and not Sarah's own demo dashboard. Without this scope,
-  // every new real signup's starter content would pile up in everyone else's
-  // pool too, growing unbounded.
-  const mySampleJobs = db.jobs.filter((job) => job.sample === true && job.sampleFor === viewer.id);
-  // A sample job's employer (e.g. Sarah, the demo recruiter persona, posting
-  // a starter job for this specific candidate) needs to be reachable in this
-  // viewer's pool too -- otherwise the "employer liked you" swipe it comes
-  // with would be filtered out and never show up.
-  const sampleJobEmployerIds = new Set(mySampleJobs.map((job) => job.employerId));
   // Block user (founder, 2026-11-23; Apple guideline 1.2): people blocked by the viewer, or who blocked the
   // viewer, leave each other's pool — so their cards, likes, jobs and matches all disappear both ways.
   const hidden = blockedBetween(db, viewer.id);
   const users = db.users.filter((user) => {
     if (hidden.has(user.id)) return false;
-    // Sample records have no demo field at all, so (user.demo===true)===demo
-    // below would otherwise evaluate to true for ANY real viewer (undefined
-    // !== true, and a real viewer's own `demo` is also false) -- an early
-    // return keeps them scoped to sampleFor instead of silently falling into
-    // the ordinary real/demo bucket.
-    if (user.sample === true) return user.sampleFor === viewer.id;
-    return (user.demo === true) === demo || sampleJobEmployerIds.has(user.id);
+    // Starter samples carry no demo flag, so without this they would fall into the real bucket.
+    if (user.sample === true) return false;
+    return (user.demo === true) === demo;
   });
   const userIds = new Set(users.map((user) => user.id));
   const jobs = db.jobs.filter((job) => {
-    if (job.sample === true) return job.sampleFor === viewer.id;
+    if (job.sample === true) return false;
     const employer = db.users.find((user) => user.id === job.employerId);
     const jobIsDemo = job.demo === true || employer?.demo === true;
     return jobIsDemo === demo && userIds.has(job.employerId);

@@ -916,18 +916,8 @@ app.patch('/api/users/:id', async (req, res, next) => {
         // Rule 1: becoming "hired" closes the other processes, cancels their meetings, thanks each recruiter.
         if (!wasHired && item.jobStatus?.kind === 'hired') hiredEffects = onCandidateHired(db, item, item.jobStatus.matchId);
         item.completeness = candidateCompleteness(item);
-        // Real candidate, first time skills show up: give them 2 relevant
-        // starter jobs (posted as Sarah, the familiar demo recruiter) so
-        // there's something to discover right away. Once only, per account.
-        if (!item.demo && item.skills?.length && !item.starterContentGenerated) {
-          const starterJobs = generateSampleJobsForCandidate(item);
-          db.jobs.push(...starterJobs);
-          const now = Date.now();
-          for (const job of starterJobs) {
-            db.swipes.push({ id: crypto.randomUUID(), actorId: job.employerId, targetType: 'candidate', targetId: item.id, direction: 'like', createdAt: now });
-          }
-          item.starterContentGenerated = true;
-        }
+        // No starter roles for real candidates any more (founder, 2026-11-23): they were posted under a demo
+        // recruiter, and real accounts must never see demo accounts (see matching-pool.js).
       } else { applyRecruiterProfile(item, req.body); item.completeness = recruiterCompleteness(item); }
       return item;
     });
@@ -1500,59 +1490,8 @@ function applyPublishEntitlement(db, employer, job) {
   return verdict;
 }
 
-// ---------------------------------------------------------------------------
-// Starter "sample" content: when a real recruiter posts their first job, or a
-// real candidate fills in skills, we auto-generate 2 matching counterparts so
-// there's something relevant to see immediately -- new accounts don't start
-// from an empty room. These are marked sample:true (not demo:true): unlike
-// ordinary demo data, matching-pool.js deliberately lets sample records cross
-// the demo/live wall in both directions. The frontend labels anything with
-// demo/sample true with a visible "DEMO" badge, so it's never mistaken for a
-// real person or employer.
-// ---------------------------------------------------------------------------
-const SAMPLE_FIRST = ['Maya', 'Ethan', 'Priya', 'Leo', 'Zara', 'Noah', 'Ines', 'Kofi', 'Yara', 'Theo'];
-const SAMPLE_LAST = ['Rivera', 'Nakamura', 'Okonkwo', 'Fischer', 'Alvarez', 'Novak', 'Haddad', 'Lindqvist'];
-function sampleName() {
-  return `${SAMPLE_FIRST[Math.floor(Math.random() * SAMPLE_FIRST.length)]} ${SAMPLE_LAST[Math.floor(Math.random() * SAMPLE_LAST.length)]}`;
-}
-
-/** Two starter candidates for a real recruiter's newly-created job. */
-function generateSampleCandidatesForJob(job) {
-  const skills = (job.requiredSkillsDetail || []).map((s) => s.name).slice(0, 6);
-  const fallbackSkills = job.requiredSkills?.length ? job.requiredSkills.slice(0, 6) : ['Communication'];
-  return [0, 1].map((i) => {
-    const genderBucket = i ? 'women' : 'men';
-    return {
-      id: `sample-cand-${job.id}-${i}`, role: 'candidate', sample: true, sampleFor: job.employerId, name: sampleName(),
-      title: job.title || 'Candidate', location: job.location, distanceKm: job.distanceKm ?? 10,
-      photo: `https://randomuser.me/api/portraits/${genderBucket}/${10 + Math.floor(Math.random() * 79)}.jpg`,
-      skills: skills.length ? skills : fallbackSkills,
-      languages: job.requiredLanguages?.length ? [...job.requiredLanguages] : ['English'],
-      experienceLevel: job.experienceLevel || 'mid', availability: 'Now', completeness: 92,
-    };
-  });
-}
-
-/** Two starter jobs for a real candidate, posted under Sarah Thompson
- * (employer-demo) -- the existing demo recruiter persona -- so there's a
- * familiar, branded source for these rather than an unknown company. */
-function generateSampleJobsForCandidate(candidate) {
-  const skills = (candidate.skills || []).slice(0, 6);
-  const salaryMin = candidate.preferences?.salary?.min;
-  const salaryMax = candidate.preferences?.salary?.max;
-  const salary = salaryMin && salaryMax ? `$${Math.round(salaryMin / 1000)}k–$${Math.round(salaryMax / 1000)}k` : '$70k–$100k';
-  return [0, 1].map((i) => ({
-    id: `sample-job-${candidate.id}-${i}`, employerId: 'employer-demo', sample: true, sampleFor: candidate.id,
-    title: candidate.title || 'Open role', company: 'AWS', logo: 'A', accent: JOB_ACCENTS[i % JOB_ACCENTS.length],
-    location: candidate.location || 'Remote', distanceKm: candidate.distanceKm ?? 10,
-    workMode: candidate.preferences?.workMode || 'Hybrid', salary, type: 'Full-time',
-    experienceLevel: candidate.experienceLevel || 'mid',
-    requiredSkills: skills.length ? skills : ['Communication'], requiredLanguages: ['English'],
-    description: 'A role at AWS matched to your profile — a JobsMatchNow starter example.',
-    mission: 'Connect the right people with the right work.', culture: ['High trust', 'Remote first'],
-    responseTime: '2 days', applicants: 5 + Math.floor(Math.random() * 40), status: 'Active', createdAt: Date.now(),
-  }));
-}
+// Starter "sample" content was retired on 2026-11-23: real accounts never see demo or invented profiles.
+// Old sample:true records stay in the database and are hidden by matching-pool.js.
 const importedJobMissing = (job) => [
   !job.salaryRange && 'salary',
   !job.workMode && 'work mode',
@@ -1696,16 +1635,8 @@ app.post('/api/jobs', async (req, res, next) => {
         employer.flaggedForJobReview = true;
         logBillingEvent(db, employerId, 'fair_use_flagged', 'user', employerId, { activeJobCount: activeCount, threshold: ACTIVE_JOB_REVIEW_THRESHOLD });
       }
-      // Real recruiter, brand-new job: give them 2 relevant starter
-      // candidates so the job isn't sitting there with no one to see.
-      if (!employer.demo) {
-        const starterCandidates = generateSampleCandidatesForJob(created);
-        db.users.push(...starterCandidates);
-        const now = Date.now();
-        for (const candidate of starterCandidates) {
-          db.swipes.push({ id: crypto.randomUUID(), actorId: candidate.id, targetType: 'job', targetId: created.id, direction: 'like', createdAt: now });
-        }
-      }
+      // No invented starter candidates for real recruiters any more (founder, 2026-11-23): real decks hold
+      // only real people (see matching-pool.js).
       return created;
     });
     res.status(201).json({ job });

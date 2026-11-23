@@ -38,9 +38,15 @@ async function registerReal(tag) {
   const result = await call('POST', '/api/auth/register', { role: 'candidate', name: `Real ${tag}`, email: `${tag}-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
   assert.equal(result.status, 201, JSON.stringify(result.body));
   const real = { id: result.body.user.id, cookie: result.session };
-  // Saving skills creates sample jobs whose recruiter already liked this candidate.
   const saved = await call('PATCH', `/api/users/${real.id}`, { skillsDetail: [{ name: 'React', level: 3 }], title: 'Frontend Engineer' }, real.cookie);
   assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  // A real recruiter role that already likes this candidate (real accounts never see demo/starter cards).
+  const rec = await call('POST', '/api/auth/register', { role: 'employer', kind: 'company', name: `Recruiter ${tag}`, email: `${tag}-rec-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+  assert.equal(rec.status, 201, JSON.stringify(rec.body));
+  const job = await call('POST', '/api/jobs', { employerId: rec.body.user.id, postSource: 'quick_post', status: 'active', type: 'Full-time', title: 'Frontend Engineer', company: 'Partner Co', location: 'Remote', workMode: 'Remote', salaryRange: { min: 40000, max: 60000, currency: 'USD' }, requiredSkillsDetail: [{ name: 'React', weight: 3 }], description: 'React role.' }, rec.session);
+  assert.equal(job.status, 201, JSON.stringify(job.body));
+  real.jobId = job.body.job.id;
+  assert.equal((await call('POST', '/api/swipes', { actorId: rec.body.user.id, targetType: 'candidate', targetId: real.id, jobId: real.jobId, direction: 'like' }, rec.session)).status, 201);
   return real;
 }
 
@@ -51,8 +57,7 @@ after(() => {
 
 test('a Super Like note becomes the first message only once both sides match', async () => {
   const real = await registerReal('note');
-  const sampleJobId = `sample-job-${real.id}-0`; // its sample recruiter pre-liked this candidate
-  const like = await call('POST', '/api/swipes', { actorId: real.id, targetType: 'job', targetId: sampleJobId, direction: 'like', superLike: true, note: '  Shipped two React apps like yours. Happy to talk!  ' }, real.cookie);
+  const like = await call('POST', '/api/swipes', { actorId: real.id, targetType: 'job', targetId: real.jobId, direction: 'like', superLike: true, note: '  Shipped two React apps like yours. Happy to talk!  ' }, real.cookie);
   assert.equal(like.status, 201, JSON.stringify(like.body));
   assert.ok(like.body.match, 'mutual like makes a match');
   const boot = await call('GET', `/api/bootstrap?userId=${real.id}`, undefined, real.cookie);
@@ -70,12 +75,12 @@ test('a Super Like note becomes the first message only once both sides match', a
 
 test('a note without a Super Like is ignored, and long notes are refused', async () => {
   const real = await registerReal('plain');
-  const like = await call('POST', '/api/swipes', { actorId: real.id, targetType: 'job', targetId: `sample-job-${real.id}-0`, direction: 'like', note: 'Hello' }, real.cookie);
+  const like = await call('POST', '/api/swipes', { actorId: real.id, targetType: 'job', targetId: real.jobId, direction: 'like', note: 'Hello' }, real.cookie);
   assert.equal(like.status, 201);
   const boot = await call('GET', `/api/bootstrap?userId=${real.id}`, undefined, real.cookie);
   assert.equal(boot.body.messages.filter((m) => m.matchId === like.body.match?.id).length, 0);
   const real2 = await registerReal('long');
-  const tooLong = await call('POST', '/api/swipes', { actorId: real2.id, targetType: 'job', targetId: `sample-job-${real2.id}-0`, direction: 'like', superLike: true, note: 'x'.repeat(281) }, real2.cookie);
+  const tooLong = await call('POST', '/api/swipes', { actorId: real2.id, targetType: 'job', targetId: real2.jobId, direction: 'like', superLike: true, note: 'x'.repeat(281) }, real2.cookie);
   assert.equal(tooLong.status, 400);
 });
 
