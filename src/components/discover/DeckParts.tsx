@@ -58,7 +58,8 @@ export function MatchModal({ match, viewer, onClose, onMessage }: { match: JobMa
   // Item 13: tailored conversation starters from the profile/job overlap.
   const [icebreakers, setIcebreakers] = useState<string[]>([]);
   const [sendingIdx, setSendingIdx] = useState(-1);
-  useEffect(() => { api.matchIcebreakers(match.id).then((result) => setIcebreakers(result.icebreakers)).catch(() => undefined); }, [match.id]);
+  const [icebreakersByAi, setIcebreakersByAi] = useState(false);
+  useEffect(() => { api.matchIcebreakers(match.id).then((result) => { setIcebreakers(result.icebreakers); setIcebreakersByAi(result.generator === 'claude'); }).catch(() => undefined); }, [match.id]);
   const sendIcebreaker = async (text: string, index: number) => {
     setSendingIdx(index);
     try { await api.message({ matchId: match.id, senderId: viewer.id, text }); onMessage(); }
@@ -103,6 +104,7 @@ export function MatchModal({ match, viewer, onClose, onMessage }: { match: JobMa
       {icebreakers.length > 0 && <div className="icebreakers">
         <span className="overline">Break the ice</span>
         {icebreakers.map((text, index) => <button key={text} className="icebreaker" disabled={sendingIdx >= 0} onClick={() => sendIcebreaker(text, index)}>{sendingIdx === index ? <Loader2 size={13} className="spin" /> : <Send size={13} />}<span>{text}</span></button>)}
+        {icebreakersByAi && <small className="coach-generator">AI-generated suggestions, please review before sending.</small>}
       </div>}
       <button className="primary-button" onClick={onMessage}><MessageCircle size={17} />Let&rsquo;s Talk</button>
       <button className="secondary-button match-keep-swiping" onClick={onClose}>Keep Swiping</button>

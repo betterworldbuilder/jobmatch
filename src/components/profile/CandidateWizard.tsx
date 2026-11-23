@@ -282,7 +282,7 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
     setAutofilling(true); setError('');
     try {
       await uploadResume(file);
-      const { fields } = await api.resumeAutofill(viewer.id);
+      const { fields, generator } = await api.resumeAutofill(viewer.id);
       setForm((current) => ({
         ...current,
         headline: fields.headline || current.headline,
@@ -297,7 +297,8 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
         certifications: fields.certifications?.length ? fields.certifications : current.certifications,
         links: fields.links ? { ...current.links, ...fields.links } : current.links,
       }));
-      setAutofillNote('Filled from your resume — review each step and edit anything before continuing.');
+      // AI transparency (founder, 2026-11-23): say when AI read the CV; nothing is saved until the candidate continues.
+      setAutofillNote(`${generator === 'claude' ? 'AI-generated suggestions from your resume, please review.' : 'Filled from your resume.'} Check each step and edit anything before continuing; nothing is saved until you do.`);
     } catch (e) { setError(e instanceof Error ? e.message : 'Auto-fill failed'); }
     finally { setAutofilling(false); }
   };

@@ -53,7 +53,7 @@ export function JobDetailModal({ job, onClose, viewerId, notes, onNoteSaved }: {
           <ul className="coach-list numbered">{entry.questions.map((question) => <li key={question}>{question}</li>)}</ul>
         </div>)}
         <div className="coach-ask"><Sparkles size={15} /><div><strong>Ask them this</strong><p>{prep.askThem}</p></div></div>
-        <small className="coach-generator">{prep.generator === 'claude' ? 'Generated with Claude' : 'Generated from the coaching template bank'} · cached for this job</small>
+        <small className="coach-generator">{prep.generator === 'claude' ? 'AI-generated suggestions (Claude), please review' : 'Suggested from the coaching template bank, please review'} · cached for this job</small>
       </>}
     </div>}
   </CoachModalShell>;
@@ -143,7 +143,7 @@ export function MatchDetailModal({ match, onClose }: { match: JobMatch; onClose:
           <span className="card-label">Gaps to probe honestly</span>
           <ul className="coach-list">{kit.gapProbes.map((probe) => <li key={probe.skill}><b>{probe.skill}:</b> {probe.question}</li>)}</ul>
         </>}
-        <small className="coach-generator">{kit.generator === 'claude' ? 'Generated with Claude' : 'Generated from the coaching template bank'} · cached for this match</small>
+        <small className="coach-generator">{kit.generator === 'claude' ? 'AI-generated suggestions (Claude), please review. Interview questions only: it never rates the candidate' : 'Suggested from the coaching template bank, please review'} · cached for this match</small>
       </>}
     </div>}
   </CoachModalShell>;

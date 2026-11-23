@@ -162,7 +162,7 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
     try {
       const { parser, parsed } = await api.parseJobFile(file);
       setForm((current) => applyDraft(current, parsed));
-      setImportNote(`${parser === 'claude' ? 'Parsed with Claude' : 'Parsed from the uploaded file'} — review the fields below, then save.`);
+      setImportNote(`${parser === 'claude' ? 'AI-generated suggestions (Claude), please review' : 'Parsed from the uploaded file'} — review the fields below, then save.`);
       setPasteOpen(false);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not read that file'); }
     finally { setImporting(false); }
