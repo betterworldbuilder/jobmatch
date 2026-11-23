@@ -389,7 +389,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
     </section>
     {isPhone ? <WhatNowSection onRegister={openRegister} onLogin={openLogin} /> : <LatestShowcase onRegister={openRegister} onLogin={openLogin} />}
     <FeedbackSection />
-    <footer><Brand /><span>Perfect matches should feel human.</span><button type="button" className="text-button footer-conduct-link" onClick={() => setConductOpen(true)}>Code of Conduct</button><a className="text-button footer-conduct-link" href="/privacy.html">Privacy</a><a className="text-button footer-conduct-link" href="/delete-account.html">Delete account</a><small>© 2026 JobsMatchNow</small></footer>
+    <footer><Brand /><span>Perfect matches should feel human.</span><button type="button" className="text-button footer-conduct-link" onClick={() => setConductOpen(true)}>Code of Conduct</button><a className="text-button footer-conduct-link" href="/privacy.html">Privacy</a><a className="text-button footer-conduct-link" href="/terms.html">Terms</a><a className="text-button footer-conduct-link" href="/delete-account.html">Delete account</a><small>© 2026 JobsMatchNow</small></footer>
     {modals}
     <AnimatePresence>{conductOpen && <ConductModal onClose={() => setConductOpen(false)} />}</AnimatePresence>
   </main>;

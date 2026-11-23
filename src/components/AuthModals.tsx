@@ -200,7 +200,7 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
     </div>
     <label className="conduct-checkbox">
       <input type="checkbox" checked={conductAccepted} onChange={(event) => setConductAccepted(event.target.checked)} />
-      <span>I agree to the <button type="button" onClick={() => setConductOpen(true)}>Code of Conduct</button></span>
+      <span>I agree to the <button type="button" onClick={() => setConductOpen(true)}>Code of Conduct</button>, the <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a></span>
     </label>
     <SsoButtons config={config} role={role} busy={busy} disabled={!conductAccepted} onMockSso={(provider) => { setBusy(provider); run(() => authProviders[provider].signIn({ registerRole: role, conductAccepted })); }} />
     <div className="auth-divider"><span>or continue with email</span></div>
@@ -263,7 +263,7 @@ export function SettingsModal({ user, onClose, onDeleted }: { user: SessionUser;
         <div><strong><ShieldCheck size={15} /> Privacy &amp; AI</strong><small>How we use your data, where AI helps, and your rights where you live.</small></div>
         <a className="secondary-button settings-btn" href="/privacy.html">Read</a>
       </div>
-      <p className="settings-note"><a href="/privacy.html#ai">AI features</a> · <a href="/privacy.html#regional">Your rights by region</a> · <a href="/delete-account.html">How to delete your account</a></p>
+      <p className="settings-note"><a href="/terms.html">Terms of Service</a> · <a href="/privacy.html#ai">AI features</a> · <a href="/privacy.html#regional">Your rights by region</a> · <a href="/delete-account.html">How to delete your account</a></p>
       {note && <p className="settings-note">{note}</p>}
       {error && <p className="auth-error">{error}</p>}
     </div>
