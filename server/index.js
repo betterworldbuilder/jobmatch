@@ -84,7 +84,9 @@ await store.transaction((db) => {
   // Sofia/Sarah reference dataset. User-created records are never touched.
   const retiredDemoIds = {
     swipes: new Set(['s-seed-1']),
-    matches: new Set(['m-candidate', 'm-existing', 'm-priya']),
+    // m-demo-hire-*: duplicate demo hires shipped once on 2026-11-23 (the same pairs already had a dm-* match,
+    // now moved to Hired in demo-fill.js).
+    matches: new Set(['m-candidate', 'm-existing', 'm-priya', 'm-demo-hire-anh-lumenpay', 'm-demo-hire-bao-northwind', 'm-demo-hire-ha-brightloop', 'm-demo-hire-huy-cobalt', 'm-demo-hire-lan-fieldnote']),
     messages: new Set(['msg-candidate-1', 'msg-1', 'msg-2']),
     calls: new Set(['call-existing']),
   };

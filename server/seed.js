@@ -999,13 +999,6 @@ function baseSeed(now) {
       { id: 'm-sofia-rackspace', demoTemplate: true, candidateId: 'candidate-demo', employerId: 'hh-1', jobId: 'j-6', stage: 'Matched', createdAt: now - 86400000 * 3 },
       // Demo "I just got hired!": Sofia was hired for Sarah Thompson's Technical Product Manager role at AWS.
       { id: 'm-sofia-aws-tpm', demoTemplate: true, candidateId: 'candidate-demo', employerId: 'employer-demo', jobId: 'j-sarah-product', stage: 'Hired', createdAt: now - 86400000 * 21, stageChangedAt: now - 86400000 * 2 },
-      // Five more demo hires for the landing's "New Matches Hired" (founder, 2026-11-23). Demo accounts only;
-      // the section says these are pre-launch examples.
-      { id: 'm-demo-hire-anh-lumenpay', demoTemplate: true, candidateId: 'candidate-demo-5', employerId: 'employer-demo-7', jobId: 'j-demo-1', stage: 'Hired', createdAt: now - 86400000 * 24, stageChangedAt: now - 86400000 * 3 },
-      { id: 'm-demo-hire-bao-northwind', demoTemplate: true, candidateId: 'candidate-demo-6', employerId: 'employer-demo-8', jobId: 'j-demo-2', stage: 'Hired', createdAt: now - 86400000 * 27, stageChangedAt: now - 86400000 * 4 },
-      { id: 'm-demo-hire-ha-brightloop', demoTemplate: true, candidateId: 'candidate-demo-7', employerId: 'employer-demo-9', jobId: 'j-demo-3', stage: 'Hired', createdAt: now - 86400000 * 30, stageChangedAt: now - 86400000 * 5 },
-      { id: 'm-demo-hire-huy-cobalt', demoTemplate: true, candidateId: 'candidate-demo-8', employerId: 'employer-demo-10', jobId: 'j-demo-4', stage: 'Hired', createdAt: now - 86400000 * 26, stageChangedAt: now - 86400000 * 6 },
-      { id: 'm-demo-hire-lan-fieldnote', demoTemplate: true, candidateId: 'candidate-demo-9', employerId: 'employer-demo-11', jobId: 'j-demo-5', stage: 'Hired', createdAt: now - 86400000 * 33, stageChangedAt: now - 86400000 * 8 },
       { id: 'm-david-aws', demoTemplate: true, candidateId: 'c-1', employerId: 'employer-demo', jobId: 'j-1', stage: 'Interview', createdAt: now - 86400000 * 2 },
       { id: 'm-maria-aws', demoTemplate: true, candidateId: 'c-2', employerId: 'employer-demo', jobId: 'j-1', stage: 'Matched', createdAt: now - 86400000 * 3 },
       { id: 'm-john-aws', demoTemplate: true, candidateId: 'c-3', employerId: 'employer-demo', jobId: 'j-1', stage: 'Matched', createdAt: now - 86400000 * 4 },

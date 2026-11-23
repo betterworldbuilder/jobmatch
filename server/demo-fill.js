@@ -97,6 +97,11 @@ function applyMissing(target, fill) {
  * `crowd` = the generated demo crowd (demo-crowd.js): its jobs each get `perJob`
  * matches spread across its candidates, so every generated profile has data too.
  */
+const DEMO_HIRES = {
+  'dm-j-demo-1-candidate-demo-5': 3, 'dm-j-demo-2-candidate-demo-6': 4, 'dm-j-demo-3-candidate-demo-7': 5,
+  'dm-j-demo-4-candidate-demo-8': 6, 'dm-j-demo-5-candidate-demo-9': 8,
+};
+
 export function withDemoFill(seed, now = Date.now(), crowd = { candidateIds: [], jobIds: [] }) {
   const users = new Map(seed.users.map((u) => [u.id, u]));
   const jobs = new Map(seed.jobs.map((j) => [j.id, j]));
@@ -118,10 +123,13 @@ export function withDemoFill(seed, now = Date.now(), crowd = { candidateIds: [],
       const job = jobs.get(jobId); const employer = job && users.get(job.employerId);
       if (!job || !employer || !c) return;
       const matchId = `dm-${jobId}-${c.id}`;
-      const at = now - (i * 2 + k + 1) * DAY;
+      // Five demo matches end in a hire, for the landing's "New Matches Hired" (founder, 2026-11-23): days since hired.
+      const hiredDaysAgo = DEMO_HIRES[matchId];
+      const at = hiredDaysAgo ? now - (hiredDaysAgo + 21) * DAY : now - (i * 2 + k + 1) * DAY;
       push('swipes', { id: `ds-${c.id}-${jobId}`, actorId: c.id, targetType: 'job', targetId: jobId, direction: 'like', createdAt: at - 2 * HOUR });
       push('swipes', { id: `ds-${employer.id}-${c.id}-${jobId}`, actorId: employer.id, targetType: 'candidate', targetId: c.id, jobId, direction: 'like', createdAt: at - HOUR });
-      push('matches', { id: matchId, candidateId: c.id, employerId: employer.id, jobId, stage: k === 0 ? 'Interview' : k === 2 ? 'Offer' : 'Matched', createdAt: at,
+      push('matches', { id: matchId, candidateId: c.id, employerId: employer.id, jobId, stage: hiredDaysAgo ? 'Hired' : k === 0 ? 'Interview' : k === 2 ? 'Offer' : 'Matched', createdAt: at,
+        ...(hiredDaysAgo ? { stageChangedAt: now - hiredDaysAgo * DAY } : {}),
         ...(k === 0 ? { feedback: [{ text: `Strong first round: clear communication and solid ${(c.skills || [])[0] || 'technical'} depth. To move to the final round, show more ${(job.requiredSkills || []).find((s) => !(c.skills || []).includes(s)) || 'system design'} experience with a concrete project example.`, at: at + 2 * DAY, from: employer.id }] } : {}) });
       const skill = (job.requiredSkills || c.skills || [])[0] || 'engineering';
       push('messages', { id: `dmsg-${matchId}-1`, matchId, senderId: employer.id, text: `Hi ${first(c.name)}, your ${skill} experience fits our ${job.title} role. Open to a 20-minute call this week?`, createdAt: at + HOUR });
