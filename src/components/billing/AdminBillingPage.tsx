@@ -101,11 +101,10 @@ export function AdminBillingPage() {
               advertises — there is no second copy of these numbers to fall out of date.
             </p>
             <table className="admin-table">
-              <thead><tr><th>Plan</th><th>USD / mo</th><th>VND / mo</th><th>Seats</th><th>Live jobs</th><th>Match cap</th><th>Extras</th></tr></thead>
+              <thead><tr><th>Plan</th><th>USD / mo</th><th>Seats</th><th>Live jobs</th><th>Match cap</th><th>Extras</th></tr></thead>
               <tbody>{plans.catalog.plans.map((plan) => <tr key={plan.key}>
                 <td><b>{plan.display}</b><br /><small className="muted">{plan.key}</small></td>
                 <td>{money(plan.usd, 'USD')}</td>
-                <td>{money(plan.vnd, 'VND')}</td>
                 <td>{plan.seats}</td>
                 <td>{plan.liveJobSlots}</td>
                 <td>{plan.monthlyMatchCap === null ? 'Unlimited' : plan.monthlyMatchCap}</td>
@@ -114,10 +113,10 @@ export function AdminBillingPage() {
               </tr>)}</tbody>
             </table>
             <p className="muted" style={{ marginTop: 16 }}>
-              <b>Single posting</b>: {money(plans.catalog.singlePosting.usd, 'USD')} / {money(plans.catalog.singlePosting.vnd, 'VND')} once,
+              <b>Single posting</b>: {money(plans.catalog.singlePosting.usd, 'USD')} once,
               live {plans.catalog.singlePosting.termDays} days. Priced above Solo on purpose — it sells the subscription.<br />
               <b>Pay per hire</b>: nothing up front, {plans.catalog.payPerHireFeePercent}% of first-year salary on a completed hire.<br />
-              <b>Boost</b>: {money(plans.catalog.boost.usd, 'USD')} / {money(plans.catalog.boost.vnd, 'VND')} for {plans.catalog.boost.hours} hours,
+              <b>Boost</b>: {money(plans.catalog.boost.usd, 'USD')} for {plans.catalog.boost.hours} hours,
               available for {plans.catalog.boost.kinds.join(' and ')}.<br />
               <b>Annual</b> billing charges 10 months — two are free.
             </p>

@@ -77,6 +77,14 @@ export async function readEvents(dir, since, now = Date.now()) {
 const top = (values, limit = 10) => [...values.reduce((m, v) => m.set(v, (m.get(v) || 0) + 1), new Map())]
   .map(([key, n]) => ({ key, n })).sort((a, b) => b.n - a.n).slice(0, limit);
 
+export const VN_OFFSET_MS = 7 * 3600000;
+
+/** Start of the analytics window: midnight Vietnam time, `days - 1` days before today. */
+export function reportSince(days, now = Date.now()) {
+  const dayMs = 86400000;
+  return (Math.floor((now + VN_OFFSET_MS) / dayMs) - (days - 1)) * dayMs - VN_OFFSET_MS;
+}
+
 export function buildReport(events, days, now = Date.now()) {
   const sessions = new Map();
   const vids = new Set();
@@ -93,14 +101,21 @@ export function buildReport(events, days, now = Date.now()) {
   }
   const all = [...sessions.values()].filter((s) => s.pages);
   const dayMs = 86400000;
-  const today = Math.floor(now / dayMs);
+  // Days and hours are counted in Vietnam time (UTC+7, no daylight saving).
+  const local = (ts) => ts + VN_OFFSET_MS;
+  const today = Math.floor(local(now) / dayMs);
   const daily = Array.from({ length: days }, (_, i) => ({ day: new Date((today - (days - 1 - i)) * dayMs).toISOString().slice(0, 10), n: 0 }));
-  for (const s of all) { const i = Math.floor(s.start / dayMs) - (today - (days - 1)); if (i >= 0 && i < days) daily[i].n += 1; }
+  for (const s of all) { const i = Math.floor(local(s.start) / dayMs) - (today - (days - 1)); if (i >= 0 && i < days) daily[i].n += 1; }
+  const hourly = days === 1 ? Array.from({ length: 24 }, (_, hour) => ({ hour, n: 0 })) : undefined;
+  if (hourly) for (const s of all) if (Math.floor(local(s.start) / dayMs) === today) hourly[new Date(local(s.start)).getUTCHours()].n += 1;
   const durations = [...dur.values()].filter((d) => d > 0);
   return {
     days,
+    tz: 'Asia/Ho_Chi_Minh',
+    currentHour: new Date(local(now)).getUTCHours(),
     totals: { visits: all.length, visitors: vids.size, pageviews: pageViews.length, avgDur: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0 },
     daily,
+    ...(hourly ? { hourly } : {}),
     sources: top(all.map((s) => s.src || 'Direct / unknown')),
     devices: top(all.map((s) => s.dev)),
     pages: top(pageViews),

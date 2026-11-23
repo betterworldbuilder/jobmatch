@@ -4402,6 +4402,19 @@ button.rs-row:hover { border-color:#fd267a; }
 .kpi-delta { margin:0; font-size:13px; font-weight:800; color:#16794a; }
 .kpi-bars { height:70px; display:flex; align-items:flex-end; gap:5px; padding:6px 0; }
 .kpi-bars span { flex:1; min-width:4px; border-radius:4px 4px 0 0; background:linear-gradient(180deg,#ff6036,#fd267a); }
+/* Traffic chart: exact count above each bar (label overflows up into the top padding). */
+.an-daily { height:90px; padding-top:18px; box-sizing:content-box; display:flex; align-items:flex-end; gap:5px; }
+.an-day { flex:1; min-width:0; max-width:80px; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; }
+.an-day span { flex-shrink:0; width:100%; min-width:3px; border-radius:4px 4px 0 0; background:linear-gradient(180deg,#ff6036,#fd267a); }
+.an-day-n { flex-shrink:0; font:600 11px/1.4 'Manrope',sans-serif; font-style:normal; color:var(--ink); white-space:nowrap; }
+.an-daily-dense { gap:2px; }
+.an-daily-dense .an-day-n { font-size:8px; }
+.an-day.is-current span { background:linear-gradient(180deg,#1d4ed8,#6d28d9); }
+.an-day.is-current .an-day-n { color:#1d4ed8; }
+.an-day.is-future span { background:repeating-linear-gradient(45deg,var(--line,#e5e7eb) 0 3px,transparent 3px 6px); }
+.an-axis { display:flex; gap:5px; margin-top:4px; }
+.an-axis span { flex:1; max-width:80px; text-align:left; font-size:10px; color:var(--muted); white-space:nowrap; }
+.an-today-note { margin:-4px 0 8px; font-size:12px; }
 .kpi-card dl { margin:0; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .kpi-card dt { font-size:12px; color:var(--muted); }
 .kpi-card dd { margin:0; font:800 18px 'Manrope'; color:var(--ink); }

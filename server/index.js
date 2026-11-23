@@ -27,7 +27,7 @@ import { exchangeLinkedinCode, linkedinAuthorizationUrl, readSignedValue, signed
 import { oauthAuthorizationUrl, oauthExchangeCode, oauthProviders } from './integrations/oauth.js';
 import { logBillingEvent } from './billing/audit.js';
 import { actorSide, involvesDemo, onTrack, track, untrack, weeklyCounts } from './analytics.js';
-import { BOT_UA, buildReport, parsePayload, readEvents, recordEvents } from './web-analytics.js';
+import { BOT_UA, buildReport, parsePayload, readEvents, recordEvents, reportSince } from './web-analytics.js';
 import { VENDORS, forwardEvent, maskedConfig, sendTo, setIntegrationConfig } from './integrations.js';
 import { handleRpc, hashKey, newConnectorKey } from './mcp.js';
 import {
@@ -3573,9 +3573,10 @@ app.post('/api/track', rateLimit({ windowMs: 60000, max: 120, bucket: 'track' })
 app.get('/api/admin/web-analytics', async (req, res, next) => {
   try {
     requireAdminRole(authSession(req));
-    const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30;
-    const events = await readEvents(ANALYTICS_DIR, Date.now() - days * DAY_MS);
-    res.json(buildReport(events, days));
+    const days = [1, 7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30;
+    const now = Date.now();
+    const events = await readEvents(ANALYTICS_DIR, reportSince(days, now), now);
+    res.json(buildReport(events, days, now));
   } catch (error) { next(error); }
 });
 

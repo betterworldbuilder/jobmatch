@@ -15,6 +15,23 @@ function Bars({ weeks }: { weeks: { week: string; n: number }[] }) {
   </div>;
 }
 
+type CountBar = { key: string; title: string; n: number; current?: boolean; future?: boolean; label?: string };
+
+/** Bar chart with the exact count printed above every non-zero bar. */
+function CountBars({ bars, dense }: { bars: CountBar[]; dense: boolean }) {
+  const max = Math.max(1, ...bars.map((b) => b.n));
+  const axis = bars.some((b) => b.label !== undefined);
+  return <>
+    <div className={`an-daily${dense ? ' an-daily-dense' : ''}`} role="img" aria-label={bars.map((b) => `${b.title}`).join('; ')}>
+      {bars.map((b) => <div key={b.key} className={`an-day${b.current ? ' is-current' : ''}${b.future ? ' is-future' : ''}`} title={b.title}>
+        {b.n > 0 && <em className="an-day-n">{b.n}</em>}
+        <span style={{ height: `${b.n ? Math.max(4, (b.n / max) * 100) : 2}%` }} />
+      </div>)}
+    </div>
+    {axis && <div className="an-axis" aria-hidden="true">{bars.map((b) => <span key={b.key}>{b.label}</span>)}</div>}
+  </>;
+}
+
 function delta(a: number, b: number) {
   if (!b) return a ? 'new this week' : 'no change';
   const pct = Math.round(((a - b) / b) * 100);
@@ -46,7 +63,7 @@ export function AdminTrafficPage() {
   useEffect(() => { setReport(null); api.adminWebAnalytics(days).then(setReport).catch(() => undefined); }, [days]);
   return <div className="page admin-traffic-page">
     <div className="page-title"><div><span className="overline">Admin</span><h1>Traffic &amp; heatmap</h1><p>Self-hosted and cookie-free: no IP stored, visitors counted with a hash that changes daily.</p></div>
-      <div className="heatmap-layouts">{[7, 30, 90].map((d) => <button key={d} type="button" className={d === days ? 'primary-button small' : 'secondary-button small'} onClick={() => setDays(d)}>{d} days</button>)}</div></div>
+      <div className="heatmap-layouts">{[1, 7, 30, 90].map((d) => <button key={d} type="button" className={d === days ? 'primary-button small' : 'secondary-button small'} onClick={() => setDays(d)}>{d === 1 ? 'Today' : `${d} days`}</button>)}</div></div>
     {!report ? <Loader2 className="spin" size={20} /> : <>
       <div className="admin-stat-row">
         <div className="admin-stat"><strong>{report.totals.visitors}</strong><span>Unique visitors (per day)</span></div>
@@ -54,7 +71,13 @@ export function AdminTrafficPage() {
         <div className="admin-stat"><strong>{report.totals.pageviews}</strong><span>Page views</span></div>
         <div className="admin-stat"><strong>{Math.floor(report.totals.avgDur / 60)}m {report.totals.avgDur % 60}s</strong><span>Average active time per page</span></div>
       </div>
-      <section className="admin-section"><h3>Visits per day</h3><Bars weeks={report.daily.map((d) => ({ week: d.day, n: d.n }))} /></section>
+      {report.hourly ? <section className="admin-section">
+        <h3>Visits today by hour <small className="muted">(Vietnam time)</small></h3>
+        <p className="muted an-today-note">{report.totals.visits} visits so far today · peak {Math.max(0, ...report.hourly.map((h) => h.n))} / hour</p>
+        <CountBars dense={false} bars={report.hourly.map((h) => ({ key: String(h.hour), title: `${String(h.hour).padStart(2, '0')}:00–${String(h.hour).padStart(2, '0')}:59: ${h.n} visits`, n: h.n, current: h.hour === report.currentHour, future: report.currentHour !== undefined && h.hour > report.currentHour, label: h.hour % 3 === 0 ? `${String(h.hour).padStart(2, '0')}h` : '' }))} />
+      </section> : <section className="admin-section"><h3>Visits per day <small className="muted">(Vietnam time)</small></h3>
+        <CountBars dense={days >= 90} bars={report.daily.map((d) => ({ key: d.day, title: `${d.day}: ${d.n} visits`, n: d.n }))} />
+      </section>}
       <div className="traffic-tables">
         {([['Top pages', report.pages], ['Sources', report.sources], ['Devices', report.devices]] as const).map(([title, rows]) => <section className="admin-section" key={title}>
           <h3>{title}</h3>

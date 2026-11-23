@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, unlinkSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildReport, parsePayload, readEvents, recordEvents } from './web-analytics.js';
+import { buildReport, parsePayload, readEvents, recordEvents, reportSince } from './web-analytics.js';
 import { forwardEvent, maskedConfig, sendTo, setIntegrationConfig } from './integrations.js';
 
 test('tracker payload: valid batches pass, junk is dropped', () => {
@@ -28,7 +28,32 @@ test('record → read → report: visitors, pages, devices, clicks; no IP stored
     assert.deepEqual(r.devices.map((d) => d.key).sort(), ['desktop', 'mobile']);
     assert.equal(r.clicks.length, 1);
     assert.equal(r.daily.length, 7);
+    assert.equal(r.hourly, undefined, 'hourly only for Today');
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('web analytics: Today is counted from midnight Vietnam time, by hour', () => {
+  // 2026-11-23 10:30 in Vietnam = 03:30 UTC.
+  const now = Date.UTC(2026, 10, 23, 3, 30);
+  const since = reportSince(1, now);
+  assert.equal(since, Date.UTC(2026, 10, 22, 17, 0), 'midnight VN = 17:00 UTC the day before');
+  const ev = (sid, ts) => ({ ts, sid, t: 'view', path: '/', vid: sid, dev: 'mobile' });
+  const events = [
+    ev('a', Date.UTC(2026, 10, 22, 16, 59)), // 23:59 VN yesterday → excluded
+    ev('b', Date.UTC(2026, 10, 22, 17, 5)),  // 00:05 VN today
+    ev('c', Date.UTC(2026, 10, 23, 2, 10)),  // 09:10 VN
+    ev('d', Date.UTC(2026, 10, 23, 2, 50)),  // 09:50 VN
+  ].filter((e) => e.ts >= since);
+  const r = buildReport(events, 1, now);
+  assert.equal(r.totals.visits, 3);
+  assert.equal(r.daily.length, 1);
+  assert.equal(r.daily[0].day, '2026-11-23');
+  assert.equal(r.daily[0].n, 3);
+  assert.equal(r.hourly.length, 24);
+  assert.equal(r.hourly[0].n, 1);
+  assert.equal(r.hourly[9].n, 2);
+  assert.equal(r.currentHour, 10);
+  assert.equal(reportSince(7, now), Date.UTC(2026, 10, 16, 17, 0), '7 days = today + 6 full VN days');
 });
 
 test('integrations: keys are masked, payloads are anonymous, demo events never leave', async () => {

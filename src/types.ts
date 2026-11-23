@@ -145,7 +145,7 @@ export interface Message { id: string; matchId: string; senderId: string; text: 
 export interface ConnectorKey { id: string; userId: string; label: string; last4: string; createdAt: number; lastUsedAt: number | null }
 export interface AdminKpi { label: string; hint: string; total: number; thisWeek: number; lastWeek: number; last30d: number; weeks: { week: string; n: number }[] }
 export interface HeatClick { path: string; dev: 'desktop' | 'tablet' | 'mobile'; w: number; x: number; y: number; sel: string; ox: number; oy: number }
-export interface WebAnalyticsReport { days: number; totals: { visits: number; visitors: number; pageviews: number; avgDur: number }; daily: { day: string; n: number }[]; sources: { key: string; n: number }[]; devices: { key: string; n: number }[]; pages: { key: string; n: number }[]; clicks: HeatClick[] }
+export interface WebAnalyticsReport { days: number; tz?: string; currentHour?: number; hourly?: { hour: number; n: number }[]; totals: { visits: number; visitors: number; pageviews: number; avgDur: number }; daily: { day: string; n: number }[]; sources: { key: string; n: number }[]; devices: { key: string; n: number }[]; pages: { key: string; n: number }[]; clicks: HeatClick[] }
 export interface IntegrationStatus { label: string; field: string; hint: string; enabled: boolean; hasKey: boolean; keyHint: string; lastSentAt: number | null; lastError: string | null }
 export interface PendingVerification { userId: string; name: string; role: Role; photo?: string; submittedAt: number }
 export interface ScheduledCall { id: string; matchId: string; createdBy: string; title: string; startAt: number; durationMinutes: number; notes?: string; createdAt: number; cancelledAt?: number; cancelReason?: string }
