@@ -15,7 +15,8 @@ const portrait = (gender, n) => `https://randomuser.me/api/portraits/${gender ==
 
 // Vietnam / Southeast Asia software engineers (our Phase B candidate pool).
 const CANDIDATE_NAMES = [
-  ['Nguyen Minh Anh', 'f'], ['Tran Quoc Bao', 'm'], ['Le Thu Ha', 'f'], ['Pham Duc Huy', 'm'], ['Vo Ngoc Lan', 'f'],
+  // First five renamed to English names that fit their photos (founder, 2026-11-23; shown on "New Matches Hired").
+  ['Emily Carter', 'f'], ['Marcus Bennett', 'm'], ['Hannah Brooks', 'f'], ['Robert Hayes', 'm'], ['Laura Mitchell', 'f'],
   ['Hoang Gia Khang', 'm'], ['Dang Mai Phuong', 'f'], ['Bui Thanh Tung', 'm'], ['Do Khanh Linh', 'f'], ['Ngo Hai Nam', 'm'],
   ['Maria Santos', 'f'], ['Joshua Reyes', 'm'], ['Angelica Cruz', 'f'], ['Mark Villanueva', 'm'], ['Bea Mendoza', 'f'],
   ['Putri Lestari', 'f'], ['Rizky Pratama', 'm'], ['Dewi Anggraini', 'f'], ['Budi Santoso', 'm'], ['Ayu Wulandari', 'f'],

@@ -329,7 +329,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
           <div className="trust-detail-table-wrap">
             <table className="trust-detail-table colorful">
               <thead><tr><th className="trad-head">Traditional Hiring</th><th className="new-head">JobsMatchNow</th></tr></thead>
-              <tbody>{traditionalSteps.map((step, i) => { const jm = jobsmatchNowSteps[i]; return <tr key={step} className={i === 0 ? 'combined-row' : undefined}><td className="step-cell"><span className="step-num trad">{i + 1}</span>{step}</td><td className="step-cell">{jm && <><span className="step-num new">{i + 1}</span>{jm}{i === 0 && <b className="combo-badge">4-in-1 ⚡</b>}</>}</td></tr>; })}</tbody>
+              <tbody>{traditionalSteps.map((step, i) => { const jm = jobsmatchNowSteps[i]; return <tr key={step} className={i === 0 ? 'combined-row' : undefined}><td className="step-cell"><div className="step-line"><span className="step-num trad">{i + 1}</span><span>{step}</span></div></td><td className="step-cell">{jm && <div className="step-line"><span className="step-num new">{i + 1}</span><span>{jm}{i === 0 && <b className="combo-badge">4-in-1 ⚡</b>}</span></div>}</td></tr>; })}</tbody>
             </table>
           </div>
         </div>

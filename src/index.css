@@ -201,7 +201,10 @@ button { cursor:pointer; }
 .trust-detail-table tfoot td { border-bottom:0; border-top:2px solid rgba(255,255,255,.2); padding-top:12px; color:#fff; }
 .trust-detail-table.colorful thead th.trad-head { color:#fff; background:linear-gradient(180deg,#ff5147,#c8281c); font-size:12px; border-bottom:1px solid rgba(0,0,0,.25); }
 .trust-detail-table.colorful thead th.new-head { color:#fff; background:linear-gradient(180deg,#2b96ff,#0a66c2); font-size:12px; border-bottom:1px solid rgba(0,0,0,.25); }
-.step-cell { display:flex; align-items:flex-start; gap:10px; }
+/* Cells stay table cells (display:flex on a <td> broke the 2 columns: every step stacked in column 1). */
+.step-cell { width:50%; }
+.step-line { display:flex; align-items:flex-start; gap:10px; }
+.trust-detail-table.colorful td:nth-child(2) { white-space:normal; color:inherit; }
 .step-num { flex:none; width:22px; height:22px; border-radius:50%; display:grid; place-items:center; font-size:10.5px; font-weight:800; color:#fff; margin-top:1px; }
 .step-num.trad { background:color-mix(in srgb, #FF3B30 75%, #1c1e24); }
 .step-num.new { background:color-mix(in srgb, #0A84FF 75%, #1c1e24); }
