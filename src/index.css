@@ -1647,7 +1647,11 @@ img.avatar-mini { object-fit:cover; }
 .m-footer { margin-top:auto; padding:34px 22px 28px; display:flex; align-items:center; justify-content:space-between; color:var(--muted); }
 .m-footer .brand { font-size:14px; }
 .m-footer .brand-heart-mark { width:28px; height:28px; }
-.m-footer small { font-size:10px; }
+.m-footer small { font-size:10px; text-align:right; line-height:1.5; }
+.m-footer small a { color:inherit; text-decoration:underline; }
+/* Copyright line at the bottom of the signed-in menu (founder, 2026-11-23) */
+.sidebar-legal { margin:10px 0 0; padding:0 12px; font-size:10.5px; line-height:1.4; color:rgba(255,255,255,.45); }
+.sidebar-legal a { color:inherit; text-decoration:underline; }
 
 /* Desktop "Mobile view" toggle + 390px device frame */
 .mobile-toggle { display:inline-flex; align-items:center; gap:7px; min-height:38px; padding:0 13px; border:1px solid var(--line); background:white; border-radius:999px; font-size:12px; font-weight:700; transition:.15s; }

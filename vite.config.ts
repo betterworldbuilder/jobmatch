@@ -14,6 +14,14 @@ export default defineConfig({
       '@': path.resolve(dirname, './src'),
     },
   },
+  // Copyright banner on every built JS file (founder, 2026-11-23). `/*!` marks it as a legal comment.
+  build: {
+    rollupOptions: {
+      output: {
+        banner: '/*! (c) 2026 JobsMatchNow SARL, Paris, France. All rights reserved. Proprietary and confidential: copying, reverse engineering, scraping or reuse is prohibited. https://jobsmatchnow.com/legal.html */',
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': {

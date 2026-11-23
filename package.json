@@ -1,6 +1,8 @@
 {
   "name": "jobmatch",
   "private": true,
+  "license": "UNLICENSED",
+  "author": "JobsMatchNow SARL",
   "version": "1.0.0",
   "type": "module",
   "description": "Tinder-style mutual matching between candidates and jobs",
