@@ -14,13 +14,13 @@ type Item = { key: string; label: string; short: string; icon: LucideIcon; color
 
 type Props = {
   role: 'candidate' | 'employer' | string; userId: string; nav: TabNavItem[]; navColors: Record<string, string>;
-  view: View; activeAnchor: string; unread: number;
+  view: View; activeAnchor: string; unread: number; likes?: number;
   gotoNav: (item: TabNavItem) => void; setView: (v: View) => void; openFullMenu: () => void;
 };
 
 const storeKey = (role: string, userId: string) => `jm-tabbar-${role}-${userId}`;
 
-export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, unread, gotoNav, setView, openFullMenu }: Props) {
+export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, unread, likes = 0, gotoNav, setView, openFullMenu }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const likesAnchor = role === 'candidate' ? 'td-chasing' : 'td-review';
@@ -33,7 +33,7 @@ export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, u
     add({ key: MENU_KEY, label: 'Global Menu', short: 'Menu', icon: LayoutGrid, color: '#fd267a', active: menuOpen, go: () => { setMenuOpen((o) => !o); setEditing(false); } });
     add({ key: 'profile', label: 'Profile', short: 'Profile', icon: User, color: '#7c3aed', active: !menuOpen && view === 'profile', go: () => { close(); setView('profile'); } });
     add({ key: 'surf', label: 'Find My Match', short: 'Surf', icon: Waves, color: navColors['Find My Match'] || '#ff7a45', active: !menuOpen && view === 'match', go: () => { close(); gotoNav({ label: 'Surf', icon: Waves, view: 'match' }); } });
-    add({ key: 'likes', label: role === 'candidate' ? 'Recruiters that like you' : 'Candidates to review', short: 'Likes', icon: Heart, color: '#fd267a', active: !menuOpen && view === 'home' && activeAnchor === likesAnchor, go: () => { close(); gotoNav({ label: 'Likes', icon: Heart, anchor: likesAnchor }); } });
+    add({ key: 'likes', label: role === 'candidate' ? 'Recruiters that like you' : 'Candidates to review', short: 'Likes', icon: Heart, color: '#fd267a', badge: likes, active: !menuOpen && view === 'home' && activeAnchor === likesAnchor, go: () => { close(); gotoNav({ label: 'Likes', icon: Heart, anchor: likesAnchor }); } });
     add({ key: 'chat', label: 'Conversations', short: 'Chat', icon: MessageCircle, color: navColors.Conversations || '#3b82f6', badge: unread, active: !menuOpen && view === 'messages', go: () => { close(); setView('messages'); } });
     for (const n of nav) {
       if (n.view === 'match' || n.view === 'messages') continue; // = Surf / Chat
@@ -42,7 +42,7 @@ export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, u
         go: () => { close(); gotoNav(n); } });
     }
     return map;
-  }, [nav, navColors, view, activeAnchor, unread, menuOpen, role, likesAnchor]);
+  }, [nav, navColors, view, activeAnchor, unread, likes, menuOpen, role, likesAnchor]);
 
   // Menu tiles: Profile first, then every section (Find My Match / Conversations shown under their bar names).
   const tileKeys = useMemo(() => ['profile', 'surf', 'chat', 'likes', ...nav.filter((n) => n.view !== 'match' && n.view !== 'messages').map((n) => `nav:${n.label}`)], [nav]);
@@ -110,7 +110,7 @@ export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, u
         return <button key={key} type="button" className={`${editing ? 'gm-tile editing' : 'gm-tile'}${inBar && editing ? ' in-bar' : ''}`} style={{ ['--c' as string]: it.color }}
           onClick={() => { if (!editing) it.go(); }}
           onPointerDown={(e) => onDown(e, key, 'menu')} onPointerMove={onMove} onPointerUp={onUp}>
-          <i><Icon size={20} /></i><span>{it.label}</span>{editing && <b className="gm-grip">{inBar ? <Check size={14} /> : <GripVertical size={14} />}</b>}
+          <i><Icon size={20} /></i><span>{it.label}{it.key === 'likes' && it.badge ? ` (${it.badge})` : ''}</span>{editing && <b className="gm-grip">{inBar ? <Check size={14} /> : <GripVertical size={14} />}</b>}
         </button>;
       })}</div>
       <button type="button" className="secondary-button explore-more" onClick={() => { close(); openFullMenu(); }}>Settings, help and more</button>

@@ -17,6 +17,7 @@ import { FindMatches } from '../findmatches/FindMatches';
 import { featureOn } from '../../lib/flags';
 import { TodayPanel } from './TodayPanel';
 import { CandidatesToReview, HiringPipelineBoard } from './RecruiterSections';
+import { likesWaiting } from '../../lib/today';
 
 type HomeProps = {
   data: Bootstrap;
@@ -347,6 +348,12 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
       <div><h1 className="td-recruiter-title">Your roles today</h1><p>Here’s who loves your jobs today.</p></div>
       <button className="primary-button" onClick={onAddJobs}>+ Add New Job Offers</button>
     </header>
+    {/* "See who liked your role" banner (founder, 2026-11-23): included in every recruiter plan. */}
+    {likesWaiting(data) > 0 && <button type="button" className="td-likes-banner" onClick={() => document.getElementById('td-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+      <Heart size={18} fill="currentColor" />
+      <span><strong>{likesWaiting(data)} {likesWaiting(data) === 1 ? 'candidate already likes' : 'candidates already like'} your roles</strong><small>Like back to match and open a chat. Included in your plan.</small></span>
+      <b>See who <ArrowRight size={14} /></b>
+    </button>}
 
 
     <section className="td-section td-role-section" id="td-roles">

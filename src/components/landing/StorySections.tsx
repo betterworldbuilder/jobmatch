@@ -38,7 +38,7 @@ export function ForWhoSection({ onRegister }: Pick<Cta, 'onRegister'>) {
       <article className="who-card hirer">
         <span className="who-icon"><BriefcaseBusiness size={22} /></span>
         <h3>Hiring teams</h3>
-        <p>Recruiters, founders and hiring managers: post a role, swipe candidates ranked by fit, chat only with people who chose you too.</p>
+        <p>Recruiters, founders and hiring managers: post a role, swipe candidates ranked by fit, chat only with people who chose you too. See who already likes your roles, included in every plan.</p>
         <span className="who-tag">{Math.round(TRIAL.days / 7)} weeks free</span>
         <button type="button" className="who-cta" onClick={onRegister}>I’m hiring <ArrowRight size={16} /></button>
       </article>

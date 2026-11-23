@@ -1,6 +1,6 @@
 // Home "Today" panel: summary numbers, urgent actions, the next interview and the
 // search settings, all computed from real records in the bootstrap (no estimates).
-import type { Bootstrap, JobMatch } from '../types';
+import type { Bootstrap, Job, JobMatch, Person } from '../types';
 import { timeline } from './hiringStages';
 
 const DAY = 86400000;
@@ -40,6 +40,21 @@ export function likesWaiting(data: Pick<Bootstrap, 'viewer' | 'jobs' | 'candidat
   }
   const matched = new Set(data.matches.map((m) => m.candidateId));
   return [...likerIds(data)].filter((id) => !matched.has(id)).length;
+}
+
+/** The people/roles behind likesWaiting, best fit first ("see who liked you", founder 2026-11-23). */
+export function likersWaitingList(data: Pick<Bootstrap, 'viewer' | 'jobs' | 'candidates' | 'matches' | 'roleMatches'>): (Job | Person)[] {
+  const byFit = (a: { match?: { score?: number } }, b: { match?: { score?: number } }) => (b.match?.score ?? 0) - (a.match?.score ?? 0);
+  if (isCandidate(data)) {
+    const matchedJobs = new Set(data.matches.map((m) => m.jobId));
+    return data.jobs.filter((j) => (j.likedYou || j.superLikedYou) && !matchedJobs.has(j.id)).sort(byFit);
+  }
+  const matched = new Set(data.matches.map((m) => m.candidateId));
+  const ids = likerIds(data);
+  const people = new Map<string, Person>();
+  for (const g of data.roleMatches || []) for (const c of g.candidates) people.set(c.id, c);
+  for (const c of data.candidates) if (ids.has(c.id)) people.set(c.id, c);
+  return [...people.values()].filter((p) => !matched.has(p.id)).sort(byFit);
 }
 
 function dayStart(date: string) { const [y, m, d] = date.split('-').map(Number); return new Date(y, m - 1, d, 9).getTime(); }

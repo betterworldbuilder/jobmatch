@@ -20,6 +20,7 @@ import { considerList, needsScreening, swipeFromDrag } from '../discover/deckLog
 import { useDiscoverDeck } from '../discover/useDiscoverDeck';
 import { ReportModal } from '../ReportModal';
 import { CameraCaptureModal } from '../CameraCaptureModal';
+import { likersWaitingList } from '../../lib/today';
 import {
   NOTE_MAX, goalTiles, safetyTips, sidebarLists, slideCount, studioKey, toCard, verificationState,
 } from './fmLogic';
@@ -219,7 +220,7 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
   const recommended = considerList(filtered, cards, index).filter((item) => !done.includes(item.id) && item.id !== picked?.id);
   const [panel, setPanel] = useState<Panel>('matches');
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [tab, setTab] = useState<'matches' | 'messages'>('matches');
+  const [tab, setTab] = useState<'matches' | 'messages' | 'likes'>('matches');
   const [goal, setGoal] = useState('');
   const [slide, setSlide] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -234,7 +235,10 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
   const card = current ? toCard(current) : null;
   const total = card ? slideCount(card) : 1;
   const { matches, conversations } = sidebarLists(data);
-  const likesYou = (role === 'candidate' ? data.jobs : data.candidates).filter((item) => item.likedYou || item.superLikedYou).length;
+  // "See who liked you" (founder, 2026-11-23): not matched yet, best fit first; the gold tile opens this list.
+  const likers = likersWaitingList(data);
+  const likesYou = likers.length;
+  const showLiker = (item: Job | Person) => { setPicked(item); setSlide(0); setSheetOpen(false); };
   const modalOpen = profileOpen || toolkit || reporting || tips || verify || impression || Boolean(match) || Boolean(screeningFor);
   const vstate = verificationState(data.viewer);
 
@@ -328,7 +332,7 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
               <button type="button" role="tab" aria-selected={tab === 'messages'} className={tab === 'messages' ? 'on' : ''} onClick={() => setTab('messages')}>Messages</button>
             </div>
             {tab === 'matches' && (matches.length || likesYou ? <div className="fm-grid">
-              {likesYou > 0 && <div className="fm-likes-tile"><Heart size={22} fill="currentColor" /><strong>{likesYou}</strong><small>{likesYou === 1 ? 'likes you' : 'like you'}</small></div>}
+              {likesYou > 0 && <button type="button" className="fm-likes-tile" onClick={() => setTab('likes')} aria-label={`See the ${likesYou} who already like you`}><Heart size={22} fill="currentColor" /><strong>{likesYou}</strong><small>{likesYou === 1 ? 'likes you' : 'like you'}</small><em>See who</em></button>}
               {matches.map((row) => <button type="button" key={row.matchId} className="fm-match-tile" onClick={() => openThread(row.matchId)} style={row.photo ? { backgroundImage: `url(${assetUrl(row.photo)})` } : undefined}>
                 {!row.photo && <span className="fm-initials small">{row.name.slice(0, 1)}</span>}
                 <span className="fm-tile-label"><b>{row.name.split(' ')[0]}</b>{row.tag && <small>{row.tag}</small>}</span>
@@ -338,6 +342,15 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
               <h3>Start Matching</h3>
               <p>Matches show up here once you start liking {noun}. When they like you back, you can message them from here.</p>
             </div>)}
+            {tab === 'likes' && <div className="fm-likers">
+              <button type="button" className="text-button fm-likers-back" onClick={() => setTab('matches')}><ArrowLeft size={14} /> Matches</button>
+              <p className="fm-side-title">{role === 'candidate' ? 'Hiring teams that already like you' : 'Candidates who already like your roles'}</p>
+              {likers.length ? <ul className="fm-threads">{likers.map((item) => { const c = toCard(item); const fit = item.match?.score; return <li key={item.id}><button type="button" onClick={() => showLiker(item)}>
+                <Avatar photo={c.photo} name={c.name} />
+                <span><strong>{c.name}{item.superLikedYou && <em> · Super Liked you</em>}</strong><small>{typeof fit === 'number' ? `${fit}% fit · ` : ''}Like back to match</small></span>
+              </button></li>; })}</ul>
+                : <p className="fm-empty-note">Nobody new yet. People who like you show up here first.</p>}
+            </div>}
             {tab === 'messages' && (conversations.length ? <ul className="fm-threads">
               {conversations.map((row) => <li key={row.matchId}><button type="button" onClick={() => openThread(row.matchId)}>
                 <Avatar photo={row.photo} name={row.name} />

@@ -4,7 +4,8 @@
 //   and their likes are tied to it (the match lands on that job).
 // "All my roles" keeps the full deck.
 import { useMemo, useState } from 'react';
-import { BriefcaseBusiness, ChevronDown, Sparkles } from 'lucide-react';
+import { BriefcaseBusiness, ChevronDown, Heart, Sparkles } from 'lucide-react';
+import { likesWaiting } from '../../lib/today';
 import type { Bootstrap, Job, Person, View } from '../../types';
 import { roleFor } from '../../lib/report';
 import { NewMatchesSection } from './NewMatchesSection';
@@ -35,7 +36,19 @@ export function FindMyMatchPage({ data, setData, navigate, onOpenMessages }: Pro
     subtitle={candidate ? 'Swipe right to show interest. A chat opens only if they like you back.' : 'Swipe right on candidates you want to meet. A chat opens only if they like you back.'}
     action="Open Discover" onAction={() => navigate('discover')} />;
 
+  // "See who liked you" (founder, 2026-11-23): Tinder-style gold entry on the swipe page, opens the likes list on Home.
+  const waiting = likesWaiting(data);
+  const seeWho = () => {
+    navigate('home');
+    window.setTimeout(() => document.getElementById(candidate ? 'td-chasing' : 'td-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350);
+  };
+
   return <>
+    {waiting > 0 && <button type="button" className="fmm-likes" onClick={seeWho}>
+      <Heart size={16} fill="currentColor" />
+      <span><strong>{waiting} {candidate ? (waiting === 1 ? 'hiring team likes you' : 'hiring teams like you') : (waiting === 1 ? 'candidate likes your roles' : 'candidates like your roles')}</strong>{!candidate && <small>Included in your plan</small>}</span>
+      <b>See who</b>
+    </button>}
     {options.length > 0 && <div className="fmm-rolebar">
       <span className="fmm-role-icon" aria-hidden="true">{selected ? (selected.label[0] || 'R').toUpperCase() : <BriefcaseBusiness size={16} />}</span>
       <label className="fmm-role-select">
