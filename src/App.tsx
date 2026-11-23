@@ -276,7 +276,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
       {banner !== 'image' && <nav className="landing-nav"><Brand /></nav>}
       {/* Header (founder, 2026-11-23): tagline under the logo, then 3 centred links: Why (the problems we solve),
           So what? (benefits), How it works better (the features designed for a faster hiring process). */}
-      {banner !== 'image' && <p className="landing-tagline">Find jobs and hire faster with smart matching, fewer steps and fast results.</p>}
+      {banner !== 'image' && <p className="landing-tagline">Find your Best Job Match Easier, Faster, Better</p>}
       {/* Bar (founder, 2026-11-23, 2nd version): What is it? → summary, What problem do we solve? → problems,
           How? → "A Better, Faster, Easier, Friendlier Way of Hiring" (benefits on phones), Try it now for free → pricing. */}
       {banner !== 'image' && <nav className="landing-subnav main3"><a href="#what-is-it">What is it?</a><a href="#problem">What problem do we solve?</a><a href="#compare">How?</a><a href="#pricing">Try it now for free</a></nav>}
