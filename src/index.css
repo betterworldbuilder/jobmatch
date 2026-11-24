@@ -4993,7 +4993,16 @@ button.rs-row:hover { border-color:#fd267a; }
 .tour-pick-txt small { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; opacity:.85; }
 .tour-pick-txt b { font-size:13.5px; font-weight:800; }
 .tour-pick-btn em { position:absolute; top:6px; right:8px; font-style:normal; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:99px; background:rgba(255,255,255,.22); }
-@media (max-width:360px) { .tour-pick-txt b { font-size:12px; } .tour-pick-btn em { display:none; } }
+/* Narrow windows / big phone text (founder's phone cut "Candidate"): smaller icon, text wraps, no "3 min" chip. */
+.tour-pick-txt { flex:1; }
+.tour-pick-txt b { overflow-wrap:anywhere; hyphens:auto; }
+@media (max-width:440px) {
+  .tour-pick { gap:8px; }
+  .tour-pick-btn { gap:7px; padding:9px 9px; }
+  .tour-pick-play { width:28px; height:28px; }
+  .tour-pick-txt b { font-size:clamp(11.5px, 3.4vw, 13.5px); }
+  .tour-pick-btn em { display:none; }
+}
 @media (prefers-reduced-motion: reduce) { .tour-pick-btn, .tour-pick-btn::after { transition:none; } }
 .typing-dots { display:inline-flex; gap:4px; align-items:center; min-height:18px; }
 .typing-dots i { width:7px; height:7px; border-radius:50%; background:#9aa3b2; animation:typing-dot 1s infinite ease-in-out; }

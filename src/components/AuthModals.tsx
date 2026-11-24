@@ -37,7 +37,6 @@ export function TourButtons({ className = '' }: { className?: string }) {
 function DemoPicker({ profiles, selected, onSelect }: { profiles: SessionUser[]; selected: string; onSelect: (id: string) => void }) {
   const [tab, setTab] = useState<'candidate' | 'employer'>('candidate');
   const [q, setQ] = useState('');
-  const counts = { candidate: profiles.filter((p) => p.role === 'candidate').length, employer: profiles.filter((p) => p.role !== 'candidate').length };
   const term = q.trim().toLowerCase();
   const list = profiles.filter((p) => (tab === 'candidate' ? p.role === 'candidate' : p.role !== 'candidate'))
     .filter((p) => !term || [p.name, p.title, p.company].filter(Boolean).join(' ').toLowerCase().includes(term));
@@ -46,7 +45,7 @@ function DemoPicker({ profiles, selected, onSelect }: { profiles: SessionUser[];
     <div className="demo-tabs" role="tablist" aria-label="Demo account type">
       {(['candidate', 'employer'] as const).map((r) => <button key={r} type="button" role="tab" aria-selected={tab === r} className={tab === r ? 'on' : ''}
         onClick={() => { setTab(r); const first = profiles.find((p) => (r === 'candidate' ? p.role === 'candidate' : p.role !== 'candidate')); if (first) onSelect(first.id); }}>
-        {r === 'candidate' ? <User size={13} /> : <BriefcaseBusiness size={13} />} {r === 'candidate' ? 'Candidates' : 'Recruiters'} <em>{counts[r]}</em>
+        {r === 'candidate' ? <User size={13} /> : <BriefcaseBusiness size={13} />} {r === 'candidate' ? 'Candidates' : 'Recruiters'}
       </button>)}
     </div>
     <label className="demo-search"><Search size={14} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === 'candidate' ? 'Search name, role…' : 'Search name, company…'} aria-label="Search demo accounts" /></label>
