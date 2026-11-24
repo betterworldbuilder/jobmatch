@@ -757,6 +757,8 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
     const photo = optString(req.body, 'photo', { max: 500 });
     // Recruiters' company country (founder, 2026-11-24): decides which payment methods they are offered.
     const country = optString(req.body, 'country', { max: 80 });
+    // Recruiters' own citizenship (founder, 2026-11-24): with the company country, decides their payment methods.
+    const citizenship = optString(req.body, 'citizenship', { max: 80 });
     // Every real account needs a password — DEMO_AUTH only affects the demo
     // personas, never sign-up. The one passwordless path is dev-only mock SSO.
     const mockSsoSignup = mockSso && (provider === 'linkedin' || provider === 'google');
@@ -776,6 +778,8 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
       const created = {
         id: `u-${crypto.randomUUID().slice(0, 8)}`, role, name, email,
         ...(role === 'employer' ? { kind: kind || 'company', ...(country ? { country } : {}) } : {}),
+        // Citizenship for both roles (founder, 2026-11-24): decides the payment methods for subscriptions / Premium.
+        ...(citizenship ? { nationality: citizenship, citizenship: [citizenship] } : {}),
         ...(password ? { passwordHash: hashPassword(password) } : {}),
         provider: provider || 'email',
         emailVerified: !needsVerification,
@@ -3884,9 +3888,10 @@ function methodConfigured(db, method) {
 function allowedMethods(db, recruiter) {
   const settings = db.paymentSettings;
   // Recruiters: the company's country. Candidates (Premium): their citizenship (founder, 2026-11-24).
+  // Recruiters: the company's country, then their own citizenship. Candidates (Premium): their citizenship.
   const place = recruiter?.role === 'candidate'
     ? (recruiter.nationality || recruiter.citizenship?.[0] || recruiter.country || '')
-    : (companyCountry(recruiter) || recruiter?.country || '');
+    : (companyCountry(recruiter) || recruiter?.nationality || recruiter?.citizenship?.[0] || '');
   return METHODS.filter((m) => isEnabled(settings, m.id) && methodConfigured(db, m) && shownIn(settings, m.id, place)).map((m) => m.id);
 }
 function adminPaymentMethods(db) {

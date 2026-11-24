@@ -227,6 +227,25 @@ test('Google Play: base plans map to catalogue plans (team = trio), and Play is 
   }
 });
 
+test('sign-up: citizenship for both roles, company country for recruiters; methods follow the company country, then citizenship', async () => {
+  const reg = (body) => call('POST', '/api/auth/register', { password: 'correct-horse-battery', conductAccepted: true, ...body });
+  const cand = await reg({ role: 'candidate', name: 'Cit Candidate', email: `cit-c-${process.pid}@example.com`, citizenship: 'France' });
+  assert.equal(cand.status, 201, JSON.stringify(cand.body));
+  const recNoCountry = await reg({ role: 'employer', kind: 'company', name: 'Cit Rec', email: `cit-r-${process.pid}@example.com`, citizenship: 'Vietnam' });
+  const recFr = await reg({ role: 'employer', kind: 'company', name: 'Cit Rec FR', email: `cit-rf-${process.pid}@example.com`, citizenship: 'Vietnam', country: 'France' });
+  const users = db().users;
+  const c = users.find((u) => u.id === cand.body.user.id);
+  assert.equal(c.nationality, 'France'); assert.deepEqual(c.citizenship, ['France']);
+  // Premium starts without asking again: the citizenship is already on the profile.
+  assert.equal((await call('POST', '/api/premium/trial', {}, cand.session)).status, 200);
+  const r1 = users.find((u) => u.id === recNoCountry.body.user.id);
+  assert.equal(r1.nationality, 'Vietnam');
+  const m1 = (await call('GET', `/api/bootstrap?userId=${r1.id}`, undefined, recNoCountry.session)).body.billing.methods;
+  assert.ok(m1.includes('payos'), `no company country: Vietnamese citizenship gives VietQR (${m1})`);
+  const m2 = (await call('GET', `/api/bootstrap?userId=${recFr.body.user.id}`, undefined, recFr.session)).body.billing.methods;
+  assert.ok(!m2.includes('payos'), `a French company is not offered VietQR, whatever the citizenship (${m2})`);
+});
+
 test('PayPal: one plan id per price, with the old single id as fallback', () => {
   const keep = { ...process.env };
   Object.assign(process.env, { PAYPAL_CLIENT_ID: 'c', PAYPAL_CLIENT_SECRET: 's', PAYPAL_PLAN_ID_SOLO: 'P-SOLO', PAYPAL_PLAN_ID: 'P-ANY' });

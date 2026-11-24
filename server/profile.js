@@ -217,6 +217,12 @@ export function applyRecruiterProfile(user, body) {
   if (body.companySize !== undefined) set('companySize', str(body.companySize, 30));
   set('headquarters', str(body.headquarters, 120));
   set('country', str(body.country, 80)); // company country (billing rules, e.g. USDT only outside Vietnam)
+  // The recruiter's own citizenship (founder, 2026-11-24): with the company country, decides payment methods.
+  if (body.nationality !== undefined) {
+    const n = str(body.nationality, 80);
+    set('nationality', n);
+    if (n) user.citizenship = [...new Set([n, ...(user.citizenship || [])])].slice(0, 5);
+  }
   set('officeLocations', strArray(body.officeLocations, 15, 80));
   setGeo(user, body.geo);
   set('foundedYear', num(body.foundedYear, 1800, 2100));

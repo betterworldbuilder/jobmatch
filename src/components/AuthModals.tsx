@@ -203,7 +203,11 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
   // Company country (recruiters, required; founder 2026-11-24): decides which payment methods they see.
   // Pre-selected from the phone's region; they can change it.
   const [country, setCountry] = useState(() => guessCountryName());
-  const countryOk = role !== 'employer' || Boolean(country);
+  // Recruiters also give their own citizenship (founder, 2026-11-24): used with the company country to offer the
+  // payment methods they can use for their subscription. Candidates give it when they start Premium.
+  const [citizenship, setCitizenship] = useState(() => guessCountryName());
+  // Citizenship for everyone (founder, 2026-11-24); company country for recruiters.
+  const countryOk = Boolean(citizenship) && (role !== 'employer' || Boolean(country));
   // Every real account has a password; demo mode only adds the demo personas on login.
   const passwordOk = password.length >= config.passwordMinLength;
 
@@ -226,13 +230,20 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
         {COUNTRY_OPTIONS.map((c, i) => <option key={`${c.code}-${i}`} value={c.name}>{c.name}</option>)}
       </select>
     </label>}
+    {<label className="auth-country">
+      <span>Your citizenship <small>(to offer the payment methods you can use)</small></span>
+      <select className="auth-input" value={citizenship} onChange={(event) => setCitizenship(event.target.value)} required aria-label="Your citizenship">
+        <option value="">Choose a country</option>
+        {COUNTRY_OPTIONS.map((c, i) => <option key={`cz-${c.code}-${i}`} value={c.name}>{c.name}</option>)}
+      </select>
+    </label>}
     <label className="conduct-checkbox">
       <input type="checkbox" checked={conductAccepted} onChange={(event) => setConductAccepted(event.target.checked)} />
       <span>I agree to the <button type="button" onClick={() => setConductOpen(true)}>Code of Conduct</button>, the <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a></span>
     </label>
-    <SsoButtons config={config} role={role} busy={busy} disabled={!conductAccepted || !countryOk} onMockSso={(provider) => { setBusy(provider); run(() => authProviders[provider].signIn({ registerRole: role, conductAccepted, registerCountry: role === 'employer' ? country : undefined })); }} />
+    <SsoButtons config={config} role={role} busy={busy} disabled={!conductAccepted || !countryOk} onMockSso={(provider) => { setBusy(provider); run(() => authProviders[provider].signIn({ registerRole: role, conductAccepted, registerCountry: role === 'employer' ? country : undefined, registerCitizenship: citizenship || undefined })); }} />
     <div className="auth-divider"><span>or continue with email</span></div>
-    <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || !email.trim() || !passwordOk || !conductAccepted || !countryOk) return; setSubmitting(true); run(() => authProviders.email.signIn({ register: { role, name: name.trim(), email: email.trim(), password, conductAccepted, ...(role === 'employer' ? { country } : {}) } })); }}>
+    <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || !email.trim() || !passwordOk || !conductAccepted || !countryOk) return; setSubmitting(true); run(() => authProviders.email.signIn({ register: { role, name: name.trim(), email: email.trim(), password, conductAccepted, citizenship, ...(role === 'employer' ? { country } : {}) } })); }}>
       <input className="auth-input" placeholder="Full name" value={name} onChange={(event) => setName(event.target.value)} required aria-label="Full name" autoComplete="name" />
       <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} required aria-label="Email address" autoComplete="email" />
       <input className="auth-input" type="password" placeholder={`Password (min ${config.passwordMinLength} characters)`} value={password} onChange={(event) => setPassword(event.target.value)} required minLength={config.passwordMinLength} aria-label="Password" autoComplete="new-password" />
