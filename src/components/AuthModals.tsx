@@ -164,6 +164,8 @@ export function LoginModal({ onClose, onComplete, onRegister }: { onClose: () =>
         <button type="submit" className="primary-button auth-submit" disabled={submitting === 'forgot' || !email.trim()}>{submitting === 'forgot' ? <Loader2 size={16} className="spin" /> : 'Send reset link'}</button>
         <button type="button" className="text-button" onClick={() => setForgot(false)}>Back to log in</button>
         {error && <p className="auth-error">{error}</p>}
+        {/* Founder, 2026-11-25: the admin (Google sign-in only) and demo accounts never get a reset email. */}
+        <p className="auth-hint">Signed up with Google? No password needed: use <b>Continue with Google</b> on the log in screen.</p>
       </form>}
   </ModalShell>;
 

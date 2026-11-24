@@ -848,12 +848,25 @@ app.post('/api/auth/forgot', authLimiter, async (req, res, next) => {
     const db = await store.read();
     // Passwordless accounts from the old demo sign-up set their first password
     // here too — the emailed link proves control of the address.
-    const user = db.users.find((item) => item.email && item.email.toLowerCase() === email && item.demo !== true && item.role !== 'admin');
+    const sameEmail = (item) => item.email && item.email.toLowerCase() === email;
+    const user = db.users.find((item) => sameEmail(item) && item.demo !== true && item.role !== 'admin');
+    // One log line per request so "I never got the email" can be answered from the server log (founder bug,
+    // 2026-11-25). Never the address or the link: only the outcome.
+    let outcome;
     if (user) {
       const token = actionToken('reset', user.id, 3600 * 1000);
       const link = `${publicOrigin}${APP_PATH}?reset=${encodeURIComponent(token)}`;
-      await sendMail({ to: user.email, subject: 'Reset your JobsMatchNow password', text: `Reset your password:\n${link}\n\nThis link expires in 1 hour. If you didn't ask, ignore this email.` }).catch(() => undefined);
+      try {
+        const sent = await sendMail({ to: user.email, subject: 'Reset your JobsMatchNow password', text: `Reset your password:\n${link}\n\nThis link expires in 1 hour. If you didn't ask, ignore this email.` });
+        outcome = sent && sent.delivered ? 'sent' : 'not sent (mailer off)';
+      } catch (error) {
+        outcome = `send failed ${[error && error.code, error && error.responseCode].filter(Boolean).join(' ')}`.trim();
+      }
+    } else {
+      const other = db.users.find(sameEmail);
+      outcome = !other ? 'no account with this address' : other.role === 'admin' ? 'admin account (Google sign-in only)' : 'demo account';
     }
+    console.log(`[forgot] ${outcome}`);
     // Never reveal whether the email exists.
     res.json({ ok: true, mailer: mailerConfigured() });
   } catch (error) { next(error); }
