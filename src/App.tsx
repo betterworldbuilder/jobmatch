@@ -257,6 +257,42 @@ function Landing({ onLogin, initialModal = null }: { onLogin: (user: SessionUser
   useEffect(() => { prefetchDemoProfiles().catch(() => undefined); }, []);
   const [conductOpen, setConductOpen] = useState(false);
   const isPhone = usePhoneWidth();
+  // Header links. Phones show "How it works" (#how); desktop keeps the comparison (#compare).
+  const subnavLinks: [string, string][] = [['#what-is-it', 'What is it?'], ['#problem', 'What problem do we solve?'], [isPhone ? '#how' : '#compare', 'How?'], ['#pricing', 'Try it now for free']];
+  const subnavRef = useRef<HTMLElement | null>(null);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const headerBottom = () => document.querySelector('.landing-header')?.getBoundingClientRect().bottom ?? 0;
+  const goToSection = (href: string) => {
+    const section = document.querySelector<HTMLElement>(href); if (!section) return;
+    // Frame the section's label (kicker) or title 16px under the sticky header, whatever the section padding.
+    const el = section.querySelector<HTMLElement>('[class*="kicker"], [class*="eyebrow"], h2') ?? section;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: Math.max(0, window.scrollY + el.getBoundingClientRect().top - headerBottom() - 16), behavior: reduce ? 'auto' : 'smooth' });
+    setActiveSection(href);
+    history.replaceState(null, '', href);
+  };
+  // Phones: highlight the link of the section under the header, and keep it visible in the scrollable bar.
+  useEffect(() => {
+    if (!isPhone) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const line = headerBottom() + 40;
+      let current: string | null = null;
+      for (const [href] of subnavLinks) { const el = document.querySelector(href); if (el && el.getBoundingClientRect().top <= line && el.getBoundingClientRect().bottom > line) current = href; }
+      setActiveSection(current);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPhone]);
+  useEffect(() => {
+    const a = activeSection && subnavRef.current?.querySelector<HTMLElement>(`a[href="${activeSection}"]`);
+    const bar = subnavRef.current;
+    if (a && bar && bar.scrollWidth > bar.clientWidth) bar.scrollTo({ left: a.offsetLeft - (bar.clientWidth - a.offsetWidth) / 2, behavior: 'smooth' });
+  }, [activeSection]);
   const openLogin = () => setAuthModal('login');
   const openRegister = () => setAuthModal('register');
   const complete = (user: SessionUser) => { setAuthModal(null); onLogin(user); };
@@ -312,7 +348,11 @@ function Landing({ onLogin, initialModal = null }: { onLogin: (user: SessionUser
       {banner !== 'image' && <p className="landing-tagline">Find your Best Job Match Easier, Faster, Better</p>}
       {/* Bar (founder, 2026-11-23, 2nd version): What is it? → summary, What problem do we solve? → problems,
           How? → "A Better, Faster, Easier, Friendlier Way of Hiring" (benefits on phones), Try it now for free → pricing. */}
-      {banner !== 'image' && <nav className="landing-subnav main3"><a href="#what-is-it">What is it?</a><a href="#problem">What problem do we solve?</a><a href="#compare">How?</a><a href="#pricing">Try it now for free</a></nav>}
+      {/* Phones (founder, 2026-11-24): How? → "How it works" (three steps); each link lands its section just under
+          the header and the link of the section on screen stays highlighted. Desktop links unchanged. */}
+      {banner !== 'image' && <nav className="landing-subnav main3" ref={subnavRef}>{subnavLinks.map(([href, label]) =>
+        <a key={href} href={href} className={isPhone && activeSection === href ? 'active' : undefined} aria-current={isPhone && activeSection === href ? 'location' : undefined}
+          onClick={isPhone ? (event) => { event.preventDefault(); goToSection(href); } : undefined}>{label}</a>)}</nav>}
     </header>
     {linkedinState && <div className="integration-notice">{linkedinState === 'connected' ? 'LinkedIn connected. Your professional identity is ready to use.' : 'Add LinkedIn app credentials to enable live account connection. The demo remains available.'}<button onClick={() => history.replaceState({}, '', '/')}>×</button></div>}
     {isPhone && <div className="get-app-row"><GetAppButton /></div>}
