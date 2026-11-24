@@ -7,7 +7,7 @@ const FLAGS = {
   /** "Try the demo" button on a real account's empty deck. Enabled for everyone by the founder, 2026-11-23 (?trydemo=0 hides it). */
   tryDemo: { param: 'trydemo', defaultOn: true },
   /** Phone bar Surf · Filter · Likes · Chat · Interviews · Menu + the shared "Search & Filters" (founder, 2026-11-24). Preview: ?filters=1 */
-  filters: { param: 'filters', defaultOn: false },
+  filters: { param: 'filters', defaultOn: true }, // switched on for everyone by the founder, 2026-11-24 (?filters=0 hides)
   /** New payment methods: payOS VietQR (any VN banking app, ZaloPay, MoMo) and USDT for companies outside Vietnam
    *  (founder, 2026-11-24). Shown only when configured AND this is on. Preview: ?pay=1 */
   pay: { param: 'pay', defaultOn: false },

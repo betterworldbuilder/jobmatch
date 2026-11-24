@@ -21,7 +21,8 @@ type Props = {
 };
 
 // v2 key with the new bar: everyone starts from Surf · Filter · Likes · Chat · Interviews · Menu once (one-time update).
-const storeKey = (role: string, userId: string, v2?: boolean) => `jm-tabbar-${v2 ? 'v2-' : ''}${role}-${userId}`;
+// v3 (2026-11-24): Filter moved first; a new key so everyone, including preview testers, gets the new order once.
+const storeKey = (role: string, userId: string, v2?: boolean) => `jm-tabbar-${v2 ? 'v3-' : ''}${role}-${userId}`;
 
 export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, unread, likes = 0, gotoNav, setView, openFullMenu, filtersOn = false, onFilter, filterCount = 0, filterOpen = false }: Props) {
   const defaults = () => (filtersOn ? defaultTabsV2() : defaultTabs(role));

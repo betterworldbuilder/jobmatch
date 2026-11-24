@@ -6,9 +6,9 @@ export const MAX_TABS = 6;
 
 /** Filter button (founder, 2026-11-24): opens the "Search & Filters" sheet. */
 export const FILTER_KEY = 'filter';
-/** New bar (founder, 2026-11-24), both sides: Surf · Filter · Likes · Chat · Interviews · Menu. Coffee lives in the menu. */
+/** New bar (founder, 2026-11-24), both sides: Filter · Surf · Likes · Chat · Interviews · Menu. Coffee lives in the menu. */
 export function defaultTabsV2(): string[] {
-  return ['surf', FILTER_KEY, 'likes', 'chat', 'nav:Interviews', MENU_KEY];
+  return [FILTER_KEY, 'surf', 'likes', 'chat', 'nav:Interviews', MENU_KEY];
 }
 
 /** Default bars (founder, 2026-11-22): invitations at the end; Profile lives in the Global Menu. */
