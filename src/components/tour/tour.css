@@ -41,6 +41,16 @@
 .tour-ghost { display:inline-flex; align-items:center; gap:6px; height:44px; padding:0 16px; border:1px solid rgba(255,255,255,.25); border-radius:99px; background:transparent; color:#fff; font:inherit; font-weight:700; cursor:pointer; }
 .tour-ctl:focus-visible, .tour-cta:focus-visible, .tour-ghost:focus-visible, .tour-x:focus-visible { outline:3px solid #fde68a; outline-offset:2px; }
 
+/* While playing: one small chip under the progress bar, never over the screens' content for long. */
+.tour-chip { position:fixed; top:calc(16px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:4px; max-width:calc(100vw - 20px); height:36px; padding:0 4px 0 6px; border-radius:99px; background:rgba(17,17,27,.82); color:#fff; box-shadow:0 6px 18px rgba(0,0,0,.25); backdrop-filter:blur(8px); font-size:12.5px; font-weight:700; white-space:nowrap; }
+.tour-chip-step { flex:none; padding:3px 7px; border-radius:99px; background:#fd267a; font-size:11px; font-weight:800; }
+.tour-employer .tour-chip-step { background:#2563eb; }
+.tour-chip-title { min-width:0; overflow:hidden; text-overflow:ellipsis; padding:0 4px; }
+.tour-chip.paused .tour-chip-title { color:#fde68a; }
+.tour-chip-btn { flex:none; display:grid; place-items:center; width:28px; height:28px; border:0; border-radius:50%; background:rgba(255,255,255,.14); color:#fff; cursor:pointer; }
+.tour-chip-btn:hover { background:rgba(255,255,255,.26); }
+.tour-chip-btn:focus-visible { outline:2px solid #fde68a; outline-offset:1px; }
+.tour-sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 .tour-end { top:50%; bottom:auto; transform:translateY(-50%); padding:24px 22px 20px; text-align:left; }
 .tour-end h2 { font-size:24px; margin:10px 0 8px; }
 .tour-end-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }

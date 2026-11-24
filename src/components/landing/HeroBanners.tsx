@@ -11,9 +11,10 @@ type HeroProps = { onRegister: () => void; onLogin: () => void };
 /* Phone landing (founder, 2026-11-23): mockup first, then the buttons on 2 rows, then this one-line consent,
    then the title. The phone-only parts are hidden on desktop by CSS (.landing-phone), so desktop is unchanged. */
 function HeroActions({ onRegister, onLogin }: HeroProps) {
-  return <><div className="hero-actions"><button className="primary-button" onClick={onRegister}>Register free <ArrowRight size={18} /></button><button className="secondary-button" onClick={onLogin}>Log in</button><button className="secondary-button demo-test-button" onClick={onLogin}><Sparkles size={18} /> <span className="demo-label-long">Test demo account</span><span className="demo-label-short">Try demo</span></button></div>
-    {/* Full tours (founder, 2026-11-24), under Log in / Try demo. Preview ?tour=1 */}
-    <TourButtons className="hero-tours" /></>;
+  return <>
+    {/* Full tours (founder, 2026-11-24): right above Register free. Shown while the `tour` flag is on. */}
+    <TourButtons className="hero-tours" />
+    <div className="hero-actions"><button className="primary-button" onClick={onRegister}>Register free <ArrowRight size={18} /></button><button className="secondary-button" onClick={onLogin}>Log in</button><button className="secondary-button demo-test-button" onClick={onLogin}><Sparkles size={18} /> <span className="demo-label-long">Test demo account</span><span className="demo-label-short">Try demo</span></button></div></>;
 }
 function HeroConsent() {
   return <p className="hero-consent">By continuing you agree to our <a href="/terms.html">Terms</a>, <a href="/privacy.html">Privacy</a> &amp; <a href="/privacy.html#cookies">Cookies</a>.</p>;

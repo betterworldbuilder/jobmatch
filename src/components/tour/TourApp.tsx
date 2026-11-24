@@ -258,28 +258,23 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
           <h2>{role === 'candidate' ? 'Your next job, chosen by both sides.' : 'Your next hire, chosen by both sides.'}</h2>
           <p>Everything you saw was a tour: nothing was saved. Create your real account in under a minute.</p>
           <div className="tour-end-actions">
-            <button type="button" className="tour-cta" onClick={signUp}>Sign up for real <ArrowRight size={17} /></button>
+            <button type="button" className="tour-cta" onClick={signUp}>Sign up now <ArrowRight size={17} /></button>
             <button type="button" className="tour-ghost" onClick={replay}><RotateCcw size={15} /> Replay</button>
             <button type="button" className="tour-ghost" onClick={() => onEnd('close')}>Close</button>
           </div>
         </section>
-        : <section className="tour-card" aria-label={tour.name}>
-          <header>
-            <span className="tour-kicker">Step {index + 1} of {steps.length} · {tour.name}</span>
-            <button type="button" className="tour-x" onClick={() => onEnd('close')} aria-label="Close the tour"><X size={16} /></button>
-          </header>
-          <h2>{step.title}</h2>
-          <p>{step.caption}</p>
-          {paused && <p className="tour-paused">Paused: explore freely, then press Play.</p>}
-          <footer>
-            {reduced && waitingNext
-              ? <button type="button" className="tour-cta small" onClick={skip}>Next <ArrowRight size={15} /></button>
-              : <button type="button" className="tour-ctl" onClick={togglePause} aria-label={paused ? 'Play' : 'Pause'}>{paused ? <Play size={16} /> : <Pause size={16} />}<span>{paused ? 'Play' : 'Pause'}</span></button>}
-            <button type="button" className="tour-ctl" onClick={skip} aria-label="Skip this step"><SkipForward size={16} /><span>Skip</span></button>
-            <button type="button" className="tour-ctl" onClick={replay} aria-label="Replay from the start"><RotateCcw size={15} /><span>Replay</span></button>
-            <button type="button" className="tour-cta small" onClick={signUp}>Sign up for real</button>
-          </footer>
-        </section>}
+        // While playing (founder, 2026-11-24): no card over the screens, only a small chip at the top with the step,
+        // Pause, Skip and Close. The caption is read to screen readers. Sign up / Replay come at the end.
+        : <div className={`tour-chip${paused ? ' paused' : ''}`} role="group" aria-label={tour.name}>
+          <span className="tour-chip-step">{index + 1}/{steps.length}</span>
+          <span className="tour-chip-title">{paused ? 'Paused: explore, then ▶' : step.title}</span>
+          <span className="tour-sr">{step.caption}</span>
+          {reduced && waitingNext
+            ? <button type="button" className="tour-chip-btn" onClick={skip} aria-label="Next step"><ArrowRight size={15} /></button>
+            : <button type="button" className="tour-chip-btn" onClick={togglePause} aria-label={paused ? 'Play' : 'Pause'}>{paused ? <Play size={14} /> : <Pause size={14} />}</button>}
+          <button type="button" className="tour-chip-btn" onClick={skip} aria-label="Skip this step"><SkipForward size={14} /></button>
+          <button type="button" className="tour-chip-btn" onClick={() => onEnd('close')} aria-label="Close the tour"><X size={14} /></button>
+        </div>}
     </div>
   </div>;
 }
