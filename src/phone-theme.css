@@ -70,6 +70,9 @@
   .conversation .composer { flex-shrink:0; min-height:0; padding:8px 12px; background:#fff; }
   .conversation .composer input { font-size:16px; height:46px; } /* 16px: no zoom-in jump on iPhone when typing */
   .conversation .composer-footnote { display:none; }
+  /* Swipe screen (founder, 2026-11-24): no "N hiring teams like you" bar on phones: the card gets the space;
+     Likes stays one tap away in the bottom bar (with its count). */
+  .fmm-likes { display:none !important; }
   /* ?bar=1: no top bar on phones; the bell sits at the right of the role picker. */
   .app-shell.phone-bar-v2 .topbar { display:none; }
   .app-shell.phone-bar-v2 .fmm-bell { display:block; margin-left:auto; flex:none; }

@@ -639,7 +639,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     {jobImportOpen && data && <JobImportModal viewer={data.viewer} onClose={() => setJobImportOpen(false)} onImported={() => { setJobImportOpen(false); setView('jobs'); load(); }} onManual={() => { setJobImportOpen(false); setView('jobs'); setManualJobRequest((value) => value + 1); }} />}
     {/* Phone action bar + Global Menu (founder, 2026-11-22), job seekers and recruiters: configurable, saved per person. */}
     <MobileTabs role={role} userId={session.id} nav={nav} navColors={NAV_COLORS} view={view} activeAnchor={activeAnchor} unread={notifications.length} likes={data ? likesWaiting(data) : 0} gotoNav={gotoNav} setView={setView} openFullMenu={() => setMobileNav(true)}
-      filtersOn={filtersOn} onFilter={() => setFilterOpen(true)} filterCount={filterCount} filterOpen={filterOpen} />
+      filtersOn={filtersOn} onFilter={() => setFilterOpen(true)} filterCount={filterCount} filterOpen={filterOpen} onLogout={onExit} />
     {filtersOn && filterOpen && data && <SearchFiltersSheet role={role} data={data} onClose={() => setFilterOpen(false)} onShow={() => { setFilterOpen(false); setView('match'); }} />}
     <AnimatePresence>{settingsOpen && <SettingsModal user={session} onClose={() => setSettingsOpen(false)} onDeleted={() => { setSettingsOpen(false); onExit(); }} />}</AnimatePresence>
   </div></RoleBarExtra.Provider></TryDemoContext.Provider>;

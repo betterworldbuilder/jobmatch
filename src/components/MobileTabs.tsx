@@ -4,7 +4,7 @@
 //   the bar to remove it, or tap a tile to add/remove. Pointer events, so it works with touch and mouse.
 // - Saved per person and role on this device (localStorage); Global Menu always stays in the bar.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, GripVertical, Heart, LayoutGrid, MessageCircle, Pencil, SlidersHorizontal, User, Waves, X } from 'lucide-react';
+import { Check, GripVertical, Heart, LayoutGrid, LogOut, MessageCircle, Pencil, SlidersHorizontal, User, Waves, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { View } from '../types';
 import { defaultTabs, defaultTabsV2, FILTER_KEY, MAX_TABS, MENU_KEY, normalizeTabs, placeTab, removeTab, toggleTab } from '../lib/tabBar';
@@ -19,13 +19,15 @@ type Props = {
   gotoNav: (item: TabNavItem) => void; setView: (v: View) => void; openFullMenu: () => void;
   /** New bar + Filter button (founder, 2026-11-24; preview ?filters=1). */
   filtersOn?: boolean; onFilter?: () => void; filterCount?: number; filterOpen?: boolean;
+  /** "Log out" tile at the end of the Global Menu (founder, 2026-11-24). */
+  onLogout?: () => void;
 };
 
 // v2 key with the new bar: everyone starts from Surf · Filter · Likes · Chat · Interviews · Menu once (one-time update).
 // v3 (2026-11-24): Filter moved first; a new key so everyone, including preview testers, gets the new order once.
 const storeKey = (role: string, userId: string, v2?: boolean) => `jm-tabbar-${v2 ? 'v3-' : ''}${role}-${userId}`;
 
-export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, unread, likes = 0, gotoNav, setView, openFullMenu, filtersOn = false, onFilter, filterCount = 0, filterOpen = false }: Props) {
+export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, unread, likes = 0, gotoNav, setView, openFullMenu, filtersOn = false, onFilter, filterCount = 0, filterOpen = false, onLogout }: Props) {
   const defaults = () => (filtersOn ? defaultTabsV2() : defaultTabs(role));
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -130,7 +132,12 @@ export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, u
           onPointerDown={(e) => onDown(e, key, 'menu')} onPointerMove={onMove} onPointerUp={onUp}>
           <i><Icon size={20} /></i><span>{it.label}{it.key === 'likes' && it.badge ? ` (${it.badge})` : ''}</span>{editing && <b className="gm-grip">{inBar ? <Check size={14} /> : <GripVertical size={14} />}</b>}
         </button>;
-      })}</div>
+      })}
+        {/* Log out: not a bar button (can't be dragged onto the bar). */}
+        {onLogout && !editing && <button type="button" className="gm-tile gm-logout" style={{ ['--c' as string]: '#fb7185' }} onClick={() => { close(); onLogout(); }}>
+          <i><LogOut size={20} /></i><span>Log out</span>
+        </button>}
+      </div>
       <button type="button" className="secondary-button explore-more" onClick={() => { close(); openFullMenu(); }}>Settings, help and more</button>
       {editing && <button type="button" className="text-button gm-reset" onClick={() => save(normalizeTabs(defaults(), known, role))}>Reset the bar</button>}
     </section>}

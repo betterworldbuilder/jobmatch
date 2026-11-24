@@ -180,8 +180,7 @@ export function LoginModal({ onClose, onComplete, onRegister }: { onClose: () =>
     {onRegister && <button type="button" className="auth-register-btn" onClick={onRegister}><span>New here?</span> <b>Register free</b> <ArrowRight size={15} /></button>}
     <div className="auth-divider"><span>or</span></div>
     <SsoButtons config={config} busy={busy} onMockSso={(provider) => { setBusy(provider); setSubmitted('sso'); run(() => authProviders[provider].signIn()); }} />
-    {/* Full tours (founder, 2026-11-24), above the demo accounts. Preview: ?tour=1 */}
-    <TourButtons />
+    {/* Full tours: on the home page only, above "Register free" (founder, 2026-11-24: no duplicate here). */}
     {config.demoAuth && <>
       <div className="auth-divider"><span>test with demo accounts</span></div>
       <form className="auth-form demo-form" onSubmit={(event) => { event.preventDefault(); if (!selected) return; setSubmitting('demo'); setSubmitted('demo'); run(() => authProviders.demo.signIn({ userId: selected })); }}>
