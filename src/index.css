@@ -5018,6 +5018,7 @@ button.rs-row:hover { border-color:#fd267a; }
 .auth-register-btn:focus-visible { outline:3px solid #111; outline-offset:2px; }
 .fmm-bell, .fmm-rolebar.fmm-bell-only { display:none; } /* phones only, with ?bar=1 (phone-theme.css) */
 .tour-pick.hero-tours { max-width:520px; margin:36px 0 14px; }
+.tour-pick.auth-tours { width:100%; margin:4px 0 14px; }
 .hero-tours + .hero-actions { margin-top:0; } /* the tour buttons take the space above Register */
 .landing-phone .tour-pick.hero-tours { margin:12px auto 0; width:100%; }
 .tour-loading { position:fixed; inset:0; display:grid; place-items:center; background:#fff; color:#556; font-weight:700; }

@@ -179,8 +179,9 @@ export function LoginModal({ onClose, onComplete, onRegister }: { onClose: () =>
     {/* Founder, 2026-11-24: the sign-in window had no way to create an account. */}
     {onRegister && <button type="button" className="auth-register-btn" onClick={onRegister}><span>New here?</span> <b>Register free</b> <ArrowRight size={15} /></button>}
     <div className="auth-divider"><span>or</span></div>
+    {/* Full tours under "or" (founder, 2026-11-24). */}
+    <TourButtons className="auth-tours" />
     <SsoButtons config={config} busy={busy} onMockSso={(provider) => { setBusy(provider); setSubmitted('sso'); run(() => authProviders[provider].signIn()); }} />
-    {/* Full tours: on the home page only, above "Register free" (founder, 2026-11-24: no duplicate here). */}
     {config.demoAuth && <>
       <div className="auth-divider"><span>test with demo accounts</span></div>
       <form className="auth-form demo-form" onSubmit={(event) => { event.preventDefault(); if (!selected) return; setSubmitting('demo'); setSubmitted('demo'); run(() => authProviders.demo.signIn({ userId: selected })); }}>
@@ -241,6 +242,8 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
   };
 
   return <ModalShell title="Join JobsMatchNow" subtitle="Create your account in under a minute." onClose={onClose}>
+    {/* Full tours under the subtitle (founder, 2026-11-24). */}
+    <TourButtons className="auth-tours" />
     <div className="role-choice" role="radiogroup" aria-label="I am a">
       <button type="button" className={role === 'candidate' ? 'role-option role-cand active' : 'role-option role-cand'} onClick={() => setRole('candidate')} aria-pressed={role === 'candidate'}><User size={17} /><strong>Candidate</strong><small>Find your next role</small></button>
       <button type="button" className={role === 'employer' ? 'role-option role-rec active' : 'role-option role-rec'} onClick={() => setRole('employer')} aria-pressed={role === 'employer'}><BriefcaseBusiness size={17} /><strong>Company HR or Recruiter</strong><small>Find great people</small></button>
