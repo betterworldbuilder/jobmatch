@@ -1961,6 +1961,13 @@ img.avatar-mini { object-fit:cover; }
 .role-option small { font-size:9px; }
 .role-option.active { border-color:var(--green); background:#fff0f5; color:var(--green); }
 .role-option.active strong { color:var(--green); }
+/* Sign-up choice (founder, 2026-11-24): candidate pink, company HR / recruiter blue, always tinted. */
+.role-option.role-cand { background:#fff0f6; border-color:#ffc6dc; }
+.role-option.role-cand svg, .role-option.role-cand strong { color:#e0185f; }
+.role-option.role-cand.active { background:#ffe1ee; border-color:#fd267a; box-shadow:0 0 0 3px rgba(253,38,122,.15); }
+.role-option.role-rec { background:#eef5ff; border-color:#bcd6fb; }
+.role-option.role-rec svg, .role-option.role-rec strong { color:#1d4ed8; }
+.role-option.role-rec.active { background:#dceaff; border-color:#1d4ed8; box-shadow:0 0 0 3px rgba(29,78,216,.15); }
 .spin { animation:spin 1s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
@@ -4967,3 +4974,30 @@ button.rs-row:hover { border-color:#fd267a; }
 .discover-filters.df-shared { display:block; }
 .discover-filters.df-shared .sf-fields { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:28px; }
 @media (max-width:760px) { .discover-filters.df-shared .sf-fields { grid-template-columns:1fr; } }
+/* Full tours (founder, 2026-11-24): two buttons above the demo accounts in the sign-in window. Preview ?tour=1 */
+.tour-pick { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0 2px; }
+.tour-pick-btn { position:relative; display:flex; align-items:center; gap:10px; min-height:58px; padding:10px 12px; border:0; border-radius:16px; color:#fff; text-align:left; cursor:pointer; overflow:hidden; font:inherit; transition:transform .15s ease, box-shadow .15s ease; }
+.tour-pick-btn.cand { background:linear-gradient(135deg,#fd267a 0%,#ff6036 100%); box-shadow:0 8px 20px rgba(253,38,122,.28); }
+.tour-pick-btn.rec { background:linear-gradient(135deg,#1d4ed8 0%,#38bdf8 100%); box-shadow:0 8px 20px rgba(29,78,216,.28); }
+.tour-pick-btn::after { content:""; position:absolute; inset:0; background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.22) 50%,transparent 70%); transform:translateX(-100%); transition:transform .6s ease; pointer-events:none; }
+.tour-pick-btn:hover { transform:translateY(-1px); }
+.tour-pick-btn:hover::after { transform:translateX(100%); }
+.tour-pick-btn:focus-visible { outline:3px solid #111; outline-offset:2px; }
+.tour-pick-play { flex:none; display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.95); color:#fd267a; box-shadow:0 0 0 4px rgba(255,255,255,.25); }
+.tour-pick-btn.rec .tour-pick-play { color:#1d4ed8; }
+.tour-pick-play svg { margin-left:2px; }
+.tour-pick-txt { display:flex; flex-direction:column; min-width:0; line-height:1.15; }
+.tour-pick-txt small { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; opacity:.85; }
+.tour-pick-txt b { font-size:13.5px; font-weight:800; }
+.tour-pick-btn em { position:absolute; top:6px; right:8px; font-style:normal; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:99px; background:rgba(255,255,255,.22); }
+@media (max-width:360px) { .tour-pick-txt b { font-size:12px; } .tour-pick-btn em { display:none; } }
+@media (prefers-reduced-motion: reduce) { .tour-pick-btn, .tour-pick-btn::after { transition:none; } }
+.typing-dots { display:inline-flex; gap:4px; align-items:center; min-height:18px; }
+.typing-dots i { width:7px; height:7px; border-radius:50%; background:#9aa3b2; animation:typing-dot 1s infinite ease-in-out; }
+.typing-dots i:nth-child(2) { animation-delay:.15s; } .typing-dots i:nth-child(3) { animation-delay:.3s; }
+@keyframes typing-dot { 0%,80%,100% { transform:translateY(0); opacity:.5; } 40% { transform:translateY(-4px); opacity:1; } }
+@media (prefers-reduced-motion: reduce) { .typing-dots i { animation:none; } }
+.fmm-bell, .fmm-rolebar.fmm-bell-only { display:none; } /* phones only, with ?bar=1 (phone-theme.css) */
+.tour-pick.hero-tours { max-width:520px; margin:14px 0 0; }
+.landing-phone .tour-pick.hero-tours { margin:12px auto 0; width:100%; }
+.tour-loading { position:fixed; inset:0; display:grid; place-items:center; background:#fff; color:#556; font-weight:700; }

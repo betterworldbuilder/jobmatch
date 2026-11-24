@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Ban, BriefcaseBusiness, Check, Download, Linkedin, Loader2, LogIn, Mail, Search, ShieldCheck, Trash2, User, X } from 'lucide-react';
+import { ArrowRight, Ban, BriefcaseBusiness, Check, Download, Linkedin, Loader2, LogIn, Mail, Play, Search, ShieldCheck, Trash2, User, X } from 'lucide-react';
 import { api, apiBase } from '../api';
+import { featureOn } from '../lib/flags';
+import { startTour } from '../lib/tour/runtime';
 import { authProviders } from '../lib/auth';
 import { COUNTRY_OPTIONS, guessCountryName } from '../lib/countries';
 import { ConductModal } from './ConductModal';
@@ -12,6 +14,24 @@ function GoogleMark() {
 }
 
 type SsoBusy = 'linkedin' | 'google' | null;
+
+/** "Watch Candidate full tour" · "Watch Recruiter full tour" (founder, 2026-11-24): sign-in window and home page.
+ *  Shown only while the `tour` flag is on (preview ?tour=1). */
+export function TourButtons({ className = '' }: { className?: string }) {
+  if (!featureOn('tour')) return null;
+  return <div className={`tour-pick ${className}`} role="group" aria-label="Watch a full tour">
+    <button type="button" className="tour-pick-btn cand" onClick={() => startTour('candidate')}>
+      <span className="tour-pick-play" aria-hidden="true"><Play size={15} fill="currentColor" /></span>
+      <span className="tour-pick-txt"><small>Watch</small><b>Candidate full tour</b></span>
+      <em>90 s</em>
+    </button>
+    <button type="button" className="tour-pick-btn rec" onClick={() => startTour('employer')}>
+      <span className="tour-pick-play" aria-hidden="true"><Play size={15} fill="currentColor" /></span>
+      <span className="tour-pick-txt"><small>Watch</small><b>Recruiter full tour</b></span>
+      <em>90 s</em>
+    </button>
+  </div>;
+}
 
 /** Demo account picker: Candidates / Recruiters tabs, search, a compact scrolling list (phone friendly). */
 function DemoPicker({ profiles, selected, onSelect }: { profiles: SessionUser[]; selected: string; onSelect: (id: string) => void }) {
@@ -159,8 +179,10 @@ export function LoginModal({ onClose, onComplete }: { onClose: () => void; onCom
     </form>
     <div className="auth-divider"><span>or</span></div>
     <SsoButtons config={config} busy={busy} onMockSso={(provider) => { setBusy(provider); setSubmitted('sso'); run(() => authProviders[provider].signIn()); }} />
+    {/* Full tours (founder, 2026-11-24), above the demo accounts. Preview: ?tour=1 */}
+    <TourButtons />
     {config.demoAuth && <>
-      <div className="auth-divider"><span>test the matching experience</span></div>
+      <div className="auth-divider"><span>test with demo accounts</span></div>
       <form className="auth-form demo-form" onSubmit={(event) => { event.preventDefault(); if (!selected) return; setSubmitting('demo'); setSubmitted('demo'); run(() => authProviders.demo.signIn({ userId: selected })); }}>
         {profiles.length ? <DemoPicker profiles={profiles} selected={selected} onSelect={setSelected} />
           : <div className="demo-picker demo-loading" aria-busy="true"><span /><span /><span /></div>}
@@ -220,8 +242,8 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
 
   return <ModalShell title="Join JobsMatchNow" subtitle="Create your account in under a minute." onClose={onClose}>
     <div className="role-choice" role="radiogroup" aria-label="I am a">
-      <button type="button" className={role === 'candidate' ? 'role-option active' : 'role-option'} onClick={() => setRole('candidate')} aria-pressed={role === 'candidate'}><User size={17} /><strong>Candidate</strong><small>Find your next role</small></button>
-      <button type="button" className={role === 'employer' ? 'role-option active' : 'role-option'} onClick={() => setRole('employer')} aria-pressed={role === 'employer'}><BriefcaseBusiness size={17} /><strong>Company / Headhunter</strong><small>Find great people</small></button>
+      <button type="button" className={role === 'candidate' ? 'role-option role-cand active' : 'role-option role-cand'} onClick={() => setRole('candidate')} aria-pressed={role === 'candidate'}><User size={17} /><strong>Candidate</strong><small>Find your next role</small></button>
+      <button type="button" className={role === 'employer' ? 'role-option role-rec active' : 'role-option role-rec'} onClick={() => setRole('employer')} aria-pressed={role === 'employer'}><BriefcaseBusiness size={17} /><strong>Company HR or Recruiter</strong><small>Find great people</small></button>
     </div>
     {role === 'employer' && <label className="auth-country">
       <span>Company country <small>(where your company is registered)</small></span>

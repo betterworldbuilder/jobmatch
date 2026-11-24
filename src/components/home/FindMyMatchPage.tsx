@@ -3,7 +3,7 @@
 // - recruiters pick one of their open roles → the deck shows every candidate scored for that role,
 //   and their likes are tied to it (the match lands on that job).
 // "All my roles" keeps the full deck.
-import { useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { BriefcaseBusiness, ChevronDown, Heart, Sparkles } from 'lucide-react';
 import { likesWaiting } from '../../lib/today';
 import type { Bootstrap, Job, Person, View } from '../../types';
@@ -14,8 +14,13 @@ import { DashboardTitle } from './MatchHome';
 
 type Props = { data: Bootstrap; setData: (d: Bootstrap) => void; navigate: (v: View) => void; onOpenMessages?: (matchId: string) => void };
 
+/** Phones without the top bar (founder, 2026-11-24, preview ?bar=1): the notification bell sits at the right of the
+ *  role picker. The workspace provides it; empty otherwise. */
+export const RoleBarExtra = createContext<React.ReactNode>(null);
+
 export function FindMyMatchPage({ data, setData, navigate, onOpenMessages }: Props) {
   const candidate = data.viewer.role === 'candidate';
+  const extra = useContext(RoleBarExtra);
   const [roleKey, setRoleKey] = useState('all');
 
   // Candidate: target roles (desired roles, else the current title). Recruiter: open roles.
@@ -59,7 +64,9 @@ export function FindMyMatchPage({ data, setData, navigate, onOpenMessages }: Pro
         </select>
         <ChevronDown size={16} className="fmm-role-chev" aria-hidden="true" />
       </label>
+      {extra}
     </div>}
+    {options.length === 0 && extra && <div className="fmm-rolebar fmm-bell-only">{extra}</div>}
     {candidate
       ? <NewMatchesSection key={`c-${roleKey}`} data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={header} items={candidateItems} roleKey={roleKey} />
       : <RecruiterMatchSection key={`r-${roleKey}`} data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} header={header} items={recruiterItems} jobId={selected?.key} />}

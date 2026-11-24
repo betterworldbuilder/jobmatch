@@ -58,6 +58,28 @@
   .get-app-card h3 { font:800 18px 'Manrope'; color:#0b102b; margin:10px 0 4px; }
   .get-app-card p { margin:0 0 10px; color:#5b6573; font-size:14px; }
   .get-app-card ol { list-style:decimal; margin:0; padding-left:20px; display:grid; gap:8px; color:#26304a; font-size:14.5px; line-height:1.45; }
+  /* Chat box always visible above the bottom tab bar (founder, 2026-11-24): the page fits between the top bar and
+     the tab bar, the conversation scrolls, the starters panel scrolls inside a capped height, the box stays put. */
+  .messages-page { height:calc(100dvh - 64px - 62px - env(safe-area-inset-bottom)); min-height:320px; }
+  .app-shell.phone-bar-v2 .messages-page { height:calc(100dvh - 62px - env(safe-area-inset-bottom)); }
+  .conversation { min-height:0; overflow:hidden; }
+  .conversation-body { min-height:90px; overscroll-behavior:contain; }
+  .conversation .starter-panel { max-height:32dvh; overflow-y:auto; padding:10px 14px; flex-shrink:1; }
+  .conversation .starter-chips { max-height:none; overflow:visible; }
+  .conversation .coffee-quick-row { flex-shrink:0; }
+  .conversation .composer { flex-shrink:0; min-height:0; padding:8px 12px; background:#fff; }
+  .conversation .composer input { font-size:16px; height:46px; } /* 16px: no zoom-in jump on iPhone when typing */
+  .conversation .composer-footnote { display:none; }
+  /* ?bar=1: no top bar on phones; the bell sits at the right of the role picker. */
+  .app-shell.phone-bar-v2 .topbar { display:none; }
+  .app-shell.phone-bar-v2 .fmm-bell { display:block; margin-left:auto; flex:none; }
+  .fmm-bell > button { width:40px; height:40px; border:1px solid #e3e7ef; border-radius:12px; background:#fff; display:grid; place-items:center; position:relative; color:#26304a; }
+  .fmm-bell > button i { position:absolute; width:8px; height:8px; background:#fd267a; border-radius:50%; top:7px; right:8px; border:1.5px solid #fff; }
+  .fmm-bell .notif-dropdown { position:absolute; top:calc(100% + 8px); right:0; left:auto; width:min(330px, calc(100vw - 28px)); }
+  .app-shell.phone-bar-v2 .fmm-rolebar.fmm-bell-only { display:flex; justify-content:flex-end; padding:6px 8px; }
+  .get-app-card .get-app-note { margin:12px 0 0; font-size:12.5px; color:#7a8494; }
+  .get-app-installed h3 { color:#0b102b; }
+  .get-app-installed p { margin:0; }
   .get-app-x { position:absolute; top:12px; right:12px; }
   .install-popup-actions { display:flex; align-items:center; gap:10px; margin-top:14px; }
   .install-popup-actions .get-app-button { flex:1; justify-content:center; min-height:46px; font-size:15px; }

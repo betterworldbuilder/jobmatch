@@ -2,6 +2,8 @@ import type { AdminCatalog, AdminKpi, AdminPaymentMethods, AdminPlanInput, BankI
 import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
 /** A demo hire shown on the landing ("New Matches Hired"); both people are demo accounts. */
+import { tourRuntime } from './lib/tour/runtime';
+
 export type ShowcaseHire = { id: string; hiredAt?: number; candidate: { name: string; title?: string; photo?: string; location?: string }; recruiter: { name: string; photo?: string; company?: string }; job: { title: string; company?: string; accent?: string; location?: string } };
 
 /** What the browser may know about a member's own AI key (never the key itself). */
@@ -13,6 +15,8 @@ export type PremiumState = { active: boolean; source: 'paid' | 'trial' | 'demo' 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  // A full tour is playing: scripted answers only, nothing reaches the server (src/lib/tour).
+  if (tourRuntime.active) return tourRuntime.handle<T>(url, init);
   // credentials: session cookie must travel on native (Capacitor) origins too
   const response = await fetch(`${apiBase}${url}`, { ...init, credentials: 'include', headers: { 'Content-Type': 'application/json', ...init?.headers } });
   const body = await response.json().catch(() => ({}));

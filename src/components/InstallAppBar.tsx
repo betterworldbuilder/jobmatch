@@ -18,7 +18,7 @@ if (typeof window !== 'undefined') {
     pending = event as InstallEvent;
     listeners.forEach((fn) => fn(pending));
   });
-  window.addEventListener('appinstalled', () => { pending = null; listeners.forEach((fn) => fn(null)); });
+  window.addEventListener('appinstalled', () => { pending = null; markInstalled(); listeners.forEach((fn) => fn(null)); });
 }
 
 function hiddenNow() {
@@ -28,18 +28,43 @@ function hiddenNow() {
 // "install the app" offers inside the app itself.
 const standalone = () => typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true || /JobsMatchNowExpo/i.test(navigator.userAgent));
 
+// "Already installed" (founder, 2026-11-24: a 2nd tap on "Get the app" showed the install steps again). The browser
+// only offers install when the app is NOT installed, so without its offer we check: installed from this browser
+// (remembered on this phone), opened as the installed app before (it shares this browser's storage), or Chrome
+// says so (getInstalledRelatedApps, via related_applications in the manifest).
+const INSTALLED_KEY = 'jm-app-installed';
+function markInstalled() { try { localStorage.setItem(INSTALLED_KEY, '1'); } catch { /* private mode */ } }
+if (typeof window !== 'undefined' && standalone()) markInstalled();
+export async function appInstalled(): Promise<boolean> {
+  try { if (localStorage.getItem(INSTALLED_KEY) === '1') return true; } catch { /* private mode */ }
+  try {
+    const related = await (navigator as unknown as { getInstalledRelatedApps?: () => Promise<unknown[]> }).getInstalledRelatedApps?.();
+    if (related && related.length) { markInstalled(); return true; }
+  } catch { /* not supported */ }
+  return false;
+}
+
+function AlreadyInstalled() {
+  return <div className="get-app-installed" role="status">
+    <h3>You have already installed the app</h3>
+    <p>Open <b>JobsMatchNow</b> from your home screen or your app list.</p>
+  </div>;
+}
+
 /** "Get the app" button at the top of the phone landing (founder, 2026-11-22). Uses the browser's install when it
  *  offers one; otherwise shows how to add the app to the home screen (iPhone Safari, Android Chrome / Samsung). */
 export function GetAppButton() {
   const [event, setEvent] = useState<InstallEvent | null>(pending);
   const [help, setHelp] = useState(false);
+  const [installed, setInstalled] = useState(false);
   useEffect(() => { listeners.add(setEvent); return () => { listeners.delete(setEvent); }; }, []);
   if (standalone()) return null;
   const go = async () => {
-    if (!event) { setHelp(true); return; }
+    // The browser offers install only when the app is not installed: its offer wins.
+    if (!event) { setInstalled(await appInstalled()); setHelp(true); return; }
     await event.prompt();
     const { outcome } = await event.userChoice.catch(() => ({ outcome: 'dismissed' as const }));
-    if (outcome === 'accepted') { pending = null; setEvent(null); }
+    if (outcome === 'accepted') { pending = null; setEvent(null); markInstalled(); }
   };
   return <>
     <button type="button" className="get-app-button" onClick={() => void go()}><Download size={15} /> Get the app</button>
@@ -47,9 +72,12 @@ export function GetAppButton() {
       <div className="get-app-card" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="install-bar-close get-app-x" onClick={() => setHelp(false)} aria-label="Close"><X size={16} /></button>
         <span className="brand-heart-mark install-bar-mark" aria-hidden="true" />
-        <h3>Get the JobsMatchNow app</h3>
-        <p>Free. It opens from your home screen like any app.</p>
-        <InstallSteps />
+        {installed ? <AlreadyInstalled /> : <>
+          <h3>Get the JobsMatchNow app</h3>
+          <p>Free. It opens from your home screen like any app.</p>
+          <InstallSteps />
+          <p className="get-app-note">Already installed? Open JobsMatchNow from your home screen.</p>
+        </>}
       </div>
     </div>}
   </>;
@@ -78,10 +106,7 @@ export function InstallPopup() {
     if (standalone() || hiddenNow() || /[?&]noinstall\b/.test(location.search)) return;
     let alive = true;
     const t = window.setTimeout(async () => {
-      try {
-        const related = await (navigator as unknown as { getInstalledRelatedApps?: () => Promise<unknown[]> }).getInstalledRelatedApps?.();
-        if (related && related.length) return; // already on this phone
-      } catch { /* not supported */ }
+      if (await appInstalled()) return; // already on this phone: no popup
       if (alive) setOpen(true);
     }, 2500);
     return () => { alive = false; window.clearTimeout(t); };
@@ -96,7 +121,7 @@ export function InstallPopup() {
     await event.prompt();
     const { outcome } = await event.userChoice.catch(() => ({ outcome: 'dismissed' as const }));
     pending = null; setEvent(null);
-    if (outcome === 'accepted') setOpen(false); else later();
+    if (outcome === 'accepted') { markInstalled(); setOpen(false); } else later();
   };
   return <div className="get-app-help install-popup" role="dialog" aria-label="Get the JobsMatchNow app" onClick={later}>
     <div className="get-app-card" onClick={(e) => e.stopPropagation()}>
@@ -104,7 +129,7 @@ export function InstallPopup() {
       <span className="brand-heart-mark install-bar-mark" aria-hidden="true" />
       <h3>Get the JobsMatchNow app</h3>
       <p>Free. Opens from your home screen like any app, full screen.</p>
-      {steps && <InstallSteps />}
+      {steps && <><InstallSteps /><p className="get-app-note">Already installed? Open JobsMatchNow from your home screen.</p></>}
       <div className="install-popup-actions">
         {!steps && <button type="button" className="get-app-button" onClick={() => void install()}><Download size={15} /> Install</button>}
         <button type="button" className="install-popup-later" onClick={later}>{steps ? 'Done' : 'Not now'}</button>
@@ -121,7 +146,7 @@ export function InstallAppBar() {
   const install = async () => {
     await event.prompt();
     const { outcome } = await event.userChoice.catch(() => ({ outcome: 'dismissed' as const }));
-    if (outcome === 'accepted') { pending = null; setEvent(null); }
+    if (outcome === 'accepted') { pending = null; setEvent(null); markInstalled(); }
   };
   const hide = () => {
     try { localStorage.setItem(HIDE_KEY, String(Date.now() + 7 * 24 * 3600 * 1000)); } catch { /* private mode */ }

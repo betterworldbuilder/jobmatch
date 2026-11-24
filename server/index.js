@@ -8,6 +8,7 @@ import { createSeed } from './seed.js';
 import { blockedBetween, matchingPool, targetIsInMatchingPool } from './matching-pool.js';
 import { buildIcs, meetingsFor, newFeedToken, validFeedToken, REMINDER_MINUTES } from './calendar-feed.js';
 import { onCandidateHired, onRoleFilled, stopProcess } from './hiring-rules.js';
+import { demoAnswer } from './demo-replies.js';
 import { buildContext as buildAiContext, callProvider as callAiProvider, citedSources as citedAiSources, ownKeyConfig as aiOwnKeyConfig, providerConfig as aiProviderConfig, today as aiToday } from './ai-chat.js';
 import { PREMIUM_TRIAL_DAYS, premiumActive, premiumState, startPremiumTrial } from './premium.js'; // eslint-disable-line no-unused-vars
 import { KEY_LINKS as AI_KEY_LINKS, decryptKey as decryptAiKey, encryptKey as encryptAiKey, keyFormatError as aiKeyFormatError, pickModel as pickAiModel, publicKeyInfo as publicAiKeyInfo, verifyKey as verifyAiKey } from './ai-keys.js';
@@ -4647,6 +4648,14 @@ app.post('/api/messages', async (req, res, next) => {
         const parties = [db.users.find((user) => user.id === match.candidateId), db.users.find((user) => user.id === match.employerId), db.jobs.find((job) => job.id === match.jobId)];
         // Once per match (stamp on the match). Never the message text — only which side opened.
         match.firstMessageTracked = track(db, 'first_message', { demo: involvesDemo(sender, ...parties), dim: actorSide(sender), at: item.createdAt });
+      }
+      // Demo conversations answer back (founder, 2026-11-24): only when BOTH people are demo accounts.
+      const senderUser = db.users.find((user) => user.id === senderId);
+      const otherUser = db.users.find((user) => user.id === otherId);
+      if (senderUser?.demo === true && otherUser?.demo === true) {
+        const reply = { id: crypto.randomUUID(), matchId, senderId: otherId, text: demoAnswer(text, otherUser.role, String(senderUser.name || '').split(' ')[0]), createdAt: item.createdAt + 1500 };
+        db.messages.push(reply);
+        return { ...item, reply };
       }
       return item;
     });

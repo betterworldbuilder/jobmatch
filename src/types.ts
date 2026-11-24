@@ -141,7 +141,7 @@ export interface JobMatch { id: string; candidateId: string; employerId: string;
   /** Set when the process closed: candidate_hired (rule 1), role_filled (rule 2), stopped_by_recruiter (rule 3). */
   closedReason?: 'candidate_hired' | 'role_filled' | 'stopped_by_recruiter'; closedAt?: number; closedBy?: string; closedCategory?: string }
 /** `auto`: sent automatically by a recruitment-process rule (thank-you, role filled, closing feedback). */
-export interface Message { id: string; matchId: string; senderId: string; text: string; createdAt: number; firstImpression?: boolean; auto?: boolean }
+export interface Message { id: string; matchId: string; senderId: string; text: string; createdAt: number; firstImpression?: boolean; auto?: boolean; /** Demo accounts only: the other demo account's answer. */ reply?: Message }
 export interface ConnectorKey { id: string; userId: string; label: string; last4: string; createdAt: number; lastUsedAt: number | null }
 export interface AdminKpi { label: string; hint: string; total: number; thisWeek: number; lastWeek: number; last30d: number; weeks: { week: string; n: number }[] }
 export interface HeatClick { path: string; dev: 'desktop' | 'tablet' | 'mobile'; w: number; x: number; y: number; sel: string; ox: number; oy: number }

@@ -141,7 +141,12 @@ export function installNoTrackSwitch() {
 }
 
 /** Record a page view: "/" for the public landing page, "/app/<view>" inside the app. */
+/** While a full tour plays, app pages are counted as /tour/<role>/app/… instead of real app visits. */
+let trackPrefix = '';
+export function setTrackPrefix(prefix: string) { trackPrefix = prefix; }
+
 export function trackView(path: string) {
+  if (trackPrefix && path.startsWith('/app')) path = trackPrefix + path;
   if (typeof window === 'undefined' || window.self !== window.top) return;
   if (/bot|crawl|spider|headless/i.test(navigator.userAgent)) return;
   if (deviceNotCounted()) return; // the owner's own devices (see above)

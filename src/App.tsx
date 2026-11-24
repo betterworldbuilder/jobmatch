@@ -1,4 +1,4 @@
-import { Fragment, Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { DemoBadge } from './components/DemoBadge';
 import { SupportModal } from './components/SupportModal';
 import { ReportModal } from './components/ReportModal';
@@ -47,6 +47,9 @@ import { resetSharedFilters, useSharedFilters } from './components/discover/filt
 import { activeFilterCount } from './components/discover/deckLogic';
 // Lazy-loaded: pulls in pdf.js only when a resume is actually opened.
 const ResumeViewerModal = lazy(() => import('./components/ResumeViewerModal').then((m) => ({ default: m.ResumeViewerModal })));
+// Full tours (founder, 2026-11-24): the player and its scripted data load only when a tour starts.
+const TourApp = lazy(() => import('./components/tour/TourApp'));
+import { START_TOUR_EVENT, TOUR_SEEN_KEY, TOUR_VIEW_EVENT, type TourRole } from './lib/tour/runtime';
 import { JobEditor } from './components/jobs/JobEditor';
 import { QuickPostRole } from './components/jobs/QuickPostRole';
 import { JobImportModal } from './components/jobs/JobImportModal';
@@ -70,7 +73,7 @@ import { AiAnalystInline } from './components/home/AiAnalyst';
 import { CandidateSubscription } from './components/home/CandidateSubscription';
 import { ChatbotPage } from './components/home/ChatbotPage';
 import { FeedbackPage } from './components/home/FeedbackPage';
-import { FindMyMatchPage } from './components/home/FindMyMatchPage';
+import { FindMyMatchPage, RoleBarExtra } from './components/home/FindMyMatchPage';
 import { HiredResults } from './components/home/HiredResults';
 import { InterviewPreparation } from './components/home/InterviewPreparation';
 import { AskAi } from './components/home/AskAi';
@@ -161,7 +164,20 @@ async function connectLinkedIn() {
 
 export default function App() {
   const [session, setSession] = useState<SessionUser | null>(loadSession);
-  const signIn = (user: SessionUser) => { saveSession(user); setSession(user); };
+  const signIn = (user: SessionUser) => {
+    // "Sign-up after tour": a new account created in a tab that played a full tour.
+    try { const seen = sessionStorage.getItem(TOUR_SEEN_KEY); if (seen && user.isNew) { trackView(`/tour/${seen}/registered`); sessionStorage.removeItem(TOUR_SEEN_KEY); } } catch { /* private mode */ }
+    saveSession(user); setSession(user);
+  };
+  // Full tours: "Watch Candidate full tour" / "Watch Recruiter full tour" in the sign-in window.
+  const [tour, setTour] = useState<TourRole | null>(null);
+  const [landingModal, setLandingModal] = useState<'register' | null>(null);
+  useEffect(() => {
+    const start = (event: Event) => { const role = (event as CustomEvent<{ role: TourRole }>).detail?.role; if (role) { setLandingModal(null); setTour(role); } };
+    window.addEventListener(START_TOUR_EVENT, start);
+    return () => window.removeEventListener(START_TOUR_EVENT, start);
+  }, []);
+  useEffect(() => { if (tour) window.scrollTo(0, 0); }, [tour]);
   const signOut = () => { api.logout().catch(() => undefined); saveSession(null); setSession(null); };
   // Restore a server session (cookie) after a refresh or an SSO redirect.
   useEffect(() => {
@@ -208,8 +224,14 @@ export default function App() {
   // The admin heatmap loads the public landing page in an iframe with ?heatmap=1.
   const heatmapPreview = new URLSearchParams(window.location.search).get('heatmap') === '1';
 
+  if (tour && !session) return <Suspense fallback={<div className="tour-loading" role="status">Loading the tour…</div>}>
+    <TourApp key={tour} role={tour}
+      renderWorkspace={(user, onExit) => <Workspace key={user.id} session={user} onSwitchUser={() => undefined} onExit={onExit} />}
+      onEnd={(next) => { setTour(null); setLandingModal(next === 'signup' ? 'register' : null); window.scrollTo(0, 0); }} />
+  </Suspense>;
+
   return <>
-    {!session || heatmapPreview ? <Landing onLogin={signIn} />
+    {!session || heatmapPreview ? <Landing onLogin={signIn} initialModal={landingModal} />
       : session.role === 'admin' ? <AdminWorkspace session={session} onExit={signOut} />
       : <Workspace key={session.id} session={session} onSwitchUser={signIn} onExit={signOut} />}
     {adminReset && <AdminPasswordSetup token={adminReset} onClose={() => closeAdminReset()} onSignIn={() => closeAdminReset(true)} />}
@@ -217,7 +239,7 @@ export default function App() {
   </>;
 }
 
-function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
+function Landing({ onLogin, initialModal = null }: { onLogin: (user: SessionUser) => void; initialModal?: 'register' | null }) {
   const linkedinState = new URLSearchParams(window.location.search).get('linkedin');
   // Recruiter-only referral capture: ?ref=CODE or /ref/CODE. Fires once to set
   // the signed 30-day cookie the server reads back during recruiter
@@ -229,7 +251,7 @@ function Landing({ onLogin }: { onLogin: (user: SessionUser) => void }) {
     if (window.location.pathname.startsWith('/ref/')) window.history.replaceState({}, '', '/');
   }, [refCode]);
   // ?admin=1 (the Left Shift + Z shortcut) opens sign-in straight away.
-  const [authModal, setAuthModal] = useState<'login' | 'register' | null>(() => new URLSearchParams(window.location.search).get('admin') === '1' ? 'login' : null);
+  const [authModal, setAuthModal] = useState<'login' | 'register' | null>(() => new URLSearchParams(window.location.search).get('admin') === '1' ? 'login' : initialModal);
   useEffect(() => { trackView('/'); }, []);
   // Load the demo accounts in the background so "Test demo account" is ready the moment sign-in opens.
   useEffect(() => { prefetchDemoProfiles().catch(() => undefined); }, []);
@@ -551,6 +573,17 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const [filterOpen, setFilterOpen] = useState(false);
   // The desktop action bar under the deck opens the same Filter sheet (founder, 2026-11-24).
   useEffect(() => { const open = () => setFilterOpen(true); window.addEventListener(OPEN_FILTERS_EVENT, open); return () => window.removeEventListener(OPEN_FILTERS_EVENT, open); }, []);
+  // Full tour player: opens a page (and a conversation), closing any sheet or menu first.
+  useEffect(() => {
+    const go = (event: Event) => {
+      const detail = (event as CustomEvent<{ view?: View; matchId?: string }>).detail || {};
+      setFilterOpen(false); setMobileNav(false); setEditStep(null); setActiveAnchor('');
+      if (detail.matchId) setOpenMatchId(detail.matchId);
+      if (detail.view) setView(detail.view);
+    };
+    window.addEventListener(TOUR_VIEW_EVENT, go);
+    return () => window.removeEventListener(TOUR_VIEW_EVENT, go);
+  }, []);
   const [sharedFilters] = useSharedFilters(session.id, role);
   const filterCount = filtersOn ? activeFilterCount(sharedFilters) : 0;
   // Anchor items scroll to a home-dashboard section; view items open a page.
@@ -571,8 +604,11 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     ? view === 'home' && activeAnchor === item.anchor
     : view === item.view && !(item.view === 'home' && activeAnchor);
   const initials = (session.name || '?').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase();
+  // Notification bell: in the top bar; with the phone top bar removed (?bar=1), next to "Swipe for role" instead.
+  const phoneBarV2 = featureOn('bar');
+  const bell = (where: string) => <div className={`notif-wrap${where ? ` ${where}` : ''}`}><button aria-label="Notifications" onClick={() => setNotifOpen((v) => !v)}><Bell size={19} />{notifications.length > 0 && <i />}</button>{notifOpen && <><button className="notif-scrim" aria-label="Close notifications" onClick={() => setNotifOpen(false)} /><div className="notif-dropdown"><header>Notifications</header>{notifications.length === 0 ? <p className="notif-empty">No notifications yet.</p> : notifications.map((n) => <button key={n.id} className="notif-item" onClick={() => { setNotifOpen(false); if (n.kind === 'billing') { if (n.jobId) openJobEditor(n.jobId); else if (n.billingKind && JOB_NOTIFICATION_KINDS.has(n.billingKind)) setView('jobs'); else setView('billing'); } else if (n.matchId) openMessages(n.matchId); }}><span className={`notif-icon ${n.kind}`}>{n.kind === 'match' ? <Heart size={14} fill="currentColor" /> : n.kind === 'billing' ? billingNotificationIcon(n.billingKind) : <MessageCircle size={14} />}</span><span className="notif-text">{n.text}<small>{timeAgo(n.at)}</small></span></button>)}</div></>}</div>;
 
-  return <TryDemoContext.Provider value={tryDemo}><div className={`app-shell role-${role}`}>
+  return <TryDemoContext.Provider value={tryDemo}><RoleBarExtra.Provider value={phoneBarV2 ? bell('fmm-bell') : null}><div className={`app-shell role-${role}${phoneBarV2 ? ' phone-bar-v2' : ''}`}>
     <aside className={mobileNav ? 'sidebar open' : 'sidebar'}><div className="sidebar-head"><Brand /><button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close menu"><X /></button></div>
       <div className="workspace-switch"><span>Profile</span><button onClick={() => { setView('profile'); setMobileNav(false); }}>{data?.viewer.photo ? <img className="avatar-mini" src={data.viewer.photo} alt="" /> : <div className="avatar-mini">{initials}</div>}<div><strong>{data?.viewer.name || session.name}</strong><small>{role === 'candidate' ? 'Candidate' : 'Recruiter'}</small></div><ArrowRight size={15} /></button></div>
       <nav className="sidebar-nav">{nav.map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)} style={{ ['--c' as string]: NAV_COLORS[item.label] || '#9fb3d9' }}><i className="nav-ico"><Icon size={18} /></i><span>{item.label}</span>{item.view === 'messages' && notifications.length > 0 && <em>{Math.min(notifications.length, 9)}</em>}</button>; })}</nav>
@@ -582,7 +618,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     <AnimatePresence>{conductOpen && <ConductModal onClose={() => setConductOpen(false)} />}</AnimatePresence>
     <AnimatePresence>{rulesOpen && <RecruitmentRulesModal onClose={() => setRulesOpen(false)} />}</AnimatePresence>
     {mobileNav && <button className="nav-scrim" aria-label="Close navigation" onClick={() => setMobileNav(false)} />}
-    <section className="app-main">{session.emailVerified === false && <div className="verify-banner"><span><ShieldCheck size={15} /> Verify your email to secure your account and unlock everything.</span><button onClick={() => setSettingsOpen(true)}>Verify now</button></div>}<header className="topbar"><button className="menu-button" onClick={() => setMobileNav(true)}><Menu /></button><div className="search-box"><Search size={17} /><input aria-label="Search" placeholder={role === 'candidate' ? 'Search jobs, companies, skills…' : 'Search talent, jobs, messages…'} onKeyDown={(event) => { if (event.key === 'Enter') setView('discover'); }} /><kbd><Command size={12} /> K</kbd></div><div className="topbar-actions"><div className="notif-wrap"><button aria-label="Notifications" onClick={() => setNotifOpen((v) => !v)}><Bell size={19} />{notifications.length > 0 && <i />}</button>{notifOpen && <><button className="notif-scrim" aria-label="Close notifications" onClick={() => setNotifOpen(false)} /><div className="notif-dropdown"><header>Notifications</header>{notifications.length === 0 ? <p className="notif-empty">No notifications yet.</p> : notifications.map((n) => <button key={n.id} className="notif-item" onClick={() => { setNotifOpen(false); if (n.kind === 'billing') { if (n.jobId) openJobEditor(n.jobId); else if (n.billingKind && JOB_NOTIFICATION_KINDS.has(n.billingKind)) setView('jobs'); else setView('billing'); } else if (n.matchId) openMessages(n.matchId); }}><span className={`notif-icon ${n.kind}`}>{n.kind === 'match' ? <Heart size={14} fill="currentColor" /> : n.kind === 'billing' ? billingNotificationIcon(n.billingKind) : <MessageCircle size={14} />}</span><span className="notif-text">{n.text}<small>{timeAgo(n.at)}</small></span></button>)}</div></>}</div>{data?.viewer.demo && <button className="role-chip" onClick={() => changeRole(role === 'candidate' ? 'employer' : 'candidate')}>{role === 'candidate' ? 'Recruiter view' : 'Candidate view'}<ChevronDown size={14} /></button>}</div></header>
+    <section className="app-main">{session.emailVerified === false && <div className="verify-banner"><span><ShieldCheck size={15} /> Verify your email to secure your account and unlock everything.</span><button onClick={() => setSettingsOpen(true)}>Verify now</button></div>}<header className="topbar"><button className="menu-button" onClick={() => setMobileNav(true)}><Menu /></button><div className="search-box"><Search size={17} /><input aria-label="Search" placeholder={role === 'candidate' ? 'Search jobs, companies, skills…' : 'Search talent, jobs, messages…'} onKeyDown={(event) => { if (event.key === 'Enter') setView('discover'); }} /><kbd><Command size={12} /> K</kbd></div><div className="topbar-actions">{bell('')}{data?.viewer.demo && <button className="role-chip" onClick={() => changeRole(role === 'candidate' ? 'employer' : 'candidate')}>{role === 'candidate' ? 'Recruiter view' : 'Candidate view'}<ChevronDown size={14} /></button>}</div></header>
       {loading ? <LoadingState /> : error ? <ErrorState message={error} retry={load} /> : data && (
         (data.viewer.onboarding || editStep !== null)
           ? (data.viewer.role === 'candidate'
@@ -605,7 +641,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
       filtersOn={filtersOn} onFilter={() => setFilterOpen(true)} filterCount={filterCount} filterOpen={filterOpen} />
     {filtersOn && filterOpen && data && <SearchFiltersSheet role={role} data={data} onClose={() => setFilterOpen(false)} onShow={() => { setFilterOpen(false); setView('match'); }} />}
     <AnimatePresence>{settingsOpen && <SettingsModal user={session} onClose={() => setSettingsOpen(false)} onDeleted={() => { setSettingsOpen(false); onExit(); }} />}</AnimatePresence>
-  </div></TryDemoContext.Provider>;
+  </div></RoleBarExtra.Provider></TryDemoContext.Provider>;
 }
 
 function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profileCard, onProfileCardChange, reload, onAddJobs, manualJobRequest, openMatchId, onOpenMessages, editJobId, onEditJob, paymentResult, onDismissResult }: { view: View; role: Role; data: Bootstrap; setData: (d: Bootstrap) => void; navigate: (v: View) => void; onEditProfile: (step: number) => void; profileCard: number; onProfileCardChange: (card: number) => void; reload: () => void; onAddJobs: () => void; manualJobRequest: number; openMatchId?: string; onOpenMessages: (matchId: string) => void; editJobId?: string; onEditJob: (jobId: string) => void; paymentResult?: 'success' | 'failed' | null; onDismissResult?: () => void }) {
@@ -882,15 +918,36 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
   useEffect(() => { if (initialMatchId) setSelectedMatchId(initialMatchId); }, [initialMatchId]);
   const match = data.matches.find((m) => m.id === selectedMatchId) || data.matches[0];
   const [text, setText] = useState('');
+  const [typing, setTyping] = useState(false);
   const thread = data.messages.filter((m) => m.matchId === match?.id);
+  // Chat box always reachable (founder, 2026-11-24): picking a starter fills the box, closes the panel and
+  // focuses the box; the conversation follows the newest message.
+  const composerRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { const el = bodyRef.current; if (el) el.scrollTop = el.scrollHeight; }, [thread.length, match?.id, typing]);
   // The person on the other side of this chat: for a candidate that's the employer/job, for an employer it's the candidate.
   const otherName = role === 'candidate' ? match?.job?.company : match?.candidate?.name;
   const otherPhoto = role === 'candidate' ? undefined : match?.candidate?.photo;
   const otherEmail = role === 'candidate' ? match?.employer?.email : match?.candidate?.email;
-  const send = async (event: React.FormEvent) => { event.preventDefault(); if (!text.trim() || !match) return; const message = await api.message({ matchId: match.id, senderId: data.viewer.id, text }); setData({ ...data, messages: [...data.messages, message] }); setText(''); };
+  // Demo accounts answer back: the reply comes with the sent message and shows after a short "typing…".
+  const latest = useRef(data); latest.current = data;
+  const send = async (event: React.FormEvent) => {
+    event.preventDefault(); if (!text.trim() || !match) return;
+    const sent = text; setText('');
+    const { reply, ...message } = await api.message({ matchId: match.id, senderId: data.viewer.id, text: sent });
+    setData({ ...data, messages: [...data.messages, message] });
+    if (reply) {
+      setTyping(true);
+      window.setTimeout(() => { setTyping(false); const now = latest.current; if (!now.messages.some((m) => m.id === reply.id)) setData({ ...now, messages: [...now.messages, reply] }); }, 1400);
+    }
+  };
   // Auto-open when the thread is empty (nothing to say yet); stays reachable via the header
   // toggle afterward so the same questions double as prep notes before a scheduled call.
   const [showStarters, setShowStarters] = useState(thread.length === 0);
+  const pickStarter = (value: string) => {
+    setText(value); setShowStarters(false);
+    window.setTimeout(() => { composerRef.current?.focus(); composerRef.current?.scrollIntoView({ block: 'nearest' }); }, 30);
+  };
   useEffect(() => { setShowStarters(thread.length === 0); }, [match?.id]);
   const [scheduling, setScheduling] = useState(false);
   const [viewingProfile, setViewingProfile] = useState(false);
@@ -969,9 +1026,10 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
         <button className="starter-toggle" onClick={() => setReporting(true)} title="Report this conversation"><Flag size={16} /></button>
         <button className="starter-toggle block-toggle" onClick={() => void blockOther()} title={`Block ${otherName || 'this person'}`} aria-label={`Block ${otherName || 'this person'}`}><Ban size={16} /></button>
       </header>
-      <div className="conversation-body">
+      <div className="conversation-body" ref={bodyRef}>
         <div className="date-divider">Today</div>
         {thread.map((message) => { const own = message.senderId === data.viewer.id; return <div className={own ? 'bubble-row own' : 'bubble-row'} key={message.id}>{!own && otherPhoto && <img src={otherPhoto} />}<div>{message.auto && <small className="bubble-auto">Sent automatically · recruitment process</small>}<p>{message.text}</p><time>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}
+        {typing && <div className="bubble-row typing-row" aria-live="polite">{otherPhoto && <img src={otherPhoto} />}<div><p className="typing-dots" aria-label={`${otherName || 'They'} is typing`}><i /><i /><i /></p></div></div>}
         {calls.map((call) => {
           const event = { title: call.title, description: call.notes, startAt: call.startAt, durationMinutes: call.durationMinutes };
           return <div className="schedule-card" key={call.id}>
@@ -1014,9 +1072,9 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
         </>}
       </div>
       {showStarters && (role === 'employer'
-        ? <RecruiterStarters candidateName={match.candidate?.name || 'there'} archetype={match.candidate?.aboutMeArchetype} onPick={setText} />
-        : <CandidateStarters onPick={setText} />)}
-      <form className="composer" onSubmit={send}><input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message…" /><button type="submit" disabled={!text.trim()}><Send size={17} /></button></form>
+        ? <RecruiterStarters candidateName={match.candidate?.name || 'there'} archetype={match.candidate?.aboutMeArchetype} onPick={pickStarter} />
+        : <CandidateStarters onPick={pickStarter} />)}
+      <form className="composer" onSubmit={send}><input ref={composerRef} value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message…" enterKeyHint="send" /><button type="submit" disabled={!text.trim()}><Send size={17} /></button></form>
       <p className="composer-footnote">Keep it respectful — see our <button type="button" className="text-button" onClick={() => setConductOpen(true)}>Code of Conduct</button>.</p>
       {conductOpen && <ConductModal onClose={() => setConductOpen(false)} />}
       {scheduling && <ScheduleCallModal match={match} viewer={data.viewer} onClose={() => setScheduling(false)}
