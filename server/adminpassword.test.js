@@ -9,6 +9,7 @@ let server; let base;
 async function call(method, path, body, headers = {}) {
   if (!base) {
     process.env.NODE_ENV = 'test'; process.env.DB_PATH = DB_PATH; process.env.ADMIN_PROMOTE_SECRET = SECRET;
+    process.env.ANALYTICS_DIR = `/tmp/jobmatch-adminpw-analytics-${process.pid}`;
     const { app } = await import('./index.js');
     server = app.listen(0); await new Promise((r) => server.once('listening', r));
     base = `http://127.0.0.1:${server.address().port}`;
@@ -35,4 +36,19 @@ test('admin password: needs the secret, one-time link, 12+ chars, then password 
   assert.equal(ok.status, 200);
   assert.equal(ok.body.user.role, 'admin');
   assert.equal((await call('GET', '/api/admin/kpis', undefined, { Cookie: ok.session })).status, 200, 'admin routes open');
+  adminCookie = ok.session;
+});
+
+let adminCookie = '';
+test('traffic: visits from a signed-in admin are never counted; other visits are (founder, 2026-11-24)', async () => {
+  assert.ok(adminCookie, 'admin signed in by the previous test');
+  const visit = (sid, headers = {}) => fetch(`${base}/api/track`, { method: 'POST', headers: { 'content-type': 'text/plain', 'user-agent': 'Mozilla/5.0 (Linux; Android 14) Mobile', ...headers }, body: JSON.stringify({ sid, src: '', w: 390, events: [{ t: 'view', path: '/' }] }) });
+  const report = async () => (await call('GET', '/api/admin/web-analytics?days=1', undefined, { Cookie: adminCookie })).body;
+  const before = (await report()).totals;
+  assert.equal((await visit('adminvisit01', { Cookie: adminCookie })).status, 204);
+  const afterAdmin = (await report()).totals;
+  assert.deepEqual(afterAdmin, before, 'the admin visit left no trace');
+  assert.equal((await visit('realvisit001')).status, 204);
+  const afterReal = (await report()).totals;
+  assert.ok(afterReal.visits > before.visits, `a real visit is counted (${before.visits} → ${afterReal.visits})`);
 });

@@ -3636,6 +3636,8 @@ app.post('/api/track', rateLimit({ windowMs: 60000, max: 120, bucket: 'track' })
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = null; } }
     const payload = parsePayload(body);
     if (!payload) return res.status(400).json({ error: 'Invalid payload' });
+    // The owner's own visits never count (founder, 2026-11-24): a signed-in admin is ignored, whatever the device.
+    if (authSession(req)?.role === 'admin') return res.status(204).end();
     await recordEvents(ANALYTICS_DIR, payload, { ip: req.ip || '', ua, secret: process.env.SESSION_SECRET });
     res.status(204).end();
   } catch { res.status(204).end(); }

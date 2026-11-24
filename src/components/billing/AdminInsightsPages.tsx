@@ -5,6 +5,7 @@ import { Briefcase, Check, HeartHandshake, Loader2, Send, UserPlus } from 'lucid
 import { api } from '../../api';
 import type { AdminKpi, IntegrationStatus, WebAnalyticsReport } from '../../types';
 import { Heatmap } from './Heatmap';
+import { deviceNotCounted, setDeviceNotCounted, showNoTrackToast } from '../../lib/tracker';
 
 const KPI_ICON = { registrations: UserPlus, matches: HeartHandshake, hires: Briefcase } as const;
 
@@ -61,9 +62,17 @@ export function AdminTrafficPage() {
   const [days, setDays] = useState(30);
   const [report, setReport] = useState<WebAnalyticsReport | null>(null);
   useEffect(() => { setReport(null); api.adminWebAnalytics(days).then(setReport).catch(() => undefined); }, [days]);
+  // "Don't count this device" (founder, 2026-11-24): the owner's own phones and computers stay out of the numbers.
+  const [notCounted, setNotCounted] = useState(deviceNotCounted);
+  const toggleDevice = () => { setDeviceNotCounted(!notCounted); setNotCounted(!notCounted); showNoTrackToast(); };
   return <div className="page admin-traffic-page">
     <div className="page-title"><div><span className="overline">Admin</span><h1>Traffic &amp; heatmap</h1><p>Self-hosted and cookie-free: no IP stored, visitors counted with a hash that changes daily.</p></div>
       <div className="heatmap-layouts">{[1, 7, 30, 90].map((d) => <button key={d} type="button" className={d === days ? 'primary-button small' : 'secondary-button small'} onClick={() => setDays(d)}>{d === 1 ? 'Today' : `${d} days`}</button>)}</div></div>
+    <p className={`notrack-status${notCounted ? ' off' : ''}`}>
+      {notCounted ? <><Check size={14} /> This device is not counted.</> : 'This device is counted.'}
+      {' '}<button type="button" className="text-button" onClick={toggleDevice}>{notCounted ? 'Count it again' : 'Don’t count this device'}</button>
+      <small> Your visits are never counted while you are signed in as admin. On other devices: open jobsmatchnow.com/?notrack=1, tap the logo 5 times quickly (phone), or press Shift + 0 or Shift + X (desktop).</small>
+    </p>
     {!report ? <Loader2 className="spin" size={20} /> : <>
       <div className="admin-stat-row">
         <div className="admin-stat"><strong>{report.totals.visitors}</strong><span>Unique visitors (per day)</span></div>

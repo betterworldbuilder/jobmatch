@@ -43,6 +43,7 @@ function snapshot() {
 }
 function flush() {
   if (!state || !state.queue.length) return;
+  if (deviceNotCounted()) { state.queue.length = 0; return; } // switched off mid-visit: send nothing
   const events = state.queue.splice(0, 100);
   send(JSON.stringify({ sid: state.sid, src: state.src, w: window.innerWidth, events }));
 }
@@ -88,10 +89,62 @@ function init(): State {
   return s;
 }
 
+// --- "Don't count this device" (founder, 2026-11-24) ------------------------------------------------------
+// The owner's own phones and computers are kept out of the traffic numbers. Saved on the device only (nothing is
+// sent): ?notrack=1 / ?notrack=0 in the URL, 5 quick taps on the logo (phones), Shift + 0 or Shift + X (desktop), the
+// button on the admin Traffic page, and automatically on any device where an admin signs in.
+const NOTRACK_KEY = 'jm-notrack';
+const ls = () => { try { return window.localStorage; } catch { return null; } };
+export function deviceNotCounted() { return get(ls(), NOTRACK_KEY) === '1'; }
+export function setDeviceNotCounted(on: boolean) {
+  try { if (on) ls()?.setItem(NOTRACK_KEY, '1'); else ls()?.removeItem(NOTRACK_KEY); } catch { /* blocked storage */ }
+  if (on && state) state.queue.length = 0; // drop anything not yet sent
+}
+/** Reads ?notrack=1 / ?notrack=0 once at start. */
+export function applyNoTrackParam(search = typeof window !== 'undefined' ? window.location.search : '') {
+  const v = new URLSearchParams(search).get('notrack');
+  if (v === '1' || v === '0') { setDeviceNotCounted(v === '1'); showNoTrackToast(); }
+}
+/** Small confirmation note (plain DOM, works on the landing page and in the app). */
+export function showNoTrackToast() {
+  if (typeof document === 'undefined') return;
+  document.querySelector('.notrack-toast')?.remove();
+  const el = document.createElement('div');
+  el.className = 'notrack-toast'; el.setAttribute('role', 'status');
+  el.textContent = deviceNotCounted() ? 'This device is not counted in traffic stats' : 'This device is counted again';
+  document.body.appendChild(el);
+  window.setTimeout(() => el.remove(), 2600);
+}
+/** 5 quick taps on the JobsMatchNow logo (within 2 s) or Shift + 0 / Shift + X (founder's choice): switch the device on/off. */
+export function installNoTrackSwitch() {
+  let taps: number[] = [];
+  const toggle = () => { setDeviceNotCounted(!deviceNotCounted()); showNoTrackToast(); };
+  const onClick = (e: MouseEvent) => {
+    const target = e.target instanceof Element ? e.target : null;
+    if (!target?.closest('.brand, .brand-heart-mark, .brand-wordmark, .nm-brand')) return;
+    const now = Date.now();
+    taps = [...taps.filter((t) => now - t < 2000), now];
+    if (taps.length >= 5) { taps = []; toggle(); }
+  };
+  // Shift + 0 or Shift + X (founder, 2026-11-24), by the physical key (e.code), so it works on QWERTY and AZERTY
+  // layouts alike. Never while typing in a field.
+  const KEYS = new Set(['Digit0', 'Numpad0', 'KeyX']);
+  const down = (e: KeyboardEvent) => {
+    if (!KEYS.has(e.code) || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || e.repeat) return;
+    const el = e.target as HTMLElement | null;
+    if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return;
+    e.preventDefault(); toggle();
+  };
+  document.addEventListener('click', onClick, { capture: true });
+  window.addEventListener('keydown', down);
+  return () => { document.removeEventListener('click', onClick, { capture: true }); window.removeEventListener('keydown', down); };
+}
+
 /** Record a page view: "/" for the public landing page, "/app/<view>" inside the app. */
 export function trackView(path: string) {
   if (typeof window === 'undefined' || window.self !== window.top) return;
   if (/bot|crawl|spider|headless/i.test(navigator.userAgent)) return;
+  if (deviceNotCounted()) return; // the owner's own devices (see above)
   if (!state) state = init();
   if (state.page?.path === path) return;
   snapshot();

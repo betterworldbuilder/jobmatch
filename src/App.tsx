@@ -62,7 +62,7 @@ import type { ScreeningAnswer } from './types';
 import { comparisonRows } from './content/landingContent';
 import { loadSession, saveSession } from './lib/auth';
 import { featureOn } from './lib/flags';
-import { installAdminHotkey, trackView } from './lib/tracker';
+import { applyNoTrackParam, deviceNotCounted, installAdminHotkey, installNoTrackSwitch, setDeviceNotCounted, trackView } from './lib/tracker';
 import { scoreOf } from './lib/report';
 import { CandidateReport, RecruiterReport, downloadText, reportCsv } from './components/home/ReportSections';
 import { AiAnalystInline } from './components/home/AiAnalyst';
@@ -191,6 +191,10 @@ export default function App() {
     if (session) return;
     window.location.href = `${window.location.pathname}?admin=1`;
   }), [session]);
+  // "Don't count this device" (founder, 2026-11-24): ?notrack=1/0, 5 taps on the logo, Shift + 0 or Shift + X.
+  useEffect(() => { applyNoTrackParam(); return installNoTrackSwitch(); }, []);
+  // A device where an admin signs in is the owner's: it stops counting (the server also ignores admin sessions).
+  useEffect(() => { if (session?.role === 'admin' && !deviceNotCounted()) setDeviceNotCounted(true); }, [session?.role]);
   // One-time admin password setup link (?admin-reset=<token>), created on the server.
   const [adminReset, setAdminReset] = useState(() => new URLSearchParams(window.location.search).get('admin-reset') || '');
   const closeAdminReset = (signIn = false) => {
