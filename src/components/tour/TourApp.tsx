@@ -124,17 +124,20 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
   }, [role]);
   useEffect(() => { setTourHandler(mock.handle); return () => setTourHandler(null); }, [mock]);
 
+  // ✕ / Esc: pause and ask "Leave the tour?" instead of ending straight away.
+  const [leaving, setLeaving] = useState(false);
+  const askLeave = useCallback(() => { ctl.current.paused = true; setPaused(true); setLeaving(true); }, []);
   // Any real tap on the app pauses (scripted taps are not trusted events).
   useEffect(() => {
     const onDown = (e: PointerEvent) => { if (e.isTrusted && !(e.target as Element)?.closest?.('.tour-ui')) { ctl.current.paused = true; setPaused(true); } };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onEnd('close');
+      if (e.key === 'Escape') askLeave();
       if (e.key === ' ' && !(e.target as Element)?.closest?.('input, textarea, select')) { e.preventDefault(); const p = !ctl.current.paused; ctl.current.paused = p; setPaused(p); }
     };
     window.addEventListener('pointerdown', onDown, true);
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey); };
-  }, [onEnd]);
+  }, [askLeave]);
 
 
   const clearTourStorage = useCallback(() => {
@@ -243,7 +246,7 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const workspace = useMemo(() => (user ? renderWorkspace(user, () => onEnd('close')) : null), [user, run]);
   const step = steps[Math.min(index, steps.length - 1)];
-  const togglePause = () => { const p = !paused; ctl.current.paused = p; setPaused(p); };
+  const togglePause = () => { const p = !paused; ctl.current.paused = p; setPaused(p); if (!p) setLeaving(false); };
   const skip = () => {
     if (ctl.current.next) { ctl.current.next(); return; }
     ctl.current.paused = false; setPaused(false);
@@ -258,13 +261,14 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
     setPaused(false); setFinished(false); setUser(null); setIndex(0);
     setMock(m); setRun((r) => r + 1);
   };
+  const keepWatching = () => { setLeaving(false); ctl.current.paused = false; setPaused(false); };
   const signUp = () => { trackView(`/tour/${role}/signup`); onEnd('signup'); };
   const progress = finished ? 100 : ((index + (waitingNext ? 1 : 0.5)) / steps.length) * 100;
 
   return <div className={`tour-root tour-${role}${paused || waitingNext ? ' tour-held' : ''}`} style={{ ['--tour-speed' as string]: speed }}>
     {user ? workspace
       : <div className="tour-stage">
-        <AnimatePresence><RegisterModal onClose={() => onEnd('close')} onComplete={(u) => setUser({ ...mock.user, ...u, id: mock.user.id })} /></AnimatePresence>
+        <AnimatePresence><RegisterModal onClose={askLeave}onComplete={(u) => setUser({ ...mock.user, ...u, id: mock.user.id })} /></AnimatePresence>
       </div>}
     <div className="tour-ui" aria-live="polite">
       <div className="tour-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)} aria-label={`${tour.name} progress`}>
@@ -294,8 +298,19 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
             : <button type="button" className="tour-chip-btn" onClick={togglePause} aria-label={paused ? 'Play' : 'Pause'}>{paused ? <Play size={14} /> : <Pause size={14} />}</button>}
           <button type="button" className="tour-chip-btn" onClick={skip} aria-label="Skip this step"><SkipForward size={14} /></button>
           {speedOn && <button type="button" className={`tour-chip-btn tour-speed${speed < 1 ? ' slow' : ''}`} onClick={cycleSpeed} aria-label={`Speed ${speed} times. Tap to change`} title="Tour speed">{speed < 1 && <Turtle size={13} />}{speed}×</button>}
-          <button type="button" className="tour-chip-btn" onClick={() => onEnd('close')} aria-label="Close the tour"><X size={14} /></button>
+          <button type="button" className="tour-chip-btn tour-close" onClick={askLeave} aria-label="Leave the tour"><X size={14} /></button>
         </div>}
+      {/* ✕ never ends the tour by itself (founder, 2026-11-24): it pauses and asks first. */}
+      {leaving && !finished && <section className="tour-card tour-end tour-leave" role="dialog" aria-label="Leave the tour?">
+        <span className="tour-kicker">{tour.name} · paused</span>
+        <h2>Leave the tour?</h2>
+        <p>You are at step {index + 1} of {steps.length}. Keep watching, or create your real account in under a minute.</p>
+        <div className="tour-end-actions">
+          <button type="button" className="tour-cta" onClick={keepWatching} autoFocus><Play size={15} /> Keep watching</button>
+          <button type="button" className="tour-ghost" onClick={signUp}>Sign up now <ArrowRight size={15} /></button>
+          <button type="button" className="tour-ghost" onClick={() => onEnd('close')}>Leave tour</button>
+        </div>
+      </section>}
     </div>
   </div>;
 }
