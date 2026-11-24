@@ -23,6 +23,9 @@ const FLAGS = {
   /** "Answer within 48 hours" (founder, 2026-11-25): the key feature on the home page (phone + desktop), and later the
    *  48-hour answer timer itself (plans/2026-11-25_48h-answer-timer-spec.md). Off until the timer is live. Preview: ?answer48=1 */
   answer48: { param: 'answer48', defaultOn: false },
+  /** "Connect your AI agent": OpenClaw, Meta Muse, Claude or any MCP agent through the read-only connector, in the
+   *  chatbot page + AI settings + home page (founder, 2026-11-25). Preview: ?agents=1 */
+  agents: { param: 'agents', defaultOn: false },
 } as const;
 
 export type FlagName = keyof typeof FLAGS;

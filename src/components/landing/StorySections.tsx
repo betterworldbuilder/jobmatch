@@ -71,6 +71,9 @@ const AI_FEATURES: { title: string; text: string }[] = [
   { title: 'Your own AI chatbot', text: 'Connect your own Claude or ChatGPT account and ask questions about your matches. Read-only.' },
 ];
 
+// "Connect your AI agent" (founder, 2026-11-25, flag `agents`): the read-only MCP connector.
+const AGENT_FEATURE = { title: 'Connect your AI agent', text: 'Use JobsMatchNow from OpenClaw, Muse (Meta), Claude or any MCP agent. A personal read-only key you can revoke anytime: your agent reads your matches, hiring stages and next interview, and can’t send or change anything.' };
+
 // Key feature (founder, 2026-11-25), shown first and highlighted once the 48-hour answer timer is live (flag answer48).
 export const ANSWER_48 = { icon: Timer, title: 'An answer within 48 hours', text: 'No more silence: pilot hiring teams answer every like within 48 working hours, yes or no. JobsMatch Assistant reminds them and keeps you posted.' };
 
@@ -82,7 +85,7 @@ export function AppFeaturesSection() {
     <div className="feat-ai">
       <h3><Sparkles size={17} /> Optional AI help</h3>
       <p className="feat-ai-note">AI only saves you time. It never scores, ranks or rejects anyone: people decide. Every AI suggestion is marked so you can review it.</p>
-      <ul>{AI_FEATURES.map((f) => <li key={f.title}><b>{f.title}</b><span>{f.text}</span></li>)}</ul>
+      <ul>{(featureOn('agents') ? [...AI_FEATURES, AGENT_FEATURE] : AI_FEATURES).map((f) => <li key={f.title}><b>{f.title}</b><span>{f.text}</span></li>)}</ul>
     </div>
   </section>;
 }

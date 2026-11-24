@@ -3,9 +3,17 @@
 // only ever sees provider, model and the last 4 characters. "Ask AI" (AskAi.tsx) then answers with it.
 // The old browser-only mock answers (answer()) stay exported for the report tests.
 import { useEffect, useState } from 'react';
-import { AlertCircle, Bot, Check, Crown, ExternalLink, KeyRound, Loader2, Lock, Sparkles, X } from 'lucide-react';
+import { AlertCircle, Bot, Check, Crown, ExternalLink, KeyRound, Loader2, Lock, Plug, Sparkles, X } from 'lucide-react';
 import { api, type AiKeyInfo } from '../../api';
 import type { Bootstrap } from '../../types';
+import { featureOn } from '../../lib/flags';
+import { TOUR_VIEW_EVENT } from '../../lib/tour/runtime';
+
+/** AI settings → "Connect an AI agent" (founder, 2026-11-25, flag `agents`): opens the chatbot page at the agent setup. */
+export function openAgentSetup() {
+  window.dispatchEvent(new CustomEvent(TOUR_VIEW_EVENT, { detail: { view: 'assistant' } }));
+  setTimeout(() => document.getElementById('connect-agent')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350);
+}
 import { likesWaiting, nextInterview, repliesWaiting, urgentItems } from '../../lib/today';
 import { recruiterFeedback, roleKpis, skillGaps } from '../../lib/report';
 import { columnOf } from './RecruiterSections';
@@ -111,6 +119,11 @@ export function AgentSettingsModal({ onClose, onChange }: { onClose: () => void;
         </div>
       </>}
       {loaded && !showForm && error && <p className="auth-error" role="alert"><AlertCircle size={14} /> {error}</p>}
+      {featureOn('agents') && <div className="ai-agent-connect">
+        <span className="ai-agent-icon"><Plug size={18} /></span>
+        <div><strong>Connect an AI agent</strong><small>Use JobsMatchNow from OpenClaw, Muse (Meta), Claude or any MCP agent, with a personal read-only key you can revoke anytime.</small></div>
+        <button type="button" className="secondary-button small" onClick={() => { onClose(); openAgentSetup(); }}>Set up</button>
+      </div>}
       <p className="ai-privacy"><Lock size={11} /> We check your key with {current ? (current.provider === 'anthropic' ? 'Anthropic' : 'OpenAI') : p.company}, store it encrypted, and never show it again (only the last 4 characters). Each question sends a short summary of your own data, never your name, contact details or CV. Read-only: it cannot apply, message or change anything. Disconnect at any time. Premium feature: free 7-day trial for job seekers, included in every recruiter plan.</p>
     </div>
   </div>;

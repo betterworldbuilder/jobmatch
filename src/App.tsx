@@ -462,6 +462,12 @@ function Landing({ onLogin, initialModal = null }: { onLogin: (user: SessionUser
     </section>
     {isPhone ? <WhatNowSection onRegister={openRegister} onLogin={openLogin} /> : <LatestShowcase onRegister={openRegister} onLogin={openLogin} />}
     <FeedbackSection />
+    {/* Copyright warning on the main page, phone and desktop (founder, 2026-11-25). Wording matches LICENSE and legal.html. */}
+    <section className="ip-notice" aria-labelledby="ip-notice-title">
+      <h2 id="ip-notice-title"><ShieldCheck size={16} aria-hidden="true" /> Copyright and protection notice</h2>
+      <p>© 2026 JobsMatchNow SARL. JobsMatchNow™, its name, logo, design, screens, texts, data, AI features and software are protected by copyright, trademark, database and trade-secret law in France, the United States, Vietnam and every country of the Berne Convention.</p>
+      <p><b>It is prohibited</b> to copy, clone, imitate, scrape, reverse engineer or reuse any part of JobsMatchNow, or to use it to train AI, without our written permission. Infringements are prosecuted. <a href="/legal.html">Legal notice &amp; copyright</a></p>
+    </section>
     <footer><Brand /><span>Perfect matches should feel human.</span><button type="button" className="text-button footer-conduct-link" onClick={() => setConductOpen(true)}>Code of Conduct</button><a className="text-button footer-conduct-link" href="/privacy.html">Privacy</a><a className="text-button footer-conduct-link" href="/terms.html">Terms</a><a className="text-button footer-conduct-link" href="/delete-account.html">Delete account</a><a className="text-button footer-conduct-link" href="/legal.html">Legal notice &amp; copyright</a><small>© 2026 JobsMatchNow SARL. All rights reserved.</small></footer>
     {modals}
     <AnimatePresence>{conductOpen && <ConductModal onClose={() => setConductOpen(false)} />}</AnimatePresence>

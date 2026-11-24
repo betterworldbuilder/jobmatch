@@ -7,6 +7,14 @@ import './phone-theme.css';
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
 
+// Copyright and safety warning in the browser's developer console (founder, 2026-11-25): it protects members from
+// "paste this code" scams and reminds visitors the code is proprietary. Production only.
+if (import.meta.env.PROD) {
+  console.log('%cStop!', 'color:#fd267a;font:800 32px sans-serif');
+  console.log('%cThis is a browser feature for developers. If someone told you to paste something here, it is a scam that can take over your JobsMatchNow account.', 'font-size:14px');
+  console.log('%c© 2026 JobsMatchNow SARL. All rights reserved. This software is proprietary: copying, reverse engineering, scraping or reuse is prohibited. https://jobsmatchnow.com/legal.html', 'font-size:12px;color:#7a4a00');
+}
+
 // Installable PWA on the web only. Native (Capacitor) shells load the live site
 // and must never pin a cached shell. BASE_URL keeps the worker and its scope
 // correct under /app/ as well as /.
