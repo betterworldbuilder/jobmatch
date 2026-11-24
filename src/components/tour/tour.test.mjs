@@ -9,7 +9,7 @@ import { loadTsx } from '../../test-utils/loadTsx.mjs';
 
 const src = fileURLToPath(new URL('../../', import.meta.url));
 const VIEWS = ['home', 'discover', 'matches', 'companies', 'messages', 'pipeline', 'jobs', 'analytics', 'profile', 'meetings', 'saved', 'selected', 'coffee', 'billing', 'admin-billing', 'stages', 'assistant', 'feedback', 'match', 'hired', 'prep'];
-const KINDS = new Set(['tap', 'point', 'type', 'paste', 'select', 'set', 'view', 'event', 'matchNextLike', 'wait']);
+const KINDS = new Set(['tap', 'point', 'type', 'paste', 'select', 'set', 'view', 'event', 'matchNextLike', 'advance', 'wait']);
 
 function allTsx(dir, out = []) {
   for (const name of readdirSync(dir)) {
@@ -43,7 +43,7 @@ test('both tours exist with the founder’s names and start with sign-up', async
 
 test('the plan’s steps are covered, in order', async () => {
   const TOURS = await steps();
-  assert.deepEqual(TOURS.candidate.steps.map((s) => s.id), ['register', 'profile', 'target-role', 'swipe', 'filter', 'match', 'chat', 'book', 'stages', 'stopped', 'hired']);
+  assert.deepEqual(TOURS.candidate.steps.map((s) => s.id), ['register', 'profile', 'target-roles', 'choose-role', 'filter', 'swipe', 'match', 'chat', 'interview', 'rounds', 'offer', 'hired']);
   assert.deepEqual(TOURS.employer.steps.map((s) => s.id), ['register', 'company', 'post-role', 'swipe', 'filter', 'likes', 'match', 'chat', 'stages', 'stop', 'hire']);
 });
 
@@ -60,7 +60,7 @@ test('each tour lasts about 90 seconds', async () => {
         else if (a.do === 'tap') ms += 1500;
         else if (a.do === 'point') ms += 900 + (a.ms ?? 900);
         else if (a.do === 'type') ms += 1100 + a.value.length * 38;
-        else if (a.do !== 'matchNextLike') ms += 1400;
+        else if (a.do !== 'matchNextLike' && a.do !== 'advance') ms += 1400;
       }
     }
     assert.ok(ms > 60000 && ms < 130000, `${tour.name}: ~${Math.round(ms / 1000)} s`);
@@ -86,24 +86,38 @@ test('every step target exists in the app code', async () => {
 test('scripted data: swipe, match, message, interview, stop with feedback, hire', async () => {
   const { mod } = await loadTsx(new URL('../../lib/tour/mockApi.ts', import.meta.url));
   const post = (url, body, method = 'POST') => ({ method, body: JSON.stringify(body) });
+  // Candidate: Linh Tran from Vietnam, a new account (profile wizard first, no target roles, no matches yet).
   const cand = mod.createMockApi('candidate');
   const boot = await cand.handle('/api/bootstrap?userId=tour-candidate');
   assert.equal(boot.viewer.id, 'tour-candidate');
-  assert.ok(boot.matches.some((m) => m.stage === 'Hired'), 'a hired process');
-  const stopped = boot.matches.find((m) => m.closedReason === 'stopped_by_recruiter');
-  assert.equal(stopped.currentStepId, 'round-3');
-  assert.ok(stopped.pipeline.find((p) => p.id === 'round-3').kind === 'technical', 'stopped at the technical round');
-  assert.ok(boot.messages.some((m) => m.matchId === stopped.id && m.auto && m.text.length > 30), 'with recruiter feedback');
-  assert.ok(Math.abs(boot.matches[0].createdAt - (Date.now() - 3 * 86400000)) < 86400000, 'dates follow today');
-  const job = boot.jobs.find((j) => !boot.matches.some((m) => m.jobId === j.id));
+  assert.equal(boot.viewer.name, 'Linh Tran');
+  assert.equal(boot.viewer.country, 'Vietnam');
+  assert.equal(boot.viewer.onboarding, true);
+  assert.deepEqual(boot.viewer.preferences.desiredRoles, []);
+  assert.equal(boot.matches.length, 0);
+  assert.equal(boot.matchTemplate, undefined, 'the match template is not part of the bootstrap');
+  for (const role of ['Data Engineer', 'Machine Learning Engineer']) assert.ok(boot.jobs.filter((j) => j.title.includes(role) && j.workMode === 'Remote').length >= 2, `remote ${role} roles in the deck`);
+  await cand.handle('/api/users/tour-candidate', post('', { onboarding: false, preferences: { ...boot.viewer.preferences, desiredRoles: ['Data Engineer', 'Machine Learning Engineer'] } }, 'PATCH'));
+  const job = boot.jobs.find((j) => j.title.includes('Machine Learning'));
   assert.equal((await cand.handle('/api/swipes', post('', { targetId: job.id, direction: 'like' }))).match, null);
   cand.matchNextLike();
   const { match } = await cand.handle('/api/swipes', post('', { targetId: job.id, direction: 'like' }));
   assert.equal(match.jobId, job.id); assert.equal(cand.lastMatchId, match.id);
+  assert.ok(match.pipeline.find((s) => s.id === 'round-2')?.kind === 'technical' && match.pipeline.some((s) => s.id === 'offer'), 'real interview rounds up to the offer');
   const msg = await cand.handle('/api/messages', post('', { matchId: match.id, senderId: 'tour-candidate', text: 'Hi' }));
+  assert.ok(msg.reply && msg.reply.senderId === match.employerId, 'the recruiter answers');
   const call = await cand.handle('/api/calls', post('', { matchId: match.id, title: 'Intro', startAt: Date.now() + 1e8, durationMinutes: 30 }));
-  const after = await cand.handle('/api/bootstrap');
-  assert.ok(after.matches.some((m) => m.id === match.id) && after.messages.some((m) => m.id === msg.id) && after.calls.some((c) => c.id === call.id));
+  cand.advance('round-2', 'Next: technical');
+  cand.advance('offer', 'Congratulations!');
+  let after = await cand.handle('/api/bootstrap');
+  const m1 = after.matches.find((m) => m.id === match.id);
+  assert.equal(m1.currentStepId, 'offer'); assert.equal(m1.stage, 'Interview');
+  assert.ok(after.messages.some((m) => m.id === msg.id) && after.calls.some((c) => c.id === call.id) && after.messages.some((m) => m.text === 'Congratulations!'));
+  assert.deepEqual(after.viewer.preferences.desiredRoles, ['Data Engineer', 'Machine Learning Engineer']);
+  const hiredRes = await cand.handle('/api/users/tour-candidate', post('', { jobStatus: { kind: 'hired', matchId: match.id } }, 'PATCH'));
+  assert.ok(hiredRes.effects);
+  after = await cand.handle('/api/bootstrap');
+  assert.equal(after.matches.find((m) => m.id === match.id).stage, 'Hired');
 
   const rec = mod.createMockApi('employer');
   const rb = await rec.handle('/api/bootstrap');
@@ -140,7 +154,7 @@ test('while a tour plays, api requests never reach the server', async () => {
     const boot = await mod.api.bootstrap('tour-candidate');
     await mod.api.swipe({ actorId: 'tour-candidate', targetId: boot.jobs[0].id, targetType: 'job', direction: 'like' });
     await mod.api.register({ role: 'candidate', name: 'X', email: 'x@example.com', password: 'longenough' });
-    await mod.api.message({ matchId: boot.matches[0].id, senderId: 'tour-candidate', text: 'Hi' });
+    await mod.api.message({ matchId: boot.matches[0]?.id || 'no-match-yet', senderId: 'tour-candidate', text: 'Hi' });
     assert.equal(fetches, 0, 'no request left the browser');
     assert.ok(mock.log.length >= 4);
     mod.setTourHandler(null);

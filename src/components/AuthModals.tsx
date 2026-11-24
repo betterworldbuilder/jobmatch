@@ -23,12 +23,12 @@ export function TourButtons({ className = '' }: { className?: string }) {
     <button type="button" className="tour-pick-btn cand" onClick={() => startTour('candidate')}>
       <span className="tour-pick-play" aria-hidden="true"><Play size={15} fill="currentColor" /></span>
       <span className="tour-pick-txt"><small>Watch</small><b>Candidate full tour</b></span>
-      <em>90 s</em>
+      <em>3 min</em>
     </button>
     <button type="button" className="tour-pick-btn rec" onClick={() => startTour('employer')}>
       <span className="tour-pick-play" aria-hidden="true"><Play size={15} fill="currentColor" /></span>
       <span className="tour-pick-txt"><small>Watch</small><b>Recruiter full tour</b></span>
-      <em>90 s</em>
+      <em>3 min</em>
     </button>
   </div>;
 }

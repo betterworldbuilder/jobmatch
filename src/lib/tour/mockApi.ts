@@ -29,6 +29,11 @@ export function createMockApi(role: TourRole) {
   const source = (role === 'candidate' ? fixtures.candidate : fixtures.employer) as unknown as Bootstrap;
   const state = clone(source);
   rebase(state, Date.now() - fixtures.builtAt);
+  // Rounds a new match gets (candidate tour starts with no matches); not part of the bootstrap answer.
+  const holder = state as unknown as { matchTemplate?: { pipeline: JobMatch['pipeline'] } };
+  const templatePipeline = holder.matchTemplate?.pipeline || state.matches[0]?.pipeline || [];
+  delete holder.matchTemplate;
+  const today = (days = 0) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
   const viewer = state.viewer;
   const user: SessionUser = { id: viewer.id, role: viewer.role, name: viewer.name, email: viewer.email || `${viewer.id}@tour.jobsmatchnow.app`, photo: viewer.photo, title: viewer.title, company: viewer.company, demo: true, emailVerified: true };
   let matchNextLike = false;
@@ -38,19 +43,26 @@ export function createMockApi(role: TourRole) {
   /** Every request the tour answered, for the tests ("nothing reached the server"). */
   const log: { method: string; url: string }[] = [];
 
+  // A new match: the template's rounds, the mutual match dated today, the next rounds a few days apart.
+  const freshPipeline = () => clone(templatePipeline || []).map((s, i) => ({ ...s, date: today(i === 0 ? 0 : i * 3) }));
   const newMatch = (target: Job | Person, jobId?: string): JobMatch => {
-    const template = state.matches[0];
+    const base = { id: id('m'), stage: 'Matched', createdAt: Date.now(), currentStepId: 'match', pipeline: freshPipeline() };
     if (role === 'candidate') {
       const job = target as Job;
       const known = state.matches.find((m) => m.employerId === job.employerId)?.employer;
       const employer = known || ({ id: job.employerId, role: 'employer', name: job.recruiter?.name || job.company, title: job.recruiter?.title, photo: job.recruiter?.photo, company: job.company } as unknown as Person);
-      return { ...clone(template), id: id('m'), candidateId: viewer.id, employerId: job.employerId, jobId: job.id, job, employer, candidate: viewer, stage: 'Matched', createdAt: Date.now(), currentStepId: 'match', pipeline: (template.pipeline || []).map((s) => ({ ...s, date: undefined })), closedReason: undefined, closedAt: undefined, closedCategory: undefined } as JobMatch;
+      return { ...base, candidateId: viewer.id, employerId: job.employerId, jobId: job.id, job, employer, candidate: viewer } as JobMatch;
     }
     const candidate = target as Person;
     const group = (state.roleMatches || []).find((g) => g.job.id === jobId) || (state.roleMatches || []).find((g) => g.job.id === 'j-sarah-cloud') || state.roleMatches?.[0];
     const job = group?.job || state.jobs[0];
-    return { ...clone(template), id: id('m'), candidateId: candidate.id, employerId: viewer.id, jobId: job.id, job, candidate, employer: viewer, stage: 'Matched', createdAt: Date.now(), currentStepId: 'match', pipeline: (template.pipeline || []).map((s) => ({ ...s, date: undefined })), closedReason: undefined, closedAt: undefined, closedCategory: undefined } as JobMatch;
+    return { ...base, candidateId: candidate.id, employerId: viewer.id, jobId: job.id, job, candidate, employer: viewer } as JobMatch;
   };
+  const otherSide = (m: JobMatch) => (viewer.id === m.candidateId ? m.employerId : m.candidateId);
+  // The other side answers in the tour chat (like the demo accounts do on the real site).
+  const REPLIES = role === 'candidate'
+    ? ['Great to match with you! Your data work at VinAI is exactly what we need. Could we book a first interview this week?']
+    : ['Thanks! Yes, I would love an intro call. Any afternoon this week works for me.'];
 
   const autoMessage = (matchId: string, senderId: string, text: string) => {
     const msg: Message = { id: id('msg'), matchId, senderId, text, createdAt: Date.now(), auto: true };
@@ -84,6 +96,13 @@ export function createMockApi(role: TourRole) {
     if (path === '/api/messages' && method === 'POST') {
       const msg: Message = { id: id('msg'), matchId: String(body.matchId), senderId: String(body.senderId || viewer.id), text: String(body.text || ''), createdAt: Date.now() };
       state.messages.push(msg);
+      const m = state.matches.find((x) => x.id === msg.matchId);
+      const mine = state.messages.filter((x) => x.matchId === msg.matchId && x.senderId === viewer.id).length;
+      if (m && mine <= REPLIES.length) {
+        const reply: Message = { id: id('msg'), matchId: m.id, senderId: otherSide(m), text: REPLIES[mine - 1], createdAt: Date.now() + 1500 };
+        state.messages.push(reply);
+        return { ...msg, reply };
+      }
       return msg;
     }
     if (path === '/api/calls' && method === 'POST') {
@@ -132,7 +151,23 @@ export function createMockApi(role: TourRole) {
     }
     if (path === '/api/jobs/parse') return { parser: 'heuristic', parsed: { title: 'Senior Cloud Engineer' } };
     const userPatch = path.match(/^\/api\/users\/([^/]+)$/);
-    if (userPatch && method === 'PATCH') { Object.assign(viewer, body); return { user: viewer }; }
+    if (userPatch && method === 'PATCH') {
+      const status = body.jobStatus as { kind?: string; matchId?: string } | undefined;
+      Object.assign(viewer, body);
+      // "I got hired" (recruitment rules): this process is Hired, every other open one closes with a thank-you.
+      if (status?.kind === 'hired' && status.matchId) {
+        const effects = { closed: 0, meetingsCancelled: 0, messages: 0 };
+        for (const m of state.matches) {
+          if (m.id === status.matchId) { Object.assign(m, { stage: 'Hired', currentStepId: 'hire', closedAt: Date.now() }); continue; }
+          if (m.stage === 'Hired' || m.stage === 'Archived') continue;
+          Object.assign(m, { stage: 'Archived', closedReason: 'candidate_hired', closedAt: Date.now(), closedBy: viewer.id });
+          autoMessage(m.id, viewer.id, 'Thank you for your time and the conversations. I have accepted another offer, so I am closing this process.');
+          effects.closed += 1; effects.messages += 1;
+        }
+        return { user: viewer, effects };
+      }
+      return { user: viewer };
+    }
     if (path === '/api/bookmarks/toggle') {
       const t = String(body.targetId);
       const on = !state.bookmarkedIds.includes(t);
@@ -156,6 +191,18 @@ export function createMockApi(role: TourRole) {
     get lastMatchId() { return lastMatchId; },
     /** The next like creates a match (the "It's a Match" step). */
     matchNextLike() { matchNextLike = true; },
+    /** Moves the tour's newest match to a round (e.g. the technical interview, then the offer), with a message
+     *  from the hiring team. The next page load shows it. */
+    advance(stepId: string, message?: string) {
+      const m = state.matches.find((x) => x.id === lastMatchId) || state.matches[0];
+      if (!m) return;
+      const steps = m.pipeline || [];
+      const at = Math.max(0, steps.findIndex((s) => s.id === stepId));
+      m.pipeline = steps.map((s, i) => ({ ...s, date: today(i <= at ? i - at : (i - at) * 3) }));
+      m.currentStepId = stepId;
+      m.stage = 'Interview';
+      if (message) state.messages.push({ id: id('msg'), matchId: m.id, senderId: m.employerId, text: message, createdAt: Date.now() });
+    },
     async handle(url: string, init?: RequestInit) {
       const method = (init?.method || 'GET').toUpperCase();
       const path = url.split('?')[0];

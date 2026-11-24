@@ -14,7 +14,9 @@ export type TourAction =
   | ({ do: 'paste' } & Where & { value: string })
   | ({ do: 'select' } & Where & { value: string })
   | ({ do: 'set' } & Where & { value: string })
-  | { do: 'view'; view: View; match?: 'latest' | string }
+  | { do: 'view'; view: View; match?: 'latest' | string; reload?: boolean }
+  /** Scripted progress: the newest match moves to this round, with a message from the hiring team. */
+  | { do: 'advance'; to: string; message?: string }
   | { do: 'event'; name: string }
   | { do: 'matchNextLike' }
   | { do: 'wait'; ms: number };
@@ -34,68 +36,83 @@ const inDate = (days: number) => { const d = new Date(Date.now() + days * 864000
 
 const SWIPE = { like: '.nm-actions button[aria-label="Like"]', pass: '.nm-actions button[aria-label="Pass"]' };
 
+// Candidate tour (founder, 2026-11-24): Linh Tran from Ho Chi Minh City, a new account. Register → create the
+// profile → add 2 target roles → choose a role → filter → swipe and search → match → interview → offer → hired.
+const WZ_NEXT = '.wz-foot-actions .primary-button';
 const candidate: TourStep[] = [
-  { id: 'register', phase: 'register', title: 'Sign up in a minute', caption: 'Pick “Candidate”, your citizenship, accept the rules and create your account.', actions: [
+  { id: 'register', phase: 'register', title: 'Sign up in a minute', caption: 'Linh, from Ho Chi Minh City, picks “Candidate” and her citizenship, accepts the rules and creates her account.', actions: [
     { do: 'tap', target: '.role-option', text: 'Candidate' },
-    { do: 'select', target: 'select[aria-label="Your citizenship"]', value: 'Nigeria' },
+    { do: 'select', target: 'select[aria-label="Your citizenship"]', value: 'Vietnam' },
     { do: 'tap', target: '.conduct-checkbox input' },
-    { do: 'type', target: 'input[aria-label="Full name"]', value: 'Sofia Okafor' },
-    { do: 'type', target: '.auth-modal input[aria-label="Email address"]', value: 'sofia@example.com' },
+    { do: 'type', target: 'input[aria-label="Full name"]', value: 'Linh Tran' },
+    { do: 'type', target: '.auth-modal input[aria-label="Email address"]', value: 'linh@example.com' },
     { do: 'type', target: '.auth-modal input[type="password"]', value: 'tour-pass-2026' },
     { do: 'tap', target: '.auth-modal button[type="submit"]' },
   ] },
-  { id: 'profile', phase: 'app', title: 'Your profile', caption: 'Photo, skills and salary: recruiters see what matters, nothing more.', hold: 1400, actions: [
-    { do: 'view', view: 'profile' },
-    { do: 'point', target: '.tcard-hero-title, .tcard-hero-overlay, .profile-hero', optional: true },
-    { do: 'point', target: '.tcard-skillsplit, .skill-list', optional: true },
-    { do: 'point', target: 'h3, h4, strong, label, span', text: 'Salary', optional: true },
+  { id: 'profile', phase: 'app', title: 'Create her profile', caption: 'Photo, city and nationality, then her skills and experience.', actions: [
+    { do: 'point', target: '.wizard-card .wz-head', optional: true, ms: 700 },
+    { do: 'point', target: '.wz-body', optional: true, ms: 900 },
+    { do: 'tap', target: WZ_NEXT },
+    { do: 'point', target: '.wz-body', optional: true, ms: 1100 },
+    { do: 'tap', target: WZ_NEXT },
   ] },
-  { id: 'target-role', phase: 'app', title: 'Choose your target role', caption: 'Swipe for one target role at a time, or all of them.', actions: [
+  { id: 'target-roles', phase: 'app', title: 'Add 2 target roles', caption: 'The jobs she wants: Data Engineer and Machine Learning Engineer, with her salary range.', actions: [
+    { do: 'type', target: 'input[placeholder="e.g. Senior Product Designer — press Enter"]', value: 'Data Engineer', enter: true },
+    { do: 'type', target: 'input[placeholder="e.g. Senior Product Designer — press Enter"]', value: 'Machine Learning Engineer', enter: true },
+    { do: 'point', target: '.wz-salary, input[aria-label="Salary minimum"]', optional: true, ms: 700 },
+    { do: 'tap', target: WZ_NEXT },
+    { do: 'tap', target: WZ_NEXT },
+    { do: 'tap', target: '.wz-foot-actions button', text: 'Skip & finish' },
+  ] },
+  { id: 'choose-role', phase: 'app', title: 'Choose a role', caption: 'She swipes for one target role at a time: Machine Learning Engineer.', actions: [
     { do: 'view', view: 'match' },
-    { do: 'select', target: '.fmm-role-select select', value: 'Cloud Solutions Architect' },
-    { do: 'wait', ms: 1300 },
-    { do: 'select', target: '.fmm-role-select select', value: 'all' },
+    { do: 'select', target: '.fmm-role-select select', value: 'Machine Learning Engineer' },
+    { do: 'point', target: '.fmm-rolebar', ms: 800 },
   ] },
-  { id: 'swipe', phase: 'app', title: 'Swipe on roles', caption: 'Pass or like. Salary, work mode and fit are on the card.', actions: [
+  { id: 'filter', phase: 'app', title: 'Filter', caption: 'Remote roles only, searched by name. Filters also cover country, visa, skills and languages.', actions: [
+    { do: 'event', name: 'jmn:open-filters' },
+    { do: 'type', target: '.sf-sheet .sf-search input', value: 'Machine Learning' },
+    { do: 'tap', target: '.sf-sheet .sf-chips button', text: 'Remote', within: { target: '.sf-group', text: 'Work mode' } },
+    { do: 'tap', target: '.sf-show' },
+  ] },
+  { id: 'swipe', phase: 'app', title: 'Surf the roles', caption: 'Salary, work mode and fit on every card. Pass or like.', actions: [
     { do: 'point', target: '.nm-card:not(.nm-peek)', optional: true, ms: 900 },
     { do: 'tap', target: SWIPE.pass },
     { do: 'wait', ms: 700 },
     { do: 'tap', target: SWIPE.like },
   ] },
-  { id: 'filter', phase: 'app', title: 'Filter', caption: 'Only remote roles with a top fit. Filters also cover country, visa, skills and languages.', actions: [
-    { do: 'event', name: 'jmn:open-filters' },
-    { do: 'tap', target: '.sf-sheet .sf-chips button', text: 'Remote', within: { target: '.sf-group', text: 'Work mode' } },
-    { do: 'tap', target: '.sf-sheet .sf-chips button', text: '70%+' },
-    { do: 'tap', target: '.sf-show' },
-  ] },
-  { id: 'match', phase: 'app', title: '“It’s a Match”', caption: 'They liked you too: only now can you talk. No cold applications.', hold: 2400, actions: [
+  { id: 'match', phase: 'app', title: '“It’s a Match”', caption: 'The team liked her too: only now can they talk. No cold applications.', hold: 2400, actions: [
     { do: 'matchNextLike' },
     { do: 'tap', target: SWIPE.like },
     { do: 'point', target: '.nm-match-faces, .nm-match', optional: true },
   ] },
-  { id: 'chat', phase: 'app', title: 'Chat', caption: 'The conversation opens with the recruiter who chose you.', actions: [
+  { id: 'chat', phase: 'app', title: 'Chat', caption: 'The recruiter who chose her answers right away.', hold: 2200, actions: [
     { do: 'tap', target: '.nm-talk' },
-    { do: 'type', target: '.composer input', value: 'Hi! Thanks for the match. When could we talk about the role?' },
+    { do: 'type', target: '.composer input', value: 'Hi! Thank you for the match. I would love to hear more about the role.' },
     { do: 'tap', target: '.composer button[type="submit"]' },
   ] },
-  { id: 'book', phase: 'app', title: 'Book an interview', caption: 'Propose a time; it goes to both calendars.', actions: [
+  { id: 'interview', phase: 'app', title: 'Book the interview', caption: 'She proposes a time; it lands in both calendars.', actions: [
     { do: 'tap', target: 'button[title="Schedule a call"]' },
     { do: 'set', target: '.coach-modal input[type="date"]', value: inDate(2) },
     { do: 'set', target: '.coach-modal input[type="time"]', value: '10:00' },
     { do: 'tap', target: '.coach-modal .primary-button' },
     { do: 'point', target: '.schedule-card', optional: true },
   ] },
-  { id: 'stages', phase: 'app', title: 'Every hiring stage, in the open', caption: 'Both sides see the same rounds: who you meet, and when.', hold: 1600, actions: [
-    { do: 'view', view: 'stages' },
-    { do: 'point', target: '.hs-card', optional: true },
+  { id: 'rounds', phase: 'app', title: 'Interview rounds', caption: 'First interview done: she sees the next round, who she meets and when.', hold: 1800, actions: [
+    { do: 'advance', to: 'round-2', message: 'Thank you for the great first interview, Linh! Next step: the technical interview with our ML lead.' },
+    { do: 'view', view: 'stages', reload: true },
+    { do: 'point', target: '.hs-card', optional: true, ms: 1400 },
   ] },
-  { id: 'stopped', phase: 'app', title: 'Stopped at the technical round', caption: 'When a process stops, the recruiter must say why, with honest feedback.', hold: 2600, actions: [
-    { do: 'point', target: '.hs-closed:not(.hired)' },
-    { do: 'view', view: 'messages', match: 'm-sofia-j-sarah-cloud' },
-    { do: 'point', target: '.bubble-row', text: 'technical round' },
+  { id: 'offer', phase: 'app', title: 'The offer', caption: 'The team loved her technical round: the offer arrives in the chat.', hold: 1800, actions: [
+    { do: 'advance', to: 'offer', message: 'Congratulations, Linh! The whole panel said yes. We are happy to offer you the Machine Learning Engineer role: the offer letter is in your email.' },
+    { do: 'view', view: 'messages', match: 'latest', reload: true },
+    { do: 'point', target: '.bubble-row', text: 'Congratulations', optional: true, ms: 1400 },
   ] },
-  { id: 'hired', phase: 'app', title: 'Hired', caption: 'Another process went all the way: offer signed.', hold: 2600, actions: [
-    { do: 'view', view: 'stages' },
+  { id: 'hired', phase: 'app', title: 'Hired!', caption: 'She accepts: “I got hired”. Her other processes close with a thank-you.', hold: 2400, actions: [
+    { do: 'tap', target: '.hired-quick-btn' },
+    { do: 'tap', target: '.hired-confirm .primary-button' },
+    { do: 'point', target: '.hired-here-chip', optional: true, ms: 1000 },
+    { do: 'view', view: 'stages', reload: true },
     { do: 'point', target: '.hs-closed.hired' },
   ] },
 ];

@@ -576,8 +576,9 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   // Full tour player: opens a page (and a conversation), closing any sheet or menu first.
   useEffect(() => {
     const go = (event: Event) => {
-      const detail = (event as CustomEvent<{ view?: View; matchId?: string }>).detail || {};
+      const detail = (event as CustomEvent<{ view?: View; matchId?: string; reload?: boolean }>).detail || {};
       setFilterOpen(false); setMobileNav(false); setEditStep(null); setActiveAnchor('');
+      if (detail.reload) void api.bootstrap(session.id).then(setData).catch(() => undefined);
       if (detail.matchId) setOpenMatchId(detail.matchId);
       if (detail.view) setView(detail.view);
     };

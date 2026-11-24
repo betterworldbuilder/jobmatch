@@ -4,10 +4,12 @@
 // The tour never talks to the server: this file is all it shows. Real member data is never used (demo seed only).
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const [candPath, empPath] = process.argv.slice(2);
-if (!candPath || !empPath) { console.error('usage: build-tour-fixtures.mjs <candidate-bootstrap.json> <employer-bootstrap.json>'); process.exit(1); }
+// Candidate tour (founder, 2026-11-24): a Vietnamese candidate, Linh Tran (demo id c-4), new account: she creates
+// her profile and 2 target roles in the real wizard, then swipes, matches, interviews and gets hired.
+const [candPath, empPath, candId = 'c-4'] = process.argv.slice(2);
+if (!candPath || !empPath) { console.error('usage: build-tour-fixtures.mjs <candidate-bootstrap.json (bootstrap?userId=c-4)> <employer-bootstrap.json> [candidate id]'); process.exit(1); }
 const rename = (raw, from, to) => JSON.parse(raw.split(JSON.stringify(from)).join(JSON.stringify(to)));
-const cand = rename(readFileSync(candPath, 'utf8'), 'candidate-demo', 'tour-candidate');
+const cand = rename(readFileSync(candPath, 'utf8'), candId, 'tour-candidate');
 const emp = rename(readFileSync(empPath, 'utf8'), 'employer-demo', 'tour-recruiter');
 
 const DAY = 86400000;
@@ -17,36 +19,33 @@ const clean = (o) => { const c = structuredClone(o); delete c.screeningQuestions
 // Round dates are "YYYY-MM-DD" text, like the server's (the mock moves them to today's date).
 const datedPipeline = (pipeline, startDaysAgo) => pipeline.map((s, i) => ({ ...s, date: new Date(NOW - (startDaysAgo - i * 4) * DAY).toISOString().slice(0, 10) }));
 
-// ---------- Candidate tour (viewer: Sofia Okafor) ----------
+// ---------- Candidate tour (viewer: Linh Tran, Vietnam — a brand-new account) ----------
 {
   const b = cand;
-  const deckIds = ['j-6', 'j-sarah-devops', 'j-demo-extra-15', 'j-netflix-data', 'j-demo-7', 'j-2', 'j-sarah-qa', 'j-sarah-backend', 'j-sarah-data', 'j-sarah-security'];
-  const matchJobIds = ['j-1', 'j-sarah-cloud', 'j-sarah-product'];
-  b.jobs = pick(b.jobs, [...deckIds, ...matchJobIds]).map(clean).map((j) => ({ ...j, likedYou: false, superLikedYou: false }));
+  const TARGETS = ['Data Engineer', 'Machine Learning Engineer'];
+  const isTarget = (j) => TARGETS.some((t) => j.title === t || j.title.includes(t));
+  // The deck: her two target roles first (best fit first), plus a few others so "All my target roles" isn't tiny.
+  const jobs = b.jobs.map(clean).map((j) => ({ ...j, likedYou: false, superLikedYou: false }));
+  const targetJobs = jobs.filter(isTarget).sort((a, c) => (c.match?.score || 0) - (a.match?.score || 0)).slice(0, 10);
+  const others = jobs.filter((j) => !isTarget(j)).sort((a, c) => (c.match?.score || 0) - (a.match?.score || 0)).slice(0, 4);
+  b.jobs = [...targetJobs, ...others];
   // Two teams already like her (shown as "hiring teams like you").
-  for (const id of ['j-sarah-devops', 'j-netflix-data']) { const j = b.jobs.find((x) => x.id === id); if (j) j.likedYou = true; }
-  const active = b.matches.find((m) => m.id === 'm-sofia-aws');
-  const stopped = b.matches.find((m) => m.id === 'm-sofia-j-sarah-cloud');
-  const hired = b.matches.find((m) => m.id === 'm-sofia-aws-tpm');
-  active.createdAt = NOW - 3 * DAY; active.pipeline = datedPipeline(active.pipeline, 2); active.currentStepId = 'round-1';
-  stopped.createdAt = NOW - 30 * DAY; stopped.pipeline = datedPipeline(stopped.pipeline, 28);
-  Object.assign(stopped, { stage: 'Archived', currentStepId: 'round-3', closedReason: 'stopped_by_recruiter', closedCategory: 'Skills gap', closedAt: NOW - 6 * DAY, closedBy: stopped.employerId });
-  hired.createdAt = NOW - 60 * DAY; hired.pipeline = datedPipeline(hired.pipeline, 58);
-  Object.assign(hired, { stage: 'Hired', currentStepId: 'hire', closedAt: NOW - 2 * DAY });
-  b.matches = [active, stopped, hired];
-  const keep = new Set(b.matches.map((m) => m.id));
-  b.messages = b.messages.filter((m) => keep.has(m.matchId));
-  b.messages.push(
-    { id: 'tour-fb-1', matchId: stopped.id, senderId: stopped.employerId, auto: true, createdAt: NOW - 6 * DAY,
-      text: 'Thank you for your time on the technical round, Sofia. We are stopping here: the role needs hands-on Terraform and multi-region AWS networking every day, and the panel felt that gap is too wide for this team right now. Your product sense and system design were strong. Two pointers: the AWS Advanced Networking path, and a small multi-region project on GitHub. We would be glad to talk again for a product role.' },
-    { id: 'tour-h-1', matchId: hired.id, senderId: hired.employerId, createdAt: NOW - 3 * DAY, text: 'Sofia, the whole panel said yes. The offer is in your inbox: welcome to the team!' },
-    { id: 'tour-h-2', matchId: hired.id, senderId: 'tour-candidate', createdAt: NOW - 2 * DAY, text: 'Signed and sent back. Thank you all, I start on the 1st!' },
-  );
-  b.calls = b.calls.filter((c) => keep.has(c.matchId));
+  targetJobs.slice(2, 4).forEach((j) => { j.likedYou = true; });
+  // The pipeline a new match gets (rounds of a real demo match); the mock fills the dates.
+  const template = structuredClone(b.matches.find((m) => (m.pipeline || []).find((s) => s.id === 'round-2')?.kind === 'technical' && (m.pipeline || []).some((s) => s.id === 'offer')) || b.matches[0]);
+  b.matchTemplate = { pipeline: (template.pipeline || []).map(({ date, ...s }) => s) };
+  // New account: no matches, messages or meetings yet; the profile wizard opens first with her details
+  // (from the demo seed) and no target roles: she adds 2 during the tour.
+  b.matches = []; b.messages = []; b.calls = [];
   b.candidates = b.candidates.slice(0, 4);
   b.roleMatches = [];
-  b.notes = []; b.bookmarkedIds = []; b.likesRemaining = 47;
+  b.notes = []; b.bookmarkedIds = []; b.likesRemaining = 50;
+  b.viewer.onboarding = true;
+  b.viewer.email = 'linh@example.com';
+  // Required on the wizard's first page and missing in the demo seed (else "Continue" can't move on).
+  b.viewer.workAuthorization = b.viewer.workAuthorization || 'Citizen';
   b.viewer.jobStatus = undefined;
+  b.viewer.preferences = { ...(b.viewer.preferences || {}), desiredRoles: [] };
 }
 
 // ---------- Recruiter tour (viewer: Sarah Thompson, AWS) ----------
@@ -84,4 +83,5 @@ const out = { builtAt: NOW, candidate: cand, employer: emp };
 const target = new URL('../src/lib/tour/fixtures.json', import.meta.url);
 writeFileSync(target, JSON.stringify(out));
 const size = (o) => Math.round(JSON.stringify(o).length / 1024);
-console.log(`fixtures.json: ${size(out)} KB (candidate ${size(cand)} KB: ${cand.jobs.length} jobs, ${cand.matches.length} matches; recruiter ${size(emp)} KB: ${emp.candidates.length} candidates, ${emp.matches.length} matches, ${emp.roleMatches.length} roles)`);
+console.log(`fixtures.json: ${size(out)} KB (candidate ${cand.viewer.name}, ${cand.viewer.city}: ${size(cand)} KB, ${cand.jobs.length} jobs [${cand.jobs.map((j) => `${j.title} ${j.workMode} ${j.match?.score}`).join('; ')}];`);
+console.log(`  recruiter`, `${cand.matches.length} matches; recruiter ${size(emp)} KB: ${emp.candidates.length} candidates, ${emp.matches.length} matches, ${emp.roleMatches.length} roles)`);

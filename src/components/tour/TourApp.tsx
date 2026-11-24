@@ -58,6 +58,8 @@ function setNative(el: HTMLElement, value: string) {
 type Finger = { x: number; y: number; on: boolean; tap: number };
 const SPEEDS = [0.5, 0.75, 1, 1.5];
 const SPEED_KEY = 'jm-tour-speed';
+/** Founder, 2026-11-24: tours play at half speed unless the viewer picked another speed on this device. */
+const DEFAULT_SPEED = 0.5;
 
 /** The glowing ring follows its element while the page scrolls or animates. Its own small component, and it
  *  re-renders only when the box moves, so the app under it is not re-rendered every frame. */
@@ -101,7 +103,7 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
   const speedOn = useMemo(() => featureOn('tourSpeed'), []);
   const [speed, setSpeedState] = useState<number>(() => {
     if (!speedOn) return 1;
-    try { const v = Number(localStorage.getItem(SPEED_KEY)); return SPEEDS.includes(v) ? v : 1; } catch { return 1; }
+    try { const v = Number(localStorage.getItem(SPEED_KEY)); return SPEEDS.includes(v) ? v : DEFAULT_SPEED; } catch { return DEFAULT_SPEED; }
   });
   const speedRef = useRef(speed); speedRef.current = speed;
   const cycleSpeed = () => {
@@ -179,10 +181,11 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
       switch (a.do) {
         case 'wait': await sleep(a.ms); return;
         case 'matchNextLike': mock.matchNextLike(); return;
+        case 'advance': mock.advance(a.to, a.message); return;
         case 'event': window.dispatchEvent(new Event(a.name)); await sleep(500); return;
         case 'view': {
           const matchId = a.match === 'latest' ? mock.lastMatchId : a.match;
-          window.dispatchEvent(new CustomEvent(TOUR_VIEW_EVENT, { detail: { view: a.view, matchId } }));
+          window.dispatchEvent(new CustomEvent(TOUR_VIEW_EVENT, { detail: { view: a.view, matchId, reload: a.reload } }));
           ringEl.current = null;
           await sleep(700); return;
         }
