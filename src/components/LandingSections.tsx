@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, BarChart3, Bell, BriefcaseBusiness, Check, Coffee, Eye, FileText, Heart, Layers3, Loader2, LogIn, MapPin, MessageCircle, PenLine, Send, ShieldCheck, Sparkles, Star, Target, X } from 'lucide-react';
+import { ArrowRight, BarChart3, Bell, BriefcaseBusiness, Check, Coffee, Eye, FileText, Heart, Layers3, Loader2, LogIn, MapPin, MessageCircle, PenLine, Send, ShieldCheck, Sparkles, Star, Target, Timer, X } from 'lucide-react';
 import { api } from '../api';
+import { featureOn } from '../lib/flags';
 import type { ShowcaseHire } from '../api';
 import { appleColor } from '../lib/colors';
 import type { Job, Person, Review } from '../types';
@@ -56,7 +57,14 @@ const RECRUITER_FEATURES = [
   { icon: Bell, title: 'Coffee Requests', text: 'See who already likes your roles, ranked by fit, before you spend a minute reaching out.' },
 ];
 
+// Key feature on desktop (founder, 2026-11-25): first row of each column once the 48-hour timer is live (flag answer48).
+const CANDIDATE_48 = { icon: Timer, title: 'An Answer Within 48 Hours', text: 'Like a pilot team’s role and get a yes or no within 48 working hours. JobsMatch Assistant keeps you posted: no more silence.' };
+const RECRUITER_48 = { icon: Timer, title: '48-Hour Answer Promise', text: 'Answer every candidate who likes your role within 48 working hours. JobsMatch Assistant reminds you before time is up.' };
+
 export function FeaturesTable() {
+  const key48 = featureOn('answer48');
+  const candidateFeatures = key48 ? [CANDIDATE_48, ...CANDIDATE_FEATURES] : CANDIDATE_FEATURES;
+  const recruiterFeatures = key48 ? [RECRUITER_48, ...RECRUITER_FEATURES] : RECRUITER_FEATURES;
   return <section className="section features-section" id="features">
     <div className="section-heading centered">
       <span className="eyebrow"><Sparkles size={14} /> Why JobsMatchNow</span>
@@ -68,7 +76,7 @@ export function FeaturesTable() {
         <table className="features-spreadsheet">
           <thead><tr><th colSpan={2}>For Candidates</th></tr></thead>
           <tbody>
-            {CANDIDATE_FEATURES.map((feature) => <tr key={feature.title}>
+            {candidateFeatures.map((feature) => <tr key={feature.title} className={feature === CANDIDATE_48 ? 'features-key' : undefined}>
               <td className="features-cell-icon"><div className="features-icon"><feature.icon size={18} /></div></td>
               <td><strong>{feature.title}</strong><p>{feature.text}</p></td>
             </tr>)}
@@ -79,7 +87,7 @@ export function FeaturesTable() {
         <table className="features-spreadsheet">
           <thead><tr><th colSpan={2}>For Recruiters</th></tr></thead>
           <tbody>
-            {RECRUITER_FEATURES.map((feature) => <tr key={feature.title}>
+            {recruiterFeatures.map((feature) => <tr key={feature.title} className={feature === RECRUITER_48 ? 'features-key' : undefined}>
               <td className="features-cell-icon"><div className="features-icon"><feature.icon size={18} /></div></td>
               <td><strong>{feature.title}</strong><p>{feature.text}</p></td>
             </tr>)}

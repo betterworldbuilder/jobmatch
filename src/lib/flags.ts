@@ -20,6 +20,9 @@ const FLAGS = {
   /** Speed button in the full tours (0.5× · 0.75× · 1× · 1.5×), founder 2026-11-24. Preview: ?speed=1 */
   tourSpeed: { param: 'speed', defaultOn: true }, // switched on for everyone by the founder, 2026-11-24 (?speed=0 hides)
   bar: { param: 'bar', defaultOn: true }, // switched on for everyone by the founder, 2026-11-24 (?bar=0 brings the bar back)
+  /** "Answer within 48 hours" (founder, 2026-11-25): the key feature on the home page (phone + desktop), and later the
+   *  48-hour answer timer itself (plans/2026-11-25_48h-answer-timer-spec.md). Off until the timer is live. Preview: ?answer48=1 */
+  answer48: { param: 'answer48', defaultOn: false },
 } as const;
 
 export type FlagName = keyof typeof FLAGS;

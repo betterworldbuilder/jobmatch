@@ -82,6 +82,11 @@
 .feat-icon { display:inline-grid; place-items:center; width:36px; height:36px; border-radius:12px; background:#eaf3fd; color:#0a66c2; margin-bottom:10px; }
 .feat-grid strong { display:block; font:800 15.5px 'Manrope'; color:#0b102b; margin-bottom:6px; }
 .feat-grid p { margin:0; color:#5b6573; font-size:14px; line-height:1.45; }
+/* Key feature (48-hour answer): full row, pink frame, so it reads first. */
+.feat-grid article.feat-key { grid-column:1 / -1; position:relative; border:1.5px solid #f9b3cf; background:linear-gradient(135deg,#fff0f6 0%,#fff 60%); box-shadow:0 10px 28px rgba(253,38,122,.12); }
+.feat-grid article.feat-key .feat-icon { background:linear-gradient(135deg,#fd267a,#ff6036); color:#fff; }
+.feat-grid article.feat-key strong { font-size:17px; }
+.feat-key-tag { position:absolute; top:14px; right:14px; font-style:normal; font:800 10.5px 'Manrope'; letter-spacing:.06em; text-transform:uppercase; color:#d91863; background:#ffe1ec; padding:4px 9px; border-radius:999px; }
 .feat-ai { margin-top:22px; border-radius:22px; padding:24px; background:linear-gradient(135deg,#f3f8ff,#fff4f8); border:1px solid #dfeaf7; }
 .feat-ai h3 { display:flex; align-items:center; gap:8px; margin:0 0 6px; font:800 18px 'Manrope'; color:#0b102b; }
 .feat-ai h3 svg { color:#0a66c2; }

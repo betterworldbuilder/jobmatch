@@ -1,7 +1,8 @@
 // The concise landing story (founder, 2026-11-22): what it is (hero) → the problem → for who → how it works →
 // so what (vs classic hiring) → what now. Only features the product really has; no outcome numbers.
-import { ArrowRight, BriefcaseBusiness, Check, Clock3, EyeOff, Heart, MessageCircle, Search, ShieldCheck, Sparkles, Target, UserRound, X } from 'lucide-react';
+import { ArrowRight, BriefcaseBusiness, Check, Clock3, EyeOff, Heart, MessageCircle, Search, ShieldCheck, Sparkles, Target, Timer, UserRound, X } from 'lucide-react';
 import { TRIAL } from '../../lib/plans';
+import { featureOn } from '../../lib/flags';
 import './story.css';
 
 type Cta = { onRegister: () => void; onLogin: () => void };
@@ -70,10 +71,14 @@ const AI_FEATURES: { title: string; text: string }[] = [
   { title: 'Your own AI chatbot', text: 'Connect your own Claude or ChatGPT account and ask questions about your matches. Read-only.' },
 ];
 
+// Key feature (founder, 2026-11-25), shown first and highlighted once the 48-hour answer timer is live (flag answer48).
+export const ANSWER_48 = { icon: Timer, title: 'An answer within 48 hours', text: 'No more silence: pilot hiring teams answer every like within 48 working hours, yes or no. JobsMatch Assistant reminds them and keeps you posted.' };
+
 export function AppFeaturesSection() {
+  const items = featureOn('answer48') ? [ANSWER_48, ...APP_FEATURES] : APP_FEATURES;
   return <section className="story story-features" id="app-features">
     <div className="story-head"><span className="story-kicker">How it works better</span><h2>Features Designed for a Faster Hiring Process</h2></div>
-    <div className="feat-grid">{APP_FEATURES.map(({ icon: Icon, title, text }) => <article key={title}><span className="feat-icon"><Icon size={18} /></span><strong>{title}</strong><p>{text}</p></article>)}</div>
+    <div className="feat-grid">{items.map(({ icon: Icon, title, text }) => <article key={title} className={title === ANSWER_48.title ? 'feat-key' : undefined}>{title === ANSWER_48.title && <em className="feat-key-tag">Key feature</em>}<span className="feat-icon"><Icon size={18} /></span><strong>{title}</strong><p>{text}</p></article>)}</div>
     <div className="feat-ai">
       <h3><Sparkles size={17} /> Optional AI help</h3>
       <p className="feat-ai-note">AI only saves you time. It never scores, ranks or rejects anyone: people decide. Every AI suggestion is marked so you can review it.</p>
