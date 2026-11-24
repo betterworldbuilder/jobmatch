@@ -14,10 +14,10 @@ const FLAGS = {
   /** Admin pricing editor (edit, add, stop selling, delete plans). Preview: ?plans=1 */
   plans: { param: 'plans', defaultOn: false },
   /** "Watch Candidate full tour" / "Watch Recruiter full tour" in the sign-in window (founder, 2026-11-24). Preview: ?tour=1 */
-  tour: { param: 'tour', defaultOn: false },
+  tour: { param: 'tour', defaultOn: true }, // switched on for everyone by the founder, 2026-11-24 (?tour=0 hides)
   /** Phones: no top bar (menu, search and bell repeat the bottom bar); the bell moves next to "Swipe for role".
    *  Founder, 2026-11-24. Preview: ?bar=1 */
-  bar: { param: 'bar', defaultOn: false },
+  bar: { param: 'bar', defaultOn: true }, // switched on for everyone by the founder, 2026-11-24 (?bar=0 brings the bar back)
 } as const;
 
 export type FlagName = keyof typeof FLAGS;
