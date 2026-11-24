@@ -13,7 +13,18 @@ import fs from 'node:fs';
  * confirmPayment() in server/billing/confirm.js. */
 
 function packageName() { return process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.jobsmatchnow.app'; }
-function subscriptionProductId() { return process.env.GOOGLE_PLAY_SUBSCRIPTION_PRODUCT_ID || ''; }
+/** One Play subscription product with one base plan per JobsMatchNow plan (founder, 2026-11-24):
+ *  product "jobsmatchnow_recruiter", base plans "solo", "duo", "team" (the catalogue key of Team is "trio"). */
+function subscriptionProductId() { return process.env.GOOGLE_PLAY_SUBSCRIPTION_PRODUCT_ID || 'jobsmatchnow_recruiter'; }
+
+/** Play base plan id for a catalogue plan key, and back. Base plan ids allow lowercase letters, digits and "-". */
+export function basePlanIdFor(planKey) { return planKey === 'trio' ? 'team' : String(planKey || '').replace(/_/g, '-'); }
+export function planKeyForBasePlan(basePlanId, plans) {
+  const id = String(basePlanId || '').toLowerCase();
+  if (id === 'team' && plans.trio) return 'trio';
+  const key = id.replace(/-/g, '_');
+  return plans[key] ? key : null;
+}
 export { subscriptionProductId as googlePlaySubscriptionProductId };
 function rtdnSecret() { return process.env.GOOGLE_PLAY_RTDN_SECRET || ''; }
 
@@ -88,6 +99,9 @@ export async function verifySubscriptionPurchase(purchaseToken) {
     isActive: isActiveSubscriptionState(body.subscriptionState),
     expiryTimeMillis: lineItem?.expiryTime ? new Date(lineItem.expiryTime).getTime() : null,
     latestOrderId: body.latestOrderId || null,
+    productId: lineItem?.productId || null,
+    // Which plan was bought (Google's answer, never the app's claim).
+    basePlanId: lineItem?.offerDetails?.basePlanId || null,
   };
 }
 

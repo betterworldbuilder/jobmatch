@@ -215,6 +215,18 @@ test('pricing editor: add, edit, stop selling, delete; existing customers keep t
   await call('PUT', '/api/admin/billing/catalog/solo', { usd: 50, vnd: 490000 }, ck); // restore
 });
 
+test('Google Play: base plans map to catalogue plans (team = trio), and Play is ticked in every region by default', async () => {
+  const { basePlanIdFor, planKeyForBasePlan } = await import('./billing/providers/googleplay.js');
+  const { PLANS } = await import('./billing/plans.js');
+  const { shownIn } = await import('./billing/payment-settings.js');
+  assert.equal(basePlanIdFor('trio'), 'team'); assert.equal(basePlanIdFor('solo'), 'solo'); assert.equal(basePlanIdFor('pay_per_hire'), 'pay-per-hire');
+  assert.equal(planKeyForBasePlan('team', PLANS), 'trio'); assert.equal(planKeyForBasePlan('duo', PLANS), 'duo');
+  assert.equal(planKeyForBasePlan('nope', PLANS), null, 'unknown base plan is not trusted');
+  for (const place of ['Vietnam', 'France', 'Germany', 'USA', 'United Kingdom', 'Singapore', 'Australia', 'Japan', 'Brazil', '']) {
+    assert.equal(shownIn(undefined, 'google_play', place), true, `Google Play shown for ${place || 'no country'}`);
+  }
+});
+
 test('PayPal: one plan id per price, with the old single id as fallback', () => {
   const keep = { ...process.env };
   Object.assign(process.env, { PAYPAL_CLIENT_ID: 'c', PAYPAL_CLIENT_SECRET: 's', PAYPAL_PLAN_ID_SOLO: 'P-SOLO', PAYPAL_PLAN_ID: 'P-ANY' });

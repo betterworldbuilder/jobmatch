@@ -22,6 +22,9 @@ export const PROVIDER_FIELDS = {
 /** The methods, in the order recruiters see them. `provider` = needs keys; `manual` = needs details in the
  *  bank-instructions form (`needs` lists which). `webhook` is where the provider must send its notifications. */
 export const METHODS = [
+  // Google Play (founder, 2026-11-24: default in every region): only inside the Android app installed from Google
+  // Play; Google shows each buyer their local methods (cards, PayPal, ZaloPay, MoMo, ShopeePay…) and handles VAT.
+  { id: 'google_play', label: 'Google Play (Android app from the Play Store)', provider: 'googleplay', currency: 'Local currency (Google converts)', webhook: '/api/billing/google-play/rtdn?token=…', automatic: true, androidOnly: true },
   { id: 'payos', label: 'VietQR (payOS): Vietnamese banks, ZaloPay, MoMo', provider: 'payos', currency: 'VND', webhook: '/api/billing/payos/webhook', automatic: true },
   { id: 'bank_vn', label: 'Bank transfer in Vietnam (HSBC)', manual: true, needs: ['bankAccountNumber'], currency: 'USD/VND' },
   { id: 'stripe_card', label: 'Card, Apple Pay, Google Pay (Stripe)', provider: 'stripe', currency: 'USD or EUR', webhook: '/api/billing/stripe/webhook', automatic: true },
@@ -37,6 +40,7 @@ export const METHOD_IDS = METHODS.map((m) => m.id);
 const on = (zones) => Object.fromEntries(zones.map((z) => [z, true]));
 /** Starting grid, as agreed with the founder (every box can be changed in Admin). */
 export const DEFAULT_GRID = {
+  google_play: on(['EU', 'NA', 'ASIA', 'ROW', 'VN', 'US', 'GB', 'FR', 'SG', 'AU']),
   payos: on(['VN']),
   bank_vn: on(['VN']),
   stripe_card: on(['EU', 'NA', 'ASIA', 'ROW', 'US', 'GB', 'FR', 'SG', 'AU']),

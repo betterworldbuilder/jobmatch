@@ -192,7 +192,7 @@ export interface AdminCatalog { plans: AdminCatalogPlan[]; ladder: string[]; war
 export interface AdminPlanInput { display: string; usd: number | string; vnd: number | string | null; eur: number | string | null; seats: number | string; liveJobSlots: number | string; monthlyMatchCap: number | string | null; sellable: boolean; order: number | string; tagline: string; perks: string[]; paypalPlanId: string; analytics: boolean; atsExport: boolean; aiAssistant: boolean; outboundMessaging: boolean; priorityPlacement: boolean }
 
 /** Payment methods + where each is shown (founder, 2026-11-24). */
-export interface AdminPaymentMethod { id: string; label: string; provider?: 'payos' | 'stripe' | 'paypal'; manual?: boolean; needs?: string[]; currency: string; webhook?: string; automatic?: boolean; needsEur?: boolean; enabled: boolean; configured: boolean; grid: Record<string, boolean> }
+export interface AdminPaymentMethod { id: string; label: string; provider?: 'payos' | 'stripe' | 'paypal' | 'googleplay'; androidOnly?: boolean; manual?: boolean; needs?: string[]; currency: string; webhook?: string; automatic?: boolean; needsEur?: boolean; enabled: boolean; configured: boolean; grid: Record<string, boolean> }
 export interface AdminPaymentMethods {
   methods: AdminPaymentMethod[];
   zones: { regions: string[]; countries: string[]; labels: Record<string, string> };

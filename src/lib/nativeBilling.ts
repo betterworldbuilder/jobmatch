@@ -10,7 +10,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 
 interface PlayBillingPlugin {
   initialize(): Promise<void>;
-  queryProductDetails(options: { productId: string }): Promise<{ productId: string; title: string; offerToken?: string; formattedPrice?: string }>;
+  queryProductDetails(options: { productId: string }): Promise<{ productId: string; title: string; offerToken?: string; formattedPrice?: string; offers?: { basePlanId: string; offerId?: string | null; offerToken: string; formattedPrice?: string }[] }>;
   purchase(options: { productId: string; offerToken: string }): Promise<{ purchases: { purchaseToken: string; products: string[] }[] }>;
 }
 
@@ -32,11 +32,18 @@ export function isIosNative() {
 /** Runs the full Google Play purchase flow and returns the purchase token
  * to send to api.verifyGooglePlayPurchase() — the token itself proves
  * nothing until our server verifies it against the Android Publisher API. */
-export async function purchaseGooglePlaySubscription(productId: string): Promise<string> {
+/** Play base plan id for a catalogue plan key (Team's key is "trio"; base plan ids use "-" not "_"). */
+export const basePlanIdFor = (planKey?: string) => (planKey === 'trio' ? 'team' : String(planKey || 'solo').replace(/_/g, '-'));
+
+export async function purchaseGooglePlaySubscription(productId: string, planKey?: string): Promise<string> {
   await PlayBilling.initialize();
   const details = await PlayBilling.queryProductDetails({ productId });
-  if (!details.offerToken) throw new Error('No subscription offer available for this product');
-  const result = await PlayBilling.purchase({ productId, offerToken: details.offerToken });
+  // Buy the base plan of the plan the recruiter picked (solo / duo / team); the plain base-plan offer, not a promo one.
+  const wanted = basePlanIdFor(planKey);
+  const offer = details.offers?.find((o) => o.basePlanId === wanted && !o.offerId) || details.offers?.find((o) => o.basePlanId === wanted);
+  const offerToken = offer?.offerToken || (planKey ? undefined : details.offerToken);
+  if (!offerToken) throw new Error(`This plan (${wanted}) is not available on Google Play yet`);
+  const result = await PlayBilling.purchase({ productId, offerToken });
   const purchase = result.purchases.find((entry) => entry.products.includes(productId));
   if (!purchase) throw new Error('Purchase did not complete');
   return purchase.purchaseToken;

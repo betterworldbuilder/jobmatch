@@ -164,7 +164,7 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
     try {
       if (platform === 'google_play') {
         if (!googlePlayProductId) throw new Error('Google Play billing is not configured yet');
-        const purchaseToken = await purchaseGooglePlaySubscription(googlePlayProductId);
+        const purchaseToken = await purchaseGooglePlaySubscription(googlePlayProductId, charge?.planKey);
         const result = await api.verifyGooglePlayPurchase(viewer.id, purchaseToken);
         setPayments((prev) => [result.payment, ...prev]);
       } else {
@@ -292,6 +292,13 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
 
     <section className="billing-grid">
       <div className="billing-pay-card">
+        {/* Google Play first on Android (founder, 2026-11-24: default in every region). Google shows the buyer's own
+            local methods: saved card, PayPal, ZaloPay, MoMo, ShopeePay… */}
+        {googlePlayEnabled && isAndroidNative() && (!payPreview || offers('google_play')) && <div className="billing-card-pay billing-gplay">
+          <h3>Subscribe with Google Play — {planCard(charge?.planKey || 'solo').display}</h3>
+          <p className="muted">Pay with your Google account: saved card, PayPal, ZaloPay, MoMo or ShopeePay, in your local currency. Cancel any time in Google Play.</p>
+          <button type="button" className="primary-button" onClick={() => purchaseNative('google_play')} disabled={cardRedirecting}>{cardRedirecting ? <Loader2 size={16} className="spin" /> : 'Subscribe with Google Play'}</button>
+        </div>}
         {payosOn && <div className="billing-card-pay billing-payos">
           {/* payOS: VietQR, confirmed automatically. VND only (the plan's VND price). */}
           <h3>Pay by VietQR — {(vndCharge ?? vnpayAmountVnd?.toLocaleString('en-US'))} ₫</h3>
@@ -316,11 +323,6 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
           <h3>Pay with PayPal — {chargeLabel}</h3>
           <p className="muted">Pay via your PayPal balance or a linked card.</p>
           <button type="button" className="primary-button" onClick={() => payVia('paypal')} disabled={cardRedirecting}>{cardRedirecting ? <Loader2 size={16} className="spin" /> : 'Pay with PayPal'}</button>
-        </div>}
-        {googlePlayEnabled && isAndroidNative() && <div className="billing-card-pay">
-          <h3>Subscribe via Google Play</h3>
-          <p className="muted">Billed through your Google Play account.</p>
-          <button type="button" className="primary-button" onClick={() => purchaseNative('google_play')} disabled={cardRedirecting}>{cardRedirecting ? <Loader2 size={16} className="spin" /> : 'Subscribe via Google Play'}</button>
         </div>}
         {appleEnabled && isIosNative() && <div className="billing-card-pay">
           <h3>Subscribe via App Store</h3>

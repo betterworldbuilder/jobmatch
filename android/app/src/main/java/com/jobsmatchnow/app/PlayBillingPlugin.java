@@ -85,13 +85,26 @@ public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListene
             result.put("productId", details.getProductId());
             result.put("title", details.getTitle());
             List<ProductDetails.SubscriptionOfferDetails> offers = details.getSubscriptionOfferDetails();
+            // Every base plan / offer (solo, duo, team…), so the app can buy the plan the recruiter picked (2026-11-24).
+            JSArray all = new JSArray();
             if (offers != null && !offers.isEmpty()) {
-                ProductDetails.SubscriptionOfferDetails offer = offers.get(0);
-                result.put("offerToken", offer.getOfferToken());
-                if (!offer.getPricingPhases().getPricingPhaseList().isEmpty()) {
-                    result.put("formattedPrice", offer.getPricingPhases().getPricingPhaseList().get(0).getFormattedPrice());
+                ProductDetails.SubscriptionOfferDetails first = offers.get(0);
+                result.put("offerToken", first.getOfferToken());
+                if (!first.getPricingPhases().getPricingPhaseList().isEmpty()) {
+                    result.put("formattedPrice", first.getPricingPhases().getPricingPhaseList().get(0).getFormattedPrice());
+                }
+                for (ProductDetails.SubscriptionOfferDetails offer : offers) {
+                    JSObject o = new JSObject();
+                    o.put("basePlanId", offer.getBasePlanId());
+                    o.put("offerId", offer.getOfferId());
+                    o.put("offerToken", offer.getOfferToken());
+                    if (!offer.getPricingPhases().getPricingPhaseList().isEmpty()) {
+                        o.put("formattedPrice", offer.getPricingPhases().getPricingPhaseList().get(0).getFormattedPrice());
+                    }
+                    all.put(o);
                 }
             }
+            result.put("offers", all);
             call.resolve(result);
         });
     }

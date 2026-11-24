@@ -76,6 +76,10 @@ export function AdminPaymentMethodsPanel() {
         {p === 'paypal' && <p className="muted">Each plan's PayPal plan ID is set in Pricing &amp; plans → Edit. Set <code>PAYPAL_ENV=live</code> on the server for real payments.</p>}
       </section>;
     })}
+    <section className="apm-provider">
+      <header><b>Google Play (Android app from the Play Store)</b><span className={`apm-pill ${data.methods.find((m) => m.id === 'google_play')?.configured ? 'ok' : 'no'}`}>{data.methods.find((m) => m.id === 'google_play')?.configured ? 'Connected' : 'Not set up'}</span></header>
+      <p className="muted">In the Play Console: create the subscription <code>jobsmatchnow_recruiter</code> with base plans <code>solo</code>, <code>duo</code> and <code>team</code> (the prices Google charges), and a service account with access to orders. The service account key file is installed on the server, never in this page. Real-time notifications go to <code>{data.webhookBase}/api/billing/google-play/rtdn?token=…</code>.</p>
+    </section>
     <p className="muted">Bank details (HSBC Vietnam, the SARL's IBAN for SEPA and wires) and the USDT wallet are in <b>Bank transfer instructions</b>.</p>
   </div>;
 }

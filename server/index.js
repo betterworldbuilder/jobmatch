@@ -47,14 +47,14 @@ import { assertNeverZeroLiveJobs, downgradeToFree, applyLiveJobLimit } from './b
 import { clearSlotLocks, confirmHire, hasVerifiedHire, HIRE_OUTCOMES, POSTING_TERM_DAYS, recordHire, renewPosting, startPostingTerm } from './billing/postings.js';
 import { extendForHireInFlight, TRIAL_DAYS, trialEndsAt } from './billing/trial.js';
 import { recruiterVerification } from './billing/verification.js';
-import { chargeFor, lockCurrentPricesForPlan, monthlyRecurringRevenue, selectPlan, SELECTABLE_PLANS, setExtraJobSlots } from './billing/charge.js';
+import { chargeFor, lockCurrentPricesForPlan, monthlyRecurringRevenue, selectedPlanKey as selectedPlanKeyOf, selectPlan, SELECTABLE_PLANS, setExtraJobSlots } from './billing/charge.js';
 import { attachReferralOnRegister, findReferrerByCode, getOrCreateReferralCode, revokeReferralCreditForPayment } from './billing/referrals.js';
 import { BANK_INSTRUCTION_FIELDS, companyCountry, generateInvoiceNumber, generateTransferReference, isIban, isTrc20Address, isTronTxHash, isVietnam, MANUAL_METHOD_IDS, paymentInstructions, USDT_METHOD } from './billing/providers/manual.js';
 import { createPaymentLink as createPayosLink, isPayosConfigured, isPayosPaid, newOrderCode, payosDescription, testPayosConnection, verifyWebhook as verifyPayosWebhook } from './billing/providers/payos.js';
 import { buildPaymentUrl, isVnpayConfigured, isVnpaySuccess, VNPAY_AMOUNT_VND, verifySignature as verifyVnpaySignature } from './billing/providers/vnpay.js';
 import { createCheckoutSession, isStripeConfigured, stripePaymentTypes, testStripeConnection, verifyWebhookSignature as verifyStripeSignature } from './billing/providers/stripe.js';
 import { approveLink, createSubscription as createPaypalSubscription, isPaypalConfigured, testPaypalConnection, verifyWebhookSignature as verifyPaypalSignature } from './billing/providers/paypal.js';
-import { googlePlaySubscriptionProductId, isGooglePlayConfigured, isValidRtdnSecret, parseRtdnMessage, verifySubscriptionPurchase } from './billing/providers/googleplay.js';
+import { basePlanIdFor, googlePlaySubscriptionProductId, isGooglePlayConfigured, isValidRtdnSecret, parseRtdnMessage, planKeyForBasePlan, verifySubscriptionPurchase } from './billing/providers/googleplay.js';
 import { decodeJws, getTransactionInfo, isAppleConfigured, subscriptionProductId as appleSubscriptionProductId, verifyJws } from './billing/providers/applestore.js';
 import { assertRecruiterAccess, requireAdminRole } from './billing/middleware.js';
 import { confirmPayment } from './billing/confirm.js';
@@ -2963,10 +2963,13 @@ app.post('/api/billing/payments/google-play/verify', rateLimit({ windowMs: 36000
       if (db.payments.some((entry) => entry.paymentMethod === 'google_play' && entry.invoiceNumber === invoiceNumber)) {
         return { alreadyConfirmed: true };
       }
+      // The plan comes from the base plan Google says was bought (solo / duo / team), never from the app.
+      const planKey = planKeyForBasePlan(verified.basePlanId, PLANS) || selectedPlanKeyOf(subscription);
+      subscription.selectedPlanKey = planKey;
       const now = Date.now();
       const payment = {
         id: crypto.randomUUID(), recruiterUserId: recruiterId, subscriptionId: subscription.id,
-        ...paymentAmountFields(db, subscription), paymentMethod:'google_play', status: 'pending',
+        ...paymentAmountFields(db, subscription), currency: 'USD', paymentMethod:'google_play', status: 'pending',
         paymentReference: purchaseToken, invoiceNumber, payerName: null, bankName: null, transferDate: null,
         proofFileUrl: null, adminNote: null, confirmedByAdminId: null, confirmedAt: null, createdAt: now, updatedAt: now,
       };
@@ -2991,10 +2994,24 @@ app.post('/api/billing/google-play/rtdn', async (req, res) => {
     const verified = await verifySubscriptionPurchase(parsed.purchaseToken).catch(() => null);
     if (!verified?.isActive) return res.json({ ok: true, skipped: true });
     const result = await store.transaction((db) => {
-      const payment = db.payments.find((entry) => entry.paymentMethod === 'google_play' && entry.paymentReference === parsed.purchaseToken);
-      if (!payment) return { skipped: true };
+      // Each Google order (first purchase, then every renewal) extends the plan exactly once (founder, 2026-11-24:
+      // renewals were never extended before, because the first, already-confirmed payment was reused).
       const invoiceNumber = `google-play-${verified.latestOrderId || parsed.purchaseToken}`;
-      if (payment.invoiceNumber !== invoiceNumber) payment.invoiceNumber = invoiceNumber;
+      if (db.payments.some((entry) => entry.paymentMethod === 'google_play' && entry.invoiceNumber === invoiceNumber)) return { alreadyConfirmed: true };
+      const first = db.payments.find((entry) => entry.paymentMethod === 'google_play' && entry.paymentReference === parsed.purchaseToken);
+      if (!first) return { skipped: true }; // not linked to a recruiter yet (the app's verify call does that)
+      const subscription = db.subscriptions.find((entry) => entry.id === first.subscriptionId);
+      if (!subscription) return { skipped: true };
+      const planKey = planKeyForBasePlan(verified.basePlanId, PLANS);
+      if (planKey) subscription.selectedPlanKey = planKey;
+      const now = Date.now();
+      const payment = {
+        id: crypto.randomUUID(), recruiterUserId: first.recruiterUserId, subscriptionId: subscription.id,
+        ...paymentAmountFields(db, subscription), currency: 'USD', paymentMethod: 'google_play', status: 'pending',
+        paymentReference: parsed.purchaseToken, invoiceNumber, payerName: null, bankName: null, transferDate: null,
+        proofFileUrl: null, adminNote: null, confirmedByAdminId: null, confirmedAt: null, createdAt: now, updatedAt: now,
+      };
+      db.payments.push(payment);
       return confirmPayment(db, payment, { source: 'google_play' });
     });
     if (result?.payment && !result.alreadyConfirmed && result.recruiterEmail) {
@@ -3068,6 +3085,9 @@ app.post('/api/billing/apple/notifications', async (req, res) => {
       }
       const priorPayment = db.payments.find((entry) => entry.paymentMethod === 'apple_iap' && entry.paymentReference === transactionInfo.originalTransactionId);
       if (!priorPayment) return { skipped: true }; // no local recruiter linked to this subscription yet
+      // Bug fix (2026-11-24): `subscription` was never defined here, so every renewal threw and was silently dropped.
+      const subscription = db.subscriptions.find((entry) => entry.id === priorPayment.subscriptionId);
+      if (!subscription) return { skipped: true };
       const now = Date.now();
       const payment = {
         id: crypto.randomUUID(), recruiterUserId: priorPayment.recruiterUserId, subscriptionId: priorPayment.subscriptionId,
@@ -3838,6 +3858,7 @@ app.post('/api/admin/billing/subscriptions/:id/reprice', async (req, res, next) 
 // ---------------------------------------------------------------------------------------------------------------
 // Payment methods: keys, on/off switches, and where each method is shown (founder, 2026-11-24).
 function methodConfigured(db, method) {
+  if (method.provider === 'googleplay') return isGooglePlayConfigured();
   if (method.provider === 'payos') return isPayosConfigured();
   if (method.provider === 'stripe') {
     if (!isStripeConfigured()) return false;
