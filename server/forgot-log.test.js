@@ -39,9 +39,11 @@ test('reset request: one outcome line per request, no address or link in it, sam
   const b = await forgotLog(`nobody-${process.pid}@example.com`);
   assert.deepEqual(b.forgot, ['[forgot] no account with this address']);
 
+  assert.equal(a.r.body.account, true, 'member account found');
+  assert.equal(b.r.body.account, false, 'unknown address: no account');
   for (const x of [a, b]) {
     assert.equal(x.r.status, 200);
-    assert.deepEqual(Object.keys(x.r.body).sort(), ['mailer', 'ok']);
+    assert.deepEqual(Object.keys(x.r.body).sort(), ['account', 'mailer', 'ok']);
     assert.ok(x.forgot.every((l) => !l.includes('@') && !l.includes('reset=')), 'no address or link in the outcome line');
   }
 });

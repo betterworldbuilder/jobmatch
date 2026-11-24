@@ -140,6 +140,8 @@ export function LoginModal({ onClose, onComplete, onRegister }: { onClose: () =>
   const [error, setError] = useState('');
   const [forgot, setForgot] = useState(false);
   const [forgotDone, setForgotDone] = useState<string | null>(null);
+  // Founder, 2026-11-25: say clearly when no account uses that email (instead of "check your email" for nothing).
+  const [noAccount, setNoAccount] = useState(false);
   const [submitted, setSubmitted] = useState<'demo' | 'password' | 'sso' | null>(null); // where to show the error
 
   // Demo profiles come from a cache started when the landing page loads (prefetchDemoProfiles), so the list and the
@@ -159,8 +161,13 @@ export function LoginModal({ onClose, onComplete, onRegister }: { onClose: () =>
 
   if (forgot) return <ModalShell title="Reset your password" subtitle="Enter your email and we'll send a reset link." onClose={onClose}>
     {forgotDone ? <div className="feedback-done"><div className="feedback-done-mark"><LogIn size={22} /></div><strong>Check your email</strong><p>{forgotDone}</p><button className="text-button" onClick={() => { setForgot(false); setForgotDone(null); }}>Back to log in</button></div>
-      : <form className="auth-form" onSubmit={async (event) => { event.preventDefault(); if (!email.trim()) return; setSubmitting('forgot'); setError(''); try { const r = await api.forgotPassword(email.trim()); setForgotDone(r.mailer ? 'If that email has an account, a reset link is on its way.' : 'Email delivery isn’t set up yet, so no link was sent. Contact support to reset your password.'); } catch (e) { setError(e instanceof Error ? e.message : 'Failed'); } finally { setSubmitting(null); } }}>
-        <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" aria-label="Email address" required />
+      : <form className="auth-form" onSubmit={async (event) => { event.preventDefault(); if (!email.trim()) return; setSubmitting('forgot'); setError(''); setNoAccount(false); try { const r = await api.forgotPassword(email.trim()); if (r.account === false) { setNoAccount(true); return; } setForgotDone(r.mailer ?'If that email has an account, a reset link is on its way.' : 'Email delivery isn’t set up yet, so no link was sent. Contact support to reset your password.'); } catch (e) { setError(e instanceof Error ? e.message : 'Failed'); } finally { setSubmitting(null); } }}>
+        <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(event) => { setEmail(event.target.value); setNoAccount(false); }} autoComplete="email" aria-label="Email address" aria-invalid={noAccount || undefined} aria-describedby={noAccount ? 'forgot-no-account' : undefined} required />
+        {noAccount && <div className="auth-warning" id="forgot-no-account" role="alert">
+          <strong>No account uses this email.</strong>
+          <span>Check the address you signed up with, or create a free account with it.</span>
+          {onRegister && <button type="button" className="auth-register-btn" onClick={onRegister}><span>New here?</span> <b>Register free</b> <ArrowRight size={15} /></button>}
+        </div>}
         <button type="submit" className="primary-button auth-submit" disabled={submitting === 'forgot' || !email.trim()}>{submitting === 'forgot' ? <Loader2 size={16} className="spin" /> : 'Send reset link'}</button>
         <button type="button" className="text-button" onClick={() => setForgot(false)}>Back to log in</button>
         {error && <p className="auth-error">{error}</p>}

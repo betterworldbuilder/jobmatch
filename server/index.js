@@ -864,11 +864,13 @@ app.post('/api/auth/forgot', authLimiter, async (req, res, next) => {
       }
     } else {
       const other = db.users.find(sameEmail);
-      outcome = !other ? 'no account with this address' : other.role === 'admin' ? 'admin account (Google sign-in only)' : 'demo account';
+      outcome = !other ? 'no account with this address' : other.role === 'admin' ? 'admin account (uses the admin password setup link)' : 'demo account';
     }
     console.log(`[forgot] ${outcome}`);
-    // Never reveal whether the email exists.
-    res.json({ ok: true, mailer: mailerConfigured() });
+    // Founder, 2026-11-25: tell the person when no member account uses that address (registering with a taken
+    // address already reveals this; requests are rate-limited). Admin and demo addresses answer the same
+    // "no account", so the admin address is never confirmed.
+    res.json({ ok: true, mailer: mailerConfigured(), account: Boolean(user) });
   } catch (error) { next(error); }
 });
 
