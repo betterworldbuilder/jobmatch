@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ArrowRight, Ban, BriefcaseBusiness, Check, Download, Linkedin, Loader2, LogIn, Mail, Search, ShieldCheck, Trash2, User, X } from 'lucide-react';
 import { api, apiBase } from '../api';
 import { authProviders } from '../lib/auth';
+import { COUNTRY_OPTIONS, guessCountryName } from '../lib/countries';
 import { ConductModal } from './ConductModal';
 import type { AuthConfig, Role, SessionUser } from '../types';
 
@@ -199,6 +200,10 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
   const [error, setError] = useState('');
   const [conductAccepted, setConductAccepted] = useState(false);
   const [conductOpen, setConductOpen] = useState(false);
+  // Company country (recruiters, required; founder 2026-11-24): decides which payment methods they see.
+  // Pre-selected from the phone's region; they can change it.
+  const [country, setCountry] = useState(() => guessCountryName());
+  const countryOk = role !== 'employer' || Boolean(country);
   // Every real account has a password; demo mode only adds the demo personas on login.
   const passwordOk = password.length >= config.passwordMinLength;
 
@@ -214,17 +219,24 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
       <button type="button" className={role === 'candidate' ? 'role-option active' : 'role-option'} onClick={() => setRole('candidate')} aria-pressed={role === 'candidate'}><User size={17} /><strong>Candidate</strong><small>Find your next role</small></button>
       <button type="button" className={role === 'employer' ? 'role-option active' : 'role-option'} onClick={() => setRole('employer')} aria-pressed={role === 'employer'}><BriefcaseBusiness size={17} /><strong>Company / Headhunter</strong><small>Find great people</small></button>
     </div>
+    {role === 'employer' && <label className="auth-country">
+      <span>Company country <small>(where your company is registered)</small></span>
+      <select className="auth-input" value={country} onChange={(event) => setCountry(event.target.value)} required aria-label="Company country">
+        <option value="">Choose a country</option>
+        {COUNTRY_OPTIONS.map((c, i) => <option key={`${c.code}-${i}`} value={c.name}>{c.name}</option>)}
+      </select>
+    </label>}
     <label className="conduct-checkbox">
       <input type="checkbox" checked={conductAccepted} onChange={(event) => setConductAccepted(event.target.checked)} />
       <span>I agree to the <button type="button" onClick={() => setConductOpen(true)}>Code of Conduct</button>, the <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a></span>
     </label>
-    <SsoButtons config={config} role={role} busy={busy} disabled={!conductAccepted} onMockSso={(provider) => { setBusy(provider); run(() => authProviders[provider].signIn({ registerRole: role, conductAccepted })); }} />
+    <SsoButtons config={config} role={role} busy={busy} disabled={!conductAccepted || !countryOk} onMockSso={(provider) => { setBusy(provider); run(() => authProviders[provider].signIn({ registerRole: role, conductAccepted, registerCountry: role === 'employer' ? country : undefined })); }} />
     <div className="auth-divider"><span>or continue with email</span></div>
-    <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || !email.trim() || !passwordOk || !conductAccepted) return; setSubmitting(true); run(() => authProviders.email.signIn({ register: { role, name: name.trim(), email: email.trim(), password, conductAccepted } })); }}>
+    <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || !email.trim() || !passwordOk || !conductAccepted || !countryOk) return; setSubmitting(true); run(() => authProviders.email.signIn({ register: { role, name: name.trim(), email: email.trim(), password, conductAccepted, ...(role === 'employer' ? { country } : {}) } })); }}>
       <input className="auth-input" placeholder="Full name" value={name} onChange={(event) => setName(event.target.value)} required aria-label="Full name" autoComplete="name" />
       <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} required aria-label="Email address" autoComplete="email" />
       <input className="auth-input" type="password" placeholder={`Password (min ${config.passwordMinLength} characters)`} value={password} onChange={(event) => setPassword(event.target.value)} required minLength={config.passwordMinLength} aria-label="Password" autoComplete="new-password" />
-      <button type="submit" className="primary-button auth-submit" disabled={submitting || !name.trim() || !email.trim() || !passwordOk || !conductAccepted}>{submitting ? <Loader2 size={16} className="spin" /> : <><Mail size={16} /> Create my account</>}</button>
+      <button type="submit" className="primary-button auth-submit" disabled={submitting || !name.trim() || !email.trim() || !passwordOk || !conductAccepted || !countryOk}>{submitting ? <Loader2 size={16} className="spin" /> : <><Mail size={16} /> Create my account</>}</button>
     </form>
     {error && <p className="auth-error">{error}</p>}
     {conductOpen && <ConductModal onClose={() => setConductOpen(false)} />}

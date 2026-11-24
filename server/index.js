@@ -755,6 +755,8 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
     if (!/.+@.+\..+/.test(email)) throw new ValidationError('email', 'A valid email address is required');
     const password = optString(req.body, 'password', { max: 200 });
     const photo = optString(req.body, 'photo', { max: 500 });
+    // Recruiters' company country (founder, 2026-11-24): decides which payment methods they are offered.
+    const country = optString(req.body, 'country', { max: 80 });
     // Every real account needs a password — DEMO_AUTH only affects the demo
     // personas, never sign-up. The one passwordless path is dev-only mock SSO.
     const mockSsoSignup = mockSso && (provider === 'linkedin' || provider === 'google');
@@ -773,7 +775,7 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
       const needsVerification = Boolean(password) && mailerConfigured();
       const created = {
         id: `u-${crypto.randomUUID().slice(0, 8)}`, role, name, email,
-        ...(role === 'employer' ? { kind: kind || 'company' } : {}),
+        ...(role === 'employer' ? { kind: kind || 'company', ...(country ? { country } : {}) } : {}),
         ...(password ? { passwordHash: hashPassword(password) } : {}),
         provider: provider || 'email',
         emailVerified: !needsVerification,
@@ -3537,9 +3539,19 @@ app.post('/api/premium/trial', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, bu
   try {
     const session = authSession(req);
     if (!session) { const error = new Error('Sign in first'); error.status = 401; throw error; }
+    const citizenship = optString(req.body || {}, 'citizenship', { max: 80 });
     const state = await store.transaction((tx) => {
       const user = tx.users.find((u) => u.id === session.sub && !u.suspendedAt);
       if (!user) { const error = new Error('Sign in first'); error.status = 401; throw error; }
+      // Candidates starting Premium give their citizenship (founder, 2026-11-24): it decides which payment methods
+      // they will be offered. Asked only if their profile does not have it yet.
+      if (user.role === 'candidate') {
+        if (citizenship) {
+          if (!user.nationality) user.nationality = citizenship;
+          user.citizenship = [...new Set([...(user.citizenship || []), citizenship])].slice(0, 5);
+        }
+        if (!user.nationality && !user.citizenship?.length) throw new ValidationError('citizenship', 'Choose your citizenship to start Premium (it decides which payment methods you can use).');
+      }
       if (user.role === 'employer') { // hiring teams: the plan's free trial (idempotent, never restarts the clock)
         if (findSubscription(tx, user.id)) { const error = new Error('Your free trial was already used.'); error.status = 409; throw error; }
         getOrCreateTrialSubscription(tx, user.id);
@@ -3871,7 +3883,10 @@ function methodConfigured(db, method) {
 /** The method ids a recruiter can use: switched on, configured, and shown for their company's country. */
 function allowedMethods(db, recruiter) {
   const settings = db.paymentSettings;
-  const place = companyCountry(recruiter) || recruiter?.country || '';
+  // Recruiters: the company's country. Candidates (Premium): their citizenship (founder, 2026-11-24).
+  const place = recruiter?.role === 'candidate'
+    ? (recruiter.nationality || recruiter.citizenship?.[0] || recruiter.country || '')
+    : (companyCountry(recruiter) || recruiter?.country || '');
   return METHODS.filter((m) => isEnabled(settings, m.id) && methodConfigured(db, m) && shownIn(settings, m.id, place)).map((m) => m.id);
 }
 function adminPaymentMethods(db) {

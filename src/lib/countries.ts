@@ -25,3 +25,40 @@ export const COUNTRIES: string[] = [
   'Yemen',
   'Zambia', 'Zimbabwe',
 ];
+
+// --- "Company country" (recruiters) and "Citizenship" (candidates starting Premium) — founder, 2026-11-24 ---------
+// Same names as COUNTRIES (they are what the server's payment rules read). The phone's region pre-selects a guess.
+
+/** COUNTRIES with the 6 main markets first. */
+export const COUNTRY_OPTIONS: { code: string; name: string }[] = (() => {
+  const top = ['Vietnam', 'United States', 'United Kingdom', 'France', 'Singapore', 'Australia'];
+  return [...top, ...COUNTRIES.filter((c) => !top.includes(c))].map((name) => ({ code: name, name }));
+})();
+
+const ALIASES: Record<string, string> = { 'viet nam': 'Vietnam', turkey: 'Türkiye', 'cape verde': 'Cabo Verde', 'czech republic': 'Czechia', 'hong kong sar china': 'Hong Kong', 'macao sar china': 'Macao', 'myanmar (burma)': 'Myanmar', 'congo - kinshasa': 'Democratic Republic of the Congo', 'congo - brazzaville': 'Congo', 'palestinian territories': 'Palestine', 'vatican city': 'Holy See', 'eswatini': 'Eswatini', 'swaziland': 'Eswatini' };
+const TZ: Record<string, string> = { 'Asia/Ho_Chi_Minh': 'VN', 'Asia/Saigon': 'VN', 'Europe/Paris': 'FR', 'Europe/London': 'GB', 'Asia/Singapore': 'SG', 'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU', 'America/New_York': 'US', 'America/Chicago': 'US', 'America/Denver': 'US', 'America/Los_Angeles': 'US' };
+
+/** An ISO region code → the matching name in COUNTRIES ('' if none). */
+function countryForRegion(code: string): string {
+  try {
+    const raw = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || '';
+    const name = ALIASES[raw.toLowerCase()] || raw;
+    return COUNTRIES.find((c) => c.toLowerCase() === name.toLowerCase()) || '';
+  } catch { return ''; }
+}
+
+/** Best guess of the user's country from the phone/browser region (language tag, then time zone). '' if unknown. */
+export function guessCountryName(): string {
+  try {
+    for (const tag of navigator.languages || [navigator.language]) {
+      const region = new Intl.Locale(tag).maximize().region;
+      const name = region ? countryForRegion(region) : '';
+      if (name) return name;
+    }
+  } catch { /* fall through */ }
+  try {
+    const code = TZ[Intl.DateTimeFormat().resolvedOptions().timeZone];
+    if (code) return countryForRegion(code);
+  } catch { /* unknown */ }
+  return '';
+}

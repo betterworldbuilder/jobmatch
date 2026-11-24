@@ -8,6 +8,7 @@ import { Check, GripVertical, Heart, LayoutGrid, MessageCircle, Pencil, SlidersH
 import type { LucideIcon } from 'lucide-react';
 import type { View } from '../types';
 import { defaultTabs, defaultTabsV2, FILTER_KEY, MAX_TABS, MENU_KEY, normalizeTabs, placeTab, removeTab, toggleTab } from '../lib/tabBar';
+import { OPEN_MENU_EVENT } from './home/DeckActionBar';
 
 export type TabNavItem = { label: string; short?: string; icon: LucideIcon; view?: View; anchor?: string };
 type Item = { key: string; label: string; short: string; icon: LucideIcon; color: string; badge?: number; active: boolean; go: () => void };
@@ -28,6 +29,13 @@ export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, u
   const defaults = () => (filtersOn ? defaultTabsV2() : defaultTabs(role));
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  // Desktop action bar → the same Global Menu, shown as a centred panel on wide screens (founder, 2026-11-24).
+  const [fromDesktop, setFromDesktop] = useState(false);
+  useEffect(() => {
+    const open = () => { setFromDesktop(window.innerWidth > 760); setMenuOpen(true); setEditing(false); };
+    window.addEventListener(OPEN_MENU_EVENT, open);
+    return () => window.removeEventListener(OPEN_MENU_EVENT, open);
+  }, []);
   const likesAnchor = role === 'candidate' ? 'td-chasing' : 'td-review';
   const close = () => { setMenuOpen(false); setEditing(false); };
 
@@ -107,7 +115,8 @@ export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, u
         </button>;
       })}
     </nav>
-    {menuOpen && <section className="explore-sheet" role="dialog" aria-label="Global Menu">
+    {menuOpen && fromDesktop && <button type="button" className="gm-desktop-scrim" aria-label="Close Global Menu" onClick={close} />}
+    {menuOpen && <section className={fromDesktop ? 'explore-sheet gm-desktop' : 'explore-sheet'} role="dialog" aria-label="Global Menu">
       <header><h2>Global Menu</h2>
         <div className="gm-actions">
           <button type="button" className={editing ? 'gm-edit on' : 'gm-edit'} onClick={() => setEditing((v) => !v)}>{editing ? <><Check size={15} /> Done</> : <><Pencil size={14} /> Customize bar</>}</button>

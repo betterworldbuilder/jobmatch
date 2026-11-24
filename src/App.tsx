@@ -42,6 +42,7 @@ import { NotesBox } from './components/NotesBox';
 import { useDiscoverDeck } from './components/discover/useDiscoverDeck';
 import { EmptyDeck, MatchModal, SalaryBadge, TryDemoContext } from './components/discover/DeckParts';
 import { FilterFields, SearchFiltersSheet } from './components/discover/SearchFilters';
+import { OPEN_FILTERS_EVENT } from './components/home/DeckActionBar';
 import { resetSharedFilters, useSharedFilters } from './components/discover/filterStore';
 import { activeFilterCount } from './components/discover/deckLogic';
 // Lazy-loaded: pulls in pdf.js only when a resume is actually opened.
@@ -548,6 +549,8 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const baseNav = role === 'candidate' ? candidateNav : employerNav;
   const nav = filtersOn ? baseNav.map((n) => (n.view === 'meetings' ? { ...n, label: 'Interviews', short: 'Interviews' } : n)) : baseNav;
   const [filterOpen, setFilterOpen] = useState(false);
+  // The desktop action bar under the deck opens the same Filter sheet (founder, 2026-11-24).
+  useEffect(() => { const open = () => setFilterOpen(true); window.addEventListener(OPEN_FILTERS_EVENT, open); return () => window.removeEventListener(OPEN_FILTERS_EVENT, open); }, []);
   const [sharedFilters] = useSharedFilters(session.id, role);
   const filterCount = filtersOn ? activeFilterCount(sharedFilters) : 0;
   // Anchor items scroll to a home-dashboard section; view items open a page.

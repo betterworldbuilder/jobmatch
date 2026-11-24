@@ -15,9 +15,10 @@ export interface AuthProvider {
 
 export interface SignInOptions {
   userId?: string; // demo provider: which profile to log in as
-  register?: { role: Role; kind?: EmployerKind; name: string; email: string; password?: string; conductAccepted?: boolean }; // email provider
+  register?: { role: Role; kind?: EmployerKind; name: string; email: string; password?: string; conductAccepted?: boolean; country?: string }; // email provider
   registerRole?: Role; // SSO during registration: create/refresh account with this role
   registerKind?: EmployerKind;
+  registerCountry?: string; // recruiters: company country (decides payment methods)
   conductAccepted?: boolean; // SSO during registration: mirrors the register checkbox
 }
 
@@ -54,7 +55,7 @@ function mockSso(id: 'linkedin' | 'google', label: string): AuthProvider {
       const { user } = await api.ssoLogin(id);
       if (options?.registerRole) {
         // Registering via SSO: keep the provider identity but ensure the chosen role.
-        const { user: registered } = await api.register({ role: options.registerRole, kind: options.registerKind, provider: id, name: user.name, email: user.email || `${id}@demo.jobsmatchnow.app`, photo: user.photo, conductAccepted: options.conductAccepted });
+        const { user: registered } = await api.register({ role: options.registerRole, kind: options.registerKind, provider: id, name: user.name, email: user.email || `${id}@demo.jobsmatchnow.app`, photo: user.photo, conductAccepted: options.conductAccepted, ...(options.registerCountry ? { country: options.registerCountry } : {}) });
         return { ...registered, isNew: true };
       }
       return user;

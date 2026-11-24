@@ -44,7 +44,7 @@ export const api = {
   login: (userId: string) => request<{ user: SessionUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ userId }) }),
   loginPassword: (email: string, password: string) => request<{ user: SessionUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   ssoLogin: (provider: 'linkedin' | 'google') => request<{ user: SessionUser }>('/api/auth/sso', { method: 'POST', body: JSON.stringify({ provider }) }),
-  register: (payload: { role: Role; kind?: EmployerKind; provider?: string; name: string; email: string; password?: string; photo?: string; conductAccepted?: boolean }) => request<{ user: SessionUser }>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
+  register: (payload: { role: Role; kind?: EmployerKind; provider?: string; name: string; email: string; password?: string; photo?: string; conductAccepted?: boolean; country?: string }) => request<{ user: SessionUser }>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   me: () => request<{ authenticated: boolean; user: SessionUser }>('/api/auth/me'),
   logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
   forgotPassword: (email: string) => request<{ ok: boolean; mailer: boolean }>('/api/auth/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
@@ -54,7 +54,7 @@ export const api = {
   // Ask AI (job seekers): the server uses the session user only; keys stay server-side.
   aiChatStatus: () => request<{ enabled: boolean; reason?: string; source?: 'own' | 'server'; provider?: string; providerLabel?: string; model?: string; dailyLimit?: number; remaining?: number; ownKey: AiKeyInfo | null; canSaveKey: boolean; premium: PremiumState }>('/api/ai/chat/status'),
   premium: () => request<PremiumState>('/api/premium'),
-  startPremiumTrial: () => request<PremiumState>('/api/premium/trial', { method: 'POST', body: '{}' }),
+  startPremiumTrial: (citizenship?: string) => request<PremiumState>('/api/premium/trial', { method: 'POST', body: JSON.stringify(citizenship ? { citizenship } : {}) }),
   aiKey: () =>request<{ key: AiKeyInfo | null; canSave: boolean }>('/api/ai/key'),
   saveAiKey: (provider: 'anthropic' | 'openai', apiKey: string, tier: 'best' | 'fast') => request<{ key: AiKeyInfo }>('/api/ai/key', { method: 'PUT', body: JSON.stringify({ provider, apiKey, tier }) }),
   deleteAiKey: () => request<{ ok: boolean }>('/api/ai/key', { method: 'DELETE' }),

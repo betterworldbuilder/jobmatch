@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Bot, Crown, KeyRound, Loader2, Lock, RotateCcw, Send, Settings, Sparkles, X } from 'lucide-react';
 import { api } from '../../api';
 import { AgentSettingsModal, AI_KEY_EVENT, ASK_AI_EVENT, modelName, RECRUITER_QUESTIONS } from './AiAnalyst';
+import { CitizenshipPicker } from './PremiumTrial';
 
 type Msg = { role: 'user' | 'assistant'; content: string; sources?: { ref: string; kind: string; label: string }[]; error?: boolean };
 export const ASK_AI_SUGGESTIONS = ['What are my best job matches?', 'Why does this job match my profile?', 'What skills am I missing?', 'Help me prepare for my next interview.'];
@@ -16,6 +17,7 @@ export function AskAi({ role = 'candidate', hideFabOnPhone = false }: { role?: '
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status | null>(null);
   const [statusError, setStatusError] = useState('');
+  const [needCitizenship, setNeedCitizenship] = useState(false); // candidates: asked before Premium starts (2026-11-24)
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -62,9 +64,11 @@ export function AskAi({ role = 'candidate', hideFabOnPhone = false }: { role?: '
     const lastUser = [...msgs].reverse().find((m) => m.role === 'user'); if (!lastUser) return;
     void ask(lastUser.content, msgs.slice(0, msgs.lastIndexOf(lastUser)));
   };
-  const startTrial = async () => {
+  const startTrial = async (citizenship?: string) => {
     setTrialBusy(true);
-    try { await api.startPremiumTrial(); await loadStatus(); } catch (e) { setStatusError(e instanceof Error ? e.message : 'Could not start the trial'); } finally { setTrialBusy(false); }
+    try { await api.startPremiumTrial(citizenship); setNeedCitizenship(false); await loadStatus(); }
+    catch (e) { const msg = e instanceof Error ? e.message : 'Could not start the trial'; if (/citizenship/i.test(msg)) setNeedCitizenship(true); else setStatusError(msg); }
+    finally { setTrialBusy(false); }
   };
   const usingLabel = status?.source === 'own' ? `${status.providerLabel}${status.model ? ` · ${modelName(status.model)}` : ''}` : status?.providerLabel;
 
@@ -82,7 +86,7 @@ export function AskAi({ role = 'candidate', hideFabOnPhone = false }: { role?: '
           <Crown size={22} />
           <strong>{status.premium?.trialUsed ? 'Your Premium trial has ended' : `Try Premium free for ${status.premium?.trialDays ?? 7} days`}</strong>
           <p>{role === 'employer' ? 'Ask AI about your roles and candidates, plus up to 5 live roles.' : 'Ask AI about your matches, skills and interviews, plus the Interview AI coach.'} No card needed. Nothing renews by itself.</p>
-          {!status.premium?.trialUsed ? <button type="button" className="fm-black" onClick={() => void startTrial()} disabled={trialBusy}>{trialBusy ? <Loader2 size={16} className="spin" /> : `Start my free ${status.premium?.trialDays ?? 7}-day trial`}</button>
+          {!status.premium?.trialUsed ? needCitizenship ? <CitizenshipPicker busy={trialBusy} onContinue={(c) => void startTrial(c)} /> : <button type="button" className="fm-black" onClick={() => void startTrial()} disabled={trialBusy}>{trialBusy ? <Loader2 size={16} className="spin" /> : `Start my free ${status.premium?.trialDays ?? 7}-day trial`}</button>
             : <p className="askai-muted">Premium payments are opening soon. We will tell you when you can continue.</p>}
         </div>}
         {status && status.premium?.active && !status.enabled && <div className="askai-gate">

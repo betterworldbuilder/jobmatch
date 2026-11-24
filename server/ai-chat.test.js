@@ -74,7 +74,9 @@ test('a member with no relevant data gets a clear answer without calling the pro
   const reg = await call('POST', '/api/auth/register', { role: 'candidate', name: 'Empty Member', email: `empty-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
   const locked = await call('POST', '/api/ai/chat', { question: 'Help me prepare for my next interview.' }, reg.session);
   assert.equal(locked.status, 402, 'Ask AI is Premium'); assert.equal(locked.body.code, 'premium_required');
-  const trial = await call('POST', '/api/premium/trial', {}, reg.session);
+  // Candidates give their citizenship before Premium starts (founder, 2026-11-24: it decides their payment methods).
+  assert.equal((await call('POST', '/api/premium/trial', {}, reg.session)).status, 400, 'citizenship asked first');
+  const trial = await call('POST', '/api/premium/trial', { citizenship: 'Vietnam' }, reg.session);
   assert.equal(trial.status, 200); assert.equal(trial.body.source, 'trial'); assert.equal(trial.body.daysLeft, 7);
   assert.equal((await call('POST', '/api/premium/trial', {}, reg.session)).status, 409, 'trial is one-time');
   const before = seen.length;
@@ -119,7 +121,7 @@ test('own key: format checks, refused key, demo accounts blocked, stored encrypt
   assert.equal((await call('PUT', '/api/ai/key', { provider: 'anthropic', apiKey: 'sk-ant-api03-demo-account-key-000000' }, demo)).status, 403);
   const reg = await call('POST', '/api/auth/register', { role: 'candidate', name: 'Key Owner', email: `keys-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
   const ck = reg.session;
-  await call('POST', '/api/premium/trial', {}, ck);
+  await call('POST', '/api/premium/trial', { citizenship: 'France' }, ck);
   const wrong =await call('PUT', '/api/ai/key', { provider: 'anthropic', apiKey: 'sk-proj-abcdefghijklmnopqrstuvwxyz' }, ck);
   assert.equal(wrong.status, 400); assert.match(JSON.stringify(wrong.body), /OpenAI/);
   const refused = await call('PUT', '/api/ai/key', { provider: 'anthropic', apiKey: 'sk-ant-api03-refused-0000000000000000' }, ck);

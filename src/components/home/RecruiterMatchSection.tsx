@@ -10,6 +10,9 @@ import { pageKey, SwipePager } from '../swipe/SwipePager';
 import { api, apiBase } from '../../api';
 import type { Bootstrap, JobMatch, Person, View } from '../../types';
 import { EmptyDeck } from '../discover/DeckParts';
+import { DeckActionBar } from './DeckActionBar';
+import { likesWaiting } from '../../lib/today';
+import { featureOn } from '../../lib/flags';
 import { considerList, swipeFromDrag, swipeFromKey } from '../discover/deckLogic';
 import { useDiscoverDeck } from '../discover/useDiscoverDeck';
 import { CandidateCards } from '../profile/CandidateCards';
@@ -182,7 +185,9 @@ export function RecruiterMatchSection({ data, setData, navigate, onOpenMessages,
             <AnimatePresence>{match && <PhoneMatch key={match.id} match={match} viewer={data.viewer} onTalk={() => talk(match)} onKeepSwiping={() => setMatch(null)} />}</AnimatePresence>
           </div>
         </div>
-        <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>
+        {/* Desktop: the phone bar's actions under the deck (founder, 2026-11-24); keyboard hint kept when the bar is off. */}
+        {featureOn('filters') ? <DeckActionBar role="employer" userId={data.viewer.id} navigate={navigate} likes={likesWaiting(data)} />
+          : <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>}
       </div>
       <aside className="nm-list" aria-label="Recommended Candidates">
         <div className="nm-carousel-head">

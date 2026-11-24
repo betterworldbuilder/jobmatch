@@ -4862,6 +4862,31 @@ button.rs-row:hover { border-color:#fd267a; }
 .landing-phone .hero .hero-short { display:block; order:6; margin:0 auto; max-width:340px; color:#58635b; font-size:15px; line-height:1.55; }
 .landing-phone .hero .location-pitch-app { order:7; }
 
+/* Desktop action bar under the swipe phone (founder, 2026-11-24): same actions as the phone's bottom bar. */
+.deck-actions { display:flex; justify-content:center; gap:4px; margin:14px auto 0; padding:6px; max-width:440px; background:#fff; border:1px solid #f1e3ea; border-radius:18px; box-shadow:0 8px 24px rgba(17,24,39,.06); }
+.deck-actions button { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0; padding:8px 4px; border:0; border-radius:12px; background:none; color:#5b6378; font:700 11.5px 'Manrope', sans-serif; cursor:pointer; }
+.deck-actions button:hover { background:#fff4f8; color:#fd267a; }
+.deck-actions button.on { color:#fd267a; }
+.deck-actions-ico { position:relative; display:inline-flex; }
+.deck-actions-ico em { position:absolute; top:-7px; right:-12px; min-width:17px; height:17px; padding:0 4px; border-radius:999px; background:#fd267a; color:#fff; font:800 10px/17px 'Manrope'; font-style:normal; text-align:center; box-shadow:0 0 0 2px #fff; }
+@media (max-width:760px) { .deck-actions { display:none; } } /* phones use the bottom bar */
+/* Global Menu opened from the desktop bar: a centred panel. */
+.gm-desktop-scrim { position:fixed; inset:0; z-index:88; border:0; background:rgba(13,24,52,.35); }
+.explore-sheet.gm-desktop { display:block; position:fixed; top:8vh; left:50%; transform:translateX(-50%); width:min(560px, 92vw); max-height:84vh; overflow-y:auto; z-index:89; background:#fff; border-radius:20px; box-shadow:0 24px 60px rgba(13,24,52,.25); padding:18px; }
+.explore-sheet.gm-desktop header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.explore-sheet.gm-desktop h2 { margin:0; font-size:22px; font-weight:900; color:#0d1834; }
+.explore-sheet.gm-desktop .mobile-close { display:grid; place-items:center; width:36px; height:36px; border-radius:50%; border:0; background:#f4f2f8; }
+.explore-sheet.gm-desktop .gm-edit, .explore-sheet.gm-desktop .gm-reset { display:none; } /* the bar is customised on the phone */
+.explore-sheet.gm-desktop .explore-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+.explore-sheet.gm-desktop .explore-grid button { display:flex; align-items:center; gap:10px; min-height:58px; padding:10px 12px; border:1px solid #ece6f2; border-radius:16px; background:#fbfaff; text-align:left; font:800 13.5px 'Manrope'; color:#0d1834; cursor:pointer; }
+.explore-sheet.gm-desktop .explore-grid button i { width:34px; height:34px; flex:none; border-radius:11px; display:grid; place-items:center; color:#fff; background:var(--c); font-style:normal; }
+.explore-sheet.gm-desktop .explore-more { width:100%; margin-top:14px; }
+/* Filter sheet on desktop: a centred panel instead of full screen. */
+@media (min-width:761px) {
+  /* `body` raises specificity above the base .sf-sheet rule further down the file. */
+  body .sf-sheet { inset:auto; top:6vh; left:50%; transform:translateX(-50%); width:min(560px, 92vw); height:88vh; border-radius:20px; box-shadow:0 24px 60px rgba(13,24,52,.25); overflow:hidden; animation:none; }
+}
+
 /* Admin → Payment methods + pricing editor (founder, 2026-11-24). */
 .apm h4, .ape h4 { margin:20px 0 8px; font:700 14px 'Manrope', sans-serif; }
 .apm-grid-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:8px 0; border:1px solid #eef0f4; border-radius:12px; }
@@ -4890,6 +4915,11 @@ button.rs-row:hover { border-color:#fd267a; }
 .ape-flags { display:flex; flex-wrap:wrap; gap:8px 16px; }
 .ape-flags label { display:flex; align-items:center; gap:6px; font-weight:500; }
 .ape-locked ul { margin:6px 0 12px; padding-left:18px; font-size:13px; }
+/* Company country at sign-up, citizenship before Premium (founder, 2026-11-24). */
+.auth-country { display:grid; gap:4px; margin:10px 0 2px; font-size:13px; font-weight:700; color:#374151; }
+.auth-country small { font-weight:500; color:#6b7280; }
+.pt-citizenship { display:grid; gap:8px; }
+.pt-citizenship label { display:grid; gap:4px; font-size:13px; font-weight:700; }
 @media (max-width:640px) { .ape-row { grid-template-columns:1fr; } }
 
 /* "Don't count this device" (founder, 2026-11-24): confirmation note + admin Traffic status line. */

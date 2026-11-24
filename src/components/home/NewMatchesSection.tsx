@@ -11,6 +11,9 @@ import type { Bootstrap, Job, JobMatch, Person, View } from '../../types';
 import { JobDetailModal, ScreeningModal } from '../coach/CoachModals';
 import { CompanyLogoMark } from '../jobs/JobHeaderBadge';
 import { EmptyDeck, SalaryBadge } from '../discover/DeckParts';
+import { DeckActionBar } from './DeckActionBar';
+import { likesWaiting } from '../../lib/today';
+import { featureOn } from '../../lib/flags';
 import { considerList, needsScreening, showsCommute, swipeFromDrag, swipeFromKey } from '../discover/deckLogic';
 import { useDiscoverDeck } from '../discover/useDiscoverDeck';
 import { RoleDetailPage, ROLE_PAGES, RoleSummaryPage } from '../jobs/RolePages';
@@ -324,7 +327,9 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
             {recruiterOf && <RecruiterRolesSheet job={recruiterOf} roles={data.jobs.filter((j) => j.employerId === recruiterOf.employerId)} onClose={() => setRecruiterOf(null)} onPick={(role) => { setRecruiterOf(null); showInPhone(role); }} />}
           </div>
         </div>
-        <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>
+        {/* Desktop: the phone bar's actions under the deck (founder, 2026-11-24); keyboard hint kept when the bar is off. */}
+        {featureOn('filters') ? <DeckActionBar role="candidate" userId={data.viewer.id} navigate={navigate} likes={likesWaiting(data)} />
+          : <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>}
       </div>
       <aside className="nm-list" id="td-recommended" aria-label="Recommended Roles">
         <div className="nm-carousel-head">

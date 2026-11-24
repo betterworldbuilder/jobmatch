@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { CameraCaptureModal } from '../CameraCaptureModal';
 import { Field, Segmented, TagInput, TextInput } from './fields';
 import { IdVerification } from './IdVerification';
+import { COUNTRY_OPTIONS, guessCountryName } from '../../lib/countries';
 import type { EmployerKind, Person } from '../../types';
 
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-1000', '1000+'] as const;
@@ -14,7 +15,7 @@ const STEP_COLORS = ['#00C7BE', '#FF2D55'];
 type Form = {
   kind: EmployerKind;
   company: string; companyLogo: string; website: string; industry: string; companySize?: string;
-  headquarters: string; officeLocations: string[]; foundedYear: string; about: string;
+  headquarters: string; country: string; officeLocations: string[]; foundedYear: string; about: string;
   benefits: string[]; techStack: string[]; linkedinUrl: string;
   name: string; photo: string; title: string; specializations: string[]; regions: string[]; clients: string[];
   contactName: string; contactEmail: string; phone: string; calendarLink: string;
@@ -25,7 +26,7 @@ function fromPerson(p: Person): Form {
   return {
     kind: p.kind || 'company',
     company: p.company || '', companyLogo: p.companyLogo || '', website: p.website || '', industry: p.industry || '',
-    companySize: p.companySize, headquarters: p.headquarters || '', officeLocations: p.officeLocations || [],
+    companySize: p.companySize, headquarters: p.headquarters || '', country: p.country || guessCountryName(), officeLocations: p.officeLocations || [],
     foundedYear: p.foundedYear ? String(p.foundedYear) : '', about: p.about || '',
     benefits: p.benefits || [], techStack: p.techStack || [], linkedinUrl: p.linkedinUrl || '',
     name: p.name || '', photo: p.photo || '', title: p.title === 'Recruiter' ? '' : p.title || '',
@@ -44,6 +45,7 @@ function stepErrors(step: number, form: Form): string[] {
       if (!form.industry.trim()) errors.push('Industry is required');
       if (!form.companySize) errors.push('Pick a company size');
       if (!form.headquarters.trim()) errors.push('Headquarters is required');
+      if (!form.country) errors.push('Company country is required');
       if (!form.officeLocations.length) errors.push('Add at least one office location');
       if (!form.about.trim()) errors.push('About / culture pitch is required');
     } else {
@@ -65,7 +67,7 @@ function stepPayload(step: number, form: Form, finishing: boolean): Partial<Pers
     const base = { kind: form.kind, company: form.company, linkedinUrl: form.linkedinUrl || undefined, geo: form.geo };
     if (form.kind === 'company') return {
       ...base, companyLogo: form.companyLogo || undefined, website: form.website, industry: form.industry,
-      companySize: form.companySize, headquarters: form.headquarters, officeLocations: form.officeLocations,
+      companySize: form.companySize, headquarters: form.headquarters, country: form.country, officeLocations: form.officeLocations,
       foundedYear: form.foundedYear ? Number(form.foundedYear) : undefined, about: form.about,
       benefits: form.benefits, techStack: form.techStack,
     };
@@ -166,7 +168,7 @@ export function RecruiterWizard({ viewer, initialStep = 0, onDone, onCancel }: {
           </div>
           <Field label="Company size" required><Segmented options={COMPANY_SIZES} value={form.companySize as typeof COMPANY_SIZES[number] | undefined} onChange={(companySize) => patch({ companySize })} /></Field>
           <div className="wz-row">
-            <Field label="Headquarters" required><TextInput value={form.headquarters} onChange={(e) => patch({ headquarters: e.target.value })} placeholder="City, country" /></Field>
+            <Field label="Headquarters" required><TextInput value={form.headquarters} onChange={(e) => patch({ headquarters: e.target.value })} placeholder="City, country" /></Field>`n            {/* Company country (founder, 2026-11-24): decides which payment methods the company is offered. */}`n            <Field label="Company country" required hint="Where your company is registered. It decides which payment methods you see."><select className="wz-input wz-select" value={form.country} onChange={(e) => patch({ country: e.target.value })}><option value="">Choose a country</option>{COUNTRY_OPTIONS.map((c, i) => <option key={`${c.code}-${i}`} value={c.name}>{c.name}</option>)}</select></Field>
             <Field label="Founded year"><TextInput type="number" min={1800} max={2100} value={form.foundedYear} onChange={(e) => patch({ foundedYear: e.target.value })} /></Field>
           </div>
           <Field label="Office locations" required><TagInput value={form.officeLocations} onChange={(officeLocations) => patch({ officeLocations })} placeholder="City — press Enter" /></Field>
