@@ -130,7 +130,7 @@ function ModalShell({ title, subtitle, onClose, children }: { title: string; sub
   </motion.div>;
 }
 
-export function LoginModal({ onClose, onComplete }: { onClose: () => void; onComplete: (user: SessionUser) => void }) {
+export function LoginModal({ onClose, onComplete, onRegister }: { onClose: () => void; onComplete: (user: SessionUser) => void; onRegister?: () => void }) {
   const config = useAuthConfig();
   const [profiles, setProfiles] = useState<SessionUser[]>([]);
   const [selected, setSelected] = useState('');
@@ -177,6 +177,8 @@ export function LoginModal({ onClose, onComplete }: { onClose: () => void; onCom
       {error && submitted === 'password' && <p className="auth-error" role="alert">{error}</p>}
       <button type="button" className="text-button auth-forgot" onClick={() => { setForgot(true); setError(''); }}>Forgot password?</button>
     </form>
+    {/* Founder, 2026-11-24: the sign-in window had no way to create an account. */}
+    {onRegister && <button type="button" className="auth-register-btn" onClick={onRegister}><span>New here?</span> <b>Register free</b> <ArrowRight size={15} /></button>}
     <div className="auth-divider"><span>or</span></div>
     <SsoButtons config={config} busy={busy} onMockSso={(provider) => { setBusy(provider); setSubmitted('sso'); run(() => authProviders[provider].signIn()); }} />
     {/* Full tours (founder, 2026-11-24), above the demo accounts. Preview: ?tour=1 */}

@@ -298,7 +298,7 @@ function Landing({ onLogin, initialModal = null }: { onLogin: (user: SessionUser
     'Offer acceptance and hire',
   ];
   const modals = <AnimatePresence>
-    {authModal === 'login' && <LoginModal onClose={() => setAuthModal(null)} onComplete={complete} />}
+    {authModal === 'login' && <LoginModal onClose={() => setAuthModal(null)} onComplete={complete} onRegister={() => setAuthModal('register')} />}
     {authModal === 'register' && <RegisterModal onClose={() => setAuthModal(null)} onComplete={complete} />}
   </AnimatePresence>;
 
