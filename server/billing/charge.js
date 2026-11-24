@@ -41,7 +41,11 @@ export function chargeFor(db, recruiter, subscription, overrides = {}) {
   const interval = BILLING_INTERVALS.includes(overrides.interval) ? overrides.interval : billingInterval(subscription);
   const currency = overrides.currency || currencyForCountry(recruiter?.country);
   const plan = PLANS[planKey];
-  const baseAmount = planPrice(planKey, currency, interval) ?? 0;
+  // Price lock (founder, 2026-11-24): a paying customer keeps the price they bought, for the same plan and billing
+  // interval, until an admin moves them to the current price. New customers pay the current catalogue price.
+  const lock = subscription?.priceLock;
+  const locked = lock && lock.planKey === planKey && lock.interval === interval ? lock.prices?.[currency] : undefined;
+  const baseAmount = Number.isFinite(locked) ? locked : (planPrice(planKey, currency, interval) ?? 0);
   // Extra live roles on top of the plan: USD 20 each per month (see plans.js).
   const extraJobSlots = clampExtraJobSlots(overrides.extraJobSlots ?? subscription?.extraJobSlots);
   const extraAmount = extraJobSlotsPrice(extraJobSlots, currency, interval);
@@ -54,6 +58,7 @@ export function chargeFor(db, recruiter, subscription, overrides = {}) {
     currency,
     amount,
     baseAmount,
+    priceLocked: Number.isFinite(locked),
     extraJobSlots,
     extraAmount,
     extraJobSlotPrice: EXTRA_JOB_SLOT_PRICE[currency] ?? null,
@@ -65,8 +70,45 @@ export function chargeFor(db, recruiter, subscription, overrides = {}) {
   };
 }
 
-/** Plans a recruiter may choose. Starter is free and is not something you buy. */
+/** Plans a recruiter may choose. Starter is free and is not something you buy. (Same array as SEAT_LADDER, which
+ *  follows the admin-edited catalogue.) */
 export const SELECTABLE_PLANS = SEAT_LADDER;
+
+/** Lock the price a payment was made at (called when a payment is confirmed). One lock per plan + interval; a
+ *  payment in another currency for the same plan adds that currency's price to the lock. */
+export function lockPriceFromPayment(subscription, payment) {
+  if (!subscription || !payment?.planKey || !PLANS[payment.planKey]) return;
+  const interval = payment.billingInterval || 'monthly';
+  const base = Number.isFinite(payment.baseAmount) ? payment.baseAmount : planPrice(payment.planKey, payment.currency, interval);
+  if (!Number.isFinite(base) || !payment.currency) return;
+  const same = subscription.priceLock?.planKey === payment.planKey && subscription.priceLock?.interval === interval;
+  subscription.priceLock = { planKey: payment.planKey, interval, prices: { ...(same ? subscription.priceLock.prices : {}), [payment.currency]: base }, lockedAt: subscription.priceLock && same ? subscription.priceLock.lockedAt : Date.now() };
+}
+
+/** Before a plan's price changes: give every paying customer on it a lock at the price they currently pay, so the
+ *  edit only affects new customers. Returns how many subscriptions were locked. */
+export function lockCurrentPricesForPlan(db, planKey) {
+  let locked = 0;
+  for (const subscription of db.subscriptions || []) {
+    const onPlan = (subscription.paidPlanKey || subscription.selectedPlanKey) === planKey;
+    const paying = Boolean(subscription.currentPeriodEndsAt) && (db.payments || []).some((p) => p.subscriptionId === subscription.id && p.status === 'confirmed');
+    if (!onPlan || !paying) continue;
+    const interval = billingInterval(subscription);
+    const same = subscription.priceLock?.planKey === planKey && subscription.priceLock?.interval === interval;
+    // Keep what is already locked (e.g. the VND price they paid) and lock every other currency at today's price.
+    const prices = { ...(same ? subscription.priceLock.prices : {}) };
+    let added = false;
+    for (const currency of Object.keys(PLANS[planKey]?.prices || {})) {
+      if (prices[currency] !== undefined) continue;
+      const p = planPrice(planKey, currency, interval);
+      if (Number.isFinite(p)) { prices[currency] = p; added = true; }
+    }
+    if (!added && same) continue;
+    subscription.priceLock = { planKey, interval, prices, lockedAt: same ? subscription.priceLock.lockedAt : Date.now() };
+    locked += 1;
+  }
+  return locked;
+}
 
 /**
  * Record the plan a recruiter intends to pay for. Changing this never changes

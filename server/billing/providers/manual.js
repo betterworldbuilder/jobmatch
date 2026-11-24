@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
  * (methodIds + instructions()) without reworking the subscription/payment
  * model above it — see PLAN "Known limitations". */
 
-export const MANUAL_METHOD_IDS = ['vietqr', 'bank_transfer', 'international_bank_transfer', 'usdt_trc20'];
+export const MANUAL_METHOD_IDS = ['vietqr', 'bank_transfer', 'international_bank_transfer', 'usdt_trc20', 'sepa_transfer'];
 
 /* USDT (founder, 2026-11-24, option "SARL only"): paid to JobsMatchNow SARL's wallet, ONLY by customers outside
  * Vietnam (crypto is not a lawful means of payment there). Confirmed by an admin after checking the transaction
@@ -20,7 +20,9 @@ export function companyCountry(recruiter) {
   return hq.length > 1 ? hq[hq.length - 1] : '';
 }
 
-export const BANK_INSTRUCTION_FIELDS = ['bankAccountName', 'bankName', 'bankAccountNumber', 'bankSwift', 'vietQrImageUrl', 'supportEmail', 'usdtTrc20Address'];
+/* JobsMatchNow SARL's own bank account (founder, 2026-11-24): SEPA transfers from the EU and international wires. */
+export const BANK_INSTRUCTION_FIELDS = ['bankAccountName', 'bankName', 'bankAccountNumber', 'bankSwift', 'vietQrImageUrl', 'supportEmail', 'usdtTrc20Address',
+  'sarlAccountName', 'sarlBankName', 'sarlIban', 'sarlBic'];
 
 /** Bank/VietQR instructions shown on the billing page — admin-editable
  * (db.siteSettings.bankInstructions, set from the admin dashboard) with env
@@ -37,7 +39,22 @@ export function paymentInstructions(db) {
     vietQrImageUrl: stored.vietQrImageUrl || process.env.BILLING_VIETQR_IMAGE_URL || '',
     supportEmail: stored.supportEmail || process.env.BILLING_SUPPORT_EMAIL || '',
     usdtTrc20Address: stored.usdtTrc20Address || process.env.BILLING_USDT_TRC20_ADDRESS || '',
+    sarlAccountName: stored.sarlAccountName || process.env.BILLING_SARL_ACCOUNT_NAME || '',
+    sarlBankName: stored.sarlBankName || process.env.BILLING_SARL_BANK_NAME || '',
+    sarlIban: stored.sarlIban || process.env.BILLING_SARL_IBAN || '',
+    sarlBic: stored.sarlBic || process.env.BILLING_SARL_BIC || '',
   };
+}
+
+/** IBAN: 2 letters, 2 digits, then up to 30 letters/digits (spaces allowed), with the mod-97 checksum. */
+export function isIban(s) {
+  const v = String(s || '').replace(/\s+/g, '').toUpperCase();
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(v)) return false;
+  const moved = v.slice(4) + v.slice(0, 4);
+  const digits = moved.replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+  let rem = 0;
+  for (const d of digits) rem = (rem * 10 + Number(d)) % 97;
+  return rem === 1;
 }
 
 /** A TRON (TRC-20) address: starts with T, 34 base58 characters. */

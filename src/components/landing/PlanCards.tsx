@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react';
-import { PLAN_INCLUDES, POPULAR_PLAN, TRIAL, TRIAL_CARD_PERKS, type PlanCard } from '../../lib/plans';
+import { PLAN_INCLUDES, POPULAR_PLAN_REF, TRIAL, TRIAL_CARD_PERKS, type PlanCard } from '../../lib/plans';
 
 /** "Starter · Free for 8 weeks" — the free trial, shown before the paid plans. */
 export function TrialCardView({ onStart, cta = 'Start free trial' }: { onStart: () => void; cta?: string }) {
@@ -16,7 +16,7 @@ export function TrialCardView({ onStart, cta = 'Start free trial' }: { onStart: 
  *  so no card is ever asked for on this page. */
 export function PlanCardView({ plan, onRegister, cta }: { plan: PlanCard; onRegister: () => void; cta?: string }) {
   const free = plan.usd === 0;
-  const popular = plan.key === POPULAR_PLAN;
+  const popular = plan.key === POPULAR_PLAN_REF.key;
   return <article className={`plan-card${popular ? ' popular' : ''}`}>
     {popular && <span className="plan-badge">Most popular</span>}
     <span className="plan-name">{plan.display}</span>

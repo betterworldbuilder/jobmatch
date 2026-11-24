@@ -41,18 +41,19 @@ import {
 } from './billing/entitlements.js';
 import { boostedIds, boostPrice, BOOST_HOURS, BOOST_KINDS, expireBoosts, isBoosted, startBoost } from './billing/boosts.js';
 import { activeMembers, addMember, findTeam, getOrCreateTeam, reconcileSeats, seatsAllowed } from './billing/seats.js';
-import { currencyForCountry, PAY_PER_HIRE_FEE_PERCENT, PLANS, planPrice, seatPlanKey, SINGLE_POSTING, singlePostingPrice } from './billing/plans.js';
+import { applyPlanCatalog, BUILT_IN_PLANS, buildPlanFromInput, currencyForCountry, DEFAULT_PLANS, isSellable, ladderWarnings, PAY_PER_HIRE_FEE_PERCENT, PLANS, planPrice, SEAT_LADDER, seatPlanKey, SINGLE_POSTING, singlePostingPrice } from './billing/plans.js';
+import { applyPaymentSettings, COUNTRIES, gridOf, isEnabled, METHOD_IDS, METHODS, PROVIDER_FIELDS, publicKeys, REGIONS, saveKeys, shownIn, zoneOf, ZONE_LABEL } from './billing/payment-settings.js';
 import { assertNeverZeroLiveJobs, downgradeToFree, applyLiveJobLimit } from './billing/downgrade.js';
 import { clearSlotLocks, confirmHire, hasVerifiedHire, HIRE_OUTCOMES, POSTING_TERM_DAYS, recordHire, renewPosting, startPostingTerm } from './billing/postings.js';
 import { extendForHireInFlight, TRIAL_DAYS, trialEndsAt } from './billing/trial.js';
 import { recruiterVerification } from './billing/verification.js';
-import { chargeFor, monthlyRecurringRevenue, selectPlan, SELECTABLE_PLANS, setExtraJobSlots } from './billing/charge.js';
+import { chargeFor, lockCurrentPricesForPlan, monthlyRecurringRevenue, selectPlan, SELECTABLE_PLANS, setExtraJobSlots } from './billing/charge.js';
 import { attachReferralOnRegister, findReferrerByCode, getOrCreateReferralCode, revokeReferralCreditForPayment } from './billing/referrals.js';
-import { BANK_INSTRUCTION_FIELDS, companyCountry, generateInvoiceNumber, generateTransferReference, isTrc20Address, isTronTxHash, isVietnam, MANUAL_METHOD_IDS, paymentInstructions, USDT_METHOD } from './billing/providers/manual.js';
-import { createPaymentLink as createPayosLink, isPayosConfigured, isPayosPaid, newOrderCode, payosDescription, verifyWebhook as verifyPayosWebhook } from './billing/providers/payos.js';
+import { BANK_INSTRUCTION_FIELDS, companyCountry, generateInvoiceNumber, generateTransferReference, isIban, isTrc20Address, isTronTxHash, isVietnam, MANUAL_METHOD_IDS, paymentInstructions, USDT_METHOD } from './billing/providers/manual.js';
+import { createPaymentLink as createPayosLink, isPayosConfigured, isPayosPaid, newOrderCode, payosDescription, testPayosConnection, verifyWebhook as verifyPayosWebhook } from './billing/providers/payos.js';
 import { buildPaymentUrl, isVnpayConfigured, isVnpaySuccess, VNPAY_AMOUNT_VND, verifySignature as verifyVnpaySignature } from './billing/providers/vnpay.js';
-import { createCheckoutSession, isStripeConfigured, verifyWebhookSignature as verifyStripeSignature } from './billing/providers/stripe.js';
-import { approveLink, createSubscription as createPaypalSubscription, isPaypalConfigured, verifyWebhookSignature as verifyPaypalSignature } from './billing/providers/paypal.js';
+import { createCheckoutSession, isStripeConfigured, stripePaymentTypes, testStripeConnection, verifyWebhookSignature as verifyStripeSignature } from './billing/providers/stripe.js';
+import { approveLink, createSubscription as createPaypalSubscription, isPaypalConfigured, testPaypalConnection, verifyWebhookSignature as verifyPaypalSignature } from './billing/providers/paypal.js';
 import { googlePlaySubscriptionProductId, isGooglePlayConfigured, isValidRtdnSecret, parseRtdnMessage, verifySubscriptionPurchase } from './billing/providers/googleplay.js';
 import { decodeJws, getTransactionInfo, isAppleConfigured, subscriptionProductId as appleSubscriptionProductId, verifyJws } from './billing/providers/applestore.js';
 import { assertRecruiterAccess, requireAdminRole } from './billing/middleware.js';
@@ -2075,6 +2076,7 @@ app.get('/api/bootstrap', async (req, res, next) => {
         stripeEnabled: isStripeConfigured(),
         paypalEnabled: isPaypalConfigured(),
         payosEnabled: isPayosConfigured(),
+        methods: allowedMethods(db, viewer),
         googlePlayEnabled: isGooglePlayConfigured(),
         googlePlayProductId: googlePlaySubscriptionProductId(),
         appleEnabled: isAppleConfigured(),
@@ -2314,6 +2316,8 @@ function billingPayload(db, recruiter) {
     stripeEnabled: isStripeConfigured(),
     paypalEnabled: isPaypalConfigured(),
     payosEnabled: isPayosConfigured(),
+    // Methods for this recruiter's country: switched on, configured, and ticked for the country/region (Admin grid).
+    methods: allowedMethods(db, recruiter),
     // USDT: only when the SARL wallet is set, and never for companies in Vietnam (founder, 2026-11-24).
     usdtEnabled: isTrc20Address(paymentInstructions(db).usdtTrc20Address) && Boolean(companyCountry(recruiter)) && !isVietnam(companyCountry(recruiter)),
     usdtBlockedReason: !isTrc20Address(paymentInstructions(db).usdtTrc20Address) ? 'not_configured' : (!companyCountry(recruiter) || isVietnam(companyCountry(recruiter))) ? 'country' : null,
@@ -2354,7 +2358,7 @@ function billingPayload(db, recruiter) {
 function paymentAmountFields(db, subscription) {
   const recruiter = db.users.find((user) => user.id === subscription.recruiterUserId);
   const charge = chargeFor(db, recruiter, subscription);
-  return { amount: charge.amount, currency: charge.currency, planKey: charge.planKey, billingInterval: charge.interval, extraJobSlots: charge.extraJobSlots };
+  return { amount: charge.amount, baseAmount: charge.baseAmount, currency: charge.currency, planKey: charge.planKey, billingInterval: charge.interval, extraJobSlots: charge.extraJobSlots };
 }
 
 /** VNPay settles in VND and nothing else, so its rail always bills the plan's
@@ -2362,7 +2366,7 @@ function paymentAmountFields(db, subscription) {
 function vnpayAmount(db, subscription) {
   const recruiter = db.users.find((user) => user.id === subscription.recruiterUserId);
   const charge = chargeFor(db, recruiter, subscription, { currency: 'VND' });
-  return { amount: charge.amount, currency: 'VND' };
+  return { amount: charge.amount, baseAmount: charge.baseAmount, currency: 'VND' };
 }
 
 /** Trial terms as the recruiter sees them. */
@@ -2568,9 +2572,11 @@ app.post('/api/billing/payments', rateLimit({ windowMs: 3600000, max: 20, bucket
         // SARL only, never from Vietnam (crypto is not a lawful means of payment there). Founder, 2026-11-24.
         if (!isTrc20Address(paymentInstructions(db).usdtTrc20Address)) { const error = new Error('USDT payment is not available yet'); error.status = 503; throw error; }
         if (!companyCountry(recruiter) || isVietnam(companyCountry(recruiter))) { const error = new Error('USDT payment is only available to companies outside Vietnam. Please add your company country in your profile, or pay by bank transfer or PayPal.'); error.status = 403; throw error; }
+        if (!allowedMethods(db, recruiter).includes('usdt')) { const error = new Error('USDT payment is not offered for your company’s country'); error.status = 403; throw error; }
         if (txHash && !isTronTxHash(txHash)) throw new ValidationError('txHash', 'Enter the 64-character TRON transaction ID');
         if (txHash && db.payments.some((p) => p.txHash === txHash.toLowerCase())) { const error = new Error('This transaction was already submitted'); error.status = 409; throw error; }
       }
+      if (paymentMethod === 'sepa_transfer' && !allowedMethods(db, recruiter).includes('sepa_transfer')) { const error = new Error('SEPA transfer is not offered for your company’s country'); error.status = 403; throw error; }
       const subscription = getOrCreateTrialSubscription(db, recruiterId);
       const now = Date.now();
       const amountFields = paymentAmountFields(db, subscription);
@@ -2784,6 +2790,7 @@ app.post('/api/billing/payments/payos/create', rateLimit({ windowMs: 3600000, ma
       if (!recruiter) { const error = new Error('User not found'); error.status = 404; throw error; }
       assertDemoActor(req, db, recruiterId);
       if (recruiter.role !== 'employer') { const error = new Error('Only recruiter accounts submit payments'); error.status = 400; throw error; }
+      if (!allowedMethods(db, recruiter).includes('payos')) { const error = new Error('VietQR payment is not offered for your company’s country'); error.status = 403; throw error; }
       const subscription = getOrCreateTrialSubscription(db, recruiterId);
       const vnd = vnpayAmount(db, subscription);
       if (!(vnd.amount > 0)) { const error = new Error('This plan has no VND price'); error.status = 400; throw error; }
@@ -2854,28 +2861,40 @@ app.post('/api/billing/payments/stripe/create-checkout-session', rateLimit({ win
   try {
     if (!isStripeConfigured()) { const error = new Error('Card payment via Stripe is not configured yet'); error.status = 503; throw error; }
     const recruiterId = resolveActor(req, reqString(req.body, 'userId', { max: 128 }));
-    const { payment, recruiterEmail } = await store.transaction((db) => {
+    const { payment, recruiterEmail, paymentMethodTypes } = await store.transaction((db) => {
       const recruiter = db.users.find((user) => user.id === recruiterId);
       if (!recruiter) { const error = new Error('User not found'); error.status = 404; throw error; }
       assertDemoActor(req, db, recruiterId);
       if (recruiter.role !== 'employer') { const error = new Error('Only recruiter accounts submit payments'); error.status = 400; throw error; }
       const subscription = getOrCreateTrialSubscription(db, recruiterId);
+      // EUR for European companies when the plan has a EUR price (SEPA, Bancontact and iDEAL need EUR); else USD.
+      // Extra live roles have no EUR price, so a charge with extras stays in USD.
+      const allowed = allowedMethods(db, recruiter);
+      const { region } = zoneOf(companyCountry(recruiter) || recruiter.country);
+      const usdCharge = chargeFor(db, recruiter, subscription, { currency: 'USD' });
+      const eurPrice = planPrice(usdCharge.planKey, 'EUR', usdCharge.interval);
+      const currency = region === 'EU' && Number.isFinite(eurPrice) && eurPrice > 0 && !usdCharge.extraJobSlots ? 'EUR' : 'USD';
+      const charge = currency === 'EUR' ? chargeFor(db, recruiter, subscription, { currency: 'EUR' }) : usdCharge;
+      const types = stripePaymentTypes(allowed, currency);
+      if (!types.length) { const error = new Error('Card payment is not offered for your company’s country'); error.status = 403; throw error; }
       const now = Date.now();
       const created = {
         id: crypto.randomUUID(), recruiterUserId: recruiterId, subscriptionId: subscription.id,
-        ...paymentAmountFields(db, subscription), paymentMethod:'stripe', status: 'pending',
+        ...paymentAmountFields(db, subscription), amount: charge.amount, baseAmount: charge.baseAmount, currency, paymentMethod:'stripe', status: 'pending',
         paymentReference: null, invoiceNumber: generateInvoiceNumber(db), payerName: null, bankName: null,
         transferDate: null, proofFileUrl: null, adminNote: null, confirmedByAdminId: null, confirmedAt: null,
         createdAt: now, updatedAt: now,
       };
       db.payments.push(created);
-      logBillingEvent(db, recruiterId, 'stripe_checkout_created', 'payment', created.id, { invoiceNumber: created.invoiceNumber });
-      return { payment: created, recruiterEmail: recruiter.email };
+      logBillingEvent(db, recruiterId, 'stripe_checkout_created', 'payment', created.id, { invoiceNumber: created.invoiceNumber, currency, types });
+      return { payment: created, recruiterEmail: recruiter.email, paymentMethodTypes: types };
     });
     const returnBase = process.env.WEB_APP_URL || 'https://jobsmatchnow.com';
     const session = await createCheckoutSession({
       clientReferenceId: payment.id, customerEmail: recruiterEmail,
       successUrl: `${returnBase}/?billing=success`, cancelUrl: `${returnBase}/?billing=failed`,
+      amount: payment.amount, currency: payment.currency, interval: payment.billingInterval, productName: `JobsMatchNow ${PLANS[payment.planKey]?.display || 'plan'}`,
+      paymentMethodTypes,
     });
     res.status(201).json({ payment, redirectUrl: session.url });
   } catch (error) { next(error); }
@@ -2894,6 +2913,7 @@ app.post('/api/billing/payments/paypal/create-subscription', rateLimit({ windowM
       if (!recruiter) { const error = new Error('User not found'); error.status = 404; throw error; }
       assertDemoActor(req, db, recruiterId);
       if (recruiter.role !== 'employer') { const error = new Error('Only recruiter accounts submit payments'); error.status = 400; throw error; }
+      if (!allowedMethods(db, recruiter).includes('paypal')) { const error = new Error('PayPal is not offered for your company’s country'); error.status = 403; throw error; }
       const subscription = getOrCreateTrialSubscription(db, recruiterId);
       const now = Date.now();
       const created = {
@@ -3704,7 +3724,199 @@ async function recordIntegrationResult(vendor, result) {
   const db = await store.read();
   setIntegrationConfig(db.integrations || {});
   onTrack((name, opts) => forwardEvent(name, opts, (vendor, result) => { if (!result.ok) void recordIntegrationResult(vendor, result); }));
+  // Editable plans + payment methods (founder, 2026-11-24): apply what the admin saved.
+  applyPlanCatalog(db.siteSettings?.planCatalog);
+  applyPaymentSettings(db.paymentSettings);
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Editable pricing plans (founder, 2026-11-24). Defaults live in server/billing/plans.js; the admin's edits are saved in
+// db.siteSettings.planCatalog and applied on top. Existing paying customers keep their price (charge.js price lock).
+function publicPlan(p) {
+  return { key: p.key, display: p.display, order: p.order ?? 99, seats: p.seats, liveJobSlots: p.liveJobSlots, monthlyMatchCap: p.monthlyMatchCap,
+    usd: p.prices?.USD?.monthly ?? 0, vnd: p.prices?.VND?.monthly ?? null, eur: p.prices?.EUR?.monthly ?? null,
+    tagline: p.tagline || '', perks: p.perks || [], hireFeePercent: p.hireFeePercent ?? null };
+}
+function planInUse(db, key) {
+  const subs = (db.subscriptions || []).filter((s) => [s.selectedPlanKey, s.paidPlanKey, s.planCode, s.priceLock?.planKey].includes(key)).length;
+  const pays = (db.payments || []).filter((p) => p.planKey === key).length;
+  return { subscriptions: subs, payments: pays, inUse: subs + pays > 0 };
+}
+function adminCatalog(db) {
+  return {
+    plans: Object.values(PLANS).sort((a, b) => (a.order ?? 99) - (b.order ?? 99)).map((p) => ({
+      ...publicPlan(p), sellable: isSellable(p), legacy: Boolean(p.legacy), paypalPlanId: p.paypalPlanId || '',
+      builtIn: BUILT_IN_PLANS.includes(p.key), custom: !DEFAULT_PLANS[p.key],
+      analytics: Boolean(p.analytics), atsExport: Boolean(p.atsExport), aiAssistant: Boolean(p.aiAssistant), outboundMessaging: Boolean(p.outboundMessaging), priorityPlacement: Boolean(p.priorityPlacement),
+      ...planInUse(db, p.key),
+      lockedCustomers: (db.subscriptions || []).filter((s) => s.priceLock?.planKey === p.key).length,
+      lockedList: (db.subscriptions || []).filter((s) => s.priceLock?.planKey === p.key).slice(0, 50).map((s) => {
+        const u = db.users.find((x) => x.id === s.recruiterUserId);
+        return { subscriptionId: s.id, name: u?.company || u?.name || s.recruiterUserId, prices: s.priceLock.prices };
+      }),
+    })),
+    ladder: [...SEAT_LADDER],
+    warnings: ladderWarnings('USD'),
+  };
+}
+
+// Public price list: the pricing pages read the live catalogue (defaults until the admin edits a plan).
+app.get('/api/plans', (_req, res) => {
+  res.json({ plans: Object.values(PLANS).filter(isSellable).sort((a, b) => (a.order ?? 99) - (b.order ?? 99)).map(publicPlan), headline: [...SEAT_LADDER] });
+});
+
+app.get('/api/admin/billing/catalog', async (req, res, next) => {
+  try { requireAdminRole(authSession(req)); res.json(adminCatalog(await store.read())); } catch (error) { next(error); }
+});
+
+// Add or edit a plan. A price change first locks every paying customer of that plan at what they pay today.
+app.put('/api/admin/billing/catalog/:key', async (req, res, next) => {
+  try {
+    const session = requireAdminRole(authSession(req));
+    const key = String(req.params.key || '').toLowerCase();
+    const existing = PLANS[key];
+    const { plan, errors } = buildPlanFromInput(key, req.body || {}, existing);
+    if (errors.length) { const error = new ValidationError('plan', errors.join(' · ')); throw error; }
+    if (key === 'starter' && plan.prices.USD.monthly !== 0) throw new ValidationError('usd', 'Starter is the free plan: its price stays 0');
+    const payload = await store.transaction((db) => {
+      const priceChanged = existing && ['USD', 'VND', 'EUR'].some((c) => (existing.prices?.[c]?.monthly ?? null) !== (plan.prices?.[c]?.monthly ?? null));
+      const locked = priceChanged ? lockCurrentPricesForPlan(db, key) : 0;
+      const catalog = { plans: { ...(db.siteSettings?.planCatalog?.plans || {}) }, deleted: (db.siteSettings?.planCatalog?.deleted || []).filter((k) => k !== key) };
+      catalog.plans[key] = plan;
+      db.siteSettings = { ...(db.siteSettings || {}), planCatalog: catalog };
+      applyPlanCatalog(catalog);
+      logBillingEvent(db, session.sub, existing ? 'plan_updated' : 'plan_added', 'plan', key, {
+        before: existing ? { display: existing.display, usd: existing.prices?.USD?.monthly, vnd: existing.prices?.VND?.monthly, eur: existing.prices?.EUR?.monthly, seats: existing.seats, liveJobSlots: existing.liveJobSlots, sellable: isSellable(existing) } : null,
+        after: { display: plan.display, usd: plan.prices.USD.monthly, vnd: plan.prices.VND?.monthly, eur: plan.prices.EUR?.monthly, seats: plan.seats, liveJobSlots: plan.liveJobSlots, sellable: plan.sellable },
+        customersKeptTheirPrice: locked,
+      });
+      return { ...adminCatalog(db), customersKeptTheirPrice: locked };
+    });
+    res.json(payload);
+  } catch (error) { next(error); }
+});
+
+// Remove a plan: only a plan nobody ever used can be deleted; otherwise stop selling it (sellable: false).
+app.delete('/api/admin/billing/catalog/:key', async (req, res, next) => {
+  try {
+    const session = requireAdminRole(authSession(req));
+    const key = String(req.params.key || '').toLowerCase();
+    if (!PLANS[key]) { const error = new Error('Plan not found'); error.status = 404; throw error; }
+    if (BUILT_IN_PLANS.includes(key)) { const error = new Error('This plan is built in: stop selling it instead'); error.status = 409; throw error; }
+    const payload = await store.transaction((db) => {
+      const use = planInUse(db, key);
+      if (use.inUse) { const error = new Error(`In use by ${use.subscriptions} subscription(s) and ${use.payments} payment(s): stop selling it instead, so those customers keep it`); error.status = 409; throw error; }
+      const catalog = { plans: { ...(db.siteSettings?.planCatalog?.plans || {}) }, deleted: [...(db.siteSettings?.planCatalog?.deleted || [])] };
+      delete catalog.plans[key];
+      if (DEFAULT_PLANS[key] && !catalog.deleted.includes(key)) catalog.deleted.push(key);
+      db.siteSettings = { ...(db.siteSettings || {}), planCatalog: catalog };
+      applyPlanCatalog(catalog);
+      logBillingEvent(db, session.sub, 'plan_deleted', 'plan', key, {});
+      return adminCatalog(db);
+    });
+    res.json(payload);
+  } catch (error) { next(error); }
+});
+
+// Move one customer to the current price (after telling them: EU rules require notice of a price change).
+app.post('/api/admin/billing/subscriptions/:id/reprice', async (req, res, next) => {
+  try {
+    const session = requireAdminRole(authSession(req));
+    const subscription = await store.transaction((db) => {
+      const item = (db.subscriptions || []).find((s) => s.id === req.params.id);
+      if (!item) { const error = new Error('Subscription not found'); error.status = 404; throw error; }
+      const before = item.priceLock || null;
+      delete item.priceLock;
+      item.updatedAt = Date.now();
+      logBillingEvent(db, session.sub, 'subscription_repriced', 'subscription', item.id, { before });
+      return item;
+    });
+    res.json({ subscription });
+  } catch (error) { next(error); }
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Payment methods: keys, on/off switches, and where each method is shown (founder, 2026-11-24).
+function methodConfigured(db, method) {
+  if (method.provider === 'payos') return isPayosConfigured();
+  if (method.provider === 'stripe') {
+    if (!isStripeConfigured()) return false;
+    return method.needsEur ? Object.values(PLANS).some((p) => isSellable(p) && p.prices?.EUR?.monthly > 0) : true;
+  }
+  if (method.provider === 'paypal') return isPaypalConfigured();
+  const info = paymentInstructions(db);
+  return (method.needs || []).every((need) => need.split('|').some((field) => (field === 'usdtTrc20Address' ? isTrc20Address(info[field]) : Boolean(info[field]))));
+}
+/** The method ids a recruiter can use: switched on, configured, and shown for their company's country. */
+function allowedMethods(db, recruiter) {
+  const settings = db.paymentSettings;
+  const place = companyCountry(recruiter) || recruiter?.country || '';
+  return METHODS.filter((m) => isEnabled(settings, m.id) && methodConfigured(db, m) && shownIn(settings, m.id, place)).map((m) => m.id);
+}
+function adminPaymentMethods(db) {
+  const settings = db.paymentSettings;
+  const grid = gridOf(settings);
+  return {
+    methods: METHODS.map((m) => ({ ...m, enabled: isEnabled(settings, m.id), configured: methodConfigured(db, m), grid: grid[m.id] })),
+    zones: { regions: REGIONS, countries: COUNTRIES, labels: ZONE_LABEL },
+    providers: Object.fromEntries(Object.keys(PROVIDER_FIELDS).map((p) => [p, publicKeys(p)])),
+    webhookBase: process.env.WEB_APP_URL || 'https://jobsmatchnow.com',
+    eurPricesSet: Object.values(PLANS).filter((p) => isSellable(p) && p.prices?.EUR?.monthly > 0).map((p) => p.key),
+  };
+}
+
+app.get('/api/admin/billing/payment-methods', async (req, res, next) => {
+  try { requireAdminRole(authSession(req)); res.json(adminPaymentMethods(await store.read())); } catch (error) { next(error); }
+});
+
+app.put('/api/admin/billing/payment-methods/keys/:provider', async (req, res, next) => {
+  try {
+    const session = requireAdminRole(authSession(req));
+    const provider = String(req.params.provider);
+    const payload = await store.transaction((db) => {
+      db.paymentSettings = saveKeys(db.paymentSettings, provider, req.body || {});
+      applyPaymentSettings(db.paymentSettings);
+      logBillingEvent(db, session.sub, 'payment_keys_updated', 'payment_settings', provider, { fields: Object.keys(req.body || {}) }); // names only, never values
+      return adminPaymentMethods(db);
+    });
+    res.json(payload);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/admin/billing/payment-methods/test/:provider', async (req, res, next) => {
+  try {
+    requireAdminRole(authSession(req));
+    const provider = String(req.params.provider);
+    const result = provider === 'stripe' ? await testStripeConnection() : provider === 'paypal' ? await testPaypalConnection() : provider === 'payos' ? await testPayosConnection() : { ok: false, message: 'Unknown provider' };
+    res.json(result);
+  } catch (error) { next(error); }
+});
+
+app.put('/api/admin/billing/payment-methods/:id', async (req, res, next) => {
+  try {
+    const session = requireAdminRole(authSession(req));
+    const id = String(req.params.id);
+    if (!METHOD_IDS.includes(id)) { const error = new Error('Unknown payment method'); error.status = 404; throw error; }
+    const zones = new Set([...REGIONS, ...COUNTRIES]);
+    const payload = await store.transaction((db) => {
+      const settings = { ...(db.paymentSettings || {}) };
+      if (req.body?.enabled !== undefined) settings.enabled = { ...(settings.enabled || {}), [id]: Boolean(req.body.enabled) };
+      if (req.body?.grid && typeof req.body.grid === 'object') {
+        const g = { ...(settings.grid?.[id] || {}) };
+        for (const [zone, value] of Object.entries(req.body.grid)) {
+          if (!zones.has(zone)) continue;
+          if (id === 'usdt' && zone === 'VN') continue; // locked off
+          if (value === null) delete g[zone]; else g[zone] = Boolean(value);
+        }
+        settings.grid = { ...(settings.grid || {}), [id]: g };
+      }
+      db.paymentSettings = settings;
+      logBillingEvent(db, session.sub, 'payment_method_updated', 'payment_settings', id, { enabled: req.body?.enabled, grid: req.body?.grid });
+      return adminPaymentMethods(db);
+    });
+    res.json(payload);
+  } catch (error) { next(error); }
+});
 
 // --- Admin: candidate/recruiter account management -------------------------
 // Search/suspend/reactivate only — no silent edits to a user's own profile
@@ -3868,6 +4080,8 @@ app.post('/api/admin/bank-instructions', async (req, res, next) => {
     for (const field of BANK_INSTRUCTION_FIELDS) bankInstructions[field] = optString(req.body, field, { max: 500 }) || '';
     // A mistyped wallet loses customers' money: only a valid TRON address (or empty = USDT off) is saved.
     if (bankInstructions.usdtTrc20Address && !isTrc20Address(bankInstructions.usdtTrc20Address)) throw new ValidationError('usdtTrc20Address', 'Enter a valid TRON (TRC-20) address: T followed by 33 characters');
+    if (bankInstructions.sarlIban && !isIban(bankInstructions.sarlIban)) throw new ValidationError('sarlIban', 'This IBAN is not valid (check the letters and digits)');
+    if (bankInstructions.sarlBic && !/^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(bankInstructions.sarlBic.toUpperCase())) throw new ValidationError('sarlBic', 'A BIC/SWIFT code has 8 or 11 letters and digits');
     await store.transaction((db) => {
       db.siteSettings = { ...db.siteSettings, bankInstructions };
       logBillingEvent(db, session.sub, 'bank_instructions_updated', 'site_settings', 'bank_instructions', {});

@@ -136,8 +136,99 @@ export function currencyForCountry(country) {
   return String(country || '').trim().toLowerCase() === 'vietnam' ? 'VND' : 'USD';
 }
 
-/** Paid, recurring tiers in ascending seat order — the ladder the invariant guards. */
+/** Paid, recurring tiers in ascending seat order — the ladder the invariant guards. Mutated in place when the
+ *  admin edits the catalogue (applyPlanCatalog), so every importer always sees the plans currently sold. */
 export const SEAT_LADDER = ['solo', 'duo', 'trio'];
+
+// ---------------------------------------------------------------------------------------------------------------
+// Editable catalogue (founder, 2026-11-24): the plans above are the DEFAULTS. Admin edits are saved in the database
+// (db.siteSettings.planCatalog = { plans: { key: fullPlan }, deleted: [key] }) and applied on top, in place, so the
+// whole app (charges, seats, live jobs, pricing pages) follows without a deploy. Existing customers keep the price
+// they bought (subscription.priceLock, see charge.js).
+export const DEFAULT_PLANS = JSON.parse(JSON.stringify(PLANS));
+/** Plans that can never be deleted: the free floor and the success-fee plan are referenced by fixed rules. */
+export const BUILT_IN_PLANS = ['starter', 'pay_per_hire'];
+export const PLAN_KEY_RE = /^[a-z][a-z0-9_]{1,23}$/;
+const FEATURE_FLAGS = ['outboundMessaging', 'analytics', 'atsExport', 'priorityPlacement', 'aiAssistant'];
+
+/** Is this plan for sale (pricing pages, plan picker)? Legacy and explicitly hidden plans are not. */
+export const isSellable = (plan) => Boolean(plan) && plan.sellable !== false && !plan.legacy;
+
+function recomputeLadder() {
+  const ladder = Object.values(PLANS)
+    .filter((p) => isSellable(p) && !BUILT_IN_PLANS.includes(p.key) && (p.prices?.USD?.monthly || 0) > 0)
+    .sort((a, b) => (a.seats - b.seats) || (a.prices.USD.monthly - b.prices.USD.monthly) || ((a.order ?? 99) - (b.order ?? 99)))
+    .map((p) => p.key);
+  SEAT_LADDER.splice(0, SEAT_LADDER.length, ...ladder);
+}
+
+/** Rebuild PLANS = defaults + saved edits − deleted. Safe to call any time (idempotent). */
+export function applyPlanCatalog(input) {
+  // Own copy: the saved catalogue may come from inside a store transaction, whose objects stop working afterwards.
+  const saved = input ? JSON.parse(JSON.stringify(input)) : null;
+  const base = JSON.parse(JSON.stringify(DEFAULT_PLANS));
+  for (const [key, plan] of Object.entries(saved?.plans || {})) if (PLAN_KEY_RE.test(key)) base[key] = { ...(base[key] || {}), ...plan, key };
+  for (const key of saved?.deleted || []) if (!BUILT_IN_PLANS.includes(key)) delete base[key];
+  for (const key of Object.keys(PLANS)) if (!base[key]) delete PLANS[key];
+  Object.assign(PLANS, base);
+  recomputeLadder();
+  return PLANS;
+}
+
+const nonNegInt = (v) => Number.isInteger(Number(v)) && Number(v) >= 0;
+
+/** Validates an admin edit; returns { plan, errors }. `existing` is the plan being edited (or undefined when adding). */
+export function buildPlanFromInput(key, input, existing) {
+  const errors = [];
+  if (!PLAN_KEY_RE.test(key)) errors.push('Plan id: 2–24 characters, lowercase letters, digits or _ (e.g. agency)');
+  const display = String(input.display ?? existing?.display ?? '').trim().slice(0, 40);
+  if (!display) errors.push('Name is required');
+  const usd = Number(input.usd ?? existing?.prices?.USD?.monthly);
+  if (!Number.isFinite(usd) || usd < 0 || usd > 100000) errors.push('USD price must be a number between 0 and 100000');
+  const vndRaw = input.vnd ?? existing?.prices?.VND?.monthly;
+  const vnd = vndRaw === '' || vndRaw === null || vndRaw === undefined ? null : Number(vndRaw);
+  if (vnd !== null && (!Number.isFinite(vnd) || vnd < 0 || vnd > 1e10)) errors.push('VND price must be a positive number (or empty)');
+  const eurRaw = input.eur ?? existing?.prices?.EUR?.monthly;
+  const eur = eurRaw === '' || eurRaw === null || eurRaw === undefined ? null : Number(eurRaw);
+  if (eur !== null && (!Number.isFinite(eur) || eur < 0 || eur > 100000)) errors.push('EUR price must be a positive number (or empty)');
+  const seats = Number(input.seats ?? existing?.seats ?? 1);
+  if (!nonNegInt(seats) || seats < 1 || seats > 500) errors.push('Seats: a whole number from 1 to 500');
+  const liveJobSlots = Number(input.liveJobSlots ?? existing?.liveJobSlots ?? 1);
+  if (!nonNegInt(liveJobSlots) || liveJobSlots < 1 || liveJobSlots > 5000) errors.push('Live jobs: a whole number from 1 to 5000');
+  const capRaw = input.monthlyMatchCap !== undefined ? input.monthlyMatchCap : existing?.monthlyMatchCap;
+  const monthlyMatchCap = capRaw === null || capRaw === '' || capRaw === undefined ? UNLIMITED : Number(capRaw);
+  if (monthlyMatchCap !== UNLIMITED && (!nonNegInt(monthlyMatchCap) || monthlyMatchCap > 1e6)) errors.push('Match cap: a whole number, or empty for unlimited');
+  const paypalPlanId = String(input.paypalPlanId ?? existing?.paypalPlanId ?? '').trim();
+  if (paypalPlanId && !/^P-[A-Z0-9]{10,40}$/.test(paypalPlanId)) errors.push('PayPal plan ID looks wrong (it starts with P-)');
+  const perks = (Array.isArray(input.perks) ? input.perks : existing?.perks || []).map((p) => String(p).trim().slice(0, 80)).filter(Boolean).slice(0, 8);
+  const plan = {
+    ...(existing || {}), key, display,
+    order: Number.isFinite(Number(input.order)) ? Number(input.order) : (existing?.order ?? 50),
+    seats, liveJobSlots, monthlyMatchCap,
+    prices: { ...(existing?.prices || {}), USD: { monthly: usd }, ...(vnd !== null ? { VND: { monthly: vnd } } : {}), ...(eur !== null ? { EUR: { monthly: eur } } : {}) },
+    sellable: input.sellable !== undefined ? Boolean(input.sellable) : existing ? existing.sellable !== false : true,
+    tagline: String(input.tagline ?? existing?.tagline ?? '').trim().slice(0, 80),
+    perks,
+    ...(paypalPlanId ? { paypalPlanId } : {}),
+  };
+  if (vnd === null && plan.prices.VND && input.vnd !== undefined) delete plan.prices.VND;
+  if (eur === null && plan.prices.EUR && input.eur !== undefined) delete plan.prices.EUR;
+  for (const flag of FEATURE_FLAGS) plan[flag] = input[flag] !== undefined ? Boolean(input[flag]) : Boolean(existing?.[flag]);
+  if (!paypalPlanId) delete plan.paypalPlanId;
+  return { plan, errors };
+}
+
+/** Warnings (not blockers): a bigger plan that costs more than stacking smaller ones would never sell. */
+export function ladderWarnings(currency = 'USD') {
+  const warnings = [];
+  for (const key of SEAT_LADDER) {
+    const plan = PLANS[key];
+    const own = planPrice(key, currency, 'monthly');
+    const cheapest = cheapestStackCost(plan.seats, currency);
+    if (Number.isFinite(cheapest) && cheapest < own) warnings.push(`${plan.display} (${plan.seats} seats, ${currency} ${own}) costs more than combining smaller plans (${currency} ${cheapest}).`);
+  }
+  return warnings;
+}
 
 /**
  * Cheapest total cost to assemble at least `targetSeats` by stacking any

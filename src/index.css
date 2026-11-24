@@ -4862,6 +4862,36 @@ button.rs-row:hover { border-color:#fd267a; }
 .landing-phone .hero .hero-short { display:block; order:6; margin:0 auto; max-width:340px; color:#58635b; font-size:15px; line-height:1.55; }
 .landing-phone .hero .location-pitch-app { order:7; }
 
+/* Admin → Payment methods + pricing editor (founder, 2026-11-24). */
+.apm h4, .ape h4 { margin:20px 0 8px; font:700 14px 'Manrope', sans-serif; }
+.apm-grid-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:8px 0; border:1px solid #eef0f4; border-radius:12px; }
+.apm-grid th, .apm-grid td { white-space:nowrap; }
+.apm-grid td:first-child { white-space:normal; min-width:220px; }
+.apm-grid th.apm-country { background:#f5f3ff; }
+.apm-cell { text-align:center; }
+.apm-cell input, .apm-switch input { width:18px; height:18px; accent-color:#fd267a; }
+.apm-pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; margin-bottom:4px; }
+.apm-pill.ok { background:#ecfdf5; color:#047857; } .apm-pill.off { background:#fff7ed; color:#9a3412; } .apm-pill.no { background:#f3f4f6; color:#6b7280; }
+.apm-switch { display:flex; align-items:center; gap:6px; font-size:12px; }
+.apm-provider { border:1px solid #eef0f4; border-radius:14px; padding:14px; margin:10px 0; background:#fff; }
+.apm-provider header { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.apm-webhook { font-size:12px; color:#6b7280; word-break:break-all; }
+.apm-key { display:grid; gap:4px; margin:8px 0; font-size:13px; }
+.apm-key input, .ape-form input, .ape-form textarea { width:100%; box-sizing:border-box; min-height:40px; padding:8px 10px; border:1px solid #dfe3ea; border-radius:10px; font-size:15px; }
+.apm-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
+.apm-ok { color:#047857; font-size:13px; display:inline-flex; gap:4px; align-items:center; } .apm-bad { color:#b91c1c; font-size:13px; display:inline-flex; gap:4px; align-items:center; }
+.ape-notice { display:flex; gap:6px; align-items:center; padding:8px 12px; border-radius:10px; background:#ecfdf5; color:#047857; font-size:13px; }
+.ape-warning { padding:8px 12px; border-radius:10px; background:#fff7ed; color:#9a3412; font-size:13px; }
+.ape-off td { opacity:.55; }
+.ape-row-actions { display:flex; gap:6px; align-items:center; }
+.ape-form { margin-top:14px; padding:16px; border:1px solid #f6c3d6; border-radius:14px; background:#fffafc; display:grid; gap:10px; }
+.ape-form label { display:grid; gap:4px; font-size:13px; font-weight:600; color:#374151; }
+.ape-row { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+.ape-flags { display:flex; flex-wrap:wrap; gap:8px 16px; }
+.ape-flags label { display:flex; align-items:center; gap:6px; font-weight:500; }
+.ape-locked ul { margin:6px 0 12px; padding-left:18px; font-size:13px; }
+@media (max-width:640px) { .ape-row { grid-template-columns:1fr; } }
+
 /* "Don't count this device" (founder, 2026-11-24): confirmation note + admin Traffic status line. */
 .notrack-toast { position:fixed; left:50%; bottom:calc(92px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:120; max-width:calc(100vw - 32px); padding:10px 16px; border-radius:999px; background:#111827; color:#fff; font:600 13.5px/1.35 'DM Sans', sans-serif; box-shadow:0 10px 30px rgba(17,24,39,.3); text-align:center; animation:sf-in .18s ease-out; }
 .notrack-status { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 14px; padding:9px 12px; border-radius:12px; background:#fff7ed; color:#9a3412; font-size:13px; }

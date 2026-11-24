@@ -5,7 +5,8 @@
  * without an API round-trip for six static numbers. `plans.sync.test.js` fails
  * the build if the two ever disagree, so this is a mirror, not a second truth. */
 
-export type PlanKey = 'starter' | 'solo' | 'duo' | 'trio' | 'team';
+// Plans the admin adds in the pricing editor get their own keys (founder, 2026-11-24), so any string is allowed.
+export type PlanKey = 'starter' | 'solo' | 'duo' | 'trio' | 'team' | (string & {});
 
 export type PlanCard = {
   key: PlanKey;
@@ -78,7 +79,26 @@ export const PAY_PER_HIRE = { feePercent: 5 };
 /** One trial, one length, the same for everybody. */
 export const TRIAL = { days: 56, liveJobs: 5 }; // 8 weeks free (founder, 2026-11-23); mirrors server TRIAL_DAYS
 
-export const planCard = (key: PlanKey) => PLAN_CARDS.find((plan) => plan.key === key)!;
+export const planCard = (key: PlanKey) => PLAN_CARDS.find((plan) => plan.key === key) || PLAN_CARDS[0];
+
+/* Live catalogue (founder, 2026-11-24): the admin can edit, add and stop selling plans. The cards above are the
+ * built-in defaults so pages render instantly; once /api/plans answers, prices, limits and the list of sold plans
+ * follow what the admin saved. Updated in place, so every page that reads PLAN_CARDS / HEADLINE_PLANS sees it. */
+export function applyLivePlans(plans: { key: string; display: string; seats: number; liveJobSlots: number; usd: number; vnd: number | null; tagline: string; perks: string[] }[], headline: string[]) {
+  for (const live of plans) {
+    const card = PLAN_CARDS.find((c) => c.key === live.key);
+    const next: PlanCard = {
+      key: live.key, display: live.display, seats: live.seats, liveJobSlots: live.liveJobSlots, usd: live.usd, vnd: live.vnd ?? card?.vnd ?? 0,
+      tagline: live.tagline || card?.tagline || '',
+      perks: live.perks?.length ? live.perks : card?.perks || [`${live.seats} recruiter account${live.seats > 1 ? 's' : ''}`, `${live.liveJobSlots} live roles included`],
+    };
+    if (card) Object.assign(card, next); else PLAN_CARDS.push(next);
+  }
+  if (headline.length) HEADLINE_PLANS.splice(0, HEADLINE_PLANS.length, ...headline);
+  if (!HEADLINE_PLANS.includes(POPULAR_PLAN_REF.key) && HEADLINE_PLANS.length) POPULAR_PLAN_REF.key = HEADLINE_PLANS[Math.min(1, HEADLINE_PLANS.length - 1)];
+}
+/** The highlighted plan; follows the live list if the default one stops being sold. */
+export const POPULAR_PLAN_REF: { key: PlanKey } = { key: 'duo' };
 
 export const usd = (amount: number) => (amount === 0 ? 'Free' : `USD ${amount}`);
 export const vnd = (amount: number) => `${amount.toLocaleString('en-US')} ₫`;

@@ -1,4 +1,4 @@
-import type { AdminKpi, ConnectorKey, IntegrationStatus, RecommendationDoc, WebAnalyticsReport } from './types';
+import type { AdminCatalog, AdminKpi, AdminPaymentMethods, AdminPlanInput, BankInstructionsPayload, ConnectorKey, IntegrationStatus, LivePlan, RecommendationDoc, WebAnalyticsReport } from './types';
 import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
 /** A demo hire shown on the landing ("New Matches Hired"); both people are demo accounts. */
@@ -30,8 +30,8 @@ export const api = {
   reviews: () => request<{ reviews: Review[] }>('/api/feedback'),
   siteSettings: () => request<{ activeLandingBanner: 'default' | 'alt' | 'image'; bannerImage: { url: string; updatedAt: number | null } | null; trialDays?: number }>('/api/site-settings'),
   adminSetSiteSettings: (activeLandingBanner: 'default' | 'alt' | 'image') => request<{ activeLandingBanner: 'default' | 'alt' | 'image' }>('/api/admin/site-settings', { method: 'POST', body: JSON.stringify({ activeLandingBanner }) }),
-  adminBankInstructions: () => request<{ bankAccountName: string; bankName: string; bankAccountNumber: string; bankSwift: string; vietQrImageUrl: string; supportEmail: string; usdtTrc20Address?: string }>('/api/admin/bank-instructions'),
-  adminSetBankInstructions: (payload: { bankAccountName: string; bankName: string; bankAccountNumber: string; bankSwift: string; vietQrImageUrl: string; supportEmail: string; usdtTrc20Address?: string }) => request<typeof payload>('/api/admin/bank-instructions', { method: 'POST', body: JSON.stringify(payload) }),
+  adminBankInstructions: () => request<BankInstructionsPayload>('/api/admin/bank-instructions'),
+  adminSetBankInstructions: (payload: BankInstructionsPayload) => request<BankInstructionsPayload>('/api/admin/bank-instructions', { method: 'POST', body: JSON.stringify(payload) }),
   adminUploadBannerImage: async (file: File): Promise<{ bannerImage: { url: string; updatedAt: number } }> => {
     const response = await fetch(`${apiBase}/api/admin/site-settings/banner-image`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type || 'image/png' }, body: file });
     const body = await response.json().catch(() => ({}));
@@ -185,6 +185,16 @@ export const api = {
   adminSuspendSubscription: (id: string, reason?: string) => request<unknown>(`/api/admin/billing/subscriptions/${id}/suspend`, { method: 'POST', body: JSON.stringify({ reason }) }),
   adminReactivateSubscription: (id: string) => request<unknown>(`/api/admin/billing/subscriptions/${id}/reactivate`, { method: 'POST' }),
   adminBillingPlans: () => request<AdminPlansOverview>('/api/admin/billing/plans'),
+  // Editable pricing plans + payment methods (founder, 2026-11-24).
+  livePlans: () => request<{ plans: LivePlan[]; headline: string[] }>('/api/plans'),
+  adminCatalog: () => request<AdminCatalog>('/api/admin/billing/catalog'),
+  adminSavePlan: (key: string, plan: Partial<AdminPlanInput>) => request<AdminCatalog & { customersKeptTheirPrice?: number }>(`/api/admin/billing/catalog/${encodeURIComponent(key)}`, { method: 'PUT', body: JSON.stringify(plan) }),
+  adminDeletePlan: (key: string) => request<AdminCatalog>(`/api/admin/billing/catalog/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+  adminReprice: (subscriptionId: string) => request<{ subscription: unknown }>(`/api/admin/billing/subscriptions/${encodeURIComponent(subscriptionId)}/reprice`, { method: 'POST', body: '{}' }),
+  adminPaymentMethods: () => request<AdminPaymentMethods>('/api/admin/billing/payment-methods'),
+  adminSaveProviderKeys: (provider: string, keys: Record<string, string | null>) => request<AdminPaymentMethods>(`/api/admin/billing/payment-methods/keys/${provider}`, { method: 'PUT', body: JSON.stringify(keys) }),
+  adminTestProvider: (provider: string) => request<{ ok: boolean; message: string }>(`/api/admin/billing/payment-methods/test/${provider}`, { method: 'POST', body: '{}' }),
+  adminSavePaymentMethod: (id: string, change: { enabled?: boolean; grid?: Record<string, boolean | null> }) => request<AdminPaymentMethods>(`/api/admin/billing/payment-methods/${id}`, { method: 'PUT', body: JSON.stringify(change) }),
   adminGrantJobCredit: (recruiterUserId: string, reason: string) => request<JobPostCredit>('/api/admin/billing/job-credits', { method: 'POST', body: JSON.stringify({ recruiterUserId, reason }) }),
   adminRevokeJobCredit: (id: string, reason: string) => request<JobPostCredit>(`/api/admin/billing/job-credits/${id}/revoke`, { method: 'POST', body: JSON.stringify({ reason }) }),
   adminExtendTrial: (id: string, days: number, reason: string) => request<unknown>(`/api/admin/billing/subscriptions/${id}/extend-trial`, { method: 'POST', body: JSON.stringify({ days, reason }) }),

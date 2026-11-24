@@ -11,6 +11,8 @@ const FLAGS = {
   /** New payment methods: payOS VietQR (any VN banking app, ZaloPay, MoMo) and USDT for companies outside Vietnam
    *  (founder, 2026-11-24). Shown only when configured AND this is on. Preview: ?pay=1 */
   pay: { param: 'pay', defaultOn: false },
+  /** Admin pricing editor (edit, add, stop selling, delete plans). Preview: ?plans=1 */
+  plans: { param: 'plans', defaultOn: false },
 } as const;
 
 export type FlagName = keyof typeof FLAGS;

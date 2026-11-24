@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { keyFor } from '../payment-settings.js';
 
 /* payOS (by Casso, Vietnam): VietQR checkout that confirms bank transfers automatically. Opens for individuals and
  * household businesses verified with a CCCD (no tax code needed), so it works before a Vietnamese company exists.
@@ -11,9 +12,10 @@ import crypto from 'node:crypto';
  * Env (secrets live only in /etc/jobsmatchnow-api.env): PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY.
  * PAYOS_API_URL overrides the endpoint (tests). Unconfigured = safe no-op (create route answers 503). */
 
-function clientId() { return process.env.PAYOS_CLIENT_ID || ''; }
-function apiKey() { return process.env.PAYOS_API_KEY || ''; }
-function checksumKey() { return process.env.PAYOS_CHECKSUM_KEY || ''; }
+// Keys entered in Admin → Billing → Payment methods win; the env file is the fallback (payment-settings.js).
+function clientId() { return keyFor('payos', 'clientId'); }
+function apiKey() { return keyFor('payos', 'apiKey'); }
+function checksumKey() { return keyFor('payos', 'checksumKey'); }
 function apiBase() { return process.env.PAYOS_API_URL || 'https://api-merchant.payos.vn'; }
 
 export function isPayosConfigured() {
@@ -60,6 +62,19 @@ export function verifyWebhook(body) {
 /** payOS's success sentinel: both the envelope and the data say "00". */
 export function isPayosPaid(body) {
   return body?.code === '00' && (body?.data?.code === undefined || body.data.code === '00');
+}
+
+/** "Test connection" in Admin: look up a payment that does not exist. payOS answers with a "not found" kind of
+ *  message for valid keys and an authentication error otherwise. We show payOS's own words. Never throws. */
+export async function testPayosConnection() {
+  if (!isPayosConfigured()) return { ok: false, message: 'Client ID, API key and Checksum key are not all set' };
+  try {
+    const r = await fetch(`${apiBase()}/v2/payment-requests/1`, { headers: { 'x-client-id': clientId(), 'x-api-key': apiKey() } });
+    const body = await r.json().catch(() => ({}));
+    const desc = String(body.desc || body.message || `HTTP ${r.status}`);
+    const authProblem = r.status === 401 || r.status === 403 || /client|api.?key|unauthori|forbidden|xác thực|không hợp lệ/i.test(desc);
+    return { ok: r.ok && !authProblem, message: authProblem ? `payOS refused the keys: ${desc}` : `payOS accepted the keys (answer: ${desc})` };
+  } catch { return { ok: false, message: 'payOS could not be reached' }; }
 }
 
 /** Creates a hosted payment link. Returns { checkoutUrl, qrCode, paymentLinkId }. */

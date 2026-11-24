@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { api } from '../../api';
 import { Field, TextInput } from '../profile/fields';
+import { AdminPaymentMethodsPanel, AdminPlanEditor } from './AdminPaymentsAndPlans';
+import { featureOn } from '../../lib/flags';
 
 type Overview = Awaited<ReturnType<typeof api.adminBillingOverview>>;
 type BankInstructions = Awaited<ReturnType<typeof api.adminBankInstructions>>;
 type Plans = Awaited<ReturnType<typeof api.adminBillingPlans>>;
-type SectionId = 'bank' | 'catalog' | 'plans' | 'seats' | 'boosts' | 'credits' | 'pending' | 'confirmed' | 'rejected' | 'trials' | 'grace' | 'expired' | 'rewards' | 'flagged' | 'audit';
+type SectionId = 'bank' | 'methods' | 'catalog' | 'plans' | 'seats' | 'boosts' | 'credits' | 'pending' | 'confirmed' | 'rejected' | 'trials' | 'grace' | 'expired' | 'rewards' | 'flagged' | 'audit';
 
 function fmt(ts?: number | null) { return ts ? new Date(ts).toLocaleDateString() : '—'; }
 function money(amount: number, currency: string) { return amount === 0 ? 'Free' : currency === 'VND' ? `${amount.toLocaleString('en-US')} ₫` : `USD ${amount}`; }
@@ -59,6 +61,7 @@ export function AdminBillingPage() {
     { id: 'seats', label: 'Seats & teams', count: plans?.teams.length },
     { id: 'boosts', label: 'Boosts', count: plans?.boosts.filter((b) => b.live).length },
     { id: 'credits', label: 'Job-post credits', count: plans?.creditLedger.length },
+    { id: 'methods', label: 'Payment methods' },
     { id: 'bank', label: 'Bank transfer instructions' },
     { id: 'pending', label: 'Pending payments', count: overview.pendingPayments.length },
     { id: 'confirmed', label: 'Confirmed payments', count: overview.confirmedPayments.length },
@@ -93,7 +96,15 @@ export function AdminBillingPage() {
       </nav>
 
       <div className="admin-billing-content">
-        {section === 'catalog' && <section className="admin-section">
+        {section === 'methods' && <section className="admin-section">
+          <h3>Payment methods</h3>
+          <AdminPaymentMethodsPanel />
+        </section>}
+        {section === 'catalog' && featureOn('plans') && <section className="admin-section">
+          <h3>Pricing &amp; plans</h3>
+          <AdminPlanEditor />
+        </section>}
+        {section === 'catalog' && !featureOn('plans') && <section className="admin-section">
           <h3>Pricing &amp; plans</h3>
           {!plans ? <Loader2 className="spin" size={18} /> : <>
             <p className="muted">
@@ -271,7 +282,12 @@ export function AdminBillingPage() {
             <Field label="SWIFT code (for international transfers)"><TextInput value={bank.bankSwift} onChange={(event) => setBank({ ...bank, bankSwift: event.target.value })} /></Field>
             <Field label="VietQR image URL"><TextInput value={bank.vietQrImageUrl} onChange={(event) => setBank({ ...bank, vietQrImageUrl: event.target.value })} /></Field>
             <Field label="USDT wallet of JobsMatchNow SARL (TRON / TRC-20)"><TextInput value={bank.usdtTrc20Address || ''} onChange={(event) => setBank({ ...bank, usdtTrc20Address: event.target.value.trim() })} placeholder="T… (34 characters). Leave empty to keep USDT off." /></Field>
-            <p className="muted">USDT is offered only to companies outside Vietnam (crypto is not a lawful means of payment in Vietnam), and only with the ?pay=1 preview until it is switched on.</p>
+            <p className="muted">USDT is offered only to companies outside Vietnam (crypto is not a lawful means of payment in Vietnam), and only where you tick it in Payment methods.</p>
+            <h4>JobsMatchNow SARL bank account (SEPA transfers from Europe, international wires)</h4>
+            <Field label="Account holder"><TextInput value={bank.sarlAccountName || ''} onChange={(event) => setBank({ ...bank, sarlAccountName: event.target.value })} placeholder="JobsMatchNow SARL" /></Field>
+            <Field label="Bank"><TextInput value={bank.sarlBankName || ''} onChange={(event) => setBank({ ...bank, sarlBankName: event.target.value })} /></Field>
+            <Field label="IBAN"><TextInput value={bank.sarlIban || ''} onChange={(event) => setBank({ ...bank, sarlIban: event.target.value })} placeholder="FR76 …" /></Field>
+            <Field label="BIC / SWIFT"><TextInput value={bank.sarlBic || ''} onChange={(event) => setBank({ ...bank, sarlBic: event.target.value.trim() })} /></Field>
             <Field label="Support email"><TextInput value={bank.supportEmail} onChange={(event) => setBank({ ...bank, supportEmail: event.target.value })} /></Field>
             <button type="button" className="primary-button small" disabled={bankSaving} onClick={saveBank}>{bankSaving ? <Loader2 size={13} className="spin" /> : bankSaved ? 'Saved' : 'Save'}</button>
           </>}

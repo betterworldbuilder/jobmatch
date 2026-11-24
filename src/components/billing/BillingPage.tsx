@@ -70,8 +70,23 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
   const { subscription, effectiveStatus, credits, referralCode, instructions, vnpayEnabled, vnpayAmountVnd, stripeEnabled, paypalEnabled, googlePlayEnabled, googlePlayProductId, appleEnabled, appleProductId, plan, charge, selectablePlans, trial, entitlements } = data.billing;
   // New methods (founder, 2026-11-24): shown only when configured on the server AND the ?pay=1 preview is on.
   const payPreview = featureOn('pay');
-  const payosOn = payPreview && Boolean(data.billing.payosEnabled);
-  const usdtOn = payPreview && Boolean(data.billing.usdtEnabled);
+  // With the preview on, the list follows Admin → Payment methods (switched on, set up, ticked for this country).
+  const allowed = data.billing.methods || [];
+  const offers = (id: string) => allowed.includes(id);
+  const payosOn = payPreview && offers('payos');
+  const usdtOn = payPreview && offers('usdt');
+  const stripeOn = payPreview ? ['stripe_card', 'stripe_sepa', 'stripe_bancontact_ideal'].some(offers) : stripeEnabled;
+  const paypalOn = payPreview ? offers('paypal') : paypalEnabled;
+  const manualOptions: { value: PaymentMethod; label: string }[] = payPreview
+    ? [
+      ...(offers('bank_vn') ? [{ value: 'vietqr' as PaymentMethod, label: 'VietQR (HSBC Vietnam)' }, { value: 'bank_transfer' as PaymentMethod, label: 'Vietnam bank transfer (HSBC)' }] : []),
+      ...(offers('sepa_transfer') ? [{ value: 'sepa_transfer' as PaymentMethod, label: 'SEPA bank transfer (Europe)' }] : []),
+      ...(offers('international_wire') ? [{ value: 'international_bank_transfer' as PaymentMethod, label: 'International wire' }] : []),
+      ...(usdtOn ? [{ value: 'usdt_trc20' as PaymentMethod, label: 'USDT (TRC-20)' }] : []),
+    ]
+    : [{ value: 'vietqr', label: 'VietQR' }, { value: 'bank_transfer', label: 'Vietnam bank transfer' }, { value: 'international_bank_transfer', label: 'International bank transfer' }];
+  // The method actually shown (the saved choice may not be offered in this country).
+  const pm: PaymentMethod = manualOptions.some((o) => o.value === method) ? method : (manualOptions[0]?.value || method);
   const usdtUsd = charge ? (charge.currency === 'USD' ? charge.amount : null) : null;
   const team = teamOverride ?? data.billing.team;
   const accessEndsAt = subscription.currentPeriodEndsAt || subscription.trialEndsAt;
@@ -110,7 +125,7 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
   const submit = async () => {
     setSubmitting(true); setError('');
     try {
-      const payment = await api.submitPayment({ userId: viewer.id, paymentMethod: method, payerName: payerName || undefined, bankName: bankName || undefined, transferDate: transferDate || undefined, txHash: method === 'usdt_trc20' ? txHash.trim() || undefined : undefined });
+      const payment = await api.submitPayment({ userId: viewer.id, paymentMethod: pm, payerName: payerName || undefined, bankName: bankName || undefined, transferDate: transferDate || undefined, txHash: pm === 'usdt_trc20' ? txHash.trim() || undefined : undefined });
       setPayments((prev) => [payment, ...prev]);
       setProofPaymentId(payment.id);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not submit payment'); }
@@ -290,12 +305,14 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
           <p className="muted">Visa, Mastercard, JCB, or a linked wallet like Google Pay — via VNPay's secure page.</p>
           <button type="button" className="primary-button" onClick={() => payVia('vnpay')} disabled={cardRedirecting}>{cardRedirecting ? <Loader2 size={16} className="spin" /> : 'Pay by card (VNPay)'}</button>
         </div>}
-        {stripeEnabled && <div className="billing-card-pay">
+        {stripeOn && <div className="billing-card-pay">
           <h3>Pay by card — {chargeLabel}</h3>
-          <p className="muted">Visa, Mastercard, and more — via Stripe's secure checkout.</p>
+          <p className="muted">{payPreview
+            ? `Card, Apple Pay, Google Pay${offers('stripe_sepa') ? ', SEPA Direct Debit' : ''}${offers('stripe_bancontact_ideal') ? ', Bancontact, iDEAL' : ''} — via Stripe's secure checkout.`
+            : "Visa, Mastercard, and more — via Stripe's secure checkout."}</p>
           <button type="button" className="primary-button" onClick={() => payVia('stripe')} disabled={cardRedirecting}>{cardRedirecting ? <Loader2 size={16} className="spin" /> : 'Pay by card (Stripe)'}</button>
         </div>}
-        {paypalEnabled && <div className="billing-card-pay">
+        {paypalOn && <div className="billing-card-pay">
           <h3>Pay with PayPal — {chargeLabel}</h3>
           <p className="muted">Pay via your PayPal balance or a linked card.</p>
           <button type="button" className="primary-button" onClick={() => payVia('paypal')} disabled={cardRedirecting}>{cardRedirecting ? <Loader2 size={16} className="spin" /> : 'Pay with PayPal'}</button>
@@ -312,14 +329,18 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
         </div>}
         <h3>{vnpayEnabled || stripeEnabled || paypalEnabled || payosOn ? `Or pay by bank transfer${usdtOn ? ' or USDT' : ''} — ${chargeLabel}` : `Submit a payment — ${chargeLabel}`}</h3>
         <Field label="Payment method">
-          <select className="wz-input wz-select" value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)}>
-            <option value="vietqr">VietQR</option>
-            <option value="bank_transfer">Vietnam bank transfer</option>
-            <option value="international_bank_transfer">International bank transfer</option>
-            {usdtOn && <option value="usdt_trc20">USDT (TRC-20), companies outside Vietnam</option>}
+          <select className="wz-input wz-select" value={manualOptions.some((o) => o.value === method) ? method : manualOptions[0]?.value || method} onChange={(event) => setMethod(event.target.value as PaymentMethod)}>
+            {manualOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </Field>
-        {method === 'usdt_trc20' && usdtOn && instructions?.usdtTrc20Address && <div className="billing-instructions billing-usdt">
+        {(pm === 'sepa_transfer' || (payPreview && pm === 'international_bank_transfer')) && instructions?.sarlIban && <div className="billing-instructions">
+          <p><b>Account holder:</b> {instructions.sarlAccountName || 'JobsMatchNow SARL'}</p>
+          {instructions.sarlBankName && <p><b>Bank:</b> {instructions.sarlBankName}</p>}
+          <p><b>IBAN:</b> <code className="billing-wallet">{instructions.sarlIban}</code></p>
+          {instructions.sarlBic && <p><b>BIC / SWIFT:</b> {instructions.sarlBic}</p>}
+          <p className="muted">Put the reference shown after you submit in the transfer description, so we can match your payment.</p>
+        </div>}
+        {pm === 'usdt_trc20' && usdtOn && instructions?.usdtTrc20Address && <div className="billing-instructions billing-usdt">
           <p><b>Send exactly:</b> {usdtUsd ?? charge?.amount} USDT <small>(1 USDT = 1 USD)</small></p>
           <p><b>Network:</b> TRON (TRC-20) only. Other networks are lost.</p>
           <p><b>To JobsMatchNow SARL wallet:</b> <code className="billing-wallet">{instructions.usdtTrc20Address}</code>
@@ -327,15 +348,15 @@ export function BillingPage({ data, setData, paymentResult, onDismissResult }: {
           <p className="muted">For companies outside Vietnam only. We confirm your plan after checking the transaction on the blockchain (usually within one business day).</p>
           <Field label="Transaction ID (TxID)"><TextInput value={txHash} onChange={(event) => setTxHash(event.target.value)} placeholder="64 characters, from your wallet" /></Field>
         </div>}
-        {instructions && method !== 'usdt_trc20' && <div className="billing-instructions">
-          {method === 'vietqr' && instructions.vietQrImageUrl && <img src={instructions.vietQrImageUrl} alt="VietQR code" />}
+        {instructions && pm !== 'usdt_trc20' && pm !== 'sepa_transfer' && !(payPreview && pm === 'international_bank_transfer' && instructions.sarlIban) && <div className="billing-instructions">
+          {pm === 'vietqr' && instructions.vietQrImageUrl && <img src={instructions.vietQrImageUrl} alt="VietQR code" />}
           {instructions.bankAccountName && <p><b>Account name:</b> {instructions.bankAccountName}</p>}
           {instructions.bankName && <p><b>Bank:</b> {instructions.bankName}</p>}
           {instructions.bankAccountNumber && <p><b>Account number:</b> {instructions.bankAccountNumber}</p>}
-          {method === 'international_bank_transfer' && instructions.bankSwift && <p><b>SWIFT:</b> {instructions.bankSwift}</p>}
+          {pm === 'international_bank_transfer' && instructions.bankSwift && <p><b>SWIFT:</b> {instructions.bankSwift}</p>}
           {instructions.supportEmail && <p><b>Questions:</b> {instructions.supportEmail}</p>}
         </div>}
-        {method !== 'usdt_trc20' && <>
+        {pm !== 'usdt_trc20' && <>
           <Field label="Payer name (optional)"><TextInput value={payerName} onChange={(event) => setPayerName(event.target.value)} /></Field>
           <Field label="Sending bank (optional)"><TextInput value={bankName} onChange={(event) => setBankName(event.target.value)} /></Field>
           <Field label="Transfer date (optional)"><TextInput type="date" value={transferDate} onChange={(event) => setTransferDate(event.target.value)} /></Field>

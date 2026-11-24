@@ -25,7 +25,7 @@ async function listening() {
     });
   });
   fake.listen(0); await new Promise((r) => fake.once('listening', r));
-  Object.assign(process.env, { NODE_ENV: 'test', DB_PATH, PAYOS_CLIENT_ID: 'cid', PAYOS_API_KEY: 'key', PAYOS_CHECKSUM_KEY: CHECKSUM, PAYOS_API_URL: `http://127.0.0.1:${fake.address().port}`, WEB_APP_URL: 'https://jobsmatchnow.com' });
+  Object.assign(process.env, { NODE_ENV: 'test', DB_PATH, PAYOS_CLIENT_ID: 'cid', PAYOS_API_KEY: 'key', PAYOS_CHECKSUM_KEY: CHECKSUM, PAYOS_API_URL: `http://127.0.0.1:${fake.address().port}`, WEB_APP_URL: 'https://jobsmatchnow.com', ADMIN_PROMOTE_SECRET: 'promote-secret-test' });
   const { app } = await import('./index.js');
   server = app.listen(0); await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -42,6 +42,20 @@ async function recruiter(tag, country) {
   return { id: reg.body.user.id, cookie: reg.session };
 }
 const db = () => JSON.parse(readFileSync(DB_PATH, 'utf8'));
+// A real admin session (promote with the secret → one-time password link → password sign-in).
+let adminCk = '';
+async function admin() {
+  if (adminCk) return adminCk;
+  const email = `admin-pay-${process.pid}@example.com`;
+  const h = { 'x-admin-promote-secret': 'promote-secret-test' };
+  const raw = async (method, path, body, headers = {}) => { const r = await fetch(`${await listening()}${path}`, { method, headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) }); return { status: r.status, body: await r.json().catch(() => ({})), session: (r.headers.get('set-cookie') || '').match(/jm_auth=[^;]+/)?.[0] }; };
+  assert.equal((await raw('POST', '/api/admin/bootstrap-admin', { email }, h)).status, 200);
+  const link = await raw('POST', '/api/admin/password-link', { email }, h);
+  const token = new URL(link.body.link).searchParams.get('admin-reset');
+  assert.equal((await raw('POST', '/api/admin/password-reset', { token, password: 'a-strong-admin-pass' })).status, 200);
+  adminCk = (await raw('POST', '/api/auth/login', { email, password: 'a-strong-admin-pass' })).session;
+  return adminCk;
+}
 after(() => { server?.close(); fake?.close(); try { unlinkSync(DB_PATH); } catch { /* gone */ } });
 
 test('helpers: TRON address/tx checks, Vietnam detection, payOS description ≤ 25 chars', () => {
@@ -101,12 +115,104 @@ test('USDT: only for companies outside Vietnam, only when the SARL wallet is set
   // The SARL wallet (env fallback; the admin form validates and stores it the same way).
   process.env.BILLING_USDT_TRC20_ADDRESS = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
   assert.equal((await call('POST', '/api/billing/payments', { userId: vn.id, paymentMethod: 'usdt_trc20', txHash: tx }, vn.cookie)).status, 403, 'never from Vietnam');
+  assert.equal((await call('POST', '/api/billing/payments', { userId: fr.id, paymentMethod: 'usdt_trc20', txHash: tx }, fr.cookie)).status, 403, 'off in every country until ticked in the grid');
+  // Admin ticks France (and tries Vietnam, which stays locked off).
+  const grid = await call('PUT', '/api/admin/billing/payment-methods/usdt', { grid: { FR: true, VN: true } }, await admin());
+  assert.equal(grid.status, 200, JSON.stringify(grid.body));
+  const usdt = grid.body.methods.find((m) => m.id === 'usdt');
+  assert.equal(usdt.grid.FR, true); assert.equal(usdt.grid.VN, false, 'Vietnam stays locked off');
+  assert.equal((await call('POST', '/api/billing/payments', { userId: vn.id, paymentMethod: 'usdt_trc20', txHash: tx }, vn.cookie)).status, 403, 'still never from Vietnam');
   assert.equal((await call('POST', '/api/billing/payments', { userId: fr.id, paymentMethod: 'usdt_trc20', txHash: 'nope' }, fr.cookie)).status, 400, 'TxID must be 64 hex');
   const ok = await call('POST', '/api/billing/payments', { userId: fr.id, paymentMethod: 'usdt_trc20', txHash: tx }, fr.cookie);
   assert.equal(ok.status, 201, JSON.stringify(ok.body));
   assert.equal(ok.body.currency, 'USDT'); assert.equal(ok.body.network, 'TRC-20'); assert.equal(ok.body.status, 'submitted'); assert.equal(ok.body.txHash, tx);
   assert.equal((await call('POST', '/api/billing/payments', { userId: fr.id, paymentMethod: 'usdt_trc20', txHash: tx.toUpperCase() }, fr.cookie)).status, 409, 'the same transaction cannot be used twice');
   delete process.env.BILLING_USDT_TRC20_ADDRESS;
+});
+
+test('grid: methods per region and country; a country box beats its region; place names are recognised', async () => {
+  const { shownIn, zoneOf } = await import('./billing/payment-settings.js');
+  assert.deepEqual(zoneOf('Paris, France'), { country: 'FR', region: 'EU' });
+  assert.deepEqual(zoneOf('Germany'), { country: null, region: 'EU' });
+  assert.deepEqual(zoneOf('USA'), { country: 'US', region: 'NA' });
+  assert.deepEqual(zoneOf('Tokyo, Japan'), { country: null, region: 'ASIA' });
+  assert.deepEqual(zoneOf(''), { country: null, region: 'ROW' });
+  assert.equal(shownIn(undefined, 'payos', 'Vietnam'), true);
+  assert.equal(shownIn(undefined, 'payos', 'France'), false);
+  assert.equal(shownIn(undefined, 'stripe_card', 'Paris, France'), true);
+  assert.equal(shownIn(undefined, 'sepa_transfer', 'Germany'), true);
+  assert.equal(shownIn(undefined, 'sepa_transfer', 'USA'), false);
+  assert.equal(shownIn(undefined, 'international_wire', 'Japan'), true);
+  assert.equal(shownIn(undefined, 'usdt', 'France'), false, 'USDT starts off');
+  const settings = { grid: { stripe_card: { FR: false }, usdt: { VN: true, EU: true } } };
+  assert.equal(shownIn(settings, 'stripe_card', 'France'), false, 'France unticked');
+  assert.equal(shownIn(settings, 'stripe_card', 'Germany'), true, 'rest of the EU unchanged');
+  assert.equal(shownIn(settings, 'usdt', 'Vietnam'), false, 'USDT can never be shown in Vietnam');
+  assert.equal(shownIn(settings, 'usdt', 'Germany'), true);
+});
+
+test('provider keys: saved encrypted, only the last 4 characters come back, a key makes the method configured', async () => {
+  const ck = await admin();
+  const secretKey = 'sk_test_SECRETabcdefgh1234';
+  const saved = await call('PUT', '/api/admin/billing/payment-methods/keys/stripe', { secretKey, webhookSecret: 'whsec_test_9876' }, ck);
+  assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  assert.ok(!JSON.stringify(saved.body).includes(secretKey), 'the full key never comes back');
+  const sk = saved.body.providers.stripe.find((f) => f.field === 'secretKey');
+  assert.equal(sk.set, true); assert.equal(sk.last4, '1234'); assert.equal(sk.source, 'admin');
+  assert.ok(!readFileSync(DB_PATH, 'utf8').includes(secretKey), 'not stored in clear text');
+  assert.equal(saved.body.methods.find((m) => m.id === 'stripe_card').configured, true);
+  assert.equal(saved.body.methods.find((m) => m.id === 'stripe_sepa').configured, false, 'SEPA needs EUR prices');
+  const fr = await recruiter('keys-fr', 'France');
+  const boot = await call('GET', `/api/bootstrap?userId=${fr.id}`, undefined, fr.cookie);
+  assert.ok(boot.body.billing.methods.includes('stripe_card'), `card offered in France: ${boot.body.billing.methods}`);
+  assert.ok(!boot.body.billing.methods.includes('payos'), 'VietQR not offered in France');
+  const cleared = await call('PUT', '/api/admin/billing/payment-methods/keys/stripe', { secretKey: null, webhookSecret: null }, ck);
+  assert.equal(cleared.body.providers.stripe.find((f) => f.field === 'secretKey').set, false);
+  assert.equal((await call('GET', '/api/admin/billing/payment-methods', undefined, fr.cookie)).status, 403, 'admin only');
+});
+
+test('pricing editor: add, edit, stop selling, delete; existing customers keep their price; audit log', async () => {
+  const ck = await admin();
+  const plans = async () => (await call('GET', '/api/plans')).body;
+  const list0 = await plans();
+  assert.deepEqual(list0.headline, ['solo', 'duo', 'trio']);
+  assert.ok(!list0.plans.some((p) => p.key === 'team'), 'legacy plan not sold');
+  assert.equal((await call('PUT', '/api/admin/billing/catalog/solo', { usd: -5 }, ck)).status, 400, 'negative price refused');
+  assert.equal((await call('PUT', '/api/admin/billing/catalog/Bad Key', { display: 'x', usd: 1 }, ck)).status, 400);
+  // Add a plan.
+  const added = await call('PUT', '/api/admin/billing/catalog/agency', { display: 'Agency', usd: 200, seats: 5, liveJobSlots: 30, perks: ['5 recruiter accounts'] }, ck);
+  assert.equal(added.status, 200, JSON.stringify(added.body));
+  assert.ok((await plans()).plans.some((p) => p.key === 'agency' && p.usd === 200));
+  assert.ok(added.body.ladder.includes('agency'));
+  // A paying Vietnamese customer on Solo (paid by VietQR).
+  const payer = await recruiter('lock-vn', 'Vietnam');
+  const created = await call('POST', '/api/billing/payments/payos/create', { userId: payer.id }, payer.cookie);
+  const p = created.body.payment;
+  const data = { orderCode: Number(p.paymentReference), amount: p.amount, code: '00', desc: 'success' };
+  await call('POST', '/api/billing/payos/webhook', { code: '00', desc: 'success', success: true, data, signature: signWebhookData(data) });
+  assert.equal(db().payments.find((x) => x.id === p.id).status, 'confirmed');
+  const oldVnd = p.amount;
+  // Price change: the existing customer keeps the old price, a new customer pays the new one.
+  const edited = await call('PUT', '/api/admin/billing/catalog/solo', { usd: 99, vnd: 999000 }, ck);
+  assert.equal(edited.status, 200, JSON.stringify(edited.body));
+  assert.ok(edited.body.customersKeptTheirPrice >= 1, `customers kept their price: ${edited.body.customersKeptTheirPrice}`);
+  assert.equal((await call('POST', '/api/billing/payments/payos/create', { userId: payer.id }, payer.cookie)).body.payment.amount, oldVnd, 'existing customer keeps the price they bought');
+  const fresh = await recruiter('fresh-vn', 'Vietnam');
+  assert.equal((await call('POST', '/api/billing/payments/payos/create', { userId: fresh.id }, fresh.cookie)).body.payment.amount, 999000, 'new customer pays the new price');
+  // Move the existing customer to the new price.
+  const subId = db().payments.find((x) => x.id === p.id).subscriptionId;
+  assert.equal((await call('POST', `/api/admin/billing/subscriptions/${subId}/reprice`, {}, ck)).status, 200);
+  assert.equal((await call('POST', '/api/billing/payments/payos/create', { userId: payer.id }, payer.cookie)).body.payment.amount, 999000);
+  // Stop selling, then delete: only an unused plan can be deleted; built-in plans never.
+  assert.equal((await call('PUT', '/api/admin/billing/catalog/agency', { sellable: false }, ck)).status, 200);
+  assert.ok(!(await plans()).plans.some((p2) => p2.key === 'agency'), 'stopped plan is off the price list');
+  assert.equal((await call('DELETE', '/api/admin/billing/catalog/solo', undefined, ck)).status, 409, 'Solo is in use: stop selling instead');
+  assert.equal((await call('DELETE', '/api/admin/billing/catalog/starter', undefined, ck)).status, 409, 'built in');
+  assert.equal((await call('DELETE', '/api/admin/billing/catalog/agency', undefined, ck)).status, 200, 'unused plan deleted');
+  const events = db().billingEvents.filter((e) => ['plan_added', 'plan_updated', 'plan_deleted', 'subscription_repriced'].includes(e.eventType)).map((e) => e.eventType);
+  for (const t of ['plan_added', 'plan_updated', 'plan_deleted', 'subscription_repriced']) assert.ok(events.includes(t), `audit has ${t}`);
+  assert.equal((await call('PUT', '/api/admin/billing/catalog/solo', { usd: 50, vnd: 490000 }, payer.cookie)).status, 403, 'admin only');
+  await call('PUT', '/api/admin/billing/catalog/solo', { usd: 50, vnd: 490000 }, ck); // restore
 });
 
 test('PayPal: one plan id per price, with the old single id as fallback', () => {

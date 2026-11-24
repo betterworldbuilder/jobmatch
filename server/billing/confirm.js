@@ -4,6 +4,10 @@ import { qualifyReferralIfEligible } from './referrals.js';
 import { clearSlotLocks } from './postings.js';
 import { applyLiveJobLimit } from './downgrade.js';
 import { clampExtraJobSlots, PLANS, seatPlanKey } from './plans.js';
+import { lockPriceFromPayment } from './charge.js';
+
+/** Credits granted by an admin are not purchases: they never lock a price. */
+const BUILT_IN_ONE_OFF = new Set(['admin_credit']);
 
 /** Shared by the admin manual-confirm route and the VNPay IPN webhook so the
  * money-critical extend-subscription + qualify-referral + audit logic exists
@@ -36,6 +40,8 @@ export function confirmPayment(db, payment, { now = Date.now(), adminId = null, 
   const planKey = payment.planKey && PLANS[payment.planKey] ? payment.planKey : seatPlanKey(subscription?.planCode);
   const liveSlots = PLANS[planKey].liveJobSlots + clampExtraJobSlots(payment.extraJobSlots);
   if (subscription) { subscription.paidPlanKey = planKey; subscription.paidLiveJobSlots = liveSlots; }
+  // The price this customer paid is now theirs until an admin moves them (charge.js price lock).
+  if (subscription && !BUILT_IN_ONE_OFF.has(payment.paymentMethod)) lockPriceFromPayment(subscription, payment);
   applyLiveJobLimit(db, payment.recruiterUserId, liveSlots, { reason: 'upgraded', now });
 
   const recruiter = db.users.find((entry) => entry.id === payment.recruiterUserId);

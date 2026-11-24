@@ -20,7 +20,7 @@ import { AppFeaturesSection, WhatItIsSection, ForWhoSection, HowSection, Problem
 import { HeroAlt, HeroDefault, HeroImage } from './components/landing/HeroBanners';
 import { CANDIDATE_OFFERS, LaunchOffers } from './components/LaunchOffers';
 import { PlanCardView, TrialCardView } from './components/landing/PlanCards';
-import { ANNUAL_MONTHS_CHARGED, BOOST, EXTRA_JOB_SLOT, HEADLINE_PLANS, planCard, POSTING_TERM_DAYS, SINGLE_POSTING, TRIAL } from './lib/plans';
+import { ANNUAL_MONTHS_CHARGED, applyLivePlans, BOOST, EXTRA_JOB_SLOT, HEADLINE_PLANS, planCard, POSTING_TERM_DAYS, SINGLE_POSTING, TRIAL } from './lib/plans';
 import { CandidateWizard } from './components/profile/CandidateWizard';
 import { CandidateProfilePage } from './components/profile/CandidateProfilePage';
 import { RecruiterWizard } from './components/profile/RecruiterWizard';
@@ -191,6 +191,9 @@ export default function App() {
     if (session) return;
     window.location.href = `${window.location.pathname}?admin=1`;
   }), [session]);
+  // Live price list (founder, 2026-11-24): pricing pages follow the plans the admin edits. Re-render once loaded.
+  const [, setPlansVersion] = useState(0);
+  useEffect(() => { api.livePlans().then(({ plans, headline }) => { applyLivePlans(plans, headline); setPlansVersion((v) => v + 1); }).catch(() => undefined); }, []);
   // "Don't count this device" (founder, 2026-11-24): ?notrack=1/0, 5 taps on the logo, Shift + 0 or Shift + X.
   useEffect(() => { applyNoTrackParam(); return installNoTrackSwitch(); }, []);
   // A device where an admin signs in is the owner's: it stops counting (the server also ignores admin sessions).

@@ -5,20 +5,32 @@
  * only thing that ever confirms a payment, same pattern as every other
  * provider here — see server/billing/confirm.js. */
 
-function clientId() { return process.env.PAYPAL_CLIENT_ID || ''; }
-function clientSecret() { return process.env.PAYPAL_CLIENT_SECRET || ''; }
-/** One PayPal plan per price (founder, 2026-11-24): PAYPAL_PLAN_ID_SOLO / _DUO / _TRIO (the "Team" plan), with
- *  PAYPAL_PLAN_ID as the fallback for any plan without its own id. */
+import { keyFor } from '../payment-settings.js';
+import { PLANS } from '../plans.js';
+
+// Keys entered in Admin → Billing → Payment methods win; the env file is the fallback (payment-settings.js).
+function clientId() { return keyFor('paypal', 'clientId'); }
+function clientSecret() { return keyFor('paypal', 'clientSecret'); }
+/** One PayPal plan per price (founder, 2026-11-24): the plan's "PayPal plan ID" set in the pricing editor, else
+ *  PAYPAL_PLAN_ID_SOLO / _DUO / _TRIO (the "Team" plan), else PAYPAL_PLAN_ID. */
 export function planId(planKey) {
+  const fromCatalog = planKey ? PLANS[planKey]?.paypalPlanId : '';
   const own = planKey ? process.env[`PAYPAL_PLAN_ID_${String(planKey).toUpperCase()}`] : '';
-  return own || process.env.PAYPAL_PLAN_ID || '';
+  return fromCatalog || own || process.env.PAYPAL_PLAN_ID || '';
 }
-function webhookId() { return process.env.PAYPAL_WEBHOOK_ID || ''; }
+function webhookId() { return keyFor('paypal', 'webhookId'); }
 function apiBase() { return process.env.PAYPAL_ENV === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'; }
 
 export function isPaypalConfigured(planKey) {
-  const anyPlan = planKey ? planId(planKey) : (process.env.PAYPAL_PLAN_ID || ['SOLO', 'DUO', 'TRIO'].some((k) => process.env[`PAYPAL_PLAN_ID_${k}`]));
+  const anyPlan = planKey ? planId(planKey) : (process.env.PAYPAL_PLAN_ID || ['SOLO', 'DUO', 'TRIO'].some((k) => process.env[`PAYPAL_PLAN_ID_${k}`]) || Object.values(PLANS).some((p) => p.paypalPlanId));
   return Boolean(clientId() && clientSecret() && anyPlan);
+}
+
+/** "Test connection" in Admin: can we get a PayPal access token with these keys? Never throws. */
+export async function testPaypalConnection() {
+  if (!clientId() || !clientSecret()) return { ok: false, message: 'Client ID and Secret are not set' };
+  try { await getAccessToken(); return { ok: true, message: `Connected to PayPal (${process.env.PAYPAL_ENV === 'live' ? 'live' : 'sandbox'} mode)` }; }
+  catch (e) { return { ok: false, message: e.message || 'PayPal refused the keys' }; }
 }
 
 async function getAccessToken() {

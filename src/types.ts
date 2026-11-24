@@ -164,7 +164,7 @@ export interface SubscriptionCredit {
   id: string; recruiterUserId: string; sourceType: 'referral' | 'admin_credit'; sourceReferenceId: string; durationDays: number;
   status: 'available' | 'consumed' | 'revoked' | 'expired'; grantedAt: number; consumedAt: number | null; revokedAt: number | null;
 }
-export type PaymentMethod = 'vietqr' | 'bank_transfer' | 'international_bank_transfer' | 'admin_credit' | 'vnpay' | 'google_play' | 'apple_iap' | 'stripe' | 'paypal' | 'payos' | 'usdt_trc20';
+export type PaymentMethod = 'vietqr' | 'bank_transfer' | 'international_bank_transfer' | 'admin_credit' | 'vnpay' | 'google_play' | 'apple_iap' | 'stripe' | 'paypal' | 'payos' | 'usdt_trc20' | 'sepa_transfer';
 export type PaymentStatus = 'pending' | 'submitted' | 'confirmed' | 'rejected' | 'refunded' | 'reversed';
 export interface Payment {
   id: string; recruiterUserId: string; subscriptionId: string; amount: number; currency: string; paymentMethod: PaymentMethod;
@@ -175,11 +175,36 @@ export interface Payment {
   txHash?: string | null; network?: string;
   recruiter?: { id: string; name: string; email?: string; company?: string } | null;
 }
-export interface PaymentInstructions { bankAccountName: string; bankName: string; bankAccountNumber: string; bankSwift: string; vietQrImageUrl: string; supportEmail: string; usdtTrc20Address?: string }
+export interface PaymentInstructions { bankAccountName: string; bankName: string; bankAccountNumber: string; bankSwift: string; vietQrImageUrl: string; supportEmail: string; usdtTrc20Address?: string;
+  /** JobsMatchNow SARL's own bank account: SEPA transfers and international wires. */
+  sarlAccountName?: string; sarlBankName?: string; sarlIban?: string; sarlBic?: string }
+export type BankInstructionsPayload = PaymentInstructions;
+
+/** Editable pricing plans (founder, 2026-11-24). */
+export interface LivePlan { key: string; display: string; order: number; seats: number; liveJobSlots: number; monthlyMatchCap: number | null; usd: number; vnd: number | null; eur: number | null; tagline: string; perks: string[]; hireFeePercent: number | null }
+export interface AdminCatalogPlan extends LivePlan {
+  sellable: boolean; legacy: boolean; paypalPlanId: string; builtIn: boolean; custom: boolean;
+  analytics: boolean; atsExport: boolean; aiAssistant: boolean; outboundMessaging: boolean; priorityPlacement: boolean;
+  subscriptions: number; payments: number; inUse: boolean; lockedCustomers: number;
+  lockedList: { subscriptionId: string; name: string; prices: Record<string, number> }[];
+}
+export interface AdminCatalog { plans: AdminCatalogPlan[]; ladder: string[]; warnings: string[] }
+export interface AdminPlanInput { display: string; usd: number | string; vnd: number | string | null; eur: number | string | null; seats: number | string; liveJobSlots: number | string; monthlyMatchCap: number | string | null; sellable: boolean; order: number | string; tagline: string; perks: string[]; paypalPlanId: string; analytics: boolean; atsExport: boolean; aiAssistant: boolean; outboundMessaging: boolean; priorityPlacement: boolean }
+
+/** Payment methods + where each is shown (founder, 2026-11-24). */
+export interface AdminPaymentMethod { id: string; label: string; provider?: 'payos' | 'stripe' | 'paypal'; manual?: boolean; needs?: string[]; currency: string; webhook?: string; automatic?: boolean; needsEur?: boolean; enabled: boolean; configured: boolean; grid: Record<string, boolean> }
+export interface AdminPaymentMethods {
+  methods: AdminPaymentMethod[];
+  zones: { regions: string[]; countries: string[]; labels: Record<string, string> };
+  providers: Record<string, { field: string; label: string; set: boolean; last4: string; source: 'admin' | 'server file' | null }[]>;
+  webhookBase: string; eurPricesSet: string[];
+}
 export interface BillingInfo {
   subscription: Subscription; effectiveStatus: SubscriptionStatus; canPublishJob?: boolean; credits: SubscriptionCredit[]; referralCode: string;
   instructions?: PaymentInstructions; vnpayEnabled?: boolean; vnpayAmountVnd?: number; stripeEnabled?: boolean; paypalEnabled?: boolean;
   payosEnabled?: boolean; usdtEnabled?: boolean; usdtBlockedReason?: 'not_configured' | 'country' | null;
+  /** Payment method ids offered to this recruiter (switched on, configured, ticked for their country). */
+  methods?: string[];
   googlePlayEnabled?: boolean; googlePlayProductId?: string; appleEnabled?: boolean; appleProductId?: string;
   entitlements?: RecruiterEntitlements;
   plan?: PlanSummary; team?: TeamInfo;
