@@ -4,12 +4,13 @@
 // Loaded only when a tour starts; while it plays every request is answered by mockApi (nothing is saved).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { ArrowRight, Pause, Play, RotateCcw, SkipForward, X } from 'lucide-react';
+import { ArrowRight, Pause, Play, RotateCcw, SkipForward, Turtle, X } from 'lucide-react';
 import { RegisterModal } from '../AuthModals';
 import { createMockApi, type TourMock } from '../../lib/tour/mockApi';
 import { setTourHandler, TOUR_SEEN_KEY, TOUR_VIEW_EVENT, type TourRole } from '../../lib/tour/runtime';
 import { TOURS, type TourAction, type TourStep, type Where } from '../../lib/tour/steps';
 import { setTrackPrefix, trackView } from '../../lib/tracker';
+import { featureOn } from '../../lib/flags';
 import type { SessionUser } from '../../types';
 import './tour.css';
 
@@ -55,6 +56,8 @@ function setNative(el: HTMLElement, value: string) {
 }
 
 type Finger = { x: number; y: number; on: boolean; tap: number };
+const SPEEDS = [0.5, 0.75, 1, 1.5];
+const SPEED_KEY = 'jm-tour-speed';
 
 /** The glowing ring follows its element while the page scrolls or animates. Its own small component, and it
  *  re-renders only when the box moves, so the app under it is not re-rendered every frame. */
@@ -94,6 +97,18 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
   const [finger, setFinger] = useState<Finger>({ x: -100, y: -100, on: false, tap: 0 });
   const ringEl = useRef<HTMLElement | null>(null);
   const ctl = useRef({ paused: false, gen: 0, jump: -1, next: null as null | (() => void) });
+  // Speed (preview ?speed=1): every wait, typing, finger move and the progress line follow it. Remembered here.
+  const speedOn = useMemo(() => featureOn('tourSpeed'), []);
+  const [speed, setSpeedState] = useState<number>(() => {
+    if (!speedOn) return 1;
+    try { const v = Number(localStorage.getItem(SPEED_KEY)); return SPEEDS.includes(v) ? v : 1; } catch { return 1; }
+  });
+  const speedRef = useRef(speed); speedRef.current = speed;
+  const cycleSpeed = () => {
+    const next = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
+    setSpeedState(next);
+    try { localStorage.setItem(SPEED_KEY, String(next)); } catch { /* private mode */ }
+  };
 
   // Tracking: tour pages are counted under /tour/<role>, never as real app visits.
   useEffect(() => {
@@ -134,7 +149,9 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
       while (left > 0 || ctl.current.paused) {
         if (!alive || gen !== ctl.current.gen || ctl.current.jump >= 0) throw CANCEL;
         if (ctl.current.paused) { await raw(80); continue; }
-        const t = Math.min(40, left); await raw(t); left -= t;
+        // Real time to wait for what is left at this speed (40 ms slices so pause/skip/speed react quickly).
+        const s = speedRef.current;
+        const t = Math.min(40, Math.max(1, left / s)); await raw(t); left -= t * s;
       }
       if (!alive || gen !== ctl.current.gen || ctl.current.jump >= 0) throw CANCEL;
     };
@@ -241,7 +258,7 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
   const signUp = () => { trackView(`/tour/${role}/signup`); onEnd('signup'); };
   const progress = finished ? 100 : ((index + (waitingNext ? 1 : 0.5)) / steps.length) * 100;
 
-  return <div className={`tour-root tour-${role}${paused || waitingNext ? ' tour-held' : ''}`}>
+  return <div className={`tour-root tour-${role}${paused || waitingNext ? ' tour-held' : ''}`} style={{ ['--tour-speed' as string]: speed }}>
     {user ? workspace
       : <div className="tour-stage">
         <AnimatePresence><RegisterModal onClose={() => onEnd('close')} onComplete={(u) => setUser({ ...mock.user, ...u, id: mock.user.id })} /></AnimatePresence>
@@ -273,6 +290,7 @@ export default function TourApp({ role, renderWorkspace, onEnd }: Props) {
             ? <button type="button" className="tour-chip-btn" onClick={skip} aria-label="Next step"><ArrowRight size={15} /></button>
             : <button type="button" className="tour-chip-btn" onClick={togglePause} aria-label={paused ? 'Play' : 'Pause'}>{paused ? <Play size={14} /> : <Pause size={14} />}</button>}
           <button type="button" className="tour-chip-btn" onClick={skip} aria-label="Skip this step"><SkipForward size={14} /></button>
+          {speedOn && <button type="button" className={`tour-chip-btn tour-speed${speed < 1 ? ' slow' : ''}`} onClick={cycleSpeed} aria-label={`Speed ${speed} times. Tap to change`} title="Tour speed">{speed < 1 && <Turtle size={13} />}{speed}×</button>}
           <button type="button" className="tour-chip-btn" onClick={() => onEnd('close')} aria-label="Close the tour"><X size={14} /></button>
         </div>}
     </div>

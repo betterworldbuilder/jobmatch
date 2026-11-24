@@ -17,6 +17,8 @@ const FLAGS = {
   tour: { param: 'tour', defaultOn: true }, // switched on for everyone by the founder, 2026-11-24 (?tour=0 hides)
   /** Phones: no top bar (menu, search and bell repeat the bottom bar); the bell moves next to "Swipe for role".
    *  Founder, 2026-11-24. Preview: ?bar=1 */
+  /** Speed button in the full tours (0.5× · 0.75× · 1× · 1.5×), founder 2026-11-24. Preview: ?speed=1 */
+  tourSpeed: { param: 'speed', defaultOn: false },
   bar: { param: 'bar', defaultOn: true }, // switched on for everyone by the founder, 2026-11-24 (?bar=0 brings the bar back)
 } as const;
 
