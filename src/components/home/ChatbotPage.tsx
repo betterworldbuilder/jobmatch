@@ -121,7 +121,7 @@ export function ChatbotPage({ data, navigate }: { data: Bootstrap; navigate: (v:
 
   return <div className="page cb-page">
     {agentsOn
-      ? <div className="page-title"><div><span className="overline">AI assistant</span><h1>Use your Chatbot or OpenClaw</h1><p>Two ways to put AI to work on your {data.viewer.role === 'employer' ? 'hiring' : 'job search'}: a chatbot that answers your questions, or your own AI agent that works for you in the background.</p></div></div>
+      ? <div className="page-title"><div><span className="overline">AI assistant</span><h1>Your Chatbot and OpenClaw</h1><p>Two ways to put AI to work on your {data.viewer.role === 'employer' ? 'hiring' : 'job search'}: a chatbot that answers your questions, or your own AI agent that works for you in the background.</p></div></div>
       : <div className="page-title"><div><span className="overline">AI assistant</span><h1>Use your chatbot here</h1><p>Ask an AI about your own job search: matches, hiring stages, skill gaps and next interview. Use ours in the app, or connect your own ChatGPT or Claude.</p></div></div>}
 
     {agentsOn ? <AiOptions recruiter={data.viewer.role === 'employer'} onChatbot={() => setAgentOpen(true)} onAgent={() => document.getElementById('connect-agent')?.scrollIntoView({ block: 'center', behavior: 'smooth' })} /> : <section className="cb-card">

@@ -20,12 +20,14 @@ const FLAGS = {
   /** Speed button in the full tours (0.5× · 0.75× · 1× · 1.5×), founder 2026-11-24. Preview: ?speed=1 */
   tourSpeed: { param: 'speed', defaultOn: true }, // switched on for everyone by the founder, 2026-11-24 (?speed=0 hides)
   bar: { param: 'bar', defaultOn: true }, // switched on for everyone by the founder, 2026-11-24 (?bar=0 brings the bar back)
-  /** "Answer within 48 hours" (founder, 2026-11-25): the key feature on the home page (phone + desktop), and later the
-   *  48-hour answer timer itself (plans/2026-11-25_48h-answer-timer-spec.md). Off until the timer is live. Preview: ?answer48=1 */
-  answer48: { param: 'answer48', defaultOn: false },
+  /** "Answer within 48 hours" (founder, 2026-11-25): the key feature on the home page (phone + desktop) only.
+   *  Switched on for everyone by the founder, 2026-11-25 (?answer48=0 hides). The 48-hour timer itself gets its OWN
+   *  switch when Bui builds it (plans/2026-11-25_48h-answer-timer-spec.md), so it does not go live with this one. */
+  answer48: { param: 'answer48', defaultOn: true },
   /** "Connect your AI agent": OpenClaw, Meta Muse, Claude or any MCP agent through the read-only connector, in the
-   *  chatbot page + AI settings + home page (founder, 2026-11-25). Preview: ?agents=1 */
-  agents: { param: 'agents', defaultOn: false },
+   *  chatbot page + AI settings + home page (founder, 2026-11-25). Switched on for everyone by the founder,
+   *  2026-11-25 (?agents=0 hides). */
+  agents: { param: 'agents', defaultOn: true },
 } as const;
 
 export type FlagName = keyof typeof FLAGS;
