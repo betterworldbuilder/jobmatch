@@ -97,14 +97,35 @@
   .td-role-head { grid-template-columns:minmax(0,1fr) 20px; row-gap:6px; }
   .td-role-head > .job-header-badge { grid-column:1; grid-row:1; min-width:0; }
   .td-role-head > span.td-role-date { grid-column:1; grid-row:2; justify-self:start; }
+  .td-role-head > span.td-role-status { grid-column:1; grid-row:3; justify-self:start; }
   .td-role-head > svg { grid-column:2; grid-row:1; }
 }
 
-/* My Jobs list (founder, 2026-11-25): "Delete all jobs" next to Sort by, and a delete icon on each role. */
-.td-section-title .td-delete-all { margin-left:auto; margin-right:10px; display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border:1px solid #f3c2c9; border-radius:999px; background:#fff; color:#c8233d; font:800 11.5px 'Manrope'; cursor:pointer; }
+/* My Jobs list (founder, 2026-11-25): Export + "Delete all jobs" next to Sort by, and a delete icon on each role. */
+.td-section-title .td-role-tools { margin-left:auto; margin-right:10px; display:inline-flex; align-items:center; gap:8px; }
+.td-export { position:relative; }
+.td-export > summary { list-style:none; display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border:1px solid #cfdcf3; border-radius:999px; background:#fff; color:#1557b0; font:800 11.5px 'Manrope'; cursor:pointer; }
+.td-export > summary::-webkit-details-marker { display:none; }
+.td-export[open] > summary, .td-export > summary:hover { background:#eef4ff; border-color:#0a66c2; }
+.td-export-menu { position:absolute; z-index:20; top:calc(100% + 6px); right:0; width:250px; display:grid; gap:2px; padding:6px; border:1px solid #e3e7ef; border-radius:12px; background:#fff; box-shadow:0 12px 28px rgba(13,24,52,.16); }
+.td-export-menu button { text-align:left; padding:8px 10px; border:0; border-radius:8px; background:none; font:700 12.5px 'Manrope'; color:#0d1834; cursor:pointer; }
+.td-export-menu button:hover { background:#f2f6fd; }
+.td-export-menu small { padding:6px 10px 4px; color:#7a8494; font-size:11px; line-height:1.35; }
+.td-section-title .td-delete-all { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border:1px solid #f3c2c9; border-radius:999px; background:#fff; color:#c8233d; font:800 11.5px 'Manrope'; cursor:pointer; }
 .td-section-title .td-delete-all:hover { background:#fff1f3; border-color:#e5485d; }
 .td-section-title .td-delete-all:disabled { opacity:.6; cursor:wait; }
 .td-role-edit.td-role-delete:hover { color:#c8233d; border-color:#e5485d; background:#fff1f3; }
+/* Status column per role: Open (blue) / Conducting interviews (amber) / Hired (green). */
+@media (min-width:1101px) { .td-role-head { grid-template-columns:minmax(160px,1fr) auto auto auto auto auto 20px; } }
+@media (min-width:640px) and (max-width:1100px) { .td-role-head { grid-template-columns:minmax(150px,1fr) auto auto auto auto 20px; } }
+.td-role-head > span.td-role-status { display:inline-flex; align-items:center; padding:0; border-radius:999px; font:800 10.5px 'Manrope'; white-space:nowrap; }
+.td-role-status select { appearance:none; -webkit-appearance:none; border:0; background:transparent; color:inherit; font:inherit; padding:5px 22px 5px 10px; border-radius:999px; cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 11px) 52%, calc(100% - 7px) 52%; background-size:4px 4px; background-repeat:no-repeat; }
+.td-role-status:not(:has(select)) { padding:5px 10px; }
+.td-role-status.s-open { background:#e8f1ff; color:#1557b0; }
+.td-role-status.s-interviewing { background:#fff4dc; color:#9a5b00; }
+.td-role-status.s-hired { background:#e4f7ec; color:#11703a; }
 
 /* Recommended Candidates / Roles under the deck (founder, 2026-11-25, phone and desktop): a compact "stories" row of
    round photos with a small ★ match badge and a one-line name, instead of big mini-phones. Tap = show it in the deck. */

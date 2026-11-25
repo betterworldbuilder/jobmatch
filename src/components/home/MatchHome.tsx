@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react';
 import {
-  ArrowRight, Bell, Bookmark, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, Coffee,
+  ArrowRight, Bell, Bookmark, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, Coffee, Download,
   Eye, Heart, MapPin, MessageCircle, Pencil, RotateCcw, Sparkles, Star, Target, Trash2, TrendingUp, User, X,
 } from 'lucide-react';
 import { api } from '../../api';
 import { RolePreview } from '../jobs/RolePreview';
-import type { Bootstrap, Job, MatchEvidence, Note, Person, RoleMatchGroup, View } from '../../types';
+import type { Bootstrap, HiringStatus, Job, MatchEvidence, Note, Person, RoleMatchGroup, View } from '../../types';
+
+import { exportJobs, jobRow, type ExportFormat } from '../../lib/jobExport';
+
+const HIRING_STATUS_OPTIONS: [HiringStatus, string][] = [['open', 'Open'], ['interviewing', 'Conducting interviews'], ['hired', 'Hired']];
 import { JobDetailModal } from '../coach/CoachModals';
 import { CandidateCards } from '../profile/CandidateCards';
 import { CompanyLogoMark, JobHeaderBadge } from '../jobs/JobHeaderBadge';
@@ -350,6 +354,25 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
     } finally { setDeleting(false); }
     if (failed) window.alert(`${failed} job ${failed === 1 ? 'offer' : 'offers'} could not be deleted. Try again.`);
   };
+  // Status per role: the recruiter's pick, else automatic (filled → Hired, an interview booked → Conducting interviews).
+  const statusOf = (job: Job): HiringStatus => {
+    if (job.hiringStatus) return job.hiringStatus;
+    if (job.status === 'filled') return 'hired';
+    const matchIds = new Set(data.matches.filter((match) => match.jobId === job.id).map((match) => match.id));
+    return data.calls.some((call) => matchIds.has(call.matchId)) ? 'interviewing' : 'open';
+  };
+  // Export all own roles, past and current (drafts and filled included), for the recruiter's ATS (founder, 2026-11-25).
+  const ownJobs = data.jobs.filter((job) => job.employerId === data.viewer.id);
+  const runExport = (format: ExportFormat) => {
+    exportJobs(format, ownJobs.map((job) => jobRow(job, HIRING_STATUS_OPTIONS.find(([v]) => v === statusOf(job))?.[1] || '')));
+  };
+  const [statusSaving, setStatusSaving] = useState('');
+  const setRoleStatus = async (job: Job, hiringStatus: HiringStatus) => {
+    setStatusSaving(job.id);
+    try { await api.updateJob(job.id, { hiringStatus }); await reload(); }
+    catch (e) { window.alert(e instanceof Error ? e.message : 'Could not change the status'); }
+    finally { setStatusSaving(''); }
+  };
   const talk = async (person: Person) => {
     const result = await api.swipe({ actorId: data.viewer.id, targetId: person.id, targetType: 'candidate', direction: 'like' });
     await reload();
@@ -373,13 +396,27 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
 
     <section className="td-section td-role-section" id="td-roles">
       <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet." action={bestMatchFirst ? 'Sort by: Best Match' : 'Sort by: Name'} onAction={() => setBestMatchFirst((value) => !value)}
-        extra={roles.some((group) => group.job.employerId === data.viewer.id) ? <button className="td-delete-all" onClick={() => void deleteRoles(roles.map((group) => group.job).filter((job) => job.employerId === data.viewer.id))} disabled={deleting}><Trash2 size={13} /> {deleting ? 'Deleting…' : 'Delete all jobs'}</button> : null} />
+        extra={ownJobs.length ? <span className="td-role-tools">
+          <details className="td-export">
+            <summary><Download size={13} /> Export</summary>
+            <div className="td-export-menu" role="menu">
+              <button role="menuitem" onClick={(e) => { runExport('xlsx'); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; }}>Excel (.xlsx)</button>
+              <button role="menuitem" onClick={(e) => { runExport('csv'); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; }}>ATS CSV (.csv)</button>
+              <button role="menuitem" onClick={(e) => { runExport('json'); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; }}>ATS JSON feed (.json)</button>
+              <button role="menuitem" onClick={(e) => { runExport('xml'); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; }}>XML job feed (.xml)</button>
+              <small>All {ownJobs.length} of your roles, past and current. The CSV uses the same columns as Import.</small>
+            </div>
+          </details>
+          {roles.some((group) => group.job.employerId === data.viewer.id) && <button className="td-delete-all" onClick={() => void deleteRoles(roles.map((group) => group.job).filter((job) => job.employerId === data.viewer.id))} disabled={deleting}><Trash2 size={13} /> {deleting ? 'Deleting…' : 'Delete all jobs'}</button>}
+        </span> : null} />
       <div className="td-role-list">
         {roles.map((group) => {
           const open = group.job.id === openId;
           const matchedForJob = data.matches.filter((match) => match.jobId === group.job.id);
           const matchedIds = new Set(matchedForJob.map((match) => match.candidateId));
           const lovesNotMatched = [...group.candidates].filter((candidate) => !matchedIds.has(candidate.id)).sort(sortFn);
+          const status = statusOf(group.job);
+          const own = group.job.employerId === data.viewer.id;
           return <article className={open ? 'td-role open' : 'td-role'} key={group.job.id}>
             <div className="td-role-head" role="button" tabIndex={0} onClick={() => setExpandedId(open ? '__none__' : group.job.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? '__none__' : group.job.id); } }} aria-expanded={open}>
               <JobHeaderBadge job={group.job} compact actions={<>
@@ -387,6 +424,14 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
                 <button className="td-role-edit" onClick={(event) => { event.stopPropagation(); setPreviewJob(group.job); }} aria-label={`How candidates see ${group.job.title}`} title="How candidates see this role"><Eye size={12} /></button>
                 <button className="td-role-edit" onClick={(event) => { event.stopPropagation(); onEditJob?.(group.job.id); }} aria-label={`Edit ${group.job.title}`}><Pencil size={12} /></button>
               </>} />
+              {/* Status column (founder, 2026-11-25): Open / Conducting interviews / Hired. Automatic until the recruiter picks one. */}
+              <span className={`td-role-status s-${status}`} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} title={group.job.hiringStatus ? 'Status set by you' : 'Automatic status: change it here'}>
+                {own
+                  ? <select value={status} disabled={statusSaving === group.job.id} aria-label={`Status of ${group.job.title}`} onChange={(event) => void setRoleStatus(group.job, event.target.value as HiringStatus)}>
+                    {HIRING_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                  : HIRING_STATUS_OPTIONS.find(([value]) => value === status)?.[1]}
+              </span>
               {group.job.createdAt ? <span className="td-role-date" title="Date created"><Calendar size={12} /> Created {new Date(group.job.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> : null}
               <span><Check size={12} /> {matchedForJob.length} matched</span>
               <span><Heart size={12} /> {lovesNotMatched.length} love this job</span>

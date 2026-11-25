@@ -7,6 +7,7 @@ import { ValidationError } from './matching.js';
 import { serverAnthropicKey } from './server-ai.js';
 
 export const JOB_STATUSES = ['draft', 'active', 'paused', 'filled'];
+export const HIRING_STATUSES = ['open', 'interviewing', 'hired'];
 const SENIORITIES = ['junior', 'mid', 'senior', 'lead', 'exec'];
 const WORK_MODES = ['Remote', 'Hybrid', 'On-site', 'Flexible'];
 const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship'];
@@ -95,6 +96,13 @@ export function applyJob(job, body, { strict = false } = {}) {
     job.status = body.status;
   }
   set('requiredLanguages', strArray(body.requiredLanguages, 8, 40));
+  // Recruiter's hiring status label per role (founder, 2026-11-25). A label only: it does not close the role
+  // or trigger the hiring-closure messages; null goes back to the automatic status.
+  if (body.hiringStatus === null) delete job.hiringStatus;
+  else if (body.hiringStatus !== undefined) {
+    if (!HIRING_STATUSES.includes(body.hiringStatus)) throw new ValidationError('hiringStatus', `hiringStatus must be one of ${HIRING_STATUSES.join(', ')}`);
+    job.hiringStatus = body.hiringStatus;
+  }
 
   // Card-mirroring fields (job profile = 5 cards, like the candidate deck).
   set('openings', num(body.openings, 1, 999)); // card 1

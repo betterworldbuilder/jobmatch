@@ -152,4 +152,12 @@ test('salary is optional to publish; a given salary must be real', async () => {
   assert.equal(min.status, 201); assert.equal((min.body.job || min.body).salary, 'From $40k');
   assert.equal((await post({ salaryRange: { min: 0, max: 0, currency: 'USD' } })).status, 400);
   assert.equal((await post({ salaryRange: { min: 50000, max: 10000, currency: 'USD' } })).status, 400);
+
+  // Status column per role (founder, 2026-11-25): a label the recruiter sets; null = automatic again.
+  const job = (await post({})).body.job;
+  const set = (v) => call('PATCH', `/api/jobs/${job.id}`, { hiringStatus: v }, rec.cookie);
+  const r1 = await set('interviewing'); assert.equal(r1.status, 200); assert.equal((r1.body.job || r1.body).hiringStatus, 'interviewing');
+  assert.equal((r1.body.job || r1.body).status, 'active', 'a label never closes the role');
+  assert.equal((await set('closed')).status, 400);
+  const r3 = await set(null); assert.equal((r3.body.job || r3.body).hiringStatus, undefined);
 });

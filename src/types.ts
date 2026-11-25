@@ -84,9 +84,12 @@ export interface Person {
 export interface WeightedSkill { name: string; weight: number }
 /** A role's salary: the maximum is optional ("From $40k", founder 2026-11-25). */
 export interface SalaryRange { min: number; max?: number; currency: string }
+export type HiringStatus = 'open' | 'interviewing' | 'hired';
 export interface Job {
   id: string; employerId: string; title: string; company: string; logo: string; accent: string; location: string;
   companyLogo?: string;
+  /** Recruiter's status label for the role (Open / Conducting interviews / Hired); unset = automatic. */
+  hiringStatus?: HiringStatus;
   distanceKm?: number; workMode: string; salary: string; type: string; experienceLevel: string;
   requiredSkills: string[]; requiredLanguages: string[]; description: string; mission: string; culture: string[];
   /** "Role details": the whole job description as pasted by the recruiter (plain text, line breaks kept). */

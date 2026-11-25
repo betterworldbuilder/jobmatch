@@ -73,6 +73,7 @@ import { featureOn } from './lib/flags';
 import { applyNoTrackParam, deviceNotCounted, installAdminHotkey, installNoTrackSwitch, setDeviceNotCounted, trackView } from './lib/tracker';
 import { scoreOf } from './lib/report';
 import { CandidateReport, RecruiterReport, downloadText, reportCsv } from './components/home/ReportSections';
+import { RolePreview } from './components/jobs/RolePreview';
 import { AiAnalystInline } from './components/home/AiAnalyst';
 import { CandidateSubscription } from './components/home/CandidateSubscription';
 import { ChatbotPage } from './components/home/ChatbotPage';
@@ -1433,13 +1434,15 @@ function Jobs({ data, reload, onAddJobs, manualJobRequest, onOpenMessages, editJ
 function JobOfferDetail({ job, data, onBack, onEdit, onDelete, deleting, onOpenMessages }: { job: Job; data: Bootstrap; onBack: () => void; onEdit: () => void; onDelete: () => void; deleting?: boolean; onOpenMessages?: (matchId: string) => void }) {
   const matches = data.matches.filter((match) => match.jobId === job.id);
   const [confirming, setConfirming] = useState(false);
+  const [candidateView, setCandidateView] = useState(false); // "Candidate view": the role as it appears in candidates' Surf (founder, 2026-11-25)
   return <div className="page job-offer-detail">
+    {candidateView && <RolePreview job={job} recruiter={data.viewer} onClose={() => setCandidateView(false)} onEdit={() => { setCandidateView(false); onEdit(); }} />}
     <div className="page-title">
       <div><button className="secondary-button small" onClick={onBack}><ArrowLeft size={15} /> Back to My JobMatches</button></div>
       <div style={{ display: 'flex', gap: 8 }}>
         {confirming
           ? <><span className="settings-confirm"><button className="danger-button small" disabled={deleting} onClick={onDelete}>{deleting ? <Loader2 size={14} className="spin" /> : 'Confirm delete'}</button><button className="text-button" onClick={() => setConfirming(false)}>Cancel</button></span></>
-          : <><button className="danger-button small" onClick={() => setConfirming(true)}><Trash2 size={14} /> Delete role</button><button className="primary-button small" onClick={onEdit}>Edit role</button></>}
+          : <><button className="secondary-button small" onClick={() => setCandidateView(true)}><Eye size={14} /> Candidate view</button><button className="danger-button small" onClick={() => setConfirming(true)}><Trash2 size={14} /> Delete role</button><button className="primary-button small" onClick={onEdit}>Edit role</button></>}
       </div>
     </div>
     {(job.demo || job.sample) && <DemoBadge label={job.sample ? 'Starter sample job — auto-generated for you' : 'Demo job offer — not a real opening'} />}
