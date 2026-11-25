@@ -28,7 +28,9 @@ const fitLine = (c: Person) => {
   return s.length ? `Matches your role: ${s.join(', ')}${score ? ` · ${score}` : ''}` : score ? `${score} fit` : '';
 };
 const where = (c: Person) => [c.city, c.country].filter(Boolean).join(', ') || c.location || '';
-const workPref = (c: Person) => { const m = c.preferences?.workMode?.mode; return m === 'remote' ? 'Remote' : m === 'hybrid' ? 'Hybrid' : m === 'onsite' ? 'On-site' : ''; };
+// Every accepted mode (several since 2026-11-25): "Remote / Hybrid".
+const MODE_NAMES: Record<string, string> = { remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site' };
+const workPref = (c: Person) => { const w = c.preferences?.workMode; return (w?.modes?.length ? w.modes : w?.mode ? [w.mode] : []).map((m) => MODE_NAMES[m] || '').filter(Boolean).join(' / '); };
 
 // Pages inside the candidate swipe card (founder, 2026-11-22), same order as the profile; the last page is the resume.
 export const CANDIDATE_PAGES = ['Who I am', 'My Dream Job', 'My Human Stack', 'My Skills', 'What I Have Built', 'Certifications', 'Recommendations', 'My Super Power', 'Resume'];

@@ -2,7 +2,43 @@ import { useEffect, useRef, useState } from 'react';
 import { Award, Upload, Zap, BadgeCheck, Brain, Briefcase, CalendarClock, CheckCircle2, Code2, Coffee, Download, FileText, Flag, Github, Globe, Hammer, Heart, Home, Languages, Link2, Lock, MapPin, MessageCircle, Music2, Pencil, Phone, Plane, PlusCircle, Quote, Send, ShieldCheck, Smartphone, Sparkles, Star, Target, User, Wallet, X, XCircle } from 'lucide-react';
 import { api, apiBase } from '../../api';
 import { jobStatusText } from '../JobStatusPicker';
-import type { ContactChannel, MatchEvidence, Person } from '../../types';
+import { workModesText } from '../../lib/today';
+import type { ContactChannel, MatchEvidence, Person, RecommendationDoc } from '../../types';
+
+/** Recommendation letters (PDF, Word, image), up to 5: the owner uploads and removes them; the owner and recruiters
+ *  with a mutual match open them. Used on the Recommendations card and in the profile wizard (founder, 2026-11-25). */
+export function RecommendationLetters({ userId, initial, editable, canOpen }: { userId: string; initial: RecommendationDoc[]; editable: boolean; canOpen: boolean }) {
+  const [recDocs, setRecDocs] = useState(initial);
+  const [letterBusy, setLetterBusy] = useState(false);
+  const [letterError, setLetterError] = useState('');
+  const uploadLetter = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) { setLetterError('Files must be 10 MB or smaller'); return; }
+    setLetterBusy(true); setLetterError('');
+    try { const { doc } = await api.uploadRecommendationDoc(userId, file); setRecDocs((prev) => [...prev, doc]); }
+    catch (e) { setLetterError(e instanceof Error ? e.message : 'Upload failed'); }
+    finally { setLetterBusy(false); }
+  };
+  const removeLetter = async (docId: string) => {
+    try { await api.deleteRecommendationDoc(userId, docId); setRecDocs((prev) => prev.filter((d) => d.id !== docId)); }
+    catch (e) { setLetterError(e instanceof Error ? e.message : 'Could not remove it'); }
+  };
+  if (!editable && recDocs.length === 0) return null;
+  return <div className="tcard-letters">
+    <span className="tcard-sub">Recommendation letters</span>
+    {recDocs.length > 0 ? <ul className="tcard-letter-list">{recDocs.map((d) => <li key={d.id}>
+      <FileText size={14} />
+      {canOpen ? <a href={api.recommendationDocUrl(userId, d.id)} target="_blank" rel="noreferrer">{d.originalName}</a> : <span>{d.originalName}</span>}
+      <em>{d.ext.toUpperCase()} · {Math.max(1, Math.round(d.size / 1024))} KB</em>
+      {editable && <button type="button" onClick={() => void removeLetter(d.id)} aria-label={`Remove ${d.originalName}`}><X size={12} /></button>}
+    </li>)}</ul> : <p className="tcard-empty">Upload letters from former managers or clients. Recruiters can read them after a mutual match.</p>}
+    {!canOpen && recDocs.length > 0 && <p className="tcard-contact locked"><Lock size={13} /> Letters open after a mutual match</p>}
+    {editable && recDocs.length < 5 && <label className="tcard-invite-btn tcard-upload">
+      <input type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadLetter(f); e.target.value = ''; }} />
+      {letterBusy ? 'Uploading…' : <><Upload size={13} /> Upload a letter (PDF, Word or image)</>}
+    </label>}
+    {letterError && <p className="tcard-invite-error">{letterError}</p>}
+  </div>;
+}
 
 /** github.com/x -> https://github.com/x, otherwise pass real URLs through. */
 function normalizeUrl(url: string): string {
@@ -142,22 +178,8 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
     } catch (e) { setInviteError(e instanceof Error ? e.message : 'Could not send that request'); }
     finally { setInviteSending(false); }
   };
-  // Recommendation letters (owner uploads; matched recruiters open). Local list so uploads show at once.
-  const [recDocs, setRecDocs] = useState(p.documents?.recommendationDocs || []);
-  const [letterBusy, setLetterBusy] = useState(false);
-  const [letterError, setLetterError] = useState('');
+  // Recommendation letters (owner uploads; matched recruiters open): see RecommendationLetters below.
   const canOpenLetters = Boolean(onEdit) || unlocked;
-  const uploadLetter = async (file: File) => {
-    if (file.size > 10 * 1024 * 1024) { setLetterError('Files must be 10 MB or smaller'); return; }
-    setLetterBusy(true); setLetterError('');
-    try { const { doc } = await api.uploadRecommendationDoc(p.id, file); setRecDocs((prev) => [...prev, doc]); }
-    catch (e) { setLetterError(e instanceof Error ? e.message : 'Upload failed'); }
-    finally { setLetterBusy(false); }
-  };
-  const removeLetter = async (docId: string) => {
-    try { await api.deleteRecommendationDoc(p.id, docId); setRecDocs((prev) => prev.filter((d) => d.id !== docId)); }
-    catch (e) { setLetterError(e instanceof Error ? e.message : 'Could not remove it'); }
-  };
   // My Super Power (owner edits inline).
   const [power, setPower] = useState(p.superPower || '');
   const [powerBusy, setPowerBusy] = useState(false);
@@ -263,8 +285,10 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
         {p.preferences?.desiredRoles?.length ? <><span className="tcard-sub">Target roles</span><div className="skill-list soft">{p.preferences.desiredRoles.map((r) => <span key={r}>{r}</span>)}</div></> : null}
         <dl className="tcard-dl">
           {p.preferences?.employmentTypes?.length ? <div><dt><Briefcase size={12} /> Employment</dt><dd>{p.preferences.employmentTypes.join(' · ')}</dd></div> : null}
-          {wm ? <div><dt><Home size={12} /> Work mode</dt><dd>{wm.mode === 'hybrid' ? `Hybrid · max ${wm.hybridDays ?? 2} office days/wk` : wm.mode === 'onsite' ? 'On-site' : 'Remote'}</dd></div> : null}
-          {salary && salary.min !== undefined ? <div><dt><Wallet size={12} /> Salary</dt><dd>{salary.min?.toLocaleString()}–{salary.max?.toLocaleString()} {salary.currency}/{salary.period || 'year'}{salary.negotiable ? ' · negotiable' : ''}</dd></div> : null}
+          {wm ? <div><dt><Home size={12} /> Work mode</dt><dd>{(wm.modes?.length ?? 0) > 1
+            ? `${workModesText(wm)}${wm.modes?.includes('hybrid') ? ` · max ${wm.hybridDays ?? 2} office days/wk if hybrid` : ''}`
+            : wm.mode === 'hybrid' ? `Hybrid · max ${wm.hybridDays ?? 2} office days/wk` : wm.mode === 'onsite' ? 'On-site' : 'Remote'}</dd></div> : null}
+          {salary && salary.min !== undefined ? <div><dt><Wallet size={12} /> Salary</dt><dd>{salary.max !== undefined ? `${salary.min?.toLocaleString()}–${salary.max.toLocaleString()}` : `From ${salary.min?.toLocaleString()}`} {salary.currency}/{salary.period || 'year'}{salary.negotiable ? ' · negotiable' : ''}</dd></div> : null}
           {availability ? <div><dt><CalendarClock size={12} /> Available</dt><dd>{availability}{p.preferences?.noticePeriod ? ` · ${p.preferences.noticePeriod} notice` : ''}</dd></div> : null}
           {p.distanceRangeKm !== undefined ? <div><dt><MapPin size={12} /> Max commute</dt><dd>{p.distanceRangeKm} km</dd></div> : null}
           {p.preferences?.relocate?.open ? <div><dt><Plane size={12} /> Relocation</dt><dd>Open · {p.preferences.relocate.locations?.join(', ') || 'anywhere'}</dd></div> : null}
@@ -286,21 +310,7 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
           {r.recommenderEmail && <p className="trec-email"><Send size={11} /> {r.recommenderEmail}</p>}
         </li>)}</ul> : <p className="tcard-empty"><Coffee size={14} /> {onEdit ? 'Invite former recruiters or managers to recommend you (optional).' : 'No public recommendations yet.'}</p>}
         {/* Recommendation letters (PDF, Word, image): owner + matched recruiters can open them. */}
-        {(onEdit || recDocs.length > 0) && <div className="tcard-letters">
-          <span className="tcard-sub">Recommendation letters</span>
-          {recDocs.length > 0 ? <ul className="tcard-letter-list">{recDocs.map((d) => <li key={d.id}>
-            <FileText size={14} />
-            {canOpenLetters ? <a href={api.recommendationDocUrl(p.id, d.id)} target="_blank" rel="noreferrer">{d.originalName}</a> : <span>{d.originalName}</span>}
-            <em>{d.ext.toUpperCase()} · {Math.max(1, Math.round(d.size / 1024))} KB</em>
-            {onEdit && <button type="button" onClick={() => void removeLetter(d.id)} aria-label={`Remove ${d.originalName}`}><X size={12} /></button>}
-          </li>)}</ul> : <p className="tcard-empty">Upload letters from former managers or clients. Recruiters can read them after a mutual match.</p>}
-          {!canOpenLetters && recDocs.length > 0 && <p className="tcard-contact locked"><Lock size={13} /> Letters open after a mutual match</p>}
-          {onEdit && recDocs.length < 5 && <label className="tcard-invite-btn tcard-upload">
-            <input type="file" accept=".pdf,.doc,.docx,image/png,image/jpeg,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadLetter(f); e.target.value = ''; }} />
-            {letterBusy ? 'Uploading…' : <><Upload size={13} /> Upload a letter (PDF, Word or image)</>}
-          </label>}
-          {letterError && <p className="tcard-invite-error">{letterError}</p>}
-        </div>}
+        <RecommendationLetters userId={p.id} initial={p.documents?.recommendationDocs || []} editable={Boolean(onEdit)} canOpen={canOpenLetters} />
         {onEdit && <div className="tcard-invite">
           <span className="tcard-sub">Invite a recommender</span>
           <div className="tcard-invite-row">

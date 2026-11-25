@@ -6,7 +6,7 @@ import { ConductModal } from './components/ConductModal';
 import { AdminPasswordSetup } from './components/AdminPasswordSetup';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react';
 import { MobileTabs } from './components/MobileTabs';
-import { likesWaiting } from './lib/today';
+import { likesWaiting, workModesText } from './lib/today';
 import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Ban, Flag,Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
 import { apiBase } from './api';
@@ -767,7 +767,7 @@ function Discover({ role, data, setData, navigate, onEditProfile }: { role: Role
   };
 
   return <div className="page discover-page"><div className="page-title"><div><span className="overline">{role === 'candidate' ? 'For Candidates' : 'For Recruiters'}</span><h1>{role === 'candidate' ? 'Recommended Roles' : 'Candidates to be considered'}</h1><p>{role === 'candidate' ? 'Swipe roles that fit you — like to signal interest.' : 'Find the perfect talent for your team.'}</p></div>
-    <div className="preference-chip"><small>{role === 'candidate' ? 'Your preferences' : "You're hiring for"}</small><strong>{role === 'candidate' ? [data.viewer.preferences?.desiredRoles?.[0], data.viewer.preferences?.workMode?.mode].filter(Boolean).join(' · ') || 'Any role' : data.jobs.find((j) => j.employerId === data.viewer.id)?.title || 'Open roles'}</strong><button onClick={() => role === 'candidate' ? onEditProfile(2) : navigate('jobs')} aria-label="Edit preferences"><ChevronDown size={13} style={{ transform: 'rotate(-90deg)' }} /></button></div>
+    <div className="preference-chip"><small>{role === 'candidate' ? 'Your preferences' : "You're hiring for"}</small><strong>{role === 'candidate' ? [data.viewer.preferences?.desiredRoles?.[0], workModesText(data.viewer.preferences?.workMode)].filter(Boolean).join(' · ') || 'Any role' : data.jobs.find((j) => j.employerId === data.viewer.id)?.title || 'Open roles'}</strong><button onClick={() => role === 'candidate' ? onEditProfile(2) : navigate('jobs')} aria-label="Edit preferences"><ChevronDown size={13} style={{ transform: 'rotate(-90deg)' }} /></button></div>
     <div className="title-actions"><button className={filtersOpen ? 'ghost-button active' : 'ghost-button'} onClick={() => setFiltersOpen((v) => !v)}><SlidersHorizontal size={17} />Filters{filtersActive && <span>{[query.trim(), filterMode, filterType, minScore > 0].filter(Boolean).length}</span>}</button></div></div>
     {role === 'candidate' && <ReadyChecklist viewer={data.viewer} onEditProfile={onEditProfile} />}
     <div className="discover-search"><div className="ds-input"><Search size={16} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={role === 'candidate' ? 'Search roles, companies, skills…' : 'Search talent by name, title, skills…'} aria-label="Search" />{query && <button className="ds-clear" onClick={() => setQuery('')} aria-label="Clear search"><X size={14} /></button>}</div></div>
@@ -927,8 +927,8 @@ function CardSummary({ item, role, detailed = false, onOpenResume, resumeUnlocke
       {person.presentation && <div className="card-quote"><Heart size={15} /><div><span className="card-label">About {person.name.split(' ')[0]}</span><p>{person.presentation}</p></div></div>}
       <div className="stat-grid">
         {person.yearsExperience !== undefined && <div><small>Exp</small><strong>{person.yearsExperience}+ years</strong></div>}
-        {salary?.min !== undefined && !person.salaryHidden && <div><small>Salary</small><strong>{salary.min.toLocaleString()}–{salary.max?.toLocaleString()} {salary.currency}</strong></div>}
-        {wm?.mode && <div><small>Work mode</small><strong>{wm.mode === 'hybrid' ? `Hybrid · ${wm.hybridDays ?? 2}d` : wm.mode === 'onsite' ? 'On-site' : 'Remote'}</strong></div>}
+        {salary?.min !== undefined && !person.salaryHidden && <div><small>Salary</small><strong>{salary.max !== undefined ? `${salary.min.toLocaleString()}–${salary.max.toLocaleString()}` : `From ${salary.min.toLocaleString()}`} {salary.currency}</strong></div>}
+        {wm?.mode && <div><small>Work mode</small><strong>{(wm.modes?.length ?? 0) > 1 ? workModesText(wm) : wm.mode === 'hybrid' ? `Hybrid · ${wm.hybridDays ?? 2}d` : wm.mode === 'onsite' ? 'On-site' : 'Remote'}</strong></div>}
         {person.distanceRangeKm !== undefined && <div><small>Commute</small><strong>&lt; {person.distanceRangeKm} km</strong></div>}
       </div>
       {detailed && <>

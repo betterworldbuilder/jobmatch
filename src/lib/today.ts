@@ -124,10 +124,22 @@ export function contactLinks(v: Bootstrap['viewer']): ContactLink[] {
 }
 
 /** "Remote" / "Hybrid · 2 days" / "On-site". */
-export function workModeLabel(mode?: { mode?: string; hybridDays?: number }) {
-  if (!mode?.mode) return '';
-  if (mode.mode === 'hybrid') return `Hybrid${mode.hybridDays ? ` · ${mode.hybridDays} days in office` : ''}`;
-  return mode.mode === 'onsite' ? 'On-site' : 'Remote';
+/** Every work mode a candidate accepts (several since 2026-11-25; older profiles have only `mode`). */
+export function candidateModes(wm?: { mode?: string; modes?: string[] }): string[] {
+  return wm?.modes?.length ? wm.modes : wm?.mode ? [wm.mode] : [];
+}
+const MODE_NAME: Record<string, string> = { remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site' };
+/** "Remote / Hybrid": the candidate's accepted work modes. */
+export function workModesText(wm?: { mode?: string; modes?: string[] }) {
+  return candidateModes(wm).map((m) => MODE_NAME[m] || m).join(' / ');
+}
+
+export function workModeLabel(mode?: { mode?: string; modes?: string[]; hybridDays?: number }) {
+  const modes = candidateModes(mode);
+  if (!modes.length) return '';
+  if (modes.length > 1) return `${workModesText(mode)}${modes.includes('hybrid') && mode?.hybridDays ? ` · ${mode.hybridDays} days in office if hybrid` : ''}`;
+  if (modes[0] === 'hybrid') return `Hybrid${mode?.hybridDays ? ` · ${mode.hybridDays} days in office` : ''}`;
+  return modes[0] === 'onsite' ? 'On-site' : 'Remote';
 }
 
 /** "$70k – $100k / year" from the salary preference; empty when not set. */

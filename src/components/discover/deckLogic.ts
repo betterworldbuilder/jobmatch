@@ -115,7 +115,7 @@ function passesAdvanced(role: Role, item: DeckItem, f: DeckFilters, viewer?: Dec
   if (f.openToWork && p.jobStatus?.kind && p.jobStatus.kind !== 'open') return false;
   if (f.openToWork && !p.jobStatus?.kind && p.privacy?.openToWork === false) return false;
   // Work mode / type on the recruiter side (these buttons existed but did nothing for recruiters before).
-  if (f.filterMode && low(f.filterMode) !== 'flexible') { const m = p.preferences?.workMode?.mode; if (m && low(f.filterMode).replace('-', '') !== m) return false; }
+  if (f.filterMode && low(f.filterMode) !== 'flexible') { const w = p.preferences?.workMode; const ms = w?.modes?.length ? w.modes : w?.mode ? [w.mode] : []; if (ms.length && !ms.includes(low(f.filterMode).replace('-', '') as 'remote')) return false; }
   if (f.filterType) { const t = p.preferences?.employmentTypes; if (t?.length && !t.map(low).includes(low(f.filterType))) return false; }
   return true;
 }

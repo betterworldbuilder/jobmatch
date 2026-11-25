@@ -148,8 +148,14 @@ export function applyCandidateProfile(user, body) {
     if (p.desiredRoles !== undefined) prefs.desiredRoles = strArray(p.desiredRoles) || [];
     if (p.employmentTypes !== undefined) prefs.employmentTypes = strArray(p.employmentTypes, 6, 30) || [];
     if (p.workMode !== undefined && typeof p.workMode === 'object' && p.workMode !== null) {
-      if (!WORK_MODES.includes(p.workMode.mode)) throw new ValidationError('workMode', `workMode.mode must be one of ${WORK_MODES.join(', ')}`);
-      prefs.workMode = { mode: p.workMode.mode, ...(p.workMode.mode === 'hybrid' ? { hybridDays: num(p.workMode.hybridDays, 0, 5) ?? 2 } : {}) };
+      // Several modes at once (founder, 2026-11-25): `modes` lists every accepted mode; `mode` stays the first one so
+      // older readers keep working.
+      const modes = Array.isArray(p.workMode.modes) ? [...new Set(p.workMode.modes)] : [];
+      if (modes.some((m) => !WORK_MODES.includes(m))) throw new ValidationError('workMode', `workMode.modes must only contain ${WORK_MODES.join(', ')}`);
+      const mode = WORK_MODES.includes(p.workMode.mode) ? p.workMode.mode : modes[0];
+      if (!WORK_MODES.includes(mode)) throw new ValidationError('workMode', `workMode.mode must be one of ${WORK_MODES.join(', ')}`);
+      const all = modes.length ? (modes.includes(mode) ? [mode, ...modes.filter((m) => m !== mode)] : [mode, ...modes]) : [mode];
+      prefs.workMode = { mode, ...(all.length > 1 ? { modes: all } : {}), ...(all.includes('hybrid') ? { hybridDays: num(p.workMode.hybridDays, 0, 5) ?? 2 } : {}) };
     }
     if (p.salary !== undefined && typeof p.salary === 'object' && p.salary !== null) {
       const min = num(p.salary.min, 0, 10000000); const max = num(p.salary.max, 0, 10000000);
@@ -260,7 +266,7 @@ export function candidateCompleteness(user) {
     user.title, user.yearsExperience, user.seniority,
     (user.skillsDetail || []).length >= 3 || (user.skills || []).length >= 3,
     user.preferences?.desiredRoles?.length, user.preferences?.employmentTypes?.length,
-    user.preferences?.workMode?.mode, user.preferences?.salary?.min !== undefined && user.preferences?.salary?.max !== undefined,
+    user.preferences?.workMode?.mode,
     user.preferences?.availability, user.documents?.resume, user.privacy?.visibility, user.privacy?.openToWork !== undefined,
   ];
   const optional = [
@@ -270,6 +276,8 @@ export function candidateCompleteness(user) {
     user.preferences?.relocate, user.preferences?.companySize, (user.preferences?.workStyle || []).length,
     user.documents?.coverLetter, (user.privacy?.blockedCompanies || []).length,
     user.nationality, (user.contactChannels || []).length, user.presentation,
+    // Salary is optional (founder, 2026-11-25).
+    user.preferences?.salary?.min !== undefined || user.preferences?.salary?.max !== undefined,
     (user.mindset || []).length, user.favoriteSong, (user.recommendations || []).length,
   ];
   const requiredScore = required.filter((value) => has(value) || value === true).length / required.length;

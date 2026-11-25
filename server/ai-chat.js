@@ -90,7 +90,8 @@ export function buildCandidateContext(boot, now = Date.now()) {
   const v = boot.viewer || {};
   const skills = (v.skillsDetail?.map((s) => s.name) || v.skills || []).slice(0, 25);
   const targets = v.preferences?.desiredRoles?.length ? v.preferences.desiredRoles : [v.title].filter(Boolean);
-  const mode = v.preferences?.workMode?.mode;
+  const wm = v.preferences?.workMode;
+  const mode = (wm?.modes?.length ? wm.modes : [wm?.mode].filter(Boolean)).join(' or ');
   const jobs = [...(boot.jobs || [])].filter((j) => typeof j.match?.score === 'number').sort((a, b) => b.match.score - a.match.score).slice(0, 8);
   const matches = (boot.matches || []).filter((m) => m.candidateId === v.id && m.stage !== 'Archived').slice(0, 10);
   const sources = [];

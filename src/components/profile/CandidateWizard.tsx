@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Camera, Check, FileText, Loader2, MapPin, Sparkles, Upload } from 'lucide-react';
 import { api } from '../../api';
 import { CameraCaptureModal } from '../CameraCaptureModal';
-import { Chips, Field, LevelTagInput, Repeat, Segmented, TagInput, TextInput, Toggle } from './fields';
+import { Chips, Field, LevelTagInput, MultiSegmented, Repeat, Segmented, TagInput, TextInput, Toggle } from './fields';
+import { RecommendationLetters } from './CandidateCards';
 import { IdVerification } from './IdVerification';
 import type { AgePrivacy, ContactChannel, ContactChannelType, Education, LanguageTag, Person, Recommendation, ResumeMeta, Seniority, SkillTag, WorkExperience } from '../../types';
 
@@ -80,7 +81,7 @@ type Form = {
   workExperience: WorkExperience[]; education: Education[]; certifications: string[];
   links: { github?: string; portfolio?: string; website?: string; linkedin?: string; appStore?: string; playStore?: string };
   publications: string[];
-  desiredRoles: string[]; employmentTypes: string[]; workModeChoice?: 'remote' | 'hybrid' | 'onsite'; hybridDays: number;
+  desiredRoles: string[]; employmentTypes: string[]; workModeChoices: ('remote' | 'hybrid' | 'onsite')[]; hybridDays: number;
   salaryMin: string; salaryMax: string; currency: string; salaryPeriod: string; salaryNegotiable: boolean;
   availability?: string; travel: string;
   relocateOpen: boolean; relocateLocations: string[]; companySize: string; prefIndustries: string[]; workStyle: string[];
@@ -105,7 +106,7 @@ function fromPerson(p: Person): Form {
     industries: p.industries || [], workExperience: p.workExperience || [], education: p.education || [], certifications: p.certifications || [],
     links: p.links || {}, publications: p.publications || [],
     desiredRoles: p.preferences?.desiredRoles || [], employmentTypes: p.preferences?.employmentTypes || [],
-    workModeChoice: p.preferences?.workMode?.mode, hybridDays: p.preferences?.workMode?.hybridDays ?? 2,
+    workModeChoices: p.preferences?.workMode?.modes?.length ? p.preferences.workMode.modes : p.preferences?.workMode?.mode ? [p.preferences.workMode.mode] : [], hybridDays: p.preferences?.workMode?.hybridDays ?? 2,
     salaryMin: p.preferences?.salary?.min !== undefined ? String(p.preferences.salary.min) : '',
     salaryMax: p.preferences?.salary?.max !== undefined ? String(p.preferences.salary.max) : '',
     currency: p.preferences?.salary?.currency || 'USD', salaryPeriod: p.preferences?.salary?.period || 'year', salaryNegotiable: p.preferences?.salary?.negotiable ?? false,
@@ -141,8 +142,11 @@ function stepPayload(step: number, form: Form, finishing: boolean) {
     availability: form.availability,
     preferences: {
       desiredRoles: form.desiredRoles, employmentTypes: form.employmentTypes,
-      workMode: form.workModeChoice ? { mode: form.workModeChoice, hybridDays: form.workModeChoice === 'hybrid' ? form.hybridDays : undefined } : undefined,
-      salary: { min: Number(form.salaryMin), max: Number(form.salaryMax), currency: form.currency, period: form.salaryPeriod, negotiable: form.salaryNegotiable },
+      // Several work modes at once; `mode` = the first, for older readers (founder, 2026-11-25).
+      workMode: form.workModeChoices.length ? { mode: form.workModeChoices[0], modes: form.workModeChoices, hybridDays: form.workModeChoices.includes('hybrid') ? form.hybridDays : undefined } : undefined,
+      // Salary is optional (founder, 2026-11-25): sent only when at least one amount is filled in.
+      // Minimum only (founder, 2026-11-25): any old maximum is dropped on save.
+      salary: form.salaryMin !== '' ? { min: Number(form.salaryMin), currency: form.currency, period: form.salaryPeriod, negotiable: form.salaryNegotiable } : undefined,
       availability: form.availability, travel: form.travel || undefined,
       relocate: { open: form.relocateOpen, locations: form.relocateLocations },
       companySize: form.companySize || undefined, industries: form.prefIndustries, workStyle: form.workStyle,
@@ -183,9 +187,8 @@ function stepErrors(step: number, form: Form): string[] {
   if (step === 2) {
     if (!form.desiredRoles.length) errors.push('Add at least one desired role');
     if (!form.employmentTypes.length) errors.push('Pick at least one employment type');
-    if (!form.workModeChoice) errors.push('Pick a work mode');
-    if (form.salaryMin === '' || form.salaryMax === '') errors.push('Salary expectation range is required');
-    else if (Number(form.salaryMin) > Number(form.salaryMax)) errors.push('Salary minimum cannot exceed maximum');
+    if (!form.workModeChoices.length) errors.push('Pick at least one work mode');
+    if (form.salaryMin !== '' && Number(form.salaryMin) < 0) errors.push('Minimum salary cannot be negative');
   }
   if (step === 3) {
     if (!form.presentation.trim()) errors.push('About Me is required — pick an identity to start from a template, or write your own');
@@ -394,6 +397,10 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
               <TextInput placeholder="Number or username" value={item.value} onChange={(e) => update({ value: e.target.value })} />
             </div>} />
         </Field>
+        {/* Website next to the contact channels (founder, 2026-11-25); same field as before (links.website). */}
+        <Field label="Website (optional)" hint="Your personal site, blog or online CV. Shown on your profile as a link.">
+          <TextInput inputMode="url" autoComplete="url" value={form.links.website || ''} onChange={(e) => patch({ links: { ...form.links, website: e.target.value } })} placeholder="yourname.com" />
+        </Field>
       </div>}
 
       {step === 1 && <div className="wz-body">
@@ -440,15 +447,14 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
       {step === 2 && <div className="wz-body">
         <Field label="Desired roles" required><TagInput value={form.desiredRoles} onChange={(desiredRoles) => patch({ desiredRoles })} placeholder="e.g. Senior Product Designer — press Enter" /></Field>
         <Field label="Employment type" required><Chips options={EMPLOYMENT_TYPES} value={form.employmentTypes} onToggle={(option) => patch({ employmentTypes: form.employmentTypes.includes(option) ? form.employmentTypes.filter((item) => item !== option) : [...form.employmentTypes, option] })} /></Field>
-        <Field label="Work mode" required>
-          <Segmented options={['remote', 'hybrid', 'onsite'] as const} value={form.workModeChoice} onChange={(workModeChoice) => patch({ workModeChoice })} labels={{ remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site' }} />
-          {form.workModeChoice === 'hybrid' && <div className="wz-hybrid"><span>{form.hybridDays} office day{form.hybridDays === 1 ? '' : 's'}/week</span><input className="wz-slider" type="range" min={0} max={5} value={form.hybridDays} onChange={(e) => patch({ hybridDays: Number(e.target.value) })} /></div>}
+        <Field label="Work mode" required hint="Pick every way of working you accept.">
+          <MultiSegmented options={['remote', 'hybrid', 'onsite'] as const} value={form.workModeChoices} onChange={(workModeChoices) => patch({ workModeChoices })} labels={{ remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site' }} />
+          {form.workModeChoices.includes('hybrid') && <div className="wz-hybrid"><span>{form.hybridDays} office day{form.hybridDays === 1 ? '' : 's'}/week</span><input className="wz-slider" type="range" min={0} max={5} value={form.hybridDays} onChange={(e) => patch({ hybridDays: Number(e.target.value) })} /></div>}
         </Field>
-        <Field label="Salary expectation" required hint="Shared only as a compatibility badge until you match.">
+        {/* Candidates give a minimum only, no maximum (founder, 2026-11-25). */}
+        <Field label="Minimum salary (optional)" hint="Shared only as a compatibility badge until you match.">
           <div className="wz-salary">
-            <TextInput type="number" min={0} placeholder="Min" value={form.salaryMin} onChange={(e) => patch({ salaryMin: e.target.value })} aria-label="Salary minimum" />
-            <span>–</span>
-            <TextInput type="number" min={0} placeholder="Max" value={form.salaryMax} onChange={(e) => patch({ salaryMax: e.target.value })} aria-label="Salary maximum" />
+            <TextInput type="number" min={0} placeholder="Minimum" value={form.salaryMin} onChange={(e) => patch({ salaryMin: e.target.value })} aria-label="Salary minimum" />
             <select className="wz-input wz-select" value={form.currency} onChange={(e) => patch({ currency: e.target.value })} aria-label="Currency">{CURRENCIES.map((currency) => <option key={currency}>{currency}</option>)}</select>
             <span>/</span>
             <select className="wz-input wz-select" value={form.salaryPeriod} onChange={(e) => patch({ salaryPeriod: e.target.value })} aria-label="Pay period">{SALARY_PERIODS.map((period) => <option key={period}>{period}</option>)}</select>
@@ -509,6 +515,10 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
               <textarea className="wz-input wz-textarea" placeholder="What they said about working with you" value={item.text || ''} onChange={(e) => update({ text: e.target.value })} />
             </div>} />
         </Field>
+        {/* Recommendation letters as files (founder, 2026-11-25): same uploader as the Recommendations card. */}
+        <Field label="Recommendation letters (optional)" hint="Upload letters as PDF, Word or image (up to 5, 10 MB each). Recruiters can open them after a mutual match.">
+          <RecommendationLetters userId={viewer.id} initial={viewer.documents?.recommendationDocs || []} editable canOpen />
+        </Field>
         <Field label="Who can see your profile" hint="Defaults to all recruiters — change anytime.">
           <Segmented options={['all', 'after-swipe', 'paused'] as const} value={form.visibility} onChange={(visibility) => patch({ visibility })} labels={{ all: 'All recruiters', 'after-swipe': 'Only after I swipe', paused: 'Paused' }} />
         </Field>
@@ -521,7 +531,6 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
           <Field label="GitHub"><TextInput value={form.links.github || ''} onChange={(e) => patch({ links: { ...form.links, github: e.target.value } })} placeholder="github.com/…" /></Field>
           <Field label="Portfolio"><TextInput value={form.links.portfolio || ''} onChange={(e) => patch({ links: { ...form.links, portfolio: e.target.value } })} /></Field>
         </div>
-        <Field label="Website"><TextInput value={form.links.website || ''} onChange={(e) => patch({ links: { ...form.links, website: e.target.value } })} /></Field>
         <div className="wz-row">
           <Field label="App Store link (optional)"><TextInput value={form.links.appStore || ''} onChange={(e) => patch({ links: { ...form.links, appStore: e.target.value } })} placeholder="apps.apple.com/…" /></Field>
           <Field label="Play Store link (optional)"><TextInput value={form.links.playStore || ''} onChange={(e) => patch({ links: { ...form.links, playStore: e.target.value } })} placeholder="play.google.com/…" /></Field>

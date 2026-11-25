@@ -19,6 +19,13 @@ export function Segmented<T extends string>({ options, value, onChange, labels }
   </div>;
 }
 
+/** Same look as Segmented, but several options can be on at once (e.g. work mode, founder 2026-11-25). */
+export function MultiSegmented<T extends string>({ options, value, onChange, labels }: { options: readonly T[]; value: T[]; onChange: (value: T[]) => void; labels?: Record<string, string> }) {
+  return <div className="wz-segmented" role="group">
+    {options.map((option) => { const on = value.includes(option); return <button type="button" key={option} className={on ? 'active' : ''} aria-pressed={on} onClick={() => onChange(on ? value.filter((v) => v !== option) : options.filter((o) => o === option || value.includes(o)))}>{labels?.[option] ?? option}</button>; })}
+  </div>;
+}
+
 export function Chips({ options, value, onToggle }: { options: readonly string[]; value: string[]; onToggle: (option: string) => void }) {
   return <div className="wz-chips">
     {options.map((option) => <button type="button" key={option} className={value.includes(option) ? 'active' : ''} aria-pressed={value.includes(option)} onClick={() => onToggle(option)}>{option}</button>)}

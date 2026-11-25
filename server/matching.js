@@ -43,6 +43,15 @@ export function salaryCompatibility(candidateSalary, jobSalary) {
     return { score: 0.5, status: 'unknown', evidence: `Different currencies (${candidateSalary.currency} vs ${jobSalary.currency}).` };
   }
   if (jobSalary.max < candidateSalary.min) return { score: 0, status: 'below', evidence: 'The role tops out below the expected minimum.' };
+  // Candidates give a minimum only (founder, 2026-11-25): a role that can pay it fits; the more of its range sits
+  // above the minimum, the better.
+  if (candidateSalary.max === undefined || candidateSalary.max === null) {
+    const jobMax = jobSalary.max ?? jobSalary.min;
+    if (jobMax < candidateSalary.min) return { score: 0, status: 'below', evidence: 'The role tops out below the expected minimum.' };
+    const range = Math.max(1, jobMax - jobSalary.min);
+    const above = Math.min(range, Math.max(0, jobMax - Math.max(jobSalary.min, candidateSalary.min)));
+    return { score: Math.max(0.6, Math.min(1, 0.6 + 0.4 * (above / range))), status: 'within', evidence: 'The role can pay the expected minimum.' };
+  }
   if (jobSalary.min > candidateSalary.max) return { score: 0.8, status: 'above', evidence: 'The role pays above the expected range.' };
   const overlapAmount = Math.min(jobSalary.max, candidateSalary.max) - Math.max(jobSalary.min, candidateSalary.min);
   const span = Math.max(1, Math.min(jobSalary.max - jobSalary.min, candidateSalary.max - candidateSalary.min));
@@ -142,9 +151,12 @@ export function scoreCandidateForJob(candidate, job) {
   }
 
   // Work mode
-  const preferredMode = candidate.preferences?.workMode?.mode;
-  const workModeScore = preferredMode ? (WORK_MODE_SCORES[preferredMode]?.[job.workMode] ?? 0.7) : 0.7;
-  const workModeEvidence = preferredMode
+  // Several accepted modes (founder, 2026-11-25): the role is scored against the candidate's best-fitting mode.
+  const wmPref = candidate.preferences?.workMode;
+  const preferredModes = wmPref?.modes?.length ? wmPref.modes : wmPref?.mode ? [wmPref.mode] : [];
+  const workModeScore = preferredModes.length ? Math.max(...preferredModes.map((m) => WORK_MODE_SCORES[m]?.[job.workMode] ?? 0.7)) : 0.7;
+  const preferredMode = preferredModes.join(' or ');
+  const workModeEvidence = preferredModes.length
     ? (workModeScore >= 1 ? `${job.workMode} matches the preferred way of working.` : workModeScore >= 0.5 ? `${job.workMode} partially fits a ${preferredMode} preference.` : `${job.workMode} conflicts with a ${preferredMode} preference.`)
     : 'Work-mode preference not set yet.';
 
