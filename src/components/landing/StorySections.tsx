@@ -34,13 +34,14 @@ export function WhatItIsSection() {
 }
 
 const SOLVES: [string, string, 'Job seekers' | 'Hiring teams' | 'Both sides'][] = [
-  ['Endless scrolling, the same forms again and again', 'One profile, once. Then a personal deck ranked by fit: like or pass in seconds.', 'Job seekers'],
-  ['Applications from people who don’t fit', 'You only talk to people who chose you too, ranked by fit.', 'Hiring teams'],
-  ['Screening by keyword guesswork', 'A fit score from 0 to 100 with the reasons: skills, salary, location and work mode.', 'Hiring teams'],
-  ['Silence, no feedback', 'A conversation opens only on a mutual match. When a process stops, the candidate gets a reason and feedback.', 'Job seekers'],
-  ['Slow processes, weeks between steps', 'A match is the application, the screening and the first contact in one step. Every round is tracked in Hiring Stages.', 'Both sides'],
-  ['Steps back and forth', 'One shared hiring timeline per match: both sides see the current step and what comes next.', 'Both sides'],
-  ['Too many actions, steps and tools just to connect: calendar, WhatsApp, email…', 'All in one place: one swipe to show interest, then chat, interview scheduling, calendar sync (Google, Apple, Outlook) and hiring stages in the same app.', 'Both sides'],
+  // Short phrases, one line each on desktop (founder, 2026-11-25).
+  ['Endless scrolling and forms', 'One profile, then a deck ranked by fit: like or pass in seconds.', 'Job seekers'],
+  ['Applicants who don’t fit', 'You only talk to people who chose you too.', 'Hiring teams'],
+  ['Keyword guesswork', 'A 0–100 fit score, with the reasons.', 'Hiring teams'],
+  ['Silence, no feedback', 'Chat opens only on a mutual match; every stop comes with a reason.', 'Job seekers'],
+  ['Slow processes', 'One match = application, screening and first contact.', 'Both sides'],
+  ['Steps back and forth', 'One shared hiring timeline per match.', 'Both sides'],
+  ['Too many tools to connect', 'Chat, interviews, calendar sync and hiring stages in one app.', 'Both sides'],
 ];
 
 export function ProblemSection() {

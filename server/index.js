@@ -1129,6 +1129,25 @@ app.post('/api/users/:id/photo', uploadLimiter, express.raw({ type: () => true, 
     if (!ext) { const error = new Error('Only PNG, JPEG, or WEBP images are accepted'); error.status = 415; throw error; }
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) throw new ValidationError('file', 'Empty upload');
     await assertUploadAllowed(req, req.params.id); // before touching any file
+    // Company logo (founder bug, 2026-11-25): its own file and address, so it never replaces the recruiter's own
+    // photo or resets their verification.
+    if (req.query.kind === 'logo') {
+      for (const otherExt of new Set(Object.values(PHOTO_TYPES))) {
+        if (otherExt !== ext) await fs.promises.unlink(path.join(PHOTOS_DIR, `${req.params.id}-logo.${otherExt}`)).catch(() => {});
+      }
+      await fs.promises.writeFile(path.join(PHOTOS_DIR, `${req.params.id}-logo.${ext}`), req.body);
+      await mirror(path.join(PHOTOS_DIR, `${req.params.id}-logo.${ext}`));
+      const logoUrl = `/api/users/${req.params.id}/logo?v=${Date.now()}`;
+      const owner = await store.transaction((db) => {
+        const item = db.users.find((entry) => entry.id === req.params.id);
+        if (!item) { const error = new Error('User not found'); error.status = 404; throw error; }
+        assertDemoActor(req, db, item.id);
+        item.companyLogo = logoUrl;
+        item.logoExt = ext;
+        return item;
+      });
+      return res.status(201).json({ photo: owner.companyLogo });
+    }
     for (const otherExt of new Set(Object.values(PHOTO_TYPES))) {
       if (otherExt !== ext) await fs.promises.unlink(path.join(PHOTOS_DIR, `${req.params.id}.${otherExt}`)).catch(() => {});
     }
@@ -1146,6 +1165,17 @@ app.post('/api/users/:id/photo', uploadLimiter, express.raw({ type: () => true, 
       return item;
     });
     res.status(201).json({ photo: user.photo });
+  } catch (error) { next(error); }
+});
+
+app.get('/api/users/:id/logo', async (req, res, next) => {
+  try {
+    const db = await store.read();
+    const user = db.users.find((item) => item.id === req.params.id);
+    if (!user?.logoExt) { const error = new Error('No logo on file'); error.status = 404; throw error; }
+    res.setHeader('Content-Type', `image/${user.logoExt === 'jpg' ? 'jpeg' : user.logoExt}`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(PHOTOS_DIR, `${req.params.id}-logo.${user.logoExt}`));
   } catch (error) { next(error); }
 });
 

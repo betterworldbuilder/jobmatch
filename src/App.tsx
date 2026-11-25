@@ -9,7 +9,7 @@ import { MobileTabs } from './components/MobileTabs';
 import { likesWaiting, workModesText } from './lib/today';
 import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Ban, Flag,Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
-import { apiBase } from './api';
+import { apiBase, SESSION_EXPIRED_EVENT } from './api';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { App as NativeApp } from '@capacitor/app';
@@ -176,7 +176,7 @@ export default function App() {
   };
   // Full tours: "Watch Candidate full tour" / "Watch Recruiter full tour" in the sign-in window.
   const [tour, setTour] = useState<TourRole | null>(null);
-  const [landingModal, setLandingModal] = useState<'register' | null>(null);
+  const [landingModal, setLandingModal] = useState<'login' | 'register' | null>(null);
   useEffect(() => {
     const start = (event: Event) => { const role = (event as CustomEvent<{ role: TourRole }>).detail?.role; if (role) { setLandingModal(null); setTour(role); } };
     window.addEventListener(START_TOUR_EVENT, start);
@@ -185,9 +185,22 @@ export default function App() {
   useEffect(() => { if (tour) window.scrollTo(0, 0); }, [tour]);
   const signOut = () => { api.logout().catch(() => undefined); saveSession(null); setSession(null); };
   // Restore a server session (cookie) after a refresh or an SSO redirect.
+  const [loginNotice, setLoginNotice] = useState('');
   useEffect(() => {
     if (session) return;
     api.me().then(({ user }) => { saveSession(user); setSession(user); }).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // The server's sign-in ended (7 days, or cookies cleared) but this page still showed the member as signed in, so
+  // every save failed with "Sign in to continue as this account" (founder bug, 2026-11-25). Now: check it on load
+  // for real accounts (demo accounts work without one), and on any refused save open the sign-in window.
+  useEffect(() => {
+    const expire = () => { saveSession(null); setSession(null); setLandingModal('login'); setLoginNotice('Your sign-in has expired. Please log in again.'); };
+    window.addEventListener(SESSION_EXPIRED_EVENT, expire);
+    if (session && !session.demo) {
+      fetch(`${apiBase}/api/auth/me`, { credentials: 'include' }).then((r) => { if (r.status === 401) expire(); }).catch(() => undefined);
+    }
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, expire);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
@@ -236,7 +249,7 @@ export default function App() {
   </Suspense>;
 
   return <>
-    {!session || heatmapPreview ? <Landing onLogin={signIn} initialModal={landingModal} />
+    {!session || heatmapPreview ? <Landing onLogin={(u) => { setLoginNotice(''); signIn(u); }} initialModal={landingModal} loginNotice={loginNotice} />
       : session.role === 'admin' ? <AdminWorkspace session={session} onExit={signOut} />
       : <Workspace key={session.id} session={session} onSwitchUser={signIn} onExit={signOut} />}
     {adminReset && <AdminPasswordSetup token={adminReset} onClose={() => closeAdminReset()} onSignIn={() => closeAdminReset(true)} />}
@@ -244,7 +257,7 @@ export default function App() {
   </>;
 }
 
-function Landing({ onLogin, initialModal = null }: { onLogin: (user: SessionUser) => void; initialModal?: 'register' | null }) {
+function Landing({ onLogin, initialModal = null, loginNotice = '' }: { onLogin: (user: SessionUser) => void; initialModal?: 'login' | 'register' | null; loginNotice?: string }) {
   const linkedinState = new URLSearchParams(window.location.search).get('linkedin');
   // Recruiter-only referral capture: ?ref=CODE or /ref/CODE. Fires once to set
   // the signed 30-day cookie the server reads back during recruiter
@@ -339,7 +352,7 @@ function Landing({ onLogin, initialModal = null }: { onLogin: (user: SessionUser
     'Offer acceptance and hire',
   ];
   const modals = <AnimatePresence>
-    {authModal === 'login' && <LoginModal onClose={() => setAuthModal(null)} onComplete={complete} onRegister={() => setAuthModal('register')} />}
+    {authModal === 'login' && <LoginModal onClose={() => setAuthModal(null)} onComplete={complete} onRegister={() => setAuthModal('register')} notice={loginNotice} />}
     {authModal === 'register' && <RegisterModal onClose={() => setAuthModal(null)} onComplete={complete} />}
   </AnimatePresence>;
 

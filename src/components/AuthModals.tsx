@@ -129,7 +129,7 @@ function ModalShell({ title, subtitle, onClose, children }: { title: string; sub
   </motion.div>;
 }
 
-export function LoginModal({ onClose, onComplete, onRegister }: { onClose: () => void; onComplete: (user: SessionUser) => void; onRegister?: () => void }) {
+export function LoginModal({ onClose, onComplete, onRegister, notice }: { onClose: () => void; onComplete: (user: SessionUser) => void; onRegister?: () => void; notice?: string }) {
   const config = useAuthConfig();
   const [profiles, setProfiles] = useState<SessionUser[]>([]);
   const [selected, setSelected] = useState('');
@@ -177,6 +177,7 @@ export function LoginModal({ onClose, onComplete, onRegister }: { onClose: () =>
   </ModalShell>;
 
   return <ModalShell title="Welcome back" subtitle={config.demoAuth ? 'Sign in with your account, or explore with a demo profile.' : 'Sign in with your email and password.'} onClose={onClose}>
+    {notice && <p className="auth-warning" role="status"><strong>{notice}</strong></p>}
     <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!email.trim() || !password) return; setSubmitting('password'); setSubmitted('password'); run(async () => (await api.loginPassword(email.trim(), password)).user); }}>
       <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" aria-label="Email address" />
       <input className="auth-input" type="password" placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" aria-label="Password" />

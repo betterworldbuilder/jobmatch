@@ -20,7 +20,7 @@ export function ResumeViewerModal({ person, viewerId, onClose }: { person: Perso
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(`${apiBase}/api/users/${person.id}/resume/view?viewerId=${encodeURIComponent(viewerId)}`);
+        const response = await fetch(`${apiBase}/api/users/${person.id}/resume/view?viewerId=${encodeURIComponent(viewerId)}`, { credentials: 'include' });
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || 'Could not load resume');
         if (cancelled) return;
@@ -30,11 +30,11 @@ export function ResumeViewerModal({ person, viewerId, onClose }: { person: Perso
           if (cancelled) return;
           pagesRef.current?.replaceChildren(...canvases);
         } else if (body.mode === 'html' && body.htmlUrl) {
-          const inner = await (await fetch(`${apiBase}${body.htmlUrl}`)).json();
+          const inner = await (await fetch(`${apiBase}${body.htmlUrl}`, { credentials: 'include' })).json();
           if (!cancelled) setHtml(inner.html || '');
         } else {
           const url = body.mode === 'preview' ? body.previewUrl : body.textUrl;
-          const inner = await (await fetch(`${apiBase}${url}`)).json();
+          const inner = await (await fetch(`${apiBase}${url}`, { credentials: 'include' })).json();
           if (!cancelled) { setText(inner.text || ''); setAnonymized(Boolean(inner.anonymized) || body.mode === 'preview'); }
         }
       } catch (e) { if (!cancelled) setError(e instanceof Error ? e.message : 'Could not load resume'); }

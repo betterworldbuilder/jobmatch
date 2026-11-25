@@ -14,13 +14,21 @@ export type PremiumState = { active: boolean; source: 'paid' | 'trial' | 'demo' 
 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
+// The server's sign-in ended (7 days, or cookies cleared) while the page still shows the member as signed in
+// (founder bug, 2026-11-25: "why does Continue give this error?"). App listens and opens the sign-in window.
+export const SESSION_EXPIRED_EVENT = 'jmn:session-expired';
+// The server's two wordings for "no valid sign-in": "Sign in to continue" and "Sign in to continue as this account".
+export function noticeSessionExpired(status: number, error?: string) {
+  if (status === 401 && /^Sign in to continue/.test(error || '')) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   // A full tour is playing: scripted answers only, nothing reaches the server (src/lib/tour).
   if (tourRuntime.active) return tourRuntime.handle<T>(url, init);
   // credentials: session cookie must travel on native (Capacitor) origins too
   const response = await fetch(`${apiBase}${url}`, { ...init, credentials: 'include', headers: { 'Content-Type': 'application/json', ...init?.headers } });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || 'Something went wrong. Please try again.');
+  if (!response.ok) { noticeSessionExpired(response.status, body.error); throw new Error(body.error || 'Something went wrong. Please try again.'); }
   return body as T;
 }
 
@@ -66,26 +74,27 @@ export const api = {
   calendarFeed: (userId: string, reset = false) => request<{ url: string; webcal: string; reminders: number[] }>(`/api/users/${encodeURIComponent(userId)}/calendar-feed`, { method: 'POST', body: JSON.stringify({ reset }) }),
   updateProfile: (userId: string, payload: Partial<Person> & { onboarding?: boolean }) => request<{ user: Person }>(`/api/users/${encodeURIComponent(userId)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   uploadResume: async (userId: string, file: File): Promise<{ resume: ResumeMeta; completeness: number }> => {
-    const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/resume`, { method: 'POST', headers: { 'Content-Type': file.type, 'X-Filename': encodeURIComponent(file.name) }, body: file });
+    const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/resume`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type, 'X-Filename': encodeURIComponent(file.name) }, body: file });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || 'Upload failed');
+    if (!response.ok) { noticeSessionExpired(response.status, body.error); throw new Error(body.error || 'Upload failed'); }
     return body;
   },
   uploadRecommendationDoc: async (userId: string, file: File): Promise<{ doc: RecommendationDoc & { url: string } }> => {
     const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/recommendation-docs`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || 'Upload failed');
+    if (!response.ok) { noticeSessionExpired(response.status, body.error); throw new Error(body.error || 'Upload failed'); }
     return body;
   },
   deleteRecommendationDoc: (userId: string, docId: string) => request<{ ok: boolean }>(`/api/users/${encodeURIComponent(userId)}/recommendation-docs/${encodeURIComponent(docId)}`, { method: 'DELETE' }),
   recommendationDocUrl: (userId: string, docId: string) => `${apiBase}/api/users/${encodeURIComponent(userId)}/recommendation-docs/${encodeURIComponent(docId)}`,
   uploadResumeThumbnail: async (userId: string, blob: Blob): Promise<void> => {
-    await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/resume/thumbnail`, { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: blob });
+    await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/resume/thumbnail`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'image/png' }, body: blob });
   },
-  uploadPhoto: async (userId: string, file: File | Blob): Promise<{ photo: string }> => {
-    const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/photo`, { method: 'POST', headers: { 'Content-Type': file.type || 'image/jpeg' }, body: file });
+  // kind 'logo': a recruiter's company logo, stored apart from their own photo (founder bug, 2026-11-25).
+  uploadPhoto: async (userId: string, file: File | Blob, kind: 'photo' | 'logo' = 'photo'): Promise<{ photo: string }> => {
+    const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/photo${kind === 'logo' ? '?kind=logo' : ''}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type || 'image/jpeg' }, body: file });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || 'Photo upload failed');
+    if (!response.ok) { noticeSessionExpired(response.status, body.error); throw new Error(body.error || 'Photo upload failed'); }
     return body;
   },
   // "Get verified": a live selfie an admin compares with the profile photo.

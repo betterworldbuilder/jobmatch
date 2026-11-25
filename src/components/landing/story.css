@@ -24,7 +24,7 @@
 .solve-table thead th { text-align:left; font:800 10.5px 'Manrope'; letter-spacing:.06em; text-transform:uppercase; color:#9ca3af; padding:0 8px 6px; border-bottom:1px solid #f1f3f6; }
 .solve-table tbody th, .solve-table td { padding:7px 8px; border-bottom:1px solid #f6f7f9; vertical-align:top; text-align:left; line-height:1.4; }
 .solve-table tbody tr:last-child th, .solve-table tbody tr:last-child td { border-bottom:0; }
-.solve-table tbody th { font-weight:600; color:#4a5463; width:32%; }
+.solve-table tbody th { font-weight:600; color:#4a5463; width:34%; white-space:nowrap; }
 .solve-table td { color:#1f2937; }
 .solve-table td:last-child { width:1%; white-space:nowrap; }
 .solve-who { display:inline-block; white-space:nowrap; font:800 11px 'Manrope'; padding:4px 9px; border-radius:999px; }
@@ -38,7 +38,7 @@
   .solve-table tbody { display:grid; gap:10px; }
   .solve-table tr { border:1px solid #eef0f3; border-radius:14px; padding:12px 14px; }
   .solve-table tbody th, .solve-table td { padding:0; border:0; }
-  .solve-table tbody th { font-size:14px; margin-bottom:6px; }
+  .solve-table tbody th { font-size:14px; margin-bottom:6px; white-space:normal; }
   .solve-table td { font-size:13.5px; }
   .solve-table td + td { margin-top:8px; }
 }

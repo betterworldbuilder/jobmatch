@@ -94,7 +94,7 @@ export function RecruiterWizard({ viewer, initialStep = 0, onDone, onCancel }: {
   const uploadImage = async (file: File | Blob, target: 'companyLogo' | 'photo') => {
     if (file.size > 5 * 1024 * 1024) { setError('Image must be 5MB or smaller'); return; }
     setUploadingImage(target); setError('');
-    try { const { photo } = await api.uploadPhoto(viewer.id, file); patch({ [target]: photo } as Partial<Form>); }
+    try { const { photo } = await api.uploadPhoto(viewer.id, file, target === 'companyLogo' ? 'logo' : 'photo'); patch({ [target]: photo } as Partial<Form>); }
     catch (e) { setError(e instanceof Error ? e.message : 'Upload failed'); }
     finally { setUploadingImage(null); }
   };
@@ -169,7 +169,9 @@ export function RecruiterWizard({ viewer, initialStep = 0, onDone, onCancel }: {
           </div>
           <Field label="Company size" required><Segmented options={COMPANY_SIZES} value={form.companySize as typeof COMPANY_SIZES[number] | undefined} onChange={(companySize) => patch({ companySize })} /></Field>
           <div className="wz-row">
-            <Field label="Headquarters" required><TextInput value={form.headquarters} onChange={(e) => patch({ headquarters: e.target.value })} placeholder="City, country" /></Field>`n            {/* Company country (founder, 2026-11-24): decides which payment methods the company is offered. */}`n            <Field label="Company country" required hint="Where your company is registered. It decides which payment methods you see."><select className="wz-input wz-select" value={form.country} onChange={(e) => patch({ country: e.target.value })}><option value="">Choose a country</option>{COUNTRY_OPTIONS.map((c, i) => <option key={`${c.code}-${i}`} value={c.name}>{c.name}</option>)}</select></Field>
+            <Field label="Headquarters" required><TextInput value={form.headquarters} onChange={(e) => patch({ headquarters: e.target.value })} placeholder="City, country" /></Field>
+            {/* Company country (founder, 2026-11-24): decides which payment methods the company is offered. */}
+            <Field label="Company country" required hint="Where your company is registered. It decides which payment methods you see."><select className="wz-input wz-select" value={form.country} onChange={(e) => patch({ country: e.target.value })}><option value="">Choose a country</option>{COUNTRY_OPTIONS.map((c, i) => <option key={`${c.code}-${i}`} value={c.name}>{c.name}</option>)}</select></Field>
             <Field label="Founded year"><TextInput type="number" min={1800} max={2100} value={form.foundedYear} onChange={(e) => patch({ foundedYear: e.target.value })} /></Field>
           </div>
           <Field label="Office locations" required><TagInput value={form.officeLocations} onChange={(officeLocations) => patch({ officeLocations })} placeholder="City — press Enter" /></Field>
