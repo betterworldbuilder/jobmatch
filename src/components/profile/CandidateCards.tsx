@@ -83,7 +83,7 @@ function Card({ label, icon: Icon, step, onEdit, children, tone }: { label: stri
 const NAV = [
   { icon: User, label: 'Who I am', color: '#00C7BE' },
   { icon: Brain, label: 'My Human Stack', color: '#FF9500' },
-  { icon: Code2, label: 'My Skills', color: '#007AFF' },
+  { icon: Code2, label: 'My Skill Set', color: '#007AFF' },
   { icon: Hammer, label: 'What I Have Built', color: '#5856D6' },
   { icon: Target, label: 'My Dream Job', color: '#AF52DE' },
   { icon: Star, label: 'Recommendations', color: '#FF2D55' },
@@ -257,7 +257,7 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
       </Card></div>,
 
       /* ---------- Card 3 — Technical stack & documents ---------- */
-      <div className="tcard-slide" key="skills"><Card label="My Skills" icon={Code2} step={1} onEdit={onEdit}>
+      <div className="tcard-slide" key="skills"><Card label="My Skill Set" icon={Code2} step={1} onEdit={onEdit}>
         {m && <div className="tcard-counts"><span className="ok">{m.matchedSkills.length} matching</span><span className="miss">{m.missingSkills?.length ?? 0} missing</span><span className="extra">{m.extraSkills?.length ?? 0} extra</span></div>}
         {m ? <div className="tcard-skillsplit">
           <div className="tskill-group ok"><span className="tskill-h"><CheckCircle2 size={13} /> Matching</span><ul className="tskill-rows">{m.matchedSkills.length ? m.matchedSkills.map((s) => { const d = skill(s); return <li key={s}><b>{s}</b>{d?.years ? <em>{d.years}y</em> : null}{d?.level ? <i>{'●'.repeat(d.level)}{'○'.repeat(5 - d.level)}</i> : null}</li>; }) : <li><em>None yet</em></li>}</ul></div>

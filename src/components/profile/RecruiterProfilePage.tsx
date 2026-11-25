@@ -32,6 +32,8 @@ export function RecruiterProfilePage({ viewer, onEdit, onViewerSaved }: { viewer
       <div className="pf-completeness">
         <div className="ring" style={{ '--progress': `${p.completeness ?? 0}%` } as React.CSSProperties}><strong>{p.completeness ?? 0}%</strong></div>
         <small>Profile complete</small>
+        {/* Edit full profile (founder, 2026-11-25): the whole setup wizard from step 1, every field prefilled. */}
+        <button className="secondary-button pf-edit-full" onClick={() => onEdit(0)}><Pencil size={14} /> Edit full profile</button>
       </div>
     </div>
 

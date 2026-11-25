@@ -10,11 +10,11 @@ import { MyChatbotCard } from '../home/PremiumTrial';
 import { NationalityVisaCard } from './NationalityVisaCard';
 import { groupSkills, roleSkillGroups } from '../../lib/skillGroups';
 
-// On your own profile page "Who I am" comes first, then "My Dream Job" (founder, 2026-11-25; was Dream Job first).
+// Order (founder, 2026-11-25): Who I am, My Dream Job, My Skill Set, My Super Power, then the rest.
 // ORDER lists CandidateCards' card numbers (0 Who I am, 1 Human Stack, 2 Skills, 3 Built, 4 Dream Job,
 // 5 Recommendations, 6 Certifications, 7 My Super Power).
 // Second row: Certifications · Recommendations · My Super Power (founder layout, 2026-11-22).
-const ORDER = [0, 4, 1, 2, 3, 6, 5, 7];
+const ORDER = [0, 4, 2, 7, 1, 3, 6, 5];
 // Card number -> wizard step. Must stay in sync with the step= props on each <Card> in CandidateCards.tsx
 // (6 Certifications live in step 1; 7 Super Power is edited on the card itself → Human stack step).
 const CARD_STEP = [0, 3, 1, 6, 2, 5, 1, 4];
@@ -56,6 +56,8 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
         {onDeleteProfile && (confirmingDelete
           ? <span className="settings-confirm"><button className="danger-button" disabled={deleting} onClick={() => void doDelete()}>{deleting ? <Loader2 size={14} className="spin" /> : 'Confirm delete'}</button><button className="text-button" onClick={() => setConfirmingDelete(false)}><X size={14} /></button></span>
           : <button className="secondary-button danger-outline" onClick={() => setConfirmingDelete(true)}><Trash2 size={15} /> Delete This Profile</button>)}
+        {/* Edit full profile (founder, 2026-11-25): the whole setup wizard from step 1, every field prefilled. */}
+        <button className="secondary-button" onClick={() => onEdit(0)}><Pencil size={15} /> Edit full profile</button>
         <button className={inspector ? 'secondary-button active' : 'secondary-button'} onClick={() => setInspector((value) => !value)}><Eye size={16} /> Visibility Inspector</button>
         <button className="primary-button" onClick={() => onEdit(EDIT_STEPS[activeCard])}><Pencil size={15} /> Edit This Card</button>
       </div>

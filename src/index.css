@@ -4935,7 +4935,23 @@ button.rs-row:hover { border-color:#fd267a; }
 .deck-actions button.on { color:#fd267a; }
 .deck-actions-ico { position:relative; display:inline-flex; }
 .deck-actions-ico em { position:absolute; top:-7px; right:-12px; min-width:17px; height:17px; padding:0 4px; border-radius:999px; background:#fd267a; color:#fff; font:800 10px/17px 'Manrope'; font-style:normal; text-align:center; box-shadow:0 0 0 2px #fff; }
-@media (max-width:760px) { .deck-actions { display:none; } } /* phones use the bottom bar */
+.pf-edit-full { margin-top:10px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+/* Bigger on desktop + "Add more" (founder, 2026-11-25). */
+.deck-actions-wrap { position:relative; max-width:860px; margin:16px auto 0; }
+.deck-actions-wrap .deck-actions { max-width:none; margin:0; gap:6px; padding:8px; border-radius:22px; }
+.deck-actions-wrap .deck-actions button { padding:11px 6px; font-size:13px; gap:5px; border-radius:14px; }
+.deck-actions-wrap .deck-actions .deck-add { color:#0a66c2; border:1.5px dashed #bcd6f3; }
+.deck-actions-wrap .deck-actions .deck-add:hover, .deck-actions-wrap .deck-actions .deck-add.on { background:#eef5fd; color:#0a66c2; }
+.deck-picker { position:absolute; z-index:30; right:0; bottom:calc(100% + 10px); width:min(320px, 100%); padding:14px; background:#fff; border:1px solid #e5e7eb; border-radius:18px; box-shadow:0 18px 40px rgba(15,23,42,.16); display:flex; flex-direction:column; gap:4px; }
+.deck-picker strong { font:800 14px 'Manrope', sans-serif; color:#0b102b; }
+.deck-picker small { color:var(--muted); font-size:11.5px; margin-bottom:6px; }
+.deck-picker ul { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.deck-picker li button { width:100%; display:flex; align-items:center; gap:8px; padding:9px 10px; border:1px solid #eef0f3; border-radius:12px; background:#fafafb; font:700 12.5px 'Manrope', sans-serif; color:#374151; cursor:pointer; text-align:left; }
+.deck-picker li button span { flex:1; min-width:0; }
+.deck-picker li button.on { border-color:#f9b3cf; background:#fff0f6; color:#d91863; }
+.deck-picker li button:disabled { opacity:.45; cursor:not-allowed; }
+.deck-picker-check { flex:none; }
+@media (max-width:760px) { .deck-actions, .deck-actions-wrap { display:none; } } /* phones use the bottom bar */
 /* Global Menu opened from the desktop bar: a centred panel. */
 .gm-desktop-scrim { position:fixed; inset:0; z-index:88; border:0; background:rgba(13,24,52,.35); }
 .explore-sheet.gm-desktop { display:block; position:fixed; top:8vh; left:50%; transform:translateX(-50%); width:min(560px, 92vw); max-height:84vh; overflow-y:auto; z-index:89; background:#fff; border-radius:20px; box-shadow:0 24px 60px rgba(13,24,52,.25); padding:18px; }

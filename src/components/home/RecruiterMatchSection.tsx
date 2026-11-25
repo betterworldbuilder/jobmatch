@@ -33,7 +33,7 @@ const MODE_NAMES: Record<string, string> = { remote: 'Remote', hybrid: 'Hybrid',
 const workPref = (c: Person) => { const w = c.preferences?.workMode; return (w?.modes?.length ? w.modes : w?.mode ? [w.mode] : []).map((m) => MODE_NAMES[m] || '').filter(Boolean).join(' / '); };
 
 // Pages inside the candidate swipe card (founder, 2026-11-22), same order as the profile; the last page is the resume.
-export const CANDIDATE_PAGES = ['Who I am', 'My Dream Job', 'My Human Stack', 'My Skills', 'What I Have Built', 'Certifications', 'Recommendations', 'My Super Power', 'Resume'];
+export const CANDIDATE_PAGES = ['Who I am', 'My Dream Job', 'My Human Stack', 'My Skill Set', 'What I Have Built', 'Certifications', 'Recommendations', 'My Super Power', 'Resume'];
 const SWIPE_CARD_ORDER = [4, 1, 2, 3, 6, 5, 7]; // CandidateCards card numbers for pages 2–8
 
 function ResumePage({ person: c, unlocked }: { person: Person; unlocked: boolean }) {

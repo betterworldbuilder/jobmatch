@@ -112,7 +112,7 @@ function billingNotificationIcon(billingKind?: string) {
 type NavItem = { label: string; short?: string; icon: typeof Compass; view?: View; anchor?: string };
 // Renamed with the agent connector (founder, 2026-11-25, flag `agents`).
 // Menu: short so it fits the sidebar (founder, 2026-11-25); the page title says "Your Chatbot and OpenClaw".
-const CHATBOT_LABEL = featureOn('agents') ? 'Use your Chatbot' : 'Use your chatbot here';
+const CHATBOT_LABEL = featureOn('agents') ? 'Use My ChatBot' : 'Use your chatbot here';
 const candidateNav: NavItem[] = [
   // "My dashboard" (was "Things to do") is first in the menu (founder, 2026-11-22); the app still opens on Find My Match.
   { label: 'My dashboard', short: 'Dashboard', icon: Compass, anchor: 'td-today' },
@@ -129,14 +129,15 @@ const candidateNav: NavItem[] = [
   { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: CHATBOT_LABEL, short: 'Chatbot', icon: Bot, view: 'assistant' },
-  { label: 'Feedback', icon: Lightbulb, view: 'feedback' },
   { label: 'Premium options', short: 'Premium', icon: Crown, view: 'billing' },
+  // Feedback last in the menu (founder, 2026-11-25).
+  { label: 'Feedback', icon: Lightbulb, view: 'feedback' },
 ];
 // One colour per menu item, so each section is easy to spot.
 const NAV_COLORS: Record<string, string> = {
   Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
-  Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', 'Use your Chatbot': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
+  Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', 'Use My ChatBot': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
   'Coffee Invitations': '#e0a96d', 'Hired Results': '#fbbf24', 'Interview AI coach': '#a78bfa', 'Recruiter Invitation': '#2dd4bf', Interviews: '#2dd4bf',
 };
 // Mirrors the candidate menu (same order and pages), plus the recruiter-only lists.
@@ -155,8 +156,9 @@ const employerNav: NavItem[] = [
   { label: 'Hired Results', short: 'Hired', icon: Trophy, view: 'hired' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: CHATBOT_LABEL, short: 'Chatbot', icon: Bot, view: 'assistant' },
-  { label: 'Feedback', icon: Lightbulb, view: 'feedback' },
   { label: 'Subscription', icon: CreditCard, view: 'billing' },
+  // Feedback last in the menu (founder, 2026-11-25).
+  { label: 'Feedback', icon: Lightbulb, view: 'feedback' },
 ];
 
 async function connectLinkedIn() {
