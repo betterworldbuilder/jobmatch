@@ -21,7 +21,8 @@ test('track bumps a bounded (week, name, demo, dim) counter; untrack retracts it
   untrack(db, { name: 'swipe', demo: false, dim: 'never-seen', at });
   assert.equal(db.eventCounts.length, 2, 'retracting an unknown bucket never creates one');
   assert.throws(() => track(db, 'made_up_event'), /Unknown analytics event/);
-  assert.deepEqual(TRACKED_EVENTS, ['signup_completed', 'role_posted', 'swipe', 'match_created', 'first_message']);
+  assert.deepEqual(TRACKED_EVENTS.slice(0, 5), ['signup_completed', 'role_posted', 'swipe', 'match_created', 'first_message']);
+  assert.ok(TRACKED_EVENTS.slice(5).every((name) => name.startsWith('jf_')), 'only the JobFinder pilot funnel is added');
 });
 
 test('counter rows carry no user ids or free text', () => {

@@ -9,6 +9,7 @@ import { Briefcase, Building2, CalendarClock, Check, ChevronRight, Globe, Langua
 import { apiBase } from '../../api';
 import type { CompanyProfile, Job } from '../../types';
 import { RoleDetailsText } from './JobCards';
+import { JobFinderCardInfo } from '../jobfinder/JobFinder';
 import { SalaryBadge } from '../discover/DeckParts';
 import { showsCommute } from '../discover/deckLogic';
 
@@ -63,7 +64,8 @@ export function RoleSummaryPage({ job: j, photo = rolePhoto(j), onRecruiter }: {
       </div>
       <h3>{j.title}</h3>
       <p className="nm-company">{j.company}{j.experienceLevel ? ` · ${j.experienceLevel}` : ''}</p>
-      {j.recruiter?.name && (onRecruiter
+      {j.jobFinder && <JobFinderCardInfo info={j.jobFinder} />}
+      {!j.jobFinder && j.recruiter?.name && (onRecruiter
         ? <button type="button" className="rp-recruiter" onPointerDownCapture={(e) => e.stopPropagation()} onClick={onRecruiter}>Hiring: <b>{j.recruiter.name}</b>{j.recruiter.title ? ` · ${j.recruiter.title}` : ''} <span>See recruiter profile <ChevronRight size={12} /></span></button>
         : <p className="nm-hiring">Hiring: {j.recruiter.name}{j.recruiter.title ? ` · ${j.recruiter.title}` : ''}</p>)}
       <div className="nm-chips">

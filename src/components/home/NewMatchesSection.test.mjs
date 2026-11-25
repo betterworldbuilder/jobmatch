@@ -22,7 +22,7 @@ test('renders the section, the deck region with a real counter and the 4 deck bu
   assert.match(html, /role="region" aria-label="New matches deck"/);
   assert.match(html, /tabindex="0"/);
   assert.match(html, /1 \/ 4/); // every available role is in the deck (no Top 3 cut)
-  for (const label of ['Undo last swipe', 'Rewind', 'Pass', 'Forward to a friend', 'Like', 'Direct message \\(premium\\)']) assert.match(html, new RegExp(`aria-label="${label}"`));
+  for (const label of ['Undo last swipe', 'Rewind', 'Pass', 'Forward to a friend', 'Apply', 'Direct message \\(premium\\)']) assert.match(html, new RegExp(`aria-label="${label}"`));
   assert.match(html, /class="nm-action-labels"/, 'title bar above the buttons');
   // JobsMatchNow logo at the top of the phone.
   assert.match(html, /nm-brand.*<b>Jobs<\/b><b>Match<\/b><b>Now<\/b>/);
@@ -43,7 +43,7 @@ test('"Recommended Roles" lists the sorted list minus the current card', async (
   const list = html.slice(html.indexOf('Recommended Roles</h3>'));
   assert.ok(!list.includes('Role b'), 'current card is not repeated in the list');
   assert.ok(list.indexOf('Role c') < list.indexOf('Role a') && list.indexOf('Role a') < list.indexOf('Role d'), 'sorted by score');
-  assert.match(list, /aria-label="Like Role c"/);
+  assert.match(list, /aria-label="Apply to Role c"/);
   assert.match(list, /See all in Discover/);
 });
 
@@ -69,7 +69,7 @@ test('when no likes are left, the heart is disabled, forwarding still works, and
   const html = await render(baseData([job('a', 70)], { likesRemaining: 0 }));
   assert.match(html, /No likes left today/);
   assert.doesNotMatch(html, /disabled="" aria-label="Forward to a friend"/);
-  assert.match(html, /disabled="" aria-label="Like"/);
+  assert.match(html, /disabled="" aria-label="Apply"/);
   assert.doesNotMatch(html, /disabled="" aria-label="Pass"/);
 });
 

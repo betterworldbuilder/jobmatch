@@ -1,3 +1,4 @@
+import type { JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, JobFinderPublicJob } from './types';
 import type { AdminCatalog, AdminKpi, AdminPaymentMethods, AdminPlanInput, BankInstructionsPayload, ConnectorKey, IntegrationStatus, LivePlan, RecommendationDoc, WebAnalyticsReport } from './types';
 import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
@@ -31,6 +32,29 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   if (!response.ok) { noticeSessionExpired(response.status, body.error); throw new Error(body.error || 'Something went wrong. Please try again.'); }
   return body as T;
 }
+
+/** What the server says after a candidate likes a JobFinder job. App opens the interest panel on this event. */
+export type JfLikeResult = { jobId: string; reachability: JfReach; applyUrl: string | null; autoSend: boolean; outreach: JfOutreach };
+export const JOBFINDER_LIKED_EVENT = 'jmn:jobfinder-liked';
+export const JOBFINDER_OPEN_EVENT = 'jmn:jobfinder-open';
+const json = (method: string, body?: unknown): RequestInit => ({ method, body: body === undefined ? undefined : JSON.stringify(body) });
+
+/** JobFinder (founder spec, 2026-11-25): manager listings, public job page, candidate consent and sending. */
+export const jf = {
+  list: (q: Record<string, string> = {}) => request<{ jobs: JfManagerRow[]; account: { id: string; name: string } | null }>(`/api/jobfinder/jobs?${new URLSearchParams(q)}`),
+  create: (body: Record<string, unknown>) => request<{ job: Job; duplicates: JfManagerRow['duplicates'] }>('/api/jobfinder/jobs', json('POST', body)),
+  update: (id: string, body: Record<string, unknown>) => request<{ job: Job; duplicates: JfManagerRow['duplicates'] }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}`, json('PATCH', body)),
+  setContact: (id: string, body: { name?: string; email?: string; verifiedHow?: string; verifiedAt?: string; approved: boolean }) => request<{ reachability: JfReach }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/contact`, json('PUT', body)),
+  claims: () => request<{ claims: JfClaim[] }>('/api/jobfinder/claims'),
+  decide: (id: string, decision: 'approve' | 'reject', reason?: string) => request<{ claim: JfClaim }>(`/api/jobfinder/claims/${encodeURIComponent(id)}/decide`, json('POST', { decision, reason })),
+  publicJob: (id: string) => request<{ job: JobFinderPublicJob }>(`/api/public/jobs/${encodeURIComponent(id)}`),
+  applyClick: (id: string) => request<unknown>(`/api/public/jobs/${encodeURIComponent(id)}/apply-click`, json('POST')).catch(() => undefined),
+  reportClosed: (id: string) => request<{ ok: boolean; message: string }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/report-closed`, json('POST')),
+  claim: (id: string, note: string) => request<{ claim: JfClaim; duplicate?: boolean }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/claim`, json('POST', { note })),
+  interest: (id: string) => request<{ job: JobFinderPublicJob; reachability: JfReach; liked: boolean; outreach: JfOutreach; consent: JfConsent; shareOptions: { skills: string[]; links: Record<string, string> }; draftBody: string | null; mailer: boolean }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/interest`),
+  setConsent: (body: { autoSend: boolean; agree?: boolean; skills: string[]; profileLink: string | null; replyEmail: boolean }) => request<{ consent: JfConsent }>('/api/jobfinder/consent', json('PUT', body)),
+  send: (id: string, body: { consent: true; share: { skills: string[]; profileLink: string | null; replyEmail: boolean }; body?: string }) => request<{ outreach: JfOutreach }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/send`, json('POST', body)),
+};
 
 export const api = {
   bootstrap: (userId: string) => request<Bootstrap>(`/api/bootstrap?userId=${encodeURIComponent(userId)}`),
@@ -144,7 +168,7 @@ export const api = {
   jobPrep: (jobId: string) => request<InterviewPrep>(`/api/jobs/${encodeURIComponent(jobId)}/prep`),
   suggestScreening: (requiredSkillsDetail: WeightedSkill[]) => request<{ questions: string[] }>('/api/coach/screening', { method: 'POST', body: JSON.stringify({ requiredSkillsDetail }) }),
   matchIcebreakers: (matchId: string) => request<{ icebreakers: string[]; generator: string }>(`/api/matches/${encodeURIComponent(matchId)}/icebreakers`),
-  swipe: (payload: { actorId: string; targetId: string; targetType: 'job' | 'candidate'; direction: 'like' | 'pass'; superLike?: boolean; answers?: ScreeningAnswer[]; note?: string; jobId?: string }) => request<{ match: JobMatch | null; likesRemaining: number; duplicate: boolean }>('/api/swipes', { method: 'POST', body: JSON.stringify(payload) }),
+  swipe: (payload: { actorId: string; targetId: string; targetType: 'job' | 'candidate'; direction: 'like' | 'pass'; superLike?: boolean; answers?: ScreeningAnswer[]; note?: string; jobId?: string }) => request<{ match: JobMatch | null; likesRemaining: number; duplicate: boolean; jobFinder?: JfLikeResult }>('/api/swipes', { method: 'POST', body: JSON.stringify(payload) }),
   undoSwipe: (actorId: string) => request<{ undone: { targetId: string; targetType: string; direction: string } | null; likesRemaining?: number }>('/api/swipes/undo', { method: 'POST', body: JSON.stringify({ actorId }) }),
   // Recruitment process rules: Hired fills the role and thanks the other candidates; stopping needs a reason + feedback.
   hireMatch: (id: string) => request<JobMatch & { effects?: { closed: number; meetingsCancelled: number; messages: number } }>(`/api/matches/${id}`, { method: 'PATCH', body: JSON.stringify({ stage: 'Hired' }) }),

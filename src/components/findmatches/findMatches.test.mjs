@@ -91,13 +91,13 @@ test('desktop studio: sidebar icons, empty Start Matching, card, 5 actions, key 
   const html = await render({ role: 'candidate', data: data({ jobs: [job('a', 70), job('b', 91, { verified: true }), job('c', 80)] }) });
   assert.match(html, /id="td-new-matches"/);
   assert.match(html, /Find your Matches/);
-  for (const label of ['Matches and messages', 'Find by goal', 'Safety center', 'Rewind', 'Nope', 'Super Like', 'Like', 'Safety Toolkit', 'Open profile'])
+  for (const label of ['Matches and messages', 'Find by goal', 'Safety center', 'Rewind', 'Nope', 'Super Like', 'Apply', 'Safety Toolkit', 'Open profile'])
     assert.match(html, new RegExp(`aria-label="${label}`));
   assert.match(html, /First impression: Super Like with a note/);
   assert.match(html, /Start Matching/);
   assert.match(html, /Role b/);
   assert.match(html, /aria-label="Verified"/);
-  for (const key of ['Nope', 'Like', 'Open Profile', 'Close Profile', 'Super Like', 'Next Photo']) assert.match(html, new RegExp(`</kbd>${key}<`));
+  for (const key of ['Nope', 'Apply', 'Open Profile', 'Close Profile', 'Super Like', 'Next Photo']) assert.match(html, new RegExp(`</kbd>${key}<`));
   assert.match(html, /1 \/ 3/);
 });
 
@@ -109,7 +109,7 @@ test('headhunter studio shows candidates and their names', async () => {
 
 test('no likes left: like, super like and first impression are disabled; nope is not', async () => {
   const html = await render({ role: 'candidate', data: data({ jobs: [job('a', 70)], likesRemaining: 0 }) });
-  assert.match(html, /disabled="" aria-label="Like"/);
+  assert.match(html, /disabled="" aria-label="Apply"/);
   assert.match(html, /disabled="" aria-label="Super Like"/);
   assert.match(html, /disabled="" aria-label="First impression/);
   assert.doesNotMatch(html, /disabled="" aria-label="Nope"/);

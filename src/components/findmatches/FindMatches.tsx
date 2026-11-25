@@ -52,8 +52,8 @@ function readHintsHidden() { try { return localStorage.getItem('jmn-fm-hints') =
 function writeHintsHidden(hidden: boolean) { try { localStorage.setItem('jmn-fm-hints', hidden ? 'hidden' : 'shown'); } catch { /* ignore */ } }
 
 /* ---------- the card ---------- */
-function StudioCardView({ card, slide, setSlide, reducedMotion, canLike, onSwipe, onOpen, onSafety }: {
-  card: StudioCard; slide: number; setSlide: (n: number) => void; reducedMotion: boolean; canLike: boolean;
+function StudioCardView({ card, slide, setSlide, reducedMotion, canLike, onSwipe, onOpen, onSafety, likeWord = 'LIKE' }: {
+  card: StudioCard; slide: number; setSlide: (n: number) => void; reducedMotion: boolean; canLike: boolean; likeWord?: string;
   onSwipe: (action: 'like' | 'pass' | 'super') => void; onOpen: () => void; onSafety: () => void;
 }) {
   const x = useMotionValue(0);
@@ -84,7 +84,7 @@ function StudioCardView({ card, slide, setSlide, reducedMotion, canLike, onSwipe
     <button type="button" className="fm-tap left" aria-label="Previous photo" onClick={() => tap(-1)} />
     <button type="button" className="fm-tap right" aria-label="Next photo" onClick={() => tap(1)} />
     <button type="button" className="fm-card-shield" aria-label="Safety Toolkit" onPointerDownCapture={(e) => e.stopPropagation()} onClick={onSafety}><Shield size={16} /></button>
-    <motion.span className="fm-stamp like" style={{ opacity: likeOpacity }} aria-hidden="true">LIKE</motion.span>
+    <motion.span className="fm-stamp like" style={{ opacity: likeOpacity }} aria-hidden="true">{likeWord}</motion.span>
     <motion.span className="fm-stamp nope" style={{ opacity: nopeOpacity }} aria-hidden="true">NOPE</motion.span>
     <div className="fm-info">
       {card.signal && slide === 0 && <p className="fm-signal"><i aria-hidden="true" />{card.signal === 'superliked' ? 'Super Liked you' : 'Likes you'}</p>}
@@ -398,7 +398,7 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
           {next && card && <div className="fm-card fm-peek" aria-hidden="true" />}
           <AnimatePresence mode="popLayout">
             {card
-              ? <StudioCardView key={card.id} card={card} slide={slide} setSlide={setSlide} reducedMotion={reducedMotion} canLike={canLike}
+              ? <StudioCardView key={card.id} card={card} slide={slide} setSlide={setSlide} reducedMotion={reducedMotion} canLike={canLike} likeWord={role === 'candidate' ? 'APPLY' : 'LIKE'}
                   onSwipe={run} onOpen={() => setProfileOpen(true)} onSafety={() => setToolkit(true)} />
               : <div className="fm-card fm-card-empty" key="empty">
                   <EmptyDeck role={deckRole} title={activeGoal ? `No ${noun} for “${activeGoal.label}” yet` : role === 'candidate' ? 'You’ve seen today’s top picks' : 'You’re all caught up'}
@@ -412,7 +412,7 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
           <button type="button" className="fm-btn sm rewind" onClick={() => run('undo')} disabled={busy || (index === 0 && !picked)} aria-label="Rewind"><RotateCcw size={20} /></button>
           <button type="button" className="fm-btn lg nope" onClick={() => run('pass')} disabled={busy} aria-label="Nope"><X size={30} strokeWidth={2.4} /></button>
           <button type="button" className="fm-btn sm super" onClick={() => run('super')} disabled={busy || !canLike} aria-label="Super Like"><Star size={20} /></button>
-          <button type="button" className="fm-btn lg like" onClick={() => run('like')} disabled={busy || !canLike} aria-label="Like"><Heart size={28} /></button>
+          <button type="button" className="fm-btn lg like" onClick={() => run('like')} disabled={busy || !canLike} aria-label={role === 'candidate' ? 'Apply' : 'Like'}><Heart size={28} /></button>
           <button type="button" className="fm-btn sm impression" onClick={() => setImpression(true)} disabled={busy || !canLike} aria-label="First impression: Super Like with a note"><Send size={19} /></button>
         </div>}
         {card && !canLike && <p className="fm-no-likes">No likes left today. Nope still works.</p>}
@@ -427,7 +427,7 @@ export function FindMatches({ role, data, setData, navigate, onOpenMessages, hea
           <button type="button" className="fm-keys-toggle" onClick={toggleHints}>{hintsHidden ? 'Show keys' : 'Hide'}</button>
           {!hintsHidden && <>
             <span><kbd><ArrowLeft size={12} /></kbd>Nope</span>
-            <span><kbd><ArrowRight size={12} /></kbd>Like</span>
+            <span><kbd><ArrowRight size={12} /></kbd>{role === 'candidate' ? 'Apply' : 'Like'}</span>
             <span><kbd><ArrowUp size={12} /></kbd>Open Profile</span>
             <span><kbd><ArrowDown size={12} /></kbd>Close Profile</span>
             <span><kbd><CornerDownLeft size={12} /></kbd>Super Like</span>

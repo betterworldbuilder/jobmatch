@@ -9,7 +9,8 @@ import { MobileTabs } from './components/MobileTabs';
 import { likesWaiting, workModesText } from './lib/today';
 import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Ban, Flag,Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
-import { apiBase, SESSION_EXPIRED_EVENT } from './api';
+import { apiBase, JOBFINDER_LIKED_EVENT, SESSION_EXPIRED_EVENT, type JfLikeResult } from './api';
+import { InterestPanel, JobFinderManager } from './components/jobfinder/JobFinder';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { App as NativeApp } from '@capacitor/app';
@@ -176,7 +177,13 @@ export default function App() {
   };
   // Full tours: "Watch Candidate full tour" / "Watch Recruiter full tour" in the sign-in window.
   const [tour, setTour] = useState<TourRole | null>(null);
-  const [landingModal, setLandingModal] = useState<'login' | 'register' | null>(null);
+  // "I'm interested" on a JobFinder job page (/?jf=<id>): remember the job, ask a visitor to join or sign in first.
+  const [landingModal, setLandingModal] = useState<'login' | 'register' | null>(() => {
+    const id = new URLSearchParams(window.location.search).get('jf');
+    if (!id) return null;
+    try { sessionStorage.setItem('jm-jf', id); } catch { /* private mode */ }
+    return 'register';
+  });
   useEffect(() => {
     const start = (event: Event) => { const role = (event as CustomEvent<{ role: TourRole }>).detail?.role; if (role) { setLandingModal(null); setTour(role); } };
     window.addEventListener(START_TOUR_EVENT, start);
@@ -632,7 +639,23 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   // no longer changes the menu: it used to add a second "Find My Match" and make phone and desktop differ.
   // New bar + Search & Filters (founder, 2026-11-24; preview ?filters=1): the meetings page is called "Interviews".
   const filtersOn = featureOn('filters');
-  const baseNav = role === 'candidate' ? candidateNav : employerNav;
+  // The JobFinder account (and only it) gets its listings page right under My dashboard.
+  const baseNav = role === 'candidate' ? candidateNav
+    : data?.viewer.jobFinder ? [employerNav[0], { label: 'JobFinder listings', short: 'JobFinder', icon: Search, view: 'jobfinder' as View }, ...employerNav.slice(1)] : employerNav;
+  // JobFinder interest panel: after a like on a JobFinder job, from a notification, or from the public job page.
+  const [jfPanel, setJfPanel] = useState<string | null>(null);
+  useEffect(() => {
+    const open = (event: Event) => { const d = (event as CustomEvent<JfLikeResult>).detail; if (d?.jobId) setJfPanel(d.jobId); };
+    window.addEventListener(JOBFINDER_LIKED_EVENT, open);
+    return () => window.removeEventListener(JOBFINDER_LIKED_EVENT, open);
+  }, []);
+  useEffect(() => {
+    if (role !== 'candidate' || !data) return;
+    let id: string | null = null;
+    try { id = sessionStorage.getItem('jm-jf'); sessionStorage.removeItem('jm-jf'); } catch { /* private mode */ }
+    id = id || new URLSearchParams(window.location.search).get('jf');
+    if (id) { setJfPanel(id); const url = new URL(window.location.href); url.searchParams.delete('jf'); window.history.replaceState({}, '', url.pathname + url.search); }
+  }, [role, data === null]); // eslint-disable-line react-hooks/exhaustive-deps
   const nav = filtersOn ? baseNav.map((n) => (n.view === 'meetings' ? { ...n, label: 'Interviews', short: 'Interviews' } : n)) : baseNav;
   const [filterOpen, setFilterOpen] = useState(false);
   // The desktop action bar under the deck opens the same Filter sheet (founder, 2026-11-24).
@@ -671,7 +694,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const initials = (session.name || '?').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase();
   // Notification bell: in the top bar; with the phone top bar removed (?bar=1), next to "Swipe for role" instead.
   const phoneBarV2 = featureOn('bar');
-  const bell = (where: string) => <div className={`notif-wrap${where ? ` ${where}` : ''}`}><button aria-label="Notifications" onClick={() => setNotifOpen((v) => !v)}><Bell size={19} />{notifications.length > 0 && <i />}</button>{notifOpen && <><button className="notif-scrim" aria-label="Close notifications" onClick={() => setNotifOpen(false)} /><div className="notif-dropdown"><header>Notifications</header>{notifications.length === 0 ? <p className="notif-empty">No notifications yet.</p> : notifications.map((n) => <button key={n.id} className="notif-item" onClick={() => { setNotifOpen(false); if (n.kind === 'billing') { if (n.jobId) openJobEditor(n.jobId); else if (n.billingKind && JOB_NOTIFICATION_KINDS.has(n.billingKind)) setView('jobs'); else setView('billing'); } else if (n.matchId) openMessages(n.matchId); }}><span className={`notif-icon ${n.kind}`}>{n.kind === 'match' ? <Heart size={14} fill="currentColor" /> : n.kind === 'billing' ? billingNotificationIcon(n.billingKind) : <MessageCircle size={14} />}</span><span className="notif-text">{n.text}<small>{timeAgo(n.at)}</small></span></button>)}</div></>}</div>;
+  const bell = (where: string) => <div className={`notif-wrap${where ? ` ${where}` : ''}`}><button aria-label="Notifications" onClick={() => setNotifOpen((v) => !v)}><Bell size={19} />{notifications.length > 0 && <i />}</button>{notifOpen && <><button className="notif-scrim" aria-label="Close notifications" onClick={() => setNotifOpen(false)} /><div className="notif-dropdown"><header>Notifications</header>{notifications.length === 0 ? <p className="notif-empty">No notifications yet.</p> : notifications.map((n) => <button key={n.id} className="notif-item" onClick={() => { setNotifOpen(false); if (n.kind === 'billing') { if (n.billingKind === 'jobfinder_contact' && n.jobId) setJfPanel(n.jobId); else if (n.jobId) openJobEditor(n.jobId); else if (n.billingKind && JOB_NOTIFICATION_KINDS.has(n.billingKind)) setView('jobs'); else setView('billing'); } else if (n.matchId) openMessages(n.matchId); }}><span className={`notif-icon ${n.kind}`}>{n.kind === 'match' ? <Heart size={14} fill="currentColor" /> : n.kind === 'billing' ? billingNotificationIcon(n.billingKind) : <MessageCircle size={14} />}</span><span className="notif-text">{n.text}<small>{timeAgo(n.at)}</small></span></button>)}</div></>}</div>;
 
   return <TryDemoContext.Provider value={tryDemo}><RoleBarExtra.Provider value={phoneBarV2 ? bell('fmm-bell') : null}><div className={`app-shell role-${role}${phoneBarV2 ? ' phone-bar-v2' : ''}`}>
     <aside className={mobileNav ? 'sidebar open' : 'sidebar'}><div className="sidebar-head"><Brand /><button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close menu"><X /></button></div>
@@ -705,6 +728,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     <MobileTabs role={role} userId={session.id} nav={nav} navColors={NAV_COLORS} view={view} activeAnchor={activeAnchor} unread={notifications.length} likes={data ? likesWaiting(data) : 0} gotoNav={gotoNav} setView={setView} openFullMenu={() => setMobileNav(true)}
       filtersOn={filtersOn} onFilter={() => setFilterOpen(true)} filterCount={filterCount} filterOpen={filterOpen} onLogout={onExit} />
     {filtersOn && filterOpen && data && <SearchFiltersSheet role={role} data={data} onClose={() => setFilterOpen(false)} onShow={() => { setFilterOpen(false); setView('match'); }} />}
+    {jfPanel && <InterestPanel jobId={jfPanel} viewerName={data?.viewer.name || session.name} onClose={() => { setJfPanel(null); void api.bootstrap(session.id).then(setData).catch(() => undefined); }} />}
     <AnimatePresence>{settingsOpen && <SettingsModal user={session} onClose={() => setSettingsOpen(false)} onDeleted={() => { setSettingsOpen(false); onExit(); }} />}</AnimatePresence>
   </div></RoleBarExtra.Provider></TryDemoContext.Provider>;
 }
@@ -729,6 +753,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'selected') return <SelectedCandidates data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'coffee') return <CoffeeInvitations data={data} onOpenMessages={onOpenMessages} />;
+  if (view === 'jobfinder' && data.viewer.jobFinder) return <JobFinderManager />;
   if (view === 'hired') return <HiredResults data={data} onOpenMessages={onOpenMessages} />;
   if (view === 'prep') return <InterviewPreparation data={data} navigate={navigate} />;
   if (view === 'billing' && role === 'candidate') return <CandidateSubscription data={data} navigate={navigate} />;

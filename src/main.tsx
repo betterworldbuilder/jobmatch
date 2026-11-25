@@ -2,10 +2,13 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Capacitor } from '@capacitor/core';
 import App from './App';
+import { PublicJobPage } from './components/jobfinder/JobFinder';
 import './index.css';
 import './phone-theme.css';
 
-createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
+// /jobs/<id>: the public page of a JobFinder listing (shareable, linked from recruiter emails).
+const publicJob = window.location.pathname.match(/^\/jobs\/([A-Za-z0-9_-]{3,60})\/?$/)?.[1];
+createRoot(document.getElementById('root')!).render(<StrictMode>{publicJob ? <PublicJobPage jobId={publicJob} /> : <App />}</StrictMode>);
 
 // Copyright and safety warning in the browser's developer console (founder, 2026-11-25): it protects members from
 // "paste this code" scams and reminds visitors the code is proprietary. Production only.

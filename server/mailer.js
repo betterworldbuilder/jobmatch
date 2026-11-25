@@ -3,12 +3,23 @@
  * otherwise logs the message to the server console (dev mode) so flows are
  * testable without an email provider — same optional-integration pattern as
  * SSO and the Claude API.
+ *
+ * JobFinder (2026-11-25): `replyTo` (set only when a candidate agreed to share their email) and the provider's
+ * message id as evidence that the message was accepted. Tests install a fake sender, so no real email ever leaves.
  */
 export function mailerConfigured() {
-  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER);
+  return Boolean(testSender) || Boolean(process.env.SMTP_HOST && process.env.SMTP_USER);
 }
 
-export async function sendMail({ to, subject, text, html }) {
+let testSender = null;
+/** Tests only: replace the SMTP transport with a function ({to, subject, text, replyTo}) => {messageId} | throws. */
+export function __setTestSender(fn) { testSender = fn; }
+
+export async function sendMail({ to, subject, text, html, replyTo }) {
+  if (testSender) {
+    const info = await testSender({ to, subject, text, html, replyTo });
+    return { delivered: true, messageId: info?.messageId };
+  }
   if (!mailerConfigured()) {
     // Mail bodies carry live sign-in links (reset, verify) — never put them in production logs.
     if (process.env.NODE_ENV === 'production') console.log(`[mailer:off] not sent → ${to} (${subject})`);
@@ -22,6 +33,6 @@ export async function sendMail({ to, subject, text, html }) {
     secure: process.env.SMTP_SECURE === 'true',
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
   });
-  await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, text, html });
-  return { delivered: true };
+  const info = await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, text, html, ...(replyTo ? { replyTo } : {}) });
+  return { delivered: true, messageId: info?.messageId };
 }

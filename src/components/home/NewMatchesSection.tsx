@@ -96,7 +96,7 @@ function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, page, onPage, onRe
     {page === 0
       ? <RoleSummaryPage job={job} onRecruiter={onRecruiter} />
       : <div className="sp-page"><RoleDetailPage job={job} page={page} /></div>}
-    <motion.span className="nm-stamp like" style={{ opacity: likeOpacity }} aria-hidden="true">LIKE</motion.span>
+    <motion.span className="nm-stamp like" style={{ opacity: likeOpacity }} aria-hidden="true">APPLY</motion.span>
     <motion.span className="nm-stamp nope" style={{ opacity: nopeOpacity }} aria-hidden="true">NOPE</motion.span>
     <SwipePager pages={ROLE_PAGES} page={page} onPage={onPage} demo={Boolean(job.demo || job.sample)} />
   </motion.article>;
@@ -312,12 +312,12 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
                 </AnimatePresence>
               </div>
               {/* Title bar: what each button does. */}
-              {job && <div className="nm-action-labels" aria-hidden="true"><span>Rewind</span><span>Pass</span><span>Forward</span><span>Like</span><span>Message</span></div>}
+              {job && <div className="nm-action-labels" aria-hidden="true"><span>Rewind</span><span>Pass</span><span>Forward</span><span>Apply</span><span>Message</span></div>}
               {job && <div className="nm-actions">
                 <button type="button" className="nm-btn sm rewind" onClick={() => run('undo')} disabled={busy || (index === 0 && !picked)} aria-label="Rewind"><RotateCcw size={18} /></button>
                 <button type="button" className="nm-btn pass" onClick={() => run('pass')} disabled={busy} aria-label="Pass"><X size={28} strokeWidth={3} /></button>
                 <button type="button" className="nm-btn forward" onClick={() => setForwardOpen(true)} aria-label="Forward to a friend"><span className="nm-fwd-ico"><Forward size={20} /><User size={11} /></span></button>
-                <button type="button" className="nm-btn like" onClick={() => run('like')} disabled={busy || !canLike} aria-label="Like"><Heart size={26} fill="currentColor" /></button>
+                <button type="button" className="nm-btn like" onClick={() => run('like')} disabled={busy || !canLike} aria-label="Apply"><Heart size={26} fill="currentColor" /></button>
                 <button type="button" className="nm-btn sm dm" onClick={() => setDmOpen(true)} disabled={busy} aria-label="Direct message (premium)"><Send size={18} /><i className="nm-pro" aria-hidden="true">PRO</i></button>
               </div>}
               {job && !canLike && <p className="nm-no-likes">No likes left today</p>}
@@ -329,7 +329,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
         </div>
         {/* Desktop: the phone bar's actions under the deck (founder, 2026-11-24); keyboard hint kept when the bar is off. */}
         {featureOn('filters') ? <DeckActionBar role="candidate" userId={data.viewer.id} navigate={navigate} likes={likesWaiting(data)} />
-          : <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>}
+          : <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Apply</span><span>Click the deck first</span></div>}
       </div>
       <aside className="nm-list" id="td-recommended" aria-label="Recommended Roles">
         <div className="nm-carousel-head">
@@ -357,7 +357,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
                 </span>
               </span>
             </button>
-            <button type="button" className="nm-row-like nm-mini-like" onClick={() => { if (picked?.id === item.id) setPicked(null); likeFromList(item); }} disabled={busy || !canLike} aria-label={`Like ${item.title}`}><Heart size={15} /></button>
+            <button type="button" className="nm-row-like nm-mini-like" onClick={() => { if (picked?.id === item.id) setPicked(null); likeFromList(item); }} disabled={busy || !canLike} aria-label={`Apply to ${item.title}`}><Heart size={15} /></button>
           </li>; })}</ul>
           : <p className="nm-list-empty">No more roles right now. Your profile stays visible to matching teams.</p>}
         <button type="button" className="nm-see-all" onClick={() => navigate('discover')}>See all in Discover <ArrowRight size={13} /></button>

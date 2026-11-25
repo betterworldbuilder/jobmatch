@@ -16,7 +16,11 @@
  * Privacy: no user ids, coordinates, salary amounts, names, emails, or message
  * text are ever stored here — only counts per category.
  */
-export const TRACKED_EVENTS = ['signup_completed', 'role_posted', 'swipe', 'match_created', 'first_message'];
+export const TRACKED_EVENTS = ['signup_completed', 'role_posted', 'swipe', 'match_created', 'first_message',
+  // JobFinder pilot funnel (2026-11-25). Recruiter sign-up, recruiter interest and mutual matches reuse
+  // signup_completed / swipe (like/team) / match_created.
+  'jf_job_viewed', 'jf_job_liked', 'jf_consent_given', 'jf_autosend_on', 'jf_autosend_off', 'jf_message_submitted',
+  'jf_message_sent', 'jf_message_failed', 'jf_apply_clicked', 'jf_claim_requested', 'jf_claim_approved', 'jf_job_reported_closed'];
 
 /** 'team' for any hiring-side account (company or headhunter), else 'candidate'. */
 export function actorSide(user) {

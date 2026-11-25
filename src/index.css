@@ -5097,3 +5097,83 @@ button.rs-row:hover { border-color:#fd267a; }
 .hero-tours + .hero-actions { margin-top:0; } /* the tour buttons take the space above Register */
 .landing-phone .tour-pick.hero-tours { margin:12px auto 0; width:100%; }
 .tour-loading { position:fixed; inset:0; display:grid; place-items:center; background:#fff; color:#556; font-weight:700; }
+
+/* JobFinder (2026-11-25): card block, interest panel, public job page, manager */
+.jf-card-info { margin:6px 0 4px; display:grid; gap:3px; font-size:11.5px; line-height:1.35; color:rgba(255,255,255,.92); }
+.jf-card-info p { margin:0; }
+.jf-card-info .jf-added b { color:#fff; }
+.jf-card-info .jf-member { color:rgba(255,255,255,.88); }
+.jf-card-info .jf-member b { color:#fff; }
+.jf-reach { display:inline-flex; align-items:center; gap:5px; font-weight:700; }
+.jf-card-info .jf-reach { background:rgba(255,255,255,.16); border-radius:999px; padding:3px 9px; width:max-content; max-width:100%; }
+.jf-link { color:#fff; font-weight:700; font-size:11px; display:inline-flex; gap:4px; align-items:center; text-decoration:underline; width:max-content; }
+.jf-panel { width:min(560px, calc(100vw - 24px)); display:grid; gap:10px; }
+.jf-panel h2 { margin:4px 0 0; font-size:21px; }
+.jf-panel h3 { margin:6px 0 0; font-size:15px; }
+.jf-sub { margin:0; color:#5b6478; font-weight:600; }
+.jf-member { margin:0; font-size:13px; color:#4a5163; }
+.jf-help { margin:0; font-size:12.5px; color:#5b6478; }
+.jf-warn { margin:0; font-size:12.5px; color:#b42318; background:#fff1f0; border-radius:10px; padding:7px 10px; }
+.jf-status { display:flex; gap:7px; align-items:center; margin:0; padding:9px 12px; border-radius:12px; font-weight:700; font-size:13.5px; background:#fff7e6; color:#8a5300; }
+.jf-status.sent { background:#ecfdf3; color:#067647; }
+.jf-share { border:1px solid #e6e8ef; border-radius:12px; padding:8px 12px; display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; }
+.jf-share legend { font-weight:700; font-size:12.5px; padding:0 4px; }
+.jf-share label { display:inline-flex; gap:5px; align-items:center; }
+.jf-check { display:flex; gap:8px; align-items:flex-start; font-size:13px; line-height:1.4; }
+.jf-check input { margin-top:3px; }
+.jf-check.strong { font-weight:700; }
+.jf-msg { display:grid; gap:4px; font-weight:700; font-size:13px; }
+.jf-msg textarea, .jf-claim textarea, .jf-form textarea { width:100%; box-sizing:border-box; border:1px solid #d9dce6; border-radius:10px; padding:9px 10px; font:inherit; font-weight:400; font-size:13px; }
+.jf-fallback { background:#f5f7fb; border-radius:12px; padding:10px 12px; font-size:13px; }
+.jf-fallback p { margin:0; }
+.jf-foot { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:12px; color:#6b7280; }
+.jf-textbtn { background:none; border:0; padding:0; color:#0f62fe; font-weight:700; cursor:pointer; display:inline-flex; gap:4px; align-items:center; font-size:12.5px; }
+.jf-panel .primary-button, .jf-panel .secondary-button { justify-content:center; display:inline-flex; gap:6px; align-items:center; }
+.jf-public { min-height:100vh; background:#f4f6fb; padding:0 16px 40px; box-sizing:border-box; }
+.jf-public-head { max-width:760px; margin:0 auto; padding:18px 0; }
+.jf-public-brand { display:inline-flex; gap:8px; align-items:center; font-weight:800; color:#14172b; text-decoration:none; font-size:18px; }
+.jf-public-card { max-width:760px; margin:0 auto; background:#fff; border-radius:18px; padding:24px; box-shadow:0 10px 40px rgba(20,23,43,.08); display:grid; gap:10px; }
+.jf-public-card h1 { margin:0; font-size:28px; line-height:1.2; }
+.jf-public-card p { margin:0; }
+.jf-desc { font-size:14.5px; line-height:1.55; color:#2b3040; display:grid; gap:8px; }
+.jf-public-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; }
+.jf-public-actions a, .jf-public-actions button { text-decoration:none; display:inline-flex; gap:6px; align-items:center; }
+.jf-claim { border-top:1px solid #eceef4; padding-top:12px; display:grid; gap:8px; font-size:13.5px; }
+.jf-public-foot { max-width:760px; margin:18px auto 0; font-size:12px; color:#6b7280; text-align:center; }
+.jf-manager { padding:24px clamp(16px, 3vw, 36px); display:grid; gap:14px; max-width:1180px; }
+.jf-m-head { display:flex; justify-content:space-between; gap:14px; align-items:flex-start; flex-wrap:wrap; }
+.jf-m-head h1 { margin:0; font-size:26px; }
+.jf-m-head p { margin:4px 0 0; color:#5b6478; max-width:640px; }
+.jf-stats { display:flex; flex-wrap:wrap; gap:8px; }
+.jf-stats span { background:#fff; border:1px solid #e6e8ef; border-radius:12px; padding:8px 12px; font-size:13px; color:#4a5163; }
+.jf-stats b { color:#14172b; font-size:16px; margin-right:3px; }
+.jf-form, .jf-claims, .jf-contact { background:#fff; border:1px solid #e6e8ef; border-radius:14px; padding:14px 16px; display:grid; gap:10px; }
+.jf-form h3, .jf-claims h3, .jf-contact h4 { margin:0; }
+.jf-contact h4 small { font-weight:500; color:#6b7280; }
+.jf-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:10px; }
+.jf-grid label, .jf-form > label { display:grid; gap:4px; font-size:12.5px; font-weight:700; color:#3b4255; }
+.jf-grid .wide, .jf-form .wide { grid-column:1 / -1; }
+.jf-grid input, .jf-grid select, .jf-filters input, .jf-filters select { border:1px solid #d9dce6; border-radius:10px; padding:8px 10px; font:inherit; font-weight:400; font-size:13px; min-width:0; }
+.jf-row-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.jf-claim-row { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; border-top:1px solid #f0f1f5; padding-top:10px; font-size:13.5px; }
+.jf-filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.jf-search { display:inline-flex; gap:6px; align-items:center; border:1px solid #d9dce6; border-radius:10px; padding:0 10px; background:#fff; flex:1 1 220px; }
+.jf-search input { border:0; padding:8px 0; outline:none; width:100%; }
+.jf-list { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+.jf-item { background:#fff; border:1px solid #e6e8ef; border-radius:14px; padding:10px 14px; display:grid; gap:8px; }
+.jf-item-head { display:flex; gap:10px; align-items:center; flex-wrap:wrap; cursor:pointer; }
+.jf-item-head > div { display:grid; flex:1 1 240px; min-width:0; }
+.jf-item-head small { color:#6b7280; }
+.jf-pill { font-size:11px; font-weight:800; text-transform:uppercase; border-radius:999px; padding:3px 9px; background:#eef1f7; color:#3b4255; }
+.jf-pill.published, .jf-pill.reach-email { background:#ecfdf3; color:#067647; }
+.jf-pill.expired, .jf-pill.removed, .jf-pill.reach-none { background:#fff1f0; color:#b42318; }
+.jf-pill.claimed { background:#eef4ff; color:#0f62fe; }
+.jf-nums { font-size:12px; color:#5b6478; }
+.jf-item-body { display:grid; gap:10px; border-top:1px solid #f0f1f5; padding-top:10px; }
+.jf-history { margin:6px 0 0; padding-left:18px; font-size:12px; color:#5b6478; }
+@media (max-width: 640px) {
+  .jf-public-card { padding:18px 16px; }
+  .jf-public-card h1 { font-size:23px; }
+  .jf-manager { padding:16px; }
+  .jf-public-actions > * { flex:1 1 100%; justify-content:center; }
+}

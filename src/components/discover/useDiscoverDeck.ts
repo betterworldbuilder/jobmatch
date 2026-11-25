@@ -1,7 +1,7 @@
 // Discover's deck state and actions, shared by the Discover page and the home
 // "Find My Match" sections. Same filters, same API calls; every available card is swipable.
 import { useEffect, useState } from 'react';
-import { api } from '../../api';
+import { api, JOBFINDER_LIKED_EVENT } from '../../api';
 import type { Bootstrap, Job, JobMatch, Person, Role, ScreeningAnswer } from '../../types';
 import { ANY_DISTANCE_KM, buildDeck, filtersActive as hasActiveFilters, needsScreening, withoutSkipped, type DeckFilters } from './deckLogic';
 import { useSharedFilters } from './filterStore';
@@ -53,6 +53,8 @@ export function useDiscoverDeck(role: Role, data: Bootstrap, setData: (d: Bootst
       // Only the card on top moves the deck on; a like from a side list leaves it where it is.
       if (target.id === current?.id) setIndex((value) => value + 1);
       options?.onSwiped?.(result);
+      // JobFinder job: a like only saves interest; App opens the "send your interest" panel (founder spec 2026-11-25).
+      if (result.jobFinder) window.dispatchEvent(new CustomEvent(JOBFINDER_LIKED_EVENT, { detail: result.jobFinder }));
     } catch (e) { alert(e instanceof Error ? e.message : 'Swipe failed'); }
     finally { setBusy(false); }
   };

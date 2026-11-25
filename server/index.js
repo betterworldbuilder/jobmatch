@@ -59,6 +59,7 @@ import { basePlanIdFor, googlePlaySubscriptionProductId, isGooglePlayConfigured,
 import { decodeJws, getTransactionInfo, isAppleConfigured, subscriptionProductId as appleSubscriptionProductId, verifyJws } from './billing/providers/applestore.js';
 import { assertRecruiterAccess, requireAdminRole } from './billing/middleware.js';
 import { confirmPayment } from './billing/confirm.js';
+import { afterJobFinderLike, ensureCollections as ensureJobFinderCollections, isJobFinderJob, isJobFinderUser, jobFinderIds, mountJobFinder, reachabilityOf } from './jobfinder.js';
 import { runDailyBilling } from './billing/daily.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -83,6 +84,9 @@ await store.transaction((db) => {
       else for (const [key, value] of Object.entries(item)) if (existing[key] === undefined) existing[key] = value;
     }
   }
+  // JobFinder (2026-11-25): mark the JobFinder identity account(s) and create its private collections.
+  ensureJobFinderCollections(db);
+  for (const u of db.users) if (u.role === 'employer' && !u.demo && jobFinderIds().includes(u.id)) u.jobFinder = true;
   // Remove the retired flagship demo relationships that were replaced by the
   // Sofia/Sarah reference dataset. User-created records are never touched.
   const retiredDemoIds = {
@@ -152,7 +156,8 @@ function otherPartyView(user) {
   // `jobStatus`: others see only the status itself (open / waiting / signing / hired / under contract till a
   // date) so recruiters know who just got hired; the role, company, recruiter name and match stay private.
   // `calendarFeedToken` is the secret in the member's private calendar feed URL.
-  const { geo, verification, jobStatus, calendarFeedToken, ...rest } = selfView(user);
+  // `jobFinderConsent(Log)`: the candidate's private sharing choices for JobFinder emails.
+  const { geo, verification, jobStatus, calendarFeedToken, jobFinderConsent, jobFinderConsentLog, ...rest } = selfView(user);
   if (jobStatus?.kind) rest.jobStatus = { kind: jobStatus.kind, ...(jobStatus.kind === 'contract' && jobStatus.until ? { until: jobStatus.until } : {}) };
   return rest;
 }
@@ -1506,7 +1511,7 @@ const ACTIVE_JOB_REVIEW_THRESHOLD = Number(process.env.ACTIVE_JOB_REVIEW_THRESHO
 // Statuses a candidate must never see or act on: an unpublished draft, a
 // lapsed posting, or one an admin has taken down. Each stays fully visible to
 // the recruiter who owns it (to finish, renew, or read the suspension reason).
-const HIDDEN_FROM_CANDIDATES = ['draft', 'expired', 'suspended'];
+const HIDDEN_FROM_CANDIDATES = ['draft', 'expired', 'suspended', 'removed']; // removed: JobFinder listings taken down
 const isLiveStatus = (status) => String(status).toLowerCase() === 'active';
 
 /** Fire role_posted the first time a job goes live (never again on pause→active toggles). */
@@ -2016,6 +2021,13 @@ app.get('/api/bootstrap', async (req, res, next) => {
       const withDistance = { ...job, distanceKm: realDist ?? job.distanceKm ?? demoDistances[job.id] };
       if (job.employerId !== viewer.id) delete withDistance.geo; // private distance range only
       const match = scoreCandidateForJob(viewer, withDistance);
+      // JobFinder listing (2026-11-25): the employer is not a member, so no recruiter card, no company profile from
+      // the JobFinder account, and the public salary stays visible. Reachability is refreshed live.
+      if (isJobFinderJob(job) && job.jobFinder.listingStatus !== 'claimed') {
+        const mine = (db.jfOutreach || []).find((o) => o.jobId === job.id && o.candidateId === viewer.id);
+        const jobFinder = { ...job.jobFinder, reachability: reachabilityOf(db, job), ...(role === 'candidate' ? { myOutreach: mine ? { status: mine.status } : null } : {}) };
+        return { ...withDistance, jobFinder, match, verified: false, likedYou: false, superLikedYou: false, promoted: boostedJobIds.has(job.id) };
+      }
       if (role === 'candidate' && !matchedJobIds.has(job.id)) {
         delete withDistance.salary; delete withDistance.salaryRange;
         withDistance.salaryHidden = true;
@@ -2135,7 +2147,9 @@ app.get('/api/bootstrap', async (req, res, next) => {
         appleProductId: appleSubscriptionProductId(),
       };
     }
-    const billingNotifications = billing ? (db.billingNotifications || []).filter((entry) => entry.userId === viewer.id).slice(-20).reverse() : undefined;
+    // Candidates only get their JobFinder notices ("the recruiter is now reachable"); recruiters get all of theirs.
+    const myNotices = (db.billingNotifications || []).filter((entry) => entry.userId === viewer.id && (billing || entry.kind === 'jobfinder_contact'));
+    const billingNotifications = billing || myNotices.length ? myNotices.slice(-20).reverse() : undefined;
     res.json({ viewer: selfView(viewer), jobs: scoredJobs, candidates: scoredCandidates, roleMatches, matches, messages: db.messages.filter((message) => matchIds.has(message.matchId)), calls: db.calls.filter((call) => matchIds.has(call.matchId)), notes, bookmarkedIds, likesRemaining: likesRemainingToday(pool.swipes, viewer.id), billing, billingNotifications });
   } catch (error) { next(error); }
 });
@@ -2158,6 +2172,11 @@ app.post('/api/swipes', async (req, res, next) => {
       const actor = db.users.find((user) => user.id === actorId);
       if (!actor) throw new ValidationError('actorId', 'Unknown user');
       assertDemoActor(req, db, actorId);
+      // JobFinder lists jobs for employers who are not members yet: it never expresses interest in candidates, so a
+      // like on a JobFinder job can never become a mutual match (spec 12).
+      if (isJobFinderUser(actor) && targetType === 'candidate') {
+        const error = new Error('JobFinder lists jobs for employers and never expresses interest in candidates'); error.status = 403; throw error;
+      }
       // Grace-period recruiters may keep reading, but not initiate new
       // candidate contact — candidates swiping on jobs are never affected by
       // the job's recruiter's billing state.
@@ -2266,6 +2285,12 @@ app.post('/api/swipes', async (req, res, next) => {
       }
       return { swipe, match, duplicate: false, likesRemaining: likesRemainingToday(db.swipes, actorId) };
     });
+    // JobFinder job liked: count it, auto-send only with the candidate's one-click preference, and tell the client
+    // what to show next (send panel, "apply on the original site", or "contact not yet available").
+    if (targetType === 'job' && direction === 'like' && result.swipe && !result.duplicate) {
+      const jf = await afterJobFinderLike(jobFinderCtx, { candidateId: actorId, jobId: targetId }).catch(() => null);
+      if (jf) result.jobFinder = jf;
+    }
     res.status(201).json(result);
   } catch (error) { next(error); }
 });
@@ -4971,6 +4996,13 @@ app.delete('/api/recommendation-requests/:id', async (req, res, next) => {
     res.json({ ok: true });
   } catch (error) { next(error); }
 });
+
+// JobFinder (2026-11-25): external listings, public job pages, consent-based recruiter emails, claims.
+const jobFinderCtx = {
+  store, authSession, track, audit: logBillingEvent, sendMail, mailerConfigured, origin: publicOrigin, secret: sessionSecret,
+  limiter: rateLimit({ windowMs: 60000, max: 30, bucket: 'jobfinder' }),
+};
+mountJobFinder(app, jobFinderCtx);
 
 app.use('/assets', express.static(path.join(root, 'dist', 'assets'), { immutable: true, maxAge: '1y' }));
 app.use(express.static(path.join(root, 'dist')));

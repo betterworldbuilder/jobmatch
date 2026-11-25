@@ -1,5 +1,5 @@
 export type Role = 'candidate' | 'employer' | 'admin';
-export type View = 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired' | 'prep';
+export type View = 'jobfinder' | 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired' | 'prep';
 export type EmployerKind = 'company' | 'headhunter';
 /** A recommendation letter the candidate uploaded (PDF, Word or image). Opens for matched recruiters only. */
 export interface RecommendationDoc { id: string; originalName: string; ext: string; size: number; uploadedAt: number }
@@ -36,6 +36,8 @@ export interface RecommendationRequest { id: string; contact: string; method: 'e
 export interface Person {
   id: string; role: Role; kind?: EmployerKind; name: string; email?: string; provider?: string; title: string;
   demoOrder?: number;
+  /** The JobFinder account (manages listings of external jobs). */
+  jobFinder?: boolean;
   location?: string; distanceKm?: number; company?: string; photo: string; skills: string[]; languages: string[];
   experienceLevel: string; completeness?: number; availability?: string; match?: MatchEvidence; onboarding?: boolean; salaryHidden?: boolean; demo?: boolean; sample?: boolean; invitesSent?: number; superLikedYou?: boolean; likedYou?: boolean; viewedYou?: boolean; verified?: boolean;
   /** Paid placement. Moves the card up the deck; the match score is untouched. */
@@ -124,7 +126,26 @@ export interface Job {
   contractDuration?: string;
   /** Public company profile from the recruiter's profile (Company page). */
   companyProfile?: CompanyProfile;
+  /** JobFinder listing (an external job listed before its employer joined). No contact details, ever. */
+  jobFinder?: JobFinderInfo;
 }
+export type JfReach = 'email' | 'apply' | 'none';
+export type JfOutreach = { status: 'submitted' | 'sent' | 'failed' | 'not_sent' | 'suppressed'; viaAuto?: boolean; submittedAt?: number; sentAt?: number; failedAt?: number; reason?: string; shared?: { skills: string[]; profileLink: string | null; replyEmail: boolean } } | null;
+export interface JobFinderInfo {
+  addedBy?: 'JobFinder'; employerStatus?: 'pending' | 'member'; listingStatus?: 'draft' | 'published' | 'expired' | 'removed' | 'claimed';
+  reachability?: JfReach; source?: string; sourceUrl?: string; applyUrl?: string; lastCheckedAt?: string; discoveredAt?: string; closingDate?: string;
+  myOutreach?: JfOutreach;
+}
+export type JobFinderPublicJob = Pick<Job, 'id' | 'title' | 'company' | 'location' | 'workMode' | 'type' | 'salary' | 'salaryRange' | 'experienceLevel' | 'description' | 'fullDescription' | 'requiredSkills' | 'niceToHaves' | 'responsibilities' | 'requiredLanguages'> & { country?: string; jobFinder: JobFinderInfo; interested: number; missing: string[] };
+export type JfConsent = { autoSend: boolean; skills: string[]; profileLink: string | null; replyEmail: boolean; agreedAt: number | null; version: string | null };
+export type JfManagerRow = JobFinderPublicJob & {
+  createdAt?: number; likes: number; emails: { submitted: number; sent: number; failed: number }; views: number; applyClicks: number; closedReports: number;
+  claims: { pending: number; approved: number }; matches: number; flags: string[]; duplicates: { id: string; title: string; company: string; location: string; listingStatus: string }[];
+  contact: { name?: string; email?: string; verifiedHow?: string; verifiedAt?: string; approved: boolean; suppressed: boolean } | null;
+  history: { at: number; actorId: string; action: string }[];
+};
+export type JfClaim = { id: string; jobId: string; recruiterId: string; note?: string; status: 'pending' | 'approved' | 'rejected'; createdAt: number; reason?: string;
+  recruiter: { id: string; name: string; email?: string; company?: string; website?: string; linkedin?: string; emailVerified: boolean } | null; job: { id: string; title: string; company: string } | null };
 export interface CompanyProfile { about?: string; industry?: string; companySize?: string; headquarters?: string; website?: string; foundedYear?: number; officeLocations?: string[]; techStack?: string[]; benefits?: string[] }
 export interface JobReview { author?: string; role?: string; text: string; verified?: boolean; rating?: number; date?: string }
 
