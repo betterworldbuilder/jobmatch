@@ -113,12 +113,11 @@ test('signup_completed counts a new account once, not a duplicate registration',
   assert.equal(count('signup_completed', { demo: false, dim: 'candidate/email' }), before + 1);
 });
 
-test('post a role: server rejects missing or zero salary and other required fields', async () => {
+test('post a role: salary optional (founder, 2026-11-25) but a zero/inverted salary and other required fields are refused', async () => {
   await listening();
-  const before = count('role_posted');
   const noSalary = await call('POST', '/api/jobs', quickPost({ salaryRange: undefined }));
-  assert.equal(noSalary.status, 400);
-  assert.equal(noSalary.body.field, 'salaryRange');
+  assert.equal(noSalary.status, 201, JSON.stringify(noSalary.body));
+  const before = count('role_posted');
   const zeroSalary = await call('POST', '/api/jobs', quickPost({ salaryRange: { min: 0, max: 0, currency: 'USD' } }));
   assert.equal(zeroSalary.status, 400);
   assert.equal(zeroSalary.body.field, 'salaryRange');
@@ -131,7 +130,7 @@ test('post a role: server rejects missing or zero salary and other required fiel
   assert.equal(count('role_posted'), before, 'rejected posts never count');
 });
 
-test('an imported draft cannot be published without a real salary (PATCH draft â†’ active)', async () => {
+test('an imported draft cannot be published with a zero salary, but can without one (PATCH draft â†’ active)', async () => {
   const imported = await call('POST', '/api/jobs/import-linkedin', {
     employerId: 'employer-demo',
     jobs: [{ url: `https://www.linkedin.com/jobs/view/${process.pid}01/`, title: 'Imported Frontend Engineer',
@@ -143,9 +142,6 @@ test('an imported draft cannot be published without a real salary (PATCH draft â
   assert.equal(job.salaryRange, undefined, 'fixture has no salary in its text');
   const before = count('role_posted');
 
-  const noSalary = await call('PATCH', `/api/jobs/${job.id}`, { status: 'active' });
-  assert.equal(noSalary.status, 400, JSON.stringify(noSalary.body));
-  assert.equal(noSalary.body.field, 'salaryRange');
   const zero = await call('PATCH', `/api/jobs/${job.id}`, { status: 'active', salaryRange: { min: 0, max: 0, currency: 'USD' } });
   assert.equal(zero.status, 400);
   assert.equal(zero.body.field, 'salaryRange');
@@ -154,7 +150,7 @@ test('an imported draft cannot be published without a real salary (PATCH draft â
   const deck = await call('GET', '/api/bootstrap?userId=candidate-demo');
   assert.equal(deck.body.jobs.some((card) => card.id === job.id), false, 'the rejected publish was rolled back â€” still a draft');
 
-  const ok = await call('PATCH', `/api/jobs/${job.id}`, { status: 'active', salaryRange: { min: 40000, max: 60000, currency: 'USD' } });
+  const ok = await call('PATCH', `/api/jobs/${job.id}`, { status: 'active' });
   assert.equal(ok.status, 200, JSON.stringify(ok.body));
   assert.equal(count('role_posted', { demo: true, dim: 'import' }) >= 1, true);
   assert.equal(count('role_posted'), before + 1);

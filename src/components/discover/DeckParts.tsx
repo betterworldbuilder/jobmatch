@@ -37,10 +37,10 @@ function Confetti() {
 }
 
 
-function formatRange(range?: { min: number; max: number; currency: string }) {
+function formatRange(range?: { min: number; max?: number; currency: string }) {
   if (!range) return null;
   const compact = (value: number) => (value >= 1000 && value % 1000 === 0 ? `${value / 1000}k` : value.toLocaleString());
-  return `${compact(range.min)}–${compact(range.max)} ${range.currency}`;
+  return range.max != null ? `${compact(range.min)}–${compact(range.max)} ${range.currency}` : `From ${compact(range.min)} ${range.currency}`;
 }
 
 

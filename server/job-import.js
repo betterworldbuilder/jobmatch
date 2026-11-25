@@ -76,7 +76,12 @@ function normalizeRecord(record, index, sourceSystem) {
     description,
   ].filter(Boolean).join('\n');
   if (!title || rawText.length < 10) return null;
-  return { title, description, location, url, sourceJobId, sourceUpdatedAt: updatedAt, rawText: rawText.slice(0, 20000) };
+  // The file's own columns win over what the parser guesses from the text.
+  const employmentType = pick(record, ['employment_type', 'type', 'job_type']);
+  const workMode = pick(record, ['work_mode', 'workplace_type', 'remote']);
+  const salary = pick(record, ['salary', 'compensation', 'salary_range', 'pay']);
+  const company = pick(record, ['company', 'company_name', 'employer', 'organization']);
+  return { title, description, location, url, sourceJobId, sourceUpdatedAt: updatedAt, rawText: rawText.slice(0, 20000), employmentType, workMode, salary, company };
 }
 
 export function parseJobImportFile(source, filename, sourceSystem = 'file') {

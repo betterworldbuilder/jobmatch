@@ -42,6 +42,8 @@ export function salaryCompatibility(candidateSalary, jobSalary) {
   if (candidateSalary.currency !== jobSalary.currency) {
     return { score: 0.5, status: 'unknown', evidence: `Different currencies (${candidateSalary.currency} vs ${jobSalary.currency}).` };
   }
+  // A role with a minimum only ("From $X", salary optional since 2026-11-25) is read as its minimum.
+  if (jobSalary.max === undefined || jobSalary.max === null) jobSalary = { ...jobSalary, max: jobSalary.min };
   if (jobSalary.max < candidateSalary.min) return { score: 0, status: 'below', evidence: 'The role tops out below the expected minimum.' };
   // Candidates give a minimum only (founder, 2026-11-25): a role that can pay it fits; the more of its range sits
   // above the minimum, the better.

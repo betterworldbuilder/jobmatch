@@ -10,6 +10,7 @@ import type { Eligibility, GroupCard, GroupPageData, Job, JobGroup, Person } fro
 import { savePendingJob } from '../../lib/pendingJob';
 import { RoleDetailsText } from '../jobs/JobCards';
 import { visaText, workModeText } from '../jobs/RolePages';
+import { salaryRangeText } from '../../lib/salary';
 
 const ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'https://jobsmatchnow.com';
 const fmtDate = (t?: number | null) => (t ? new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
@@ -220,7 +221,7 @@ export function JobDetailsSheet({ jobId, viewer, src, from, onClose, onApplied }
       if (r.jobFinder) window.dispatchEvent(new CustomEvent(JOBFINDER_LIKED_EVENT, { detail: r.jobFinder }));
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not apply'); } finally { setBusy(false); }
   };
-  const salary = job?.salaryRange ? `${job.salaryRange.currency} ${job.salaryRange.min.toLocaleString('en-US')}–${job.salaryRange.max.toLocaleString('en-US')}` : job?.salary;
+  const salary = job?.salaryRange ? salaryRangeText(job.salaryRange) : job?.salary;
   return <div className="modal-scrim" onClick={onClose}>
     <div className="ai-setup grp-details" role="dialog" aria-modal="true" aria-label="Job details" onClick={(e) => e.stopPropagation()}>
       <button type="button" className="fm-x" aria-label="Close" onClick={onClose}><X size={18} /></button>

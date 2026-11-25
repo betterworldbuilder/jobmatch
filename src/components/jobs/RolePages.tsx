@@ -12,6 +12,7 @@ import { RoleDetailsText } from './JobCards';
 import { JobFinderCardInfo } from '../jobfinder/JobFinder';
 import { SalaryBadge } from '../discover/DeckParts';
 import { showsCommute } from '../discover/deckLogic';
+import { salaryRangeText } from '../../lib/salary';
 
 export const ROLE_PAGES = ['Summary', 'Job description', 'Company'];
 
@@ -40,7 +41,7 @@ export function fitText(j: Job) {
 }
 export function salaryText(j: Job) {
   if (j.salaryHidden) return '';
-  if (j.salaryRange) return `${j.salaryRange.currency} ${j.salaryRange.min.toLocaleString('en-US')}–${j.salaryRange.max.toLocaleString('en-US')}`;
+  if (j.salaryRange) return salaryRangeText(j.salaryRange);
   return j.salary || '';
 }
 

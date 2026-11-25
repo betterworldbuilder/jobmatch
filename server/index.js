@@ -16,7 +16,8 @@ import { importMetadata, normalizeLinkedInImports, parseJobImportFile } from './
 import { detectMutualMatch, isStrongRoleMatch, likesRemainingToday, scoreCandidateForJob, ValidationError, reqString, optString, optStringArray, oneOf } from './matching.js';
 import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, recruiterCompleteness } from './profile.js';
 import { anonymizeText, convertDocxToPdf, detectTools, docxToHtml, extractDocxText, extractPdfText, makeSimplePdf, pdfThumbnail } from './resume.js';
-import { applyJob, assertPublishable, parseJobText } from './jobs.js';
+import { applyJob, assertPublishable, heuristicParse, legacySkills, parseJobText, parseSalaryText, parseStrength, summaryFromText } from './jobs.js';
+import { aiParseJob, importAiAllowed } from './import-ai.js';
 import { backupToS3, mirrorToS3, removeFromS3, restoreFromS3, s3Enabled } from './storage.js';
 import { parseResumeToProfile } from './resume-parse.js';
 import os from 'node:os';
@@ -1613,12 +1614,45 @@ const importedJobMissing = (job) => [
   !job.interviewProcess?.length && 'hiring process',
 ].filter(Boolean);
 
-async function importJobDrafts(employerId, sourceSystem, entries) {
+/** Claude fallback settings for an import: only allowlisted emails, only with the account's own saved Claude key. */
+function importAiFor(db, employer) {
+  if (!importAiAllowed(employer?.email)) return null;
+  const rec = aiKeyRecOf(db, employer.id);
+  if (!rec || rec.provider !== 'anthropic') return { allowed: true, key: null };
+  try { return { allowed: true, key: decryptAiKey(rec.enc, aiKeySecret()), model: rec.model || undefined }; } catch { return { allowed: true, key: null }; }
+}
+
+const IMPORT_TYPES = ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship'];
+const IMPORT_MODES = ['Remote', 'Hybrid', 'On-site', 'Flexible'];
+const pickEnum = (value, list) => { const k = String(value || '').toLowerCase().replace(/[^a-z]/g, ''); return k ? list.find((x) => x.toLowerCase().replace(/[^a-z]/g, '') === k) : undefined; };
+
+async function importJobDrafts(employerId, sourceSystem, entries, { ai = null } = {}) {
   const prepared = [];
+  const aiStats = { used: 0, failed: 0, reason: '' };
   for (let index = 0; index < entries.length; index += 4) {
     const batch = await Promise.all(entries.slice(index, index + 4).map(async (entry) => {
-      const result = await parseJobText(entry.rawText, entry.url);
-      const parsed = { ...result.parsed, title: result.parsed.title || entry.title, externalUrl: entry.url || result.parsed.externalUrl };
+      // 1. Built-in, section-aware parser on the row's text.
+      const base = heuristicParse(entry.rawText, entry.url);
+      let parsed = { ...base, title: entry.title || base.title, externalUrl: entry.url || base.externalUrl };
+      // 2. Claude, only when the parser found too little and the account may use it (founder, 2026-11-25).
+      if (ai?.allowed && parseStrength(base).weak) {
+        if (!ai.key) aiStats.reason = 'no_key';
+        else {
+          const r = await aiParseJob(entry.description || entry.rawText, { key: ai.key, model: ai.model });
+          if (r.ok) {
+            aiStats.used += 1;
+            // Claude ran because the parser found too little: its fields win (the file's columns still win below).
+            parsed = { ...parsed, ...r.fields };
+            if (r.fields.description) parsed.aiSummary = r.fields.description;
+          } else { aiStats.failed += 1; aiStats.reason = r.reason; }
+        }
+      }
+      // 3. The file's own columns win over any guess.
+      const type = pickEnum(entry.employmentType, IMPORT_TYPES); if (type) parsed.type = type;
+      const mode = pickEnum(entry.workMode, IMPORT_MODES); if (mode) parsed.workMode = mode;
+      if (entry.location) parsed.location = entry.location.slice(0, 120);
+      const salary = parseSalaryText(entry.salary); if (salary) parsed.salaryRange = salary;
+      if (entry.company) parsed.company = entry.company.slice(0, 80);
       const missing = [
         !parsed.salaryRange && 'salary',
         !parsed.workMode && 'work mode',
@@ -1635,9 +1669,15 @@ async function importJobDrafts(employerId, sourceSystem, entries) {
   // The file's job description goes, as written, into Role details (fullDescription); the short summary is
   // its first real paragraph (founder, 2026-11-25: the whole text had landed in the short summary).
   const fullDescriptionOf = (entry) => String(entry.description || entry.rawText || '').replace(/\r\n/g, '\n').trim().slice(0, 20000);
-  const summaryOf = (full) => {
-    const para = full.split(/\n+/).map((line) => line.trim()).find((line) => line.length > 60) || full.replace(/\s+/g, ' ').trim();
-    return para.length > 400 ? `${para.slice(0, 397).replace(/\s+\S*$/, '')}…` : para;
+  const summaryOf = summaryFromText;
+  // Parsed fields that applyJob does not take (company) or that we set ourselves.
+  const jobFields = (parsed) => { const { company, aiSummary, yearsExperience, ...rest } = parsed; return rest; };
+  const setCompany = (job, parsed, employer) => {
+    if (!parsed.company) return false;
+    const own = employer.company || employer.name;
+    if (job.company && job.company !== own) return false; // someone already set a company
+    job.company = parsed.company; job.logo = parsed.company.trim()[0].toUpperCase();
+    return true;
   };
   return store.transaction((db) => {
     const employer = db.users.find((user) => user.id === employerId && user.role === 'employer');
@@ -1658,16 +1698,29 @@ async function importJobDrafts(employerId, sourceSystem, entries) {
         && job.sourceSystem === item.metadata.sourceSystem
         && job.sourceJobId === item.metadata.sourceJobId);
       if (duplicate) {
-        // Same file again: fill an empty Role details (older imports), never overwrite the recruiter's edits.
+        // Same file again: fill what is still empty (older imports), never overwrite the recruiter's edits.
+        const p = item.parsed; const d = duplicate; let changed = false;
         const full = fullDescriptionOf(item.entry);
-        if (!duplicate.fullDescription && full) {
-          const oldAutoSummary = !duplicate.description || duplicate.description.length > 400 || duplicate.description === item.parsed.description || item.entry.rawText.startsWith(duplicate.description);
-          duplicate.fullDescription = full;
-          if (oldAutoSummary) duplicate.description = summaryOf(full);
-          publish(duplicate);
-          duplicate.updatedAt = Date.now();
-          updated += 1;
-        } else skipped += 1;
+        const preFix = !d.fullDescription; // imported before 2026-11-25: its auto-filled fields can be refreshed
+        if (preFix && full) {
+          const oldAutoSummary = !d.description || d.description.length > 400 || item.entry.rawText.startsWith(d.description) || item.entry.rawText.replace(/\s+/g, ' ').includes(d.description.slice(0, 80));
+          d.fullDescription = full;
+          if (oldAutoSummary) d.description = p.aiSummary || summaryOf(full);
+          changed = true;
+        }
+        // Skills the old parser filled in (same list it would pick) count as untouched.
+        const oldAuto = preFix && JSON.stringify((d.requiredSkills || []).slice().sort()) === JSON.stringify(legacySkills(item.entry.rawText).slice().sort());
+        if (p.requiredSkillsDetail?.length && (!d.requiredSkillsDetail?.length || oldAuto)) { applyJob(d, { requiredSkillsDetail: p.requiredSkillsDetail }); changed = true; }
+        for (const k of ['niceToHaves', 'requiredLanguages', 'benefits', 'responsibilities']) {
+          if (p[k]?.length && !d[k]?.length) { applyJob(d, { [k]: p[k] }); changed = true; }
+        }
+        if (preFix && p.seniority && p.seniority !== d.seniority && (!d.seniority || d.seniority === 'mid')) { applyJob(d, { seniority: p.seniority }); changed = true; }
+        if (p.location && (!d.location || d.location === 'Review location')) { d.location = p.location; changed = true; }
+        if (p.workMode && (!d.workMode || (preFix && d.workMode === 'Flexible'))) { d.workMode = p.workMode; changed = true; }
+        if (p.salaryRange && !d.salaryRange) { applyJob(d, { salaryRange: p.salaryRange }); changed = true; }
+        if (setCompany(d, p, employer)) changed = true;
+        if (d.status === 'draft' && goLive) { publish(d); changed = true; }
+        if (changed) { d.updatedAt = Date.now(); updated += 1; } else skipped += 1;
         continue;
       }
       const job = {
@@ -1689,13 +1742,13 @@ async function importJobDrafts(employerId, sourceSystem, entries) {
         location: 'Review location',
         salary: 'Review salary',
         experienceLevel: 'mid',
-        description: item.parsed.description || item.entry.rawText.slice(0, 1200),
+        description: item.parsed.description || item.entry.rawText.slice(0, 400),
         createdAt: Date.now(),
       };
-      applyJob(job, item.parsed);
+      applyJob(job, jobFields(item.parsed));
+      setCompany(job, item.parsed, employer);
       const full = fullDescriptionOf(item.entry);
-      if (full) { job.fullDescription = full; job.description = summaryOf(full); }
-      if (job.location === 'Review location' && item.entry.location) job.location = item.entry.location.slice(0, 120);
+      if (full) { job.fullDescription = full; job.description = item.parsed.aiSummary || summaryOf(full); }
       Object.assign(job, item.metadata, { internalJobId: job.id, importNeedsReview: item.missing });
       publish(job);
       if (!job.screeningQuestions?.length && job.requiredSkillsDetail?.length) job.screeningQuestions = suggestScreeningQuestions(job);
@@ -1703,7 +1756,7 @@ async function importJobDrafts(employerId, sourceSystem, entries) {
       db.jobs.push(job);
       jobs.push(job);
     }
-    return { jobs, skipped, updated, live: goLive };
+    return { jobs, skipped, updated, live: goLive, ai: ai?.allowed ? { used: aiStats.used, failed: aiStats.failed, reason: aiStats.reason || undefined } : undefined };
   });
 }
 
@@ -1722,7 +1775,7 @@ app.post('/api/jobs/import-file', express.raw({ type: 'application/octet-stream'
     try { entries = parseJobImportFile(req.body.toString('utf8'), filename, sourceSystem); }
     catch (error) { throw new ValidationError('file', error.message); }
     if (!entries.length) throw new ValidationError('file', 'No jobs were found in that file');
-    const result = await importJobDrafts(employerId, sourceSystem, entries.slice(0, 50));
+    const result = await importJobDrafts(employerId, sourceSystem, entries.slice(0, 50), { ai: importAiFor(db, employer) });
     res.status(201).json({ ...result, found: entries.length });
   } catch (error) { next(error); }
 });
@@ -1737,7 +1790,7 @@ app.post('/api/jobs/import-linkedin', async (req, res, next) => {
     let entries;
     try { entries = normalizeLinkedInImports(req.body.jobs); }
     catch (error) { throw new ValidationError('jobs', error.message); }
-    const result = await importJobDrafts(employerId, 'linkedin_manual', entries);
+    const result = await importJobDrafts(employerId, 'linkedin_manual', entries, { ai: importAiFor(db, employer) });
     res.status(201).json({ ...result, found: entries.length });
   } catch (error) { next(error); }
 });

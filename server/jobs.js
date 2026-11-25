@@ -15,10 +15,12 @@ const str = (value, max = 500) => (typeof value === 'string' && value.trim() && 
 const num = (value, min, max) => (typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max ? value : undefined);
 const strArray = (value, maxItems = 30, maxLen = 200) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string' && item.trim() && item.length <= maxLen).map((item) => item.trim()).slice(0, maxItems) : undefined);
 
-function formatSalary({ min, max, currency }) {
+/** "$40k–$60k", or "From $40k" when only a minimum is given (salary optional, founder 2026-11-25). */
+export function formatSalary({ min, max, currency }) {
   const compact = (value) => (value >= 1000 && value % 1000 === 0 ? `${value / 1000}k` : value.toLocaleString());
   const symbol = { USD: '$', EUR: '€', GBP: '£', AUD: 'A$', SGD: 'S$', VND: '₫' }[currency];
   const prefix = symbol || `${currency} `;
+  if (max === undefined || max === null) return `From ${prefix}${compact(min)}`;
   return `${prefix}${compact(min)}–${prefix}${compact(max)}`;
 }
 
@@ -59,13 +61,17 @@ export function applyJob(job, body, { strict = false } = {}) {
     if (lat !== undefined && lng !== undefined) job.geo = { lat, lng };
   }
   set('hiringRadiusKm', num(body.hiringRadiusKm, 5, 500));
-  if (body.salaryRange !== undefined) {
+  // Salary is optional; a minimum alone is allowed ("From $40k"). null clears it.
+  if (body.salaryRange === null) { delete job.salaryRange; delete job.salary; }
+  else if (body.salaryRange !== undefined) {
+    const rawMax = body.salaryRange?.max;
+    const hasMax = rawMax !== undefined && rawMax !== null && rawMax !== '';
     const min = num(body.salaryRange?.min, 0, 100000000);
-    const max = num(body.salaryRange?.max, 0, 100000000);
+    const max = hasMax ? num(rawMax, 0, 100000000) : undefined;
     const currency = str(body.salaryRange?.currency, 8);
-    if (min === undefined || max === undefined || !currency) throw new ValidationError('salaryRange', 'salaryRange needs min, max, and currency');
-    if (min > max) throw new ValidationError('salaryRange', 'salary min cannot exceed max');
-    job.salaryRange = { min, max, currency };
+    if (min === undefined || !currency || (hasMax && max === undefined)) throw new ValidationError('salaryRange', 'salaryRange needs a minimum and a currency (the maximum is optional)');
+    if (max !== undefined && min > max) throw new ValidationError('salaryRange', 'salary min cannot exceed max');
+    job.salaryRange = max === undefined ? { min, currency } : { min, max, currency };
     job.salary = formatSalary(job.salaryRange);
   }
   set('description', str(body.description, 5000));
@@ -142,7 +148,8 @@ export function applyJob(job, body, { strict = false } = {}) {
 /**
  * The required-field contract a job must meet to be created via POST and to
  * go live via PATCH (draft/imported/paused → active). One function so the two
- * paths can't drift: an imported draft can't be published without a real salary.
+ * paths can't drift. Salary is optional (founder, 2026-11-25: a minimum is advised, not required),
+ * but a salary that is given must be real.
  */
 export function assertPublishable(job) {
   if (!job.title) throw new ValidationError('title', 'Title is required');
@@ -152,9 +159,12 @@ export function assertPublishable(job) {
   if (!job.location) throw new ValidationError('location', 'Location is required');
   // Radius only matters for on-site/hybrid; remote roles use scope instead.
   if (job.workMode !== 'Remote' && job.hiringRadiusKm === undefined) throw new ValidationError('hiringRadiusKm', 'Hiring radius is required for on-site or hybrid roles');
-  if (!job.salaryRange) throw new ValidationError('salaryRange', 'Salary range is mandatory');
-  // Salary up front is the promise: a 0–0 (or inverted) range is not a salary.
-  if (!(job.salaryRange.max > 0) || job.salaryRange.min > job.salaryRange.max) throw new ValidationError('salaryRange', 'Enter a real salary range');
+  // A 0–0, zero-minimum or inverted range is not a salary.
+  if (job.salaryRange) {
+    const { min, max } = job.salaryRange;
+    const real = max === undefined || max === null ? min > 0 : max > 0 && min <= max;
+    if (!real) throw new ValidationError('salaryRange', 'Enter a real salary: a minimum above 0, and a maximum not below it');
+  }
   if (!job.description) throw new ValidationError('description', 'Description is required');
 }
 
@@ -162,60 +172,164 @@ export function assertPublishable(job) {
 // Paste-import parsing
 // ---------------------------------------------------------------------------
 
-const SKILL_DICTIONARY = ['React', 'TypeScript', 'JavaScript', 'Node.js', 'Python', 'Go', 'Java', 'Kotlin', 'Swift', 'SQL', 'PostgreSQL', 'AWS', 'Docker', 'Kubernetes', 'Figma', 'Design systems', 'Product strategy', 'Research', 'Prototyping', 'Analytics', 'Leadership', 'Service design', 'UX writing', 'Accessibility', 'GraphQL', 'CI/CD', 'Machine learning', 'Data analysis', 'Agile', 'Scrum', 'Communication', 'Stakeholder management'];
+// Skills the parser recognises: [shown name, pattern]. Tech first; a few soft skills last.
+const SKILLS = [
+  ['Python', /\bpython\b/i], ['Java', /\bjava\b(?!\s*script)/i], ['Go', /\b[Gg]olang\b|\bGo\b(?=\s*[/),])|(?<=[(/]\s*)Go\b/], ['TypeScript', /\btypescript\b/i],
+  ['JavaScript', /\bjavascript\b/i], ['Node.js', /\bnode\.?js\b/i], ['React', /\breact(\.?js)?\b/i], ['Next.js', /\bnext\.?js\b/i], ['Vue.js', /\bvue(\.?js)?\b/i],
+  ['Angular', /\bangular\b/i], ['HTML/CSS', /\bhtml\b|\bcss\b/i], ['PHP', /\bphp\b/i], ['Kotlin', /\bkotlin\b/i], ['Swift', /\bswift\b/i], ['C#', /\bc#|\.net\b/i],
+  ['C++', /\bc\+\+/i], ['Rust', /\brust\b/i], ['SQL', /\bsql\b/i], ['PostgreSQL', /\bpostgre(s|sql)\b/i], ['MySQL', /\bmysql\b/i], ['NoSQL', /\bnosql\b/i],
+  ['MongoDB', /\bmongo(db)?\b/i], ['Redis', /\bredis\b/i], ['Kafka', /\bkafka\b/i], ['RabbitMQ', /\brabbitmq\b/i], ['Spark', /\bspark\b/i], ['Airflow', /\bairflow\b/i],
+  ['dbt', /\bdbt\b/i], ['Databricks', /\bdatabricks\b/i], ['Snowflake', /\bsnowflake\b/i], ['BigQuery', /\bbigquery\b/i], ['Redshift', /\bredshift\b/i],
+  ['Tableau', /\btableau\b/i], ['Power BI', /\bpower ?bi\b/i], ['Looker', /\blooker\b/i], ['Excel', /(?<!\bto )\b(?:MS |Microsoft )?Excel\b(?! (in|at|across)\b)/], ['Salesforce', /\bsalesforce\b/i],
+  ['AWS', /\baws\b|amazon web services/i], ['Azure', /\bazure\b/i], ['GCP', /\bgcp\b|google cloud/i], ['Docker', /\bdocker\b/i], ['Kubernetes', /\bkubernetes\b|\bk8s\b/i],
+  ['Terraform', /\bterraform\b/i], ['Helm', /\bhelm\b/i], ['Ansible', /\bansible\b/i], ['ArgoCD', /\bargo ?cd\b/i], ['GitHub Actions', /github actions/i], ['Jenkins', /\bjenkins\b/i],
+  ['CI/CD', /\bci\s*\/\s*cd\b/i], ['Linux', /\blinux\b/i], ['Serverless', /\bserverless\b|\blambda\b/i], ['Prometheus', /\bprometheus\b/i], ['Grafana', /\bgrafana\b/i],
+  ['Datadog', /\bdatadog\b/i], ['OpenTelemetry', /\bopentelemetry\b/i], ['FastAPI', /\bfastapi\b/i], ['Django', /\bdjango\b/i], ['Flask', /\bflask\b/i],
+  ['Spring Boot', /\bspring( boot)?\b/i], ['GraphQL', /\bgraphql\b/i], ['REST APIs', /\brest(ful)?\b(\s+api)?/i], ['Microservices', /\bmicro-?services?\b/i],
+  ['OAuth/SSO', /\boauth|openid connect|\bsso\b/i], ['PyTorch', /\bpytorch\b/i], ['TensorFlow', /\btensorflow\b/i], ['scikit-learn', /\bscikit-learn\b|\bsklearn\b/i],
+  ['XGBoost', /\bxgboost\b/i], ['Pandas', /\bpandas\b/i], ['NumPy', /\bnumpy\b/i], ['Hugging Face', /hugging ?face/i], ['LangChain', /\blangchain\b/i],
+  ['LangGraph', /\blanggraph\b/i], ['LlamaIndex', /\bllama ?index\b/i], ['LLM', /\bllms?\b|large language models?|\bgen ?ai\b/i], ['RAG', /\brag\b|retrieval[- ]augmented/i],
+  ['AI agents', /\bagentic\b|\bai agents?\b|multi-agent/i], ['MCP', /\bmcp\b/i], ['Prompt engineering', /prompt (engineering|design)/i], ['Fine-tuning', /fine-?tun|\blora\b/i],
+  ['Vector databases', /vector (databases?|search|db)|\bqdrant\b|\bmilvus\b|\bpgvector\b/i], ['MLOps', /\bmlops\b/i], ['LLMOps', /\bllmops\b/i], ['MLflow', /\bmlflow\b/i],
+  ['Kubeflow', /\bkubeflow\b/i], ['vLLM', /\bvllm\b/i], ['Computer vision', /computer vision|object detection|\bocr\b/i], ['NLP', /\bnlp\b|natural language processing/i],
+  ['Speech AI', /\basr\b|\btts\b|speech|voice ai/i], ['Machine learning', /machine learning|\bml\b/i], ['Deep learning', /deep learning/i], ['Statistics', /statistic/i],
+  ['Data engineering', /data engineering|data pipelines?|\betl\b|\belt\b/i], ['Data analysis', /data analy(sis|tics)/i], ['Figma', /\bfigma\b/i], ['Git', /\bgit\b/i],
+  ['Testing', /unit tests?|integration tests?|e2e|end-to-end test|playwright|cypress|pytest/i], ['Security', /\bsecurity\b/i], ['Shopify', /\bshopify\b/i],
+  ['Agile', /\bagile\b/i], ['Scrum', /\bscrum\b/i], ['Design systems', /design systems?/i], ['Accessibility', /accessibility/i], ['Product strategy', /product strategy/i],
+  ['Stakeholder management', /stakeholder/i], ['Leadership', /\bleadership\b|\bmentor/i], ['Communication', /communication skills|\bcommunicat/i],
+];
+const LANGUAGES = [['English', /\benglish\b/i], ['Vietnamese', /\bvietnamese\b/i], ['Japanese', /\bjapanese\b/i], ['Korean', /\bkorean\b/i], ['Chinese', /\bchinese\b|\bmandarin\b/i],
+  ['French', /\bfrench\b/i], ['German', /\bgerman\b/i], ['Spanish', /\bspanish\b/i], ['Thai', /\bthai\b/i]];
+// Section headings → kind. A heading is a short line (optionally "- " bulleted) that names one of these.
+const SECTION_KINDS = [
+  ['nice', /nice[- ]to[- ]have|preferred|strong plus|good to have|bonus points|\bplus\b|optional|would be a plus|advantage/i],
+  ['benefits', /benefit|perks|what we offer|we offer|why (join|amaris|us|\w+\s*\?)|icing|you will love|compensation|what you get|our offer/i],
+  ['requirements', /requirement|qualification|must[- ]have|about you|what you bring|who (we are|you are|we're) looking|what we.?re looking for|we are looking for|your profile|you have|skills|experience:|technical skills|who thrives|you.?ll thrive/i],
+  ['responsibilities', /responsibilit|what you.?ll do|what you will do|your role|the role|about the role|role description|job description|key duties|duties|you will:|what you.?ll build|your impact|your mission/i],
+];
+const HEADING_MAX = 70;
 
-/** Regex/heuristic fallback parser for pasted job text. */
+function sectionsOf(lines) {
+  const out = []; let cur = { kind: 'intro', lines: [] };
+  for (const raw of lines) {
+    const line = raw.replace(/^[-•*·]\s*/, '');
+    const short = line.length <= HEADING_MAX && !/[.!?]$/.test(line) && (line.endsWith(':') || /^[A-Z0-9][^a-z]*$/.test(line) || line.split(/\s+/).length <= 6);
+    const kind = short ? SECTION_KINDS.find(([, re]) => re.test(line))?.[0] : undefined;
+    if (kind) { out.push(cur); cur = { kind, lines: [] }; continue; }
+    cur.lines.push(raw);
+  }
+  out.push(cur);
+  return out;
+}
+const bulletsIn = (lines) => lines.filter((l) => /^[-•*·o]\s/.test(l) || /^\d+[.)]\s/.test(l)).map((l) => l.replace(/^([-•*·o]|\d+[.)])\s*/, '').trim()).filter(Boolean);
+const skillsIn = (text) => SKILLS.filter(([, re]) => re.test(text)).map(([name]) => name);
+const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1).replace(/\s+\S*$/, '')}…` : s);
+
+/** Money like "$3,000–4,000", "USD 40k - 60k", "from $2,500", "min 30,000,000 VND". Returns {min[, max], currency}. */
+export function parseSalaryText(text) {
+  if (!text) return undefined;
+  const cur = (s) => (/€|EUR/i.test(s) ? 'EUR' : /£|GBP/i.test(s) ? 'GBP' : /A\$|AUD/i.test(s) ? 'AUD' : /S\$|SGD/i.test(s) ? 'SGD' : /VND|₫|vnđ/i.test(s) ? 'VND' : /\$|USD/i.test(s) ? 'USD' : undefined);
+  const n = (raw, k) => { let v = Number(String(raw).replace(/[.,](?=\d{3}\b)/g, '').replace(',', '.')); if (k) v *= 1000; return Math.round(v); };
+  const range = text.match(/(?:[$€£₫]|USD|EUR|GBP|AUD|SGD|VND|A\$|S\$)\s?([\d.,]+)\s?(k)?\s?(?:-|–|to)\s?(?:[$€£₫]|USD|EUR|GBP|AUD|SGD|VND|A\$|S\$)?\s?([\d.,]+)\s?(k)?(\s?(?:USD|EUR|GBP|AUD|SGD|VND|₫))?/i)
+    || text.match(/([\d.,]+)\s?(k)?\s?(?:-|–|to)\s?([\d.,]+)\s?(k)?\s?(USD|EUR|GBP|AUD|SGD|VND|₫)/i);
+  if (range) {
+    const currency = cur(range[0]); const min = n(range[1], range[2]); const max = n(range[3], range[4] || range[2]);
+    if (currency && min > 0 && max >= min) return { min, max, currency };
+  }
+  const from = text.match(/(?:from|min(?:imum)?|starting at|at least|>=?)\s*:?\s*((?:[$€£₫]|USD|EUR|GBP|AUD|SGD|VND|A\$|S\$)\s?[\d.,]+\s?k?|[\d.,]+\s?k?\s?(?:USD|EUR|GBP|AUD|SGD|VND|₫))/i)
+    || text.match(/^\s*((?:[$€£₫]|USD|EUR|GBP|AUD|SGD|VND)\s?[\d.,]+\s?k?|[\d.,]+\s?k?\s?(?:USD|EUR|GBP|AUD|SGD|VND|₫))\s*(?:\+|and up|\/|per|$)/i);
+  if (from) {
+    const m = from[1].match(/([\d.,]+)\s?(k)?/i); const currency = cur(from[1]); const min = m ? n(m[1], m[2]) : 0;
+    if (currency && min > 0) return { min, currency };
+  }
+  return undefined;
+}
+
+/** The skill names the pre-2026-11-25 parser would have picked (to tell its output from a recruiter's edits). */
+const LEGACY_SKILLS = ['React', 'TypeScript', 'JavaScript', 'Node.js', 'Python', 'Go', 'Java', 'Kotlin', 'Swift', 'SQL', 'PostgreSQL', 'AWS', 'Docker', 'Kubernetes', 'Figma', 'Design systems', 'Product strategy', 'Research', 'Prototyping', 'Analytics', 'Leadership', 'Service design', 'UX writing', 'Accessibility', 'GraphQL', 'CI/CD', 'Machine learning', 'Data analysis', 'Agile', 'Scrum', 'Communication', 'Stakeholder management'];
+export function legacySkills(text) {
+  return LEGACY_SKILLS.filter((skill) => new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text)).slice(0, 10);
+}
+
+/**
+ * Section-aware heuristic parser for a pasted job description (no AI needed). Reads the headings
+ * (Requirements / Nice to have / Responsibilities / Benefits…) and fills: summary, must-have and nice-to-have
+ * skills, languages, seniority, company, work mode, type, location, salary, responsibilities, benefits.
+ */
 export function heuristicParse(text, url) {
-  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+  const lines = text.replace(/\r\n/g, '\n').split('\n').map((line) => line.trim()).filter(Boolean);
   const lower = text.toLowerCase();
   const parsed = { externalUrl: url || undefined };
-
   parsed.title = lines[0]?.slice(0, 140);
+  const sections = sectionsOf(lines.slice(1));
+  const textOf = (kind) => sections.filter((s) => s.kind === kind).map((s) => s.lines.join('\n')).join('\n');
+  const reqText = textOf('requirements'); const niceText = textOf('nice'); const respText = textOf('responsibilities');
 
-  const seniorityMap = [['exec', /\b(vp|vice president|head of|director|chief|cxo)\b/], ['lead', /\b(lead|principal|staff)\b/], ['senior', /\bsenior|sr\.?\b/], ['junior', /\b(junior|jr\.?|entry[- ]level|graduate)\b/]];
-  parsed.seniority = (seniorityMap.find(([, pattern]) => pattern.test(lower)) || ['mid'])[0];
+  // Seniority: the title's words first, then years of experience.
+  const title = (lines[0] || '').toLowerCase();
+  const byTitle = [['exec', /\b(vp|vice president|head of|director|chief|cxo)\b/], ['lead', /\b(lead|principal|staff)\b/], ['senior', /\bsenior|\bsr\.?\b/], ['junior', /\b(junior|jr\.?|entry[- ]level|graduate|intern)\b/], ['mid', /\b(mid|middle|medior|intermediate)\b/]].find(([, re]) => re.test(title))?.[0];
+  const years = [...(reqText || text).matchAll(/(\d{1,2})\s*(?:\+|–|-|to)?\s*(?:\d{1,2})?\s*\+?\s*years?/gi)].map((m) => Number(m[1])).filter((y) => y > 0 && y < 30);
+  const minYears = years.length ? Math.min(...years) : undefined;
+  parsed.seniority = byTitle || (minYears === undefined ? 'mid' : minYears >= 8 ? 'lead' : minYears >= 5 ? 'senior' : minYears >= 2 ? 'mid' : 'junior');
+  if (minYears !== undefined) parsed.yearsExperience = minYears;
 
-  if (/remote/.test(lower) && /hybrid/.test(lower)) parsed.workMode = 'Hybrid';
-  else if (/hybrid/.test(lower)) parsed.workMode = 'Hybrid';
-  else if (/remote/.test(lower)) parsed.workMode = 'Remote';
+  if (/\bhybrid\b|\bwfh\b.*days|days.*\bwfh\b/.test(lower)) parsed.workMode = 'Hybrid';
+  else if (/\b(100% )?remote\b|work from anywhere/.test(lower)) parsed.workMode = 'Remote';
   else if (/on[- ]?site|in[- ]office/.test(lower)) parsed.workMode = 'On-site';
+  parsed.type = /part[- ]time/.test(lower) ? 'Part-time' : /\bcontract\b(?! salary)|contractor/.test(lower) && !/contractual/.test(lower) ? 'Contract' : /freelance/.test(lower) ? 'Freelance' : /\binternship\b/.test(lower) ? 'Internship' : 'Full-time';
 
-  parsed.type = /part[- ]time/.test(lower) ? 'Part-time' : /contract/.test(lower) ? 'Contract' : /freelance/.test(lower) ? 'Freelance' : /intern/.test(lower) ? 'Internship' : 'Full-time';
-
-  const locationMatch = text.match(/(?:location|based in|office)[:\s]+([A-Za-zÀ-ỹ ,'-]{3,60})/i);
+  const locationMatch = text.match(/(?:location|based in|working location|work location|office)[:\s]+([A-Za-zÀ-ỹ ,'-]{3,60})/i);
   if (locationMatch) parsed.location = locationMatch[1].trim().replace(/[.,]$/, '');
+  const companyMatch = text.match(/^\s*(?:company|employer|client)\s*[:\-–]\s*(.{2,80})$/im);
+  if (companyMatch) parsed.company = companyMatch[1].trim();
+  const salary = parseSalaryText(text.match(/^.*(?:salary|compensation|pay|lương)[^\n]*$/im)?.[0] || '') || parseSalaryText(text);
+  if (salary) parsed.salaryRange = salary;
 
-  const salaryMatch = text.match(/(?:[$€£]|USD|EUR|GBP|A\$|S\$|VND)\s?([\d.,]+)\s?(k)?\s?(?:-|–|to)\s?(?:[$€£]|USD|EUR|GBP|A\$|S\$|VND)?\s?([\d.,]+)\s?(k)?/i);
-  if (salaryMatch) {
-    const parseNumber = (raw, kFlag) => { let value = Number(raw.replace(/[.,](?=\d{3}\b)/g, '').replace(',', '.')); if (kFlag || value < 1000) value *= 1000; return Math.round(value); };
-    const min = parseNumber(salaryMatch[1], salaryMatch[2]);
-    const max = parseNumber(salaryMatch[3], salaryMatch[4]);
-    const currency = /€|EUR/i.test(salaryMatch[0]) ? 'EUR' : /£|GBP/i.test(salaryMatch[0]) ? 'GBP' : /A\$/i.test(salaryMatch[0]) ? 'AUD' : /S\$/i.test(salaryMatch[0]) ? 'SGD' : /VND|₫/i.test(salaryMatch[0]) ? 'VND' : 'USD';
-    if (min && max && min <= max) parsed.salaryRange = { min, max, currency };
-  }
+  // Skills: must-haves from the requirements (else the whole text minus nice-to-have/benefits); nice-to-haves from their own section.
+  const mustSource = reqText || sections.filter((s) => !['nice', 'benefits'].includes(s.kind)).map((s) => s.lines.join('\n')).join('\n');
+  const must = skillsIn(mustSource);
+  const respSkills = skillsIn(respText).filter((s) => !must.includes(s));
+  const mustAll = [...must, ...(must.length < 4 ? respSkills : [])].slice(0, 12);
+  parsed.requiredSkillsDetail = mustAll.map((name, index) => ({ name, weight: index < 4 ? 3 : 2 }));
+  parsed.niceToHaves = skillsIn(niceText).filter((s) => !mustAll.includes(s)).slice(0, 10);
+  // Languages: not from benefits, and not "Vietnamese labor law"-style mentions.
+  const langLines = sections.filter((s) => s.kind !== 'benefits').flatMap((s) => s.lines).filter((l) => !/\b(laws?|labou?r|legislation|insurance|company|market)\b/i.test(l)).join('\n');
+  const langs = LANGUAGES.filter(([, re]) => re.test(langLines)).map(([name]) => name);
+  if (langs.length) parsed.requiredLanguages = langs;
 
-  const foundSkills = SKILL_DICTIONARY.filter((skill) => new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text));
-  parsed.requiredSkillsDetail = foundSkills.slice(0, 10).map((name, index) => ({ name, weight: index < 4 ? 3 : 2 }));
+  const respBullets = bulletsIn(sections.filter((s) => s.kind === 'responsibilities').flatMap((s) => s.lines));
+  const allBullets = bulletsIn(lines);
+  parsed.responsibilities = (respBullets.length ? respBullets : allBullets).slice(0, 8).map((l) => clip(l, 300));
+  const benefitBullets = bulletsIn(sections.filter((s) => s.kind === 'benefits').flatMap((s) => s.lines));
+  if (benefitBullets.length) parsed.benefits = benefitBullets.slice(0, 12).map((l) => clip(l.replace(/^[^\w(]+/u, ''), 80)).filter(Boolean);
 
-  const bulletLines = lines.filter((line) => /^[-•*·]/.test(line)).map((line) => line.replace(/^[-•*·]\s*/, ''));
-  const responsibilitiesStart = lines.findIndex((line) => /responsibilit|what you.ll do|your role/i.test(line));
-  if (responsibilitiesStart >= 0) {
-    parsed.responsibilities = [];
-    for (const line of lines.slice(responsibilitiesStart + 1)) {
-      if (/^[A-Z][^-•*·]{0,40}:?$/.test(line) && parsed.responsibilities.length) break;
-      if (/^[-•*·]/.test(line)) parsed.responsibilities.push(line.replace(/^[-•*·]\s*/, '').slice(0, 300));
-      if (parsed.responsibilities.length >= 8) break;
-    }
-  } else if (bulletLines.length) parsed.responsibilities = bulletLines.slice(0, 6).map((line) => line.slice(0, 300));
-
-  const departmentMatch = text.match(/(?:department|team)[:\s]+([A-Za-z &]{3,50})/i);
+  const departmentMatch = text.match(/^\s*(?:department|team)\s*[:\-–]\s*([A-Za-z &]{3,50})$/im);
   if (departmentMatch) parsed.department = departmentMatch[1].trim();
 
-  parsed.description = lines.slice(1).join(' ').slice(0, 1200) || text.slice(0, 1200);
+  parsed.description = summaryFromText(lines.slice(1).join('\n'));
   parsed.interviewProcess = /screen/i.test(lower) || /interview process/i.test(lower)
     ? ['Recruiter screen', 'Technical / craft interview', 'Team conversation', 'Offer']
     : undefined;
   return parsed;
+}
+
+/**
+ * Short summary for the swipe card (max 400 chars): the first real paragraph near the top (not a heading, bullet,
+ * "Company:/Location:" line); when the text is all bullets, the first two bullets.
+ */
+export function summaryFromText(full) {
+  const lines = String(full || '').replace(/\r\n/g, '\n').split('\n').map((l) => l.trim()).filter(Boolean);
+  const top = lines.slice(0, Math.max(6, Math.ceil(lines.length * 0.4)));
+  const para = top.find((l) => l.length > 60 && !/^([-•*·o]|\d+[.)])\s/.test(l) && !/^(company|location|employer|employment type|work mode|salary)\s*:/i.test(l));
+  if (para) return clip(para, 400);
+  const bullets = bulletsIn(lines).filter((l) => l.length > 30).slice(0, 2);
+  return clip(bullets.length ? bullets.join(' ') : lines.join(' '), 400);
+}
+
+/** How much the heuristic parser found (import uses Claude only when this is weak). */
+export function parseStrength(parsed) {
+  const found = [parsed.requiredSkillsDetail?.length, parsed.niceToHaves?.length, parsed.requiredLanguages?.length, parsed.responsibilities?.length, parsed.benefits?.length].filter(Boolean).length;
+  return { found, weak: !parsed.requiredSkillsDetail?.length || found < 3 };
 }
 
 /** Parse with the Claude API when a key is configured. Falls back to heuristics on any failure. */

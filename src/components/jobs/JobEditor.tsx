@@ -65,7 +65,7 @@ function fromJob(job: Job): Form {
     type: job.type, workMode: job.workMode,
     remoteScope: job.remoteScope || 'worldwide', country: job.country || '', location: job.location,
     hiringRadiusKm: job.hiringRadiusKm ?? 40,
-    salaryMin: job.salaryRange ? String(job.salaryRange.min) : '', salaryMax: job.salaryRange ? String(job.salaryRange.max) : '',
+    salaryMin: job.salaryRange ? String(job.salaryRange.min) : '', salaryMax: job.salaryRange?.max != null ? String(job.salaryRange.max) : '',
     currency: job.salaryRange?.currency || 'USD', salaryNegotiable: job.salaryNegotiable ?? false, bonus: job.bonus || '', equity: job.equity || '',
     benefits: job.benefits || [], workingHours: job.workingHours || '', flexibleHours: job.flexibleHours || '', probation: job.probation || '',
     hybridDays: job.hybridDays ?? 2, visaSponsorship: job.visaSponsorship ?? false, relocationSupport: job.relocationSupport ?? false,
@@ -99,7 +99,7 @@ function applyDraft(form: Form, draft: JobDraft): Form {
     remoteScope: (draft.remoteScope as 'country' | 'worldwide') ?? form.remoteScope, country: draft.country ?? form.country,
     location: draft.location ?? form.location, hiringRadiusKm: draft.hiringRadiusKm ?? form.hiringRadiusKm,
     salaryMin: draft.salaryRange ? String(draft.salaryRange.min) : form.salaryMin,
-    salaryMax: draft.salaryRange ? String(draft.salaryRange.max) : form.salaryMax,
+    salaryMax: draft.salaryRange ? (draft.salaryRange.max != null ? String(draft.salaryRange.max) : '') : form.salaryMax,
     currency: draft.salaryRange?.currency ?? form.currency,
     description: draft.description ?? form.description,
     responsibilities: draft.responsibilities ?? form.responsibilities,
@@ -124,8 +124,10 @@ function stepErrors(step: number, form: Form): string[] {
     if (form.requiredLanguages.length < 1) errors.push('Add at least 1 language');
   }
   if (step === 2) {
-    if (form.salaryMin === '' || form.salaryMax === '') errors.push('Salary range is mandatory');
-    else if (Number(form.salaryMin) > Number(form.salaryMax)) errors.push('Salary min cannot exceed max');
+    // Salary is optional (founder, 2026-11-25); a minimum is advised. What is given must make sense.
+    if (form.salaryMin === '' && form.salaryMax !== '') errors.push('Add a minimum salary (the maximum is optional)');
+    else if (form.salaryMin !== '' && !(Number(form.salaryMin) > 0)) errors.push('Enter a minimum salary above 0');
+    else if (form.salaryMin !== '' && form.salaryMax !== '' && Number(form.salaryMin) > Number(form.salaryMax)) errors.push('Salary min cannot exceed max');
   }
   return errors;
 }
@@ -183,7 +185,7 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
       ...(form.workMode === 'Remote'
         ? { remoteScope: form.remoteScope, country: form.remoteScope === 'country' ? form.country : undefined }
         : { hiringRadiusKm: form.hiringRadiusKm }),
-      salaryRange: { min: Number(form.salaryMin), max: Number(form.salaryMax), currency: form.currency },
+      salaryRange: form.salaryMin === '' ? null : { min: Number(form.salaryMin), ...(form.salaryMax !== '' ? { max: Number(form.salaryMax) } : {}), currency: form.currency },
       salaryNegotiable: form.salaryNegotiable, bonus: form.bonus || undefined, equity: form.equity || undefined,
       benefits: form.benefits, workingHours: form.workingHours || undefined, flexibleHours: form.flexibleHours || undefined,
       probation: form.probation || undefined, hybridDays: form.workMode === 'Hybrid' ? form.hybridDays : undefined,
@@ -319,9 +321,9 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
       </div>}
 
       {step === 2 && <div className="wz-body">
-        <Field label="Salary range" required hint="Candidates see a compatibility badge pre-match; exact ranges reveal after a mutual match.">
+        <Field label="Salary range (optional)" hint="Optional, but a minimum salary is advised: candidates see a compatibility badge pre-match, and roles with a salary get more applications. Exact ranges reveal after a mutual match.">
           <div className="wz-salary">
-            <TextInput type="number" min={0} placeholder="Min" value={form.salaryMin} onChange={(e) => patch({ salaryMin: e.target.value })} aria-label="Salary minimum" />
+            <TextInput type="number" min={0} placeholder="Min (advised)" value={form.salaryMin} onChange={(e) => patch({ salaryMin: e.target.value })} aria-label="Salary minimum" />
             <span>–</span>
             <TextInput type="number" min={0} placeholder="Max" value={form.salaryMax} onChange={(e) => patch({ salaryMax: e.target.value })} aria-label="Salary maximum" />
             <select className="wz-input wz-select" value={form.currency} onChange={(e) => patch({ currency: e.target.value })} aria-label="Currency">{CURRENCIES.map((currency) => <option key={currency}>{currency}</option>)}</select>

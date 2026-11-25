@@ -82,7 +82,8 @@ export interface Person {
   contactName?: string; contactEmail?: string; calendarLink?: string;
 }
 export interface WeightedSkill { name: string; weight: number }
-export interface SalaryRange { min: number; max: number; currency: string }
+/** A role's salary: the maximum is optional ("From $40k", founder 2026-11-25). */
+export interface SalaryRange { min: number; max?: number; currency: string }
 export interface Job {
   id: string; employerId: string; title: string; company: string; logo: string; accent: string; location: string;
   companyLogo?: string;
@@ -172,8 +173,8 @@ export interface SkillQuestions { skill: string; questions: string[] }
 export interface InterviewPrep { generator: string; topics: string[]; skillQuestions: SkillQuestions[]; askThem: string }
 export interface InterviewKit { generator: string; skillQuestions: SkillQuestions[]; gapProbes?: { skill: string; question: string }[]; gaps: string[]; salarySummary: string; salaryStatus: SalaryStatus }
 export interface ScreeningAnswer { question: string; answer: string }
-export type JobDraft = Partial<Omit<Job, 'id' | 'match'>>;
-export interface JobImportResult { jobs: Job[]; found: number; skipped: number; updated?: number; live?: boolean }
+export type JobDraft = Partial<Omit<Job, 'id' | 'match' | 'salaryRange'>> & { salaryRange?: SalaryRange | null };
+export interface JobImportResult { jobs: Job[]; found: number; skipped: number; updated?: number; live?: boolean; ai?: { used: number; failed: number; reason?: string } }
 export type StepKind = 'match' | 'hr' | 'technical' | 'manager' | 'culture' | 'assignment' | 'offer' | 'hired' | 'other';
 /** One hiring step (a round). `owner` = who runs it (e.g. "Priya Nair, Talent Partner"); `date` = YYYY-MM-DD. */
 export interface PipelineStep { id: string; name: string; owner: string; hidden?: boolean; kind?: StepKind; date?: string; format?: string }

@@ -163,7 +163,7 @@ export function PublicJobPage({ jobId }: { jobId: string }) {
         {info?.employerStatus !== 'member' && <p className="jf-member">Employer status: <b>Pending JobsMatchNow membership</b>. JobFinder listed this job from a public source{info?.source ? ` (${info.source})` : ''}; the employer hasn&rsquo;t joined yet.</p>}
         {info?.listingStatus === 'expired' && <p className="jf-warn">This listing has expired.</p>}
         {info?.reachability && <p className={`jf-reach ${info.reachability}`}>{REACH_TEXT[info.reachability]}</p>}
-        {(job.salary || job.salaryRange) && <p><b>Salary:</b> {job.salaryRange ? `${job.salaryRange.currency} ${job.salaryRange.min.toLocaleString('en-US')}–${job.salaryRange.max.toLocaleString('en-US')}` : job.salary}</p>}
+        {(job.salary || job.salaryRange) && <p><b>Salary:</b> {job.salaryRange ? (job.salaryRange.max != null ? `${job.salaryRange.currency} ${job.salaryRange.min.toLocaleString('en-US')}–${job.salaryRange.max.toLocaleString('en-US')}` : `From ${job.salaryRange.currency} ${job.salaryRange.min.toLocaleString('en-US')}`) : job.salary}</p>}
         {job.requiredSkills.length > 0 && <p><b>Skills:</b> {job.requiredSkills.join(', ')}</p>}
         {(job.fullDescription || job.description) && <div className="jf-desc">{(job.fullDescription || job.description || '').split(/\n+/).map((line, i) => <p key={i}>{line}</p>)}</div>}
         {job.gated && <p className="jf-help"><a href={`/?job=${encodeURIComponent(job.id)}&auth=register`}>Register free</a> or <a href={`/?job=${encodeURIComponent(job.id)}&auth=login`}>sign in</a> to read the full job.</p>}

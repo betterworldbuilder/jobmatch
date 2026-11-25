@@ -25,9 +25,10 @@ export function quickPostErrors(form: QuickForm): string[] {
   const errors: string[] = [];
   if (!form.title.trim()) errors.push('Job title is required');
   const min = Number(form.salaryMin); const max = Number(form.salaryMax);
-  if (form.salaryMin === '' || form.salaryMax === '') errors.push('Salary range is required — salary up front is how JobsMatchNow works');
-  else if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max <= 0) errors.push('Enter a real salary range');
-  else if (min > max) errors.push('Salary min cannot exceed max');
+  // Salary is optional (founder, 2026-11-25); a minimum is advised. What is given must make sense.
+  if (form.salaryMin === '' && form.salaryMax !== '') errors.push('Add a minimum salary (the maximum is optional)');
+  else if (form.salaryMin !== '' && (!Number.isFinite(min) || min <= 0)) errors.push('Enter a minimum salary above 0');
+  else if (form.salaryMin !== '' && form.salaryMax !== '' && (!Number.isFinite(max) || min > max)) errors.push('Salary min cannot exceed max');
   if (!form.location.trim()) errors.push('City / location is required');
   if (!form.workMode) errors.push('Choose remote, hybrid, or on-site');
   if (form.skills.length < 1) errors.push('Add at least 1 must-have skill');
@@ -55,7 +56,7 @@ export function QuickPostRole({ viewer, onPosted, onCancel }: { viewer: Person; 
         employerId: viewer.id, postSource: 'quick_post', status: 'active', type: 'Full-time',
         title: form.title.trim(), location: form.location.trim(), workMode: form.workMode,
         ...(form.workMode === 'Remote' ? { remoteScope: 'worldwide' as const } : { hiringRadiusKm: DEFAULT_RADIUS_KM }),
-        salaryRange: { min: Number(form.salaryMin), max: Number(form.salaryMax), currency: form.currency },
+        ...(form.salaryMin !== '' ? { salaryRange: { min: Number(form.salaryMin), ...(form.salaryMax !== '' ? { max: Number(form.salaryMax) } : {}), currency: form.currency } } : {}),
         requiredSkillsDetail: form.skills.map((name) => ({ name, weight: 2 })),
         niceToHaves: form.niceToHaves, requiredLanguages: form.languages,
         ...(form.description.trim() ? { description: form.description.trim() } : {}),
@@ -74,9 +75,9 @@ export function QuickPostRole({ viewer, onPosted, onCancel }: { viewer: Person; 
       </header>
       <div className="wz-body">
         <Field label="Job title" required><TextInput value={form.title} maxLength={140} onChange={(e) => patch({ title: e.target.value })} placeholder="e.g. Senior React Engineer" /></Field>
-        <Field label="Salary range" required hint="Salary up front. Candidates see a fit badge pre-match; the exact range is revealed after a mutual match.">
+        <Field label="Salary range (optional)" hint="Optional, but a minimum salary is advised: candidates see a fit badge pre-match, and roles with a salary get more applications. The exact range is revealed after a mutual match.">
           <div className="wz-salary">
-            <TextInput type="number" min={0} placeholder="Min" value={form.salaryMin} onChange={(e) => patch({ salaryMin: e.target.value })} aria-label="Salary minimum" />
+            <TextInput type="number" min={0} placeholder="Min (advised)" value={form.salaryMin} onChange={(e) => patch({ salaryMin: e.target.value })} aria-label="Salary minimum" />
             <span>–</span>
             <TextInput type="number" min={0} placeholder="Max" value={form.salaryMax} onChange={(e) => patch({ salaryMax: e.target.value })} aria-label="Salary maximum" />
             <select className="wz-input wz-select" value={form.currency} onChange={(e) => patch({ currency: e.target.value })} aria-label="Currency">{CURRENCIES.map((currency) => <option key={currency}>{currency}</option>)}</select>

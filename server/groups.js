@@ -95,7 +95,9 @@ const postedAt = (job) => job.createdAt || Date.parse(job.jobFinder?.discoveredA
 /** Salary as candidates see it before a match: JobFinder listings show the published salary; members' roles reveal it after a match. */
 function publicSalary(job) {
   if (job.jobFinder && job.jobFinder.listingStatus !== 'claimed') {
-    if (job.salaryRange) return `${job.salaryRange.currency} ${job.salaryRange.min.toLocaleString('en-US')}–${job.salaryRange.max.toLocaleString('en-US')}`;
+    if (job.salaryRange) return job.salaryRange.max != null
+      ? `${job.salaryRange.currency} ${job.salaryRange.min.toLocaleString('en-US')}–${job.salaryRange.max.toLocaleString('en-US')}`
+      : `From ${job.salaryRange.currency} ${job.salaryRange.min.toLocaleString('en-US')}`;
     return job.salary || null;
   }
   return null;
