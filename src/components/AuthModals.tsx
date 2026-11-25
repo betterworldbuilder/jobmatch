@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type InputHTMLAttributes } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Ban, BriefcaseBusiness, Check, Download, Linkedin, Loader2, LogIn, Mail, Play, Search, ShieldCheck, Trash2, User, X } from 'lucide-react';
+import { ArrowRight, Ban, BriefcaseBusiness, Check, Download, Eye, EyeOff, Linkedin, Loader2, LogIn, Mail, Play, Search, ShieldCheck, Trash2, User, X } from 'lucide-react';
 import { api, apiBase } from '../api';
 import { featureOn } from '../lib/flags';
 import { startTour } from '../lib/tour/runtime';
@@ -14,6 +14,17 @@ function GoogleMark() {
 }
 
 type SsoBusy = 'linkedin' | 'google' | null;
+
+/** Password field with a show/hide eye button (founder, 2026-11-25). */
+function PasswordInput({ className = 'auth-input', ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [visible, setVisible] = useState(false);
+  return <div className="auth-password">
+    <input {...props} className={className} type={visible ? 'text' : 'password'} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+    <button type="button" className="auth-password-toggle" onClick={() => setVisible((v) => !v)} aria-label={visible ? 'Hide password' : 'Show password'} aria-pressed={visible} title={visible ? 'Hide password' : 'Show password'}>
+      {visible ? <EyeOff size={17} /> : <Eye size={17} />}
+    </button>
+  </div>;
+}
 
 /** "Watch Candidate full tour" · "Watch Recruiter full tour" (founder, 2026-11-24): sign-in window and home page.
  *  Shown only while the `tour` flag is on (preview ?tour=1). */
@@ -180,7 +191,7 @@ export function LoginModal({ onClose, onComplete, onRegister, notice }: { onClos
     {notice && <p className="auth-warning" role="status"><strong>{notice}</strong></p>}
     <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!email.trim() || !password) return; setSubmitting('password'); setSubmitted('password'); run(async () => (await api.loginPassword(email.trim(), password)).user); }}>
       <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" aria-label="Email address" />
-      <input className="auth-input" type="password" placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" aria-label="Password" />
+      <PasswordInput placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" aria-label="Password" />
       <button type="submit" className="primary-button auth-submit" disabled={submitting !== null || !email.trim() || !password}>{submitting === 'password' ? <Loader2 size={16} className="spin" /> : <><LogIn size={16} /> Log in</>}</button>
       {/* The error sits right under Log in: at the bottom of the window it was hidden below the demo list on phones. */}
       {error && submitted === 'password' && <p className="auth-error" role="alert">{error}</p>}
@@ -281,7 +292,7 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
     <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || !email.trim() || !passwordOk || !conductAccepted || !countryOk) return; setSubmitting(true); run(() => authProviders.email.signIn({ register: { role, name: name.trim(), email: email.trim(), password, conductAccepted, citizenship, ...(role === 'employer' ? { country } : {}) } })); }}>
       <input className="auth-input" placeholder="Full name" value={name} onChange={(event) => setName(event.target.value)} required aria-label="Full name" autoComplete="name" />
       <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(event) => setEmail(event.target.value)} required aria-label="Email address" autoComplete="email" />
-      <input className="auth-input" type="password" placeholder={`Password (min ${config.passwordMinLength} characters)`} value={password} onChange={(event) => setPassword(event.target.value)} required minLength={config.passwordMinLength} aria-label="Password" autoComplete="new-password" />
+      <PasswordInput placeholder={`Password (min ${config.passwordMinLength} characters)`} value={password} onChange={(event) => setPassword(event.target.value)} required minLength={config.passwordMinLength} aria-label="Password" autoComplete="new-password" />
       <button type="submit" className="primary-button auth-submit" disabled={submitting || !name.trim() || !email.trim() || !passwordOk || !conductAccepted || !countryOk}>{submitting ? <Loader2 size={16} className="spin" /> : <><Mail size={16} /> Create my account</>}</button>
     </form>
     {error && <p className="auth-error">{error}</p>}
@@ -299,8 +310,8 @@ export function ResetPasswordModal({ token, onClose, onComplete }: { token: stri
   const ok = password.length >= min && password === confirm;
   return <ModalShell title="Set a new password" subtitle="Choose a strong new password to finish resetting." onClose={onClose}>
     <form className="auth-form" onSubmit={async (e) => { e.preventDefault(); if (!ok) return; setBusy(true); setError(''); try { const r = await api.resetPassword(token, password); onComplete(r.user); } catch (err) { setError(err instanceof Error ? err.message : 'Reset failed'); } finally { setBusy(false); } }}>
-      <input className="auth-input" type="password" placeholder={`New password (min ${min})`} value={password} onChange={(e) => setPassword(e.target.value)} minLength={min} autoComplete="new-password" required />
-      <input className="auth-input" type="password" placeholder="Confirm new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
+      <PasswordInput placeholder={`New password (min ${min})`} value={password} onChange={(e) => setPassword(e.target.value)} minLength={min} autoComplete="new-password" required />
+      <PasswordInput placeholder="Confirm new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
       {confirm && password !== confirm && <p className="auth-error">Passwords don’t match.</p>}
       <button type="submit" className="primary-button auth-submit" disabled={busy || !ok}>{busy ? <Loader2 size={16} className="spin" /> : 'Set new password'}</button>
       {error && <p className="auth-error">{error}</p>}

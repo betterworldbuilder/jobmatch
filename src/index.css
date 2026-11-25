@@ -1957,6 +1957,11 @@ img.avatar-mini { object-fit:cover; }
 .auth-select,.auth-input { width:100%; min-height:46px; border:1px solid var(--line); border-radius:12px; padding:0 14px; background:white; font-size:13px; outline:0; }
 .auth-select:focus,.auth-input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(253,38,122,.12); }
 .auth-submit { width:100%; margin-top:4px; }
+.auth-password { position:relative; width:100%; }
+.auth-password .auth-input { padding-right:44px; }
+.auth-password-toggle { position:absolute; top:50%; right:6px; transform:translateY(-50%); width:34px; height:34px; display:grid; place-items:center; border:0; border-radius:9px; background:transparent; color:#7b8494; cursor:pointer; padding:0; }
+.auth-password-toggle:hover { color:var(--green); background:rgba(253,38,122,.06); }
+.auth-password-toggle:focus-visible { outline:2px solid var(--green); outline-offset:1px; }
 .admin-phone-bar { display:none; } /* phones only: see phone-theme.css */
 .auth-divider { display:flex; align-items:center; gap:12px; margin:18px 0; color:#9aa39d; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
 .auth-divider:before,.auth-divider:after { content:""; flex:1; height:1px; background:var(--line); }
