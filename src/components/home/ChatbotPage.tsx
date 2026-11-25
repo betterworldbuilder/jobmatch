@@ -22,6 +22,44 @@ const AGENT_TABS: { id: AgentId; label: string }[] = [
 export const openclawCommand = (key: string) => `openclaw mcp set jobsmatchnow '${JSON.stringify({ url: MCP_URL, transport: 'streamable-http', headers: { Authorization: `Bearer ${key}` } })}'`;
 export const musePrompt = () => `Build a custom connector to my JobsMatchNow account. It is an MCP server at ${MCP_URL} (streamable HTTP, JSON responses). Every request needs the header "Authorization: Bearer <key>". Ask me for the key in your secure credentials prompt, not in this chat. The connector is read-only: it lists my matches, hiring stages, skill gaps and next interview. Save it as a skill so I can ask about my job search later.`;
 
+// The two options, side by side (founder, 2026-11-25): what each does, benefits, use cases per role.
+// Honest limit: the agent only READS JobsMatchNow data; it automates its own work (summaries, reminders, briefs).
+function AiOptions({ recruiter, onChatbot, onAgent }: { recruiter: boolean; onChatbot: () => void; onAgent: () => void }) {
+  const chatUses = recruiter
+    ? ['“Which candidates are at the interview stage?”', '“Who have I matched with this week?”', '“When is my next interview, and with whom?”']
+    : ['“Which skills should I learn next, and where?”', '“Where am I in each hiring process?”', '“When is my next interview?”'];
+  const agentUses = recruiter
+    ? ['Every morning, a hiring summary in your messaging app: new matches, stages, today’s interviews.', 'Before each interview, a short brief on the candidate and the stage.', 'Every Friday, a pipeline report for each open role.']
+    : ['Every morning, a summary in your messaging app: new matches and your next interview.', 'Reminders the day before each interview, with the role and the stage.', 'Every week, the skills your matched roles ask for most, turned into a learning plan.'];
+  return <section className="cb-card cb-options">
+    <h2><Sparkles size={18} /> Two ways to use AI with JobsMatchNow</h2>
+    <div className="cb-option-grid">
+      <article className="cb-option">
+        <span className="cb-option-tag">Option 1</span>
+        <h3><Bot size={18} /> Chatbot: ask questions</h3>
+        <p className="cb-option-what">Connect <b>ChatGPT or Claude</b> with your own API key. Ask anything about your {recruiter ? 'roles, candidates and hiring' : 'matches, skills and interviews'} with the <b>Ask AI</b> button, on every page.</p>
+        <h4>Benefits</h4>
+        <ul><li>Ready in 2 minutes, nothing to install.</li><li>Answers inside JobsMatchNow, from your own data, with sources.</li><li>You choose the model; you pay Anthropic or OpenAI directly.</li></ul>
+        <h4>Use cases</h4>
+        <ul className="cb-uses">{chatUses.map((u) => <li key={u}>{u}</li>)}</ul>
+        <p className="cb-note"><Crown size={12} /> Premium feature, with a free 7-day trial.</p>
+        <button type="button" className="fm-black cb-btn" onClick={onChatbot}><KeyRound size={16} /> Connect ChatGPT or Claude</button>
+      </article>
+      <article className="cb-option agent">
+        <span className="cb-option-tag">Option 2</span>
+        <h3><Plug size={18} /> AI agent: automate your routine</h3>
+        <p className="cb-option-what">Connect <b>OpenClaw or Muse</b> (or any MCP agent). Your agent reads your JobsMatchNow data on its own schedule and works with its other tools: messaging apps, calendar, notes.</p>
+        <h4>Benefits</h4>
+        <ul><li>Works for you without opening the app.</li><li>Brings JobsMatchNow into the apps you already use.</li><li>One personal key, read-only, revocable at any time.</li></ul>
+        <h4>Use cases</h4>
+        <ul className="cb-uses">{agentUses.map((u) => <li key={u}>{u}</li>)}</ul>
+        <p className="cb-note"><Lock size={12} /> Read-only: your agent can’t swipe, apply or send messages in JobsMatchNow. You stay in control.</p>
+        <button type="button" className="fm-black cb-btn" onClick={onAgent}><Plug size={16} /> Set up OpenClaw or Muse</button>
+      </article>
+    </div>
+  </section>;
+}
+
 function AgentSetup({ keyShown, hasKey, desktopConfig }: { keyShown: string; hasKey: boolean; desktopConfig: string }) {
   const [tab, setTab] = useState<AgentId>('openclaw');
   return <div className="cb-agents" id="connect-agent">
@@ -82,9 +120,11 @@ export function ChatbotPage({ data, navigate }: { data: Bootstrap; navigate: (v:
   const ask = data.viewer.role === 'employer' && agentsOn ? ASK_RECRUITER : ASK;
 
   return <div className="page cb-page">
-    <div className="page-title"><div><span className="overline">AI assistant</span><h1>Use your chatbot here</h1><p>Ask an AI about your own job search: matches, hiring stages, skill gaps and next interview. Use ours in the app, or connect your own ChatGPT or Claude.</p></div></div>
+    {agentsOn
+      ? <div className="page-title"><div><span className="overline">AI assistant</span><h1>Use your Chatbot or OpenClaw</h1><p>Two ways to put AI to work on your {data.viewer.role === 'employer' ? 'hiring' : 'job search'}: a chatbot that answers your questions, or your own AI agent that works for you in the background.</p></div></div>
+      : <div className="page-title"><div><span className="overline">AI assistant</span><h1>Use your chatbot here</h1><p>Ask an AI about your own job search: matches, hiring stages, skill gaps and next interview. Use ours in the app, or connect your own ChatGPT or Claude.</p></div></div>}
 
-    <section className="cb-card">
+    {agentsOn ? <AiOptions recruiter={data.viewer.role === 'employer'} onChatbot={() => setAgentOpen(true)} onAgent={() => document.getElementById('connect-agent')?.scrollIntoView({ block: 'center', behavior: 'smooth' })} /> : <section className="cb-card">
       <h2><Sparkles size={18} /> Where the chatbot is in JobsMatchNow</h2>
       <div className="cb-where">
         <button type="button" onClick={() => setAgentOpen(true)}><KeyRound size={18} /><strong>1. Connect your Claude or ChatGPT</strong><small>Get an API key from Anthropic or OpenAI (links inside) and paste it. Stored encrypted, never shown again.</small></button>
@@ -92,10 +132,10 @@ export function ChatbotPage({ data, navigate }: { data: Bootstrap; navigate: (v:
         <button type="button" onClick={() => navigate('analytics')}><BarChart3 size={18} /><strong>Reports → AI analyst</strong><small>Ready questions that open Ask AI.</small></button>
       </div>
       <p className="cb-note"><Crown size={12} /> Premium feature, with a free 7-day trial. You pay Anthropic or OpenAI directly for what you use.</p>
-    </section>
+    </section>}
 
     <section className="cb-card">
-      <h2><Plug size={18} /> {agentsOn ? 'Connect your AI agent: OpenClaw, Muse, Claude or any MCP agent' : 'Connect your own ChatGPT or Claude'}</h2>
+      <h2><Plug size={18} /> {agentsOn ? 'Option 2 setup: connect OpenClaw, Muse or any MCP agent' : 'Connect your own ChatGPT or Claude'}</h2>
       <ol className="cb-steps">
         <li><b>1</b><div><strong>Create a connector key</strong><span>It lets your assistant <em>read</em> your matches, hiring stages, skill gaps and next interview. Nothing else, and it can't send anything.</span>
           {fresh ? <div className="cb-fresh"><span><KeyRound size={14} /> Copy it now — it's shown only once:</span><CopyBox text={fresh} /></div>

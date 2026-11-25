@@ -4268,6 +4268,21 @@ img.avatar-mini { object-fit:cover; }
 .cb-soon { padding:10px 12px; border-radius:12px; background:#f5f3ff; }
 /* Connect your AI agent (founder, 2026-11-25): agent tabs + setup panel, and the block in AI settings. */
 .cb-copy.wrap code { white-space:pre-wrap; overflow-wrap:anywhere; }
+/* Two ways to use AI (founder, 2026-11-25): chatbot vs agent, side by side; stacked on phones. */
+.cb-option-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.cb-option { position:relative; display:flex; flex-direction:column; gap:6px; padding:18px; border-radius:16px; border:1px solid #e9d5ff; background:#faf5ff; min-width:0; }
+.cb-option.agent { border-color:#bfdbfe; background:#f0f7ff; }
+.cb-option h3 { display:flex; align-items:center; gap:8px; margin:4px 0 0; font:800 17px 'Manrope', sans-serif; color:#0b102b; }
+.cb-option h4 { margin:8px 0 0; font:800 11.5px 'Manrope', sans-serif; letter-spacing:.06em; text-transform:uppercase; color:#6b7280; }
+.cb-option ul { margin:2px 0 0; padding-left:18px; list-style:disc; display:flex; flex-direction:column; gap:4px; font-size:13.5px; color:#374151; line-height:1.45; }
+.cb-option .cb-uses li { color:#4c1d95; }
+.cb-option.agent .cb-uses li { color:#1e3a8a; }
+.cb-option-what { margin:2px 0 0; font-size:14px; line-height:1.5; color:#374151; }
+.cb-option-tag { align-self:flex-start; font:800 10.5px 'Manrope', sans-serif; letter-spacing:.06em; text-transform:uppercase; padding:4px 9px; border-radius:999px; background:#ede9fe; color:#6d28d9; }
+.cb-option.agent .cb-option-tag { background:#dbeafe; color:#1d4ed8; }
+.cb-option .cb-btn { margin-top:auto; align-self:stretch; }
+.cb-option .cb-note { margin-top:6px; }
+@media (max-width:760px) { .cb-option-grid { grid-template-columns:1fr; } .cb-option { padding:14px; } }
 .cb-agents { display:flex; flex-direction:column; gap:10px; margin-top:8px; min-width:0; }
 .cb-tabs { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
 .cb-tabs::-webkit-scrollbar { display:none; }
