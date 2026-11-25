@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, ClipboardPaste, Download, Image as ImageIcon, Loader2, Sparkles, Upload } from 'lucide-react';
-import { api, apiBase } from '../../api';
+import { ArrowLeft, ArrowRight, Check, ClipboardPaste, Download, Loader2, Sparkles, Upload } from 'lucide-react';
+import { api } from '../../api';
 import { Chips, Field, LevelTagInput, Segmented, TagInput, TextInput, Toggle } from '../profile/fields';
 import { demoAdapter, pasteAdapter } from '../../lib/jobSources';
 import { samplePasteText } from '../../content/jobSamples';
@@ -38,6 +38,8 @@ type Form = {
   managerName: string; managerTitle: string; managerStyle: string; managementStyleTags: string[]; teamStyle: string[]; teamSong: string;
   hiringTimeline: string; backgroundCheck: boolean; referenceCheck: boolean;
   jobGroups: string[];
+  // Recruiter details (replace the cover image, founder 2026-11-25). Email/phone: JobFinder only, never shown to candidates.
+  company: string; recruiterName: string; recruiterTitle: string; contactEmail: string; contactPhone: string;
 };
 
 const emptyForm = (): Form => ({
@@ -53,6 +55,7 @@ const emptyForm = (): Form => ({
   managerName: '', managerTitle: '', managerStyle: '', managementStyleTags: [], teamStyle: [], teamSong: '',
   hiringTimeline: '', backgroundCheck: false, referenceCheck: false,
   jobGroups: [],
+  company: '', recruiterName: '', recruiterTitle: '', contactEmail: '', contactPhone: '',
 });
 
 function fromJob(job: Job): Form {
@@ -82,6 +85,8 @@ function fromJob(job: Job): Form {
     managementStyleTags: job.managementStyleTags || [], teamStyle: job.teamStyle || [], teamSong: job.teamSong || '',
     hiringTimeline: job.hiringTimeline || '', backgroundCheck: job.backgroundCheck ?? false, referenceCheck: job.referenceCheck ?? false,
     jobGroups: job.jobGroups || [],
+    company: job.company || '', recruiterName: job.recruiterName || '', recruiterTitle: job.recruiterTitle || '',
+    contactEmail: job.contactEmail || '', contactPhone: job.contactPhone || '',
   };
 }
 
@@ -105,8 +110,14 @@ function applyDraft(form: Form, draft: JobDraft): Form {
     responsibilities: draft.responsibilities ?? form.responsibilities,
     interviewProcess: draft.interviewProcess ?? form.interviewProcess,
     startDate: draft.startDate ?? form.startDate, externalUrl: draft.externalUrl ?? form.externalUrl,
+    // Recruiter details found by the parser fill only empty boxes.
+    company: form.company || draft.company || '', recruiterName: form.recruiterName || draft.recruiterName || '',
+    contactEmail: form.contactEmail || draft.contactEmail || '', contactPhone: form.contactPhone || draft.contactPhone || '',
   };
 }
+
+const EMAIL_OK = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
+const PHONE_OK = (p: string) => /^\+?[\d\s().-]{6,24}$/.test(p) && p.replace(/\D/g, '').length >= 6 && p.replace(/\D/g, '').length <= 15;
 
 function stepErrors(step: number, form: Form): string[] {
   const errors: string[] = [];
@@ -116,6 +127,8 @@ function stepErrors(step: number, form: Form): string[] {
     if (!form.workMode) errors.push('Work mode is required');
     if (!form.location.trim()) errors.push('Location is required');
     if (form.workMode === 'Remote' && form.remoteScope === 'country' && !form.country.trim()) errors.push('Enter the country for a country-restricted remote role');
+    if (form.contactEmail.trim() && !EMAIL_OK.test(form.contactEmail.trim())) errors.push('Enter a valid recruiter email');
+    if (form.contactPhone.trim() && !PHONE_OK(form.contactPhone.trim())) errors.push('Enter a valid recruiter phone');
   }
   if (step === 1) {
     if (!form.fullDescription.trim() && !form.description.trim()) errors.push('Paste the full job description in Role details');
@@ -143,8 +156,6 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
   const [attempted, setAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string>(job?.coverImage ? `${apiBase}${job.coverImage}` : '');
   const [error, setError] = useState('');
   const patch = (changes: Partial<Form>) => setForm((current) => ({ ...current, ...changes }));
   const errors = useMemo(() => stepErrors(step, form), [step, form]);
@@ -202,12 +213,15 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
       managementStyleTags: form.managementStyleTags, teamStyle: form.teamStyle, teamSong: form.teamSong || undefined,
       hiringTimeline: form.hiringTimeline || undefined, backgroundCheck: form.backgroundCheck, referenceCheck: form.referenceCheck,
       jobGroups: form.jobGroups,
+      company: form.company.trim() || undefined, recruiterName: form.recruiterName.trim(), recruiterTitle: form.recruiterTitle.trim(),
     };
     try {
       let jobId = job?.id;
       if (job) await api.updateJob(job.id, payload);
       else { const { job: created } = await api.createJob({ ...payload, employerId: viewer.id }); jobId = created.id; }
-      if (coverFile && jobId) await api.uploadJobCover(jobId, coverFile);
+      // JobFinder only: the private recruiter email/phone (never on the role, never shown to candidates).
+      const contactChanged = form.contactEmail.trim() !== (job?.contactEmail || '') || form.contactPhone.trim() !== (job?.contactPhone || '');
+      if (viewer.jobFinder && jobId && contactChanged) await api.setJobContact(jobId, { email: form.contactEmail.trim(), phone: form.contactPhone.trim() });
       onSaved();
     } catch (e) { setError(e instanceof Error ? e.message : 'Save failed'); }
     finally { setSaving(false); }
@@ -248,15 +262,19 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
       </div>}
 
       {step === 0 && <div className="wz-body">
-        <Field label="Cover image (optional)" hint="Shown as the card background. Falls back to your brand color + logo.">
-          <label className="job-cover">
-            <div className="job-cover-preview" style={coverPreview ? { backgroundImage: `url(${coverPreview})` } : { background: 'linear-gradient(150deg,#3d5afe,#ff6036)' }}>
-              {!coverPreview && <><ImageIcon size={22} /><span>Add a cover</span></>}
-              <em className="job-cover-edit">{coverPreview ? 'Change cover' : 'Upload'}</em>
-            </div>
-            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setCoverFile(f); setCoverPreview(URL.createObjectURL(f)); } }} />
-          </label>
-        </Field>
+        {/* Recruiter details (founder, 2026-11-25): replace the cover image. Shown on the role card. */}
+        <fieldset className="wz-recruiter">
+          <legend>Recruiter details</legend>
+          <div className="wz-row">
+            <Field label="Company"><TextInput value={form.company} maxLength={80} onChange={(e) => patch({ company: e.target.value })} placeholder="e.g. MTI Technology" /></Field>
+            <Field label="Recruiter name (optional)" hint="Shown on the card. Empty = your own name."><TextInput value={form.recruiterName} maxLength={80} onChange={(e) => patch({ recruiterName: e.target.value })} placeholder="e.g. Linh Nguyen" /></Field>
+            <Field label="Recruiter title (optional)"><TextInput value={form.recruiterTitle} maxLength={80} onChange={(e) => patch({ recruiterTitle: e.target.value })} placeholder="e.g. Talent Partner" /></Field>
+          </div>
+          {viewer.jobFinder && <div className="wz-row">
+            <Field label="Recruiter email (hidden from candidates)" hint="JobsMatchNow uses it to tell the recruiter when a candidate applies. Candidates write to Greatcandidates@jobsmatchnow.com."><TextInput type="email" value={form.contactEmail} maxLength={254} onChange={(e) => patch({ contactEmail: e.target.value })} placeholder="hr@company.com" /></Field>
+            <Field label="Recruiter phone (hidden from candidates)"><TextInput type="tel" value={form.contactPhone} maxLength={30} onChange={(e) => patch({ contactPhone: e.target.value })} placeholder="+84 90 123 4567" /></Field>
+          </div>}
+        </fieldset>
         <div className="wz-row">
           <Field label="Job title" required><TextInput value={form.title} onChange={(e) => patch({ title: e.target.value })} /></Field>
           <Field label="Department (optional)"><TextInput value={form.department} onChange={(e) => patch({ department: e.target.value })} placeholder="e.g. Engineering" /></Field>

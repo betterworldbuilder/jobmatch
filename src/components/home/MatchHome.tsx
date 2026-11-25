@@ -9,6 +9,28 @@ import type { Bootstrap, HiringStatus, Job, MatchEvidence, Note, Person, RoleMat
 
 import { exportJobs, jobRow, type ExportFormat } from '../../lib/jobExport';
 
+/** The candidate's public address jobsmatchnow.com/firstname.lastname (founder, 2026-11-25): copy it, turn it on/off.
+ *  On = recruiters of imported roles get this link when the candidate applies. */
+function PublicProfileLink({ data, setData }: { data: Bootstrap; setData: (d: Bootstrap) => void }) {
+  const v = data.viewer;
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  if (!v.profileSlug) return null;
+  const on = v.publicProfile !== false;
+  const url = `https://jobsmatchnow.com/${v.profileSlug}`;
+  const toggle = async () => {
+    setBusy(true);
+    try { await api.updateProfile(v.id, { publicProfile: !on }); setData(await api.bootstrap(v.id)); }
+    catch (e) { window.alert(e instanceof Error ? e.message : 'Could not change this setting'); }
+    finally { setBusy(false); }
+  };
+  return <div className={on ? 'td-public-link' : 'td-public-link off'}>
+    <a href={on ? `/${v.profileSlug}` : undefined} target="_blank" rel="noopener noreferrer" title="Your public profile">jobsmatchnow.com/{v.profileSlug}</a>
+    {on && <button type="button" onClick={() => { void navigator.clipboard?.writeText(url); setCopied(true); window.setTimeout(() => setCopied(false), 1500); }}>{copied ? 'Copied' : 'Copy'}</button>}
+    <button type="button" onClick={() => void toggle()} disabled={busy} aria-pressed={on} title={on ? 'Public: recruiters can open it, and it is sent with your applications to imported roles' : 'Private: nobody can open it and it is not sent'}>{on ? 'Public' : 'Private'}</button>
+  </div>;
+}
+
 /** Inline recruiter email for one role (JobFinder). Saves on Enter or when leaving the field; empty clears it. */
 function RoleEmailCell({ job, onSaved }: { job: Job; onSaved: () => Promise<void> | void }) {
   const [value, setValue] = useState(job.contactEmail || '');
@@ -17,7 +39,7 @@ function RoleEmailCell({ job, onSaved }: { job: Job; onSaved: () => Promise<void
     const email = value.trim();
     if (email === (job.contactEmail || '')) return;
     setState('saving');
-    try { await api.setJobContact(job.id, email); setState('saved'); await onSaved(); }
+    try { await api.setJobContact(job.id, { email }); setState('saved'); await onSaved(); }
     catch (e) { setState('error'); window.alert(e instanceof Error ? e.message : 'Could not save the email'); }
   };
   return <span className={`td-role-email s-${state}`} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} title="Recruiter email: visible only to you. Candidates write to Greatcandidates@jobsmatchnow.com.">
@@ -259,6 +281,7 @@ export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMe
           <strong>{data.viewer.name}</strong>
           <span>{data.viewer.title}</span>
           <div className="td-profile-card-meta"><span>{completion}% complete</span>{data.viewer.location && <span>{data.viewer.location}</span>}</div>
+          <PublicProfileLink data={data} setData={setData} />
         </div>
         <div className="td-variant-switcher td-variant-switcher-inline">
           <select

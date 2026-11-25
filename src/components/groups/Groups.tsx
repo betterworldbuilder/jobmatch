@@ -30,7 +30,7 @@ export function eligibilityText(e: Eligibility) {
 async function copyText(text: string) { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } }
 const linkedInShare = (url: string) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
 
-function PublicShell({ children }: { children: React.ReactNode }) {
+export function PublicShell({ children }: { children: React.ReactNode }) {
   return <main className="jf-public grp-public">
     <header className="jf-public-head"><a href="/" className="jf-public-brand"><span className="brand-heart-mark" aria-hidden="true" /> JobsMatchNow</a><a className="grp-home" href="/">Home <ArrowRight size={13} /></a></header>
     {children}

@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import App from './App';
 import { PublicJobPage } from './components/jobfinder/JobFinder';
 import { GroupPage, PublicJobCardPage } from './components/groups/Groups';
+import { PublicProfilePage, RoleLinkPage } from './components/public/PublicPages';
 import { APP_RESERVED } from './lib/pendingJob';
 import './index.css';
 import './phone-theme.css';
@@ -14,10 +15,16 @@ const path = window.location.pathname;
 const publicJob = path.match(/^\/jobs\/([A-Za-z0-9_-]{3,60})\/?$/)?.[1];
 const cardJob = path.match(/^\/app\/job\/([A-Za-z0-9_-]{2,60})\/?$/)?.[1];
 const groupSlug = path.match(/^\/app\/([a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?)\/?$/)?.[1];
+// jobsmatchnow.com/role/<category>/<code>-<id> and jobsmatchnow.com/firstname.lastname (founder, 2026-11-25).
+const roleSlug = path.match(/^\/role\/[a-z0-9-]{2,30}\/([a-z0-9]+-[a-z0-9]+)\/?$/)?.[1];
+const profileSlug = path.match(/^\/([a-z0-9]+(?:\.[a-z0-9]+)+)\/?$/)?.[1];
+const isFile = /\.(html?|js|css|txt|xml|json|png|jpe?g|svg|ico|webmanifest|apk|pdf)$/i.test(path);
 const page = publicJob ? <PublicJobPage jobId={publicJob} />
   : cardJob ? <PublicJobCardPage jobId={cardJob} />
     : groupSlug && !APP_RESERVED.has(groupSlug) ? <GroupPage slug={groupSlug} />
-      : <App />;
+      : roleSlug ? <RoleLinkPage slug={roleSlug} />
+        : profileSlug && !isFile ? <PublicProfilePage slug={profileSlug} />
+          : <App />;
 createRoot(document.getElementById('root')!).render(<StrictMode>{page}</StrictMode>);
 
 // Copyright and safety warning in the browser's developer console (founder, 2026-11-25): it protects members from

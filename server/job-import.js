@@ -82,7 +82,9 @@ function normalizeRecord(record, index, sourceSystem) {
   const salary = pick(record, ['salary', 'compensation', 'salary_range', 'pay']);
   const company = pick(record, ['company', 'company_name', 'employer', 'organization']);
   const contactEmail = pick(record, ['contact_email', 'recruiter_email', 'email', 'contact']); // JobFinder only; kept private
-  return { title, description, location, url, sourceJobId, sourceUpdatedAt: updatedAt, rawText: rawText.slice(0, 20000), employmentType, workMode, salary, company, contactEmail };
+  const contactPhone = pick(record, ['contact_phone', 'recruiter_phone', 'phone', 'mobile']); // JobFinder only; kept private
+  const recruiterName = pick(record, ['recruiter_name', 'recruiter', 'contact_name', 'hiring_manager']);
+  return { title, description, location, url, sourceJobId, sourceUpdatedAt: updatedAt, rawText: rawText.slice(0, 20000), employmentType, workMode, salary, company, contactEmail, contactPhone, recruiterName };
 }
 
 export function parseJobImportFile(source, filename, sourceSystem = 'file') {

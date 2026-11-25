@@ -106,7 +106,8 @@ export function RoleDetailPage({ job: j, page, company }: { job: Job; page: numb
       {j.responsibilities?.length ? <ul className="rp-list">{j.responsibilities.map((r) => <li key={r}>{r}</li>)}</ul> : null}
       <h5>Skills required</h5>{must.length ? <Chips items={must} /> : <p className="rp-empty">Not listed.</p>}
       <h5>Nice to have</h5>{j.niceToHaves?.length ? <Chips items={j.niceToHaves} /> : <p className="rp-empty">Not listed.</p>}
-      {j.relayContact && <p className="rp-relay"><Mail size={13} /> Message the recruiter through JobsMatchNow: <a href={relayMailto(j)} onClick={(e) => e.stopPropagation()}>{RELAY_EMAIL}</a></p>}
+      {j.relayContact && <p className="rp-relay"><Mail size={13} /> Message the recruiter through JobsMatchNow: <a href={relayMailto(j)} onClick={(e) => e.stopPropagation()}>{RELAY_EMAIL}</a>
+        <small>When you apply, JobsMatchNow emails the recruiter your public profile link (you can make your profile private on your dashboard).</small></p>}
       {j.match && (j.match.matchedSkills?.length || j.match.missingSkills?.length) ? <div className="rp-fit">
         <h5><Sparkles size={13} /> Your fit{typeof j.match.score === 'number' ? ` · ${j.match.score}%` : ''}</h5>
         {j.match.matchedSkills?.length ? <><small>You have</small><Chips items={j.match.matchedSkills} tone="have" /></> : null}

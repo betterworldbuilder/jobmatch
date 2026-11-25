@@ -35,6 +35,8 @@ export interface RecommendationRequest { id: string; contact: string; method: 'e
 
 export interface Person {
   id: string; role: Role; kind?: EmployerKind; name: string; email?: string; provider?: string; title: string;
+  /** Candidates: public address jobsmatchnow.com/<profileSlug>; publicProfile false = private (default public). */
+  profileSlug?: string; publicProfile?: boolean;
   demoOrder?: number;
   /** The JobFinder account (manages listings of external jobs). */
   jobFinder?: boolean;
@@ -90,8 +92,10 @@ export interface Job {
   companyLogo?: string;
   /** Recruiter's status label for the role (Open / Conducting interviews / Hired); unset = automatic. */
   hiringStatus?: HiringStatus;
-  /** Recruiter email for this role: only ever sent to its JobFinder owner. */
-  contactEmail?: string;
+  /** Recruiter email / phone for this role: only ever sent to its JobFinder owner (never to candidates). */
+  contactEmail?: string; contactPhone?: string;
+  /** The role's own recruiter shown on the card (e.g. imported listings); falls back to the account's. */
+  recruiterName?: string; recruiterTitle?: string;
   /** Candidates: this role's recruiter can be reached through the JobsMatchNow relay address. */
   relayContact?: boolean;
   distanceKm?: number; workMode: string; salary: string; type: string; experienceLevel: string;

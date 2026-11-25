@@ -18,6 +18,8 @@ import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, re
 import { anonymizeText, convertDocxToPdf, detectTools, docxToHtml, extractDocxText, extractPdfText, makeSimplePdf, pdfThumbnail } from './resume.js';
 import { applyJob, assertPublishable, heuristicParse, legacySkills, parseJobText, parseSalaryText, parseStrength, summaryFromText } from './jobs.js';
 import { aiParseJob, importAiAllowed } from './import-ai.js';
+import { afterRoleInterest, mountRoleInterest } from './role-interest.js';
+import { assignProfileSlug, ensureProfileSlugs, findRoleBySlug, maskJobContacts, publicProfileView, rolePath } from './public-urls.js';
 import { backupToS3, mirrorToS3, removeFromS3, restoreFromS3, s3Enabled } from './storage.js';
 import { parseResumeToProfile } from './resume-parse.js';
 import os from 'node:os';
@@ -683,6 +685,7 @@ app.get('/api/auth/oauth/:provider/callback', async (req, res, next) => {
         conductAcceptedAt: Date.now(),
       };
       db.users.push(created);
+      assignProfileSlug(db, created); // jobsmatchnow.com/firstname.lastname
       track(db, 'signup_completed', { dim: `${actorSide(created)}/${provider}` });
       return created;
     });
@@ -802,6 +805,7 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
       const acquisition = { src: cleanSrc(acq.src), group: typeof acq.group === 'string' ? acq.group.slice(0, 60) : undefined, jobId: typeof acq.jobId === 'string' ? acq.jobId.slice(0, 60) : undefined };
       if (acquisition.src || acquisition.group || acquisition.jobId) created.acquisition = { ...Object.fromEntries(Object.entries(acquisition).filter(([, v]) => v)), at: Date.now() };
       db.users.push(created);
+      assignProfileSlug(db, created); // jobsmatchnow.com/firstname.lastname
       if (acquisition.group || acquisition.jobId) track(db, 'grp_register_completed', { dim: acquisition.src || '' });
       if (acquisition.src === 'linkedin') track(db, 'li_signup', { dim: actorSide(created) });
       // Only brand-new accounts count — the dev mock-SSO re-use above returns
@@ -1653,6 +1657,11 @@ async function importJobDrafts(employerId, sourceSystem, entries, { ai = null } 
       if (entry.location) parsed.location = entry.location.slice(0, 120);
       const salary = parseSalaryText(entry.salary); if (salary) parsed.salaryRange = salary;
       if (entry.company) parsed.company = entry.company.slice(0, 80);
+      if (entry.recruiterName) parsed.recruiterName = entry.recruiterName.slice(0, 80);
+      // Private recruiter contact (JobFinder): the file's columns first, else what the parser found in the text.
+      const fileEmail = String(entry.contactEmail || '').trim(); const filePhone = String(entry.contactPhone || '').trim();
+      parsed.contactEmail = EMAIL_RE.test(fileEmail) ? fileEmail : (EMAIL_RE.test(parsed.contactEmail || '') ? parsed.contactEmail : undefined);
+      parsed.contactPhone = validPhone(filePhone) ? filePhone : (validPhone(parsed.contactPhone || '') ? parsed.contactPhone : undefined);
       const missing = [
         !parsed.salaryRange && 'salary',
         !parsed.workMode && 'work mode',
@@ -1671,7 +1680,8 @@ async function importJobDrafts(employerId, sourceSystem, entries, { ai = null } 
   const fullDescriptionOf = (entry) => String(entry.description || entry.rawText || '').replace(/\r\n/g, '\n').trim().slice(0, 20000);
   const summaryOf = summaryFromText;
   // Parsed fields that applyJob does not take (company) or that we set ourselves.
-  const jobFields = (parsed) => { const { company, aiSummary, yearsExperience, ...rest } = parsed; return rest; };
+  const jobFields = (parsed) => { const { company, aiSummary, yearsExperience, contactEmail, contactPhone, ...rest } = parsed; return rest; };
+  const contactOfParsed = (p) => ({ ...(p.contactEmail ? { email: p.contactEmail } : {}), ...(p.contactPhone ? { phone: p.contactPhone } : {}) });
   const setCompany = (job, parsed, employer) => {
     if (!parsed.company) return false;
     const own = employer.company || employer.name;
@@ -1719,7 +1729,12 @@ async function importJobDrafts(employerId, sourceSystem, entries, { ai = null } 
         if (p.workMode && (!d.workMode || (preFix && d.workMode === 'Flexible'))) { d.workMode = p.workMode; changed = true; }
         if (p.salaryRange && !d.salaryRange) { applyJob(d, { salaryRange: p.salaryRange }); changed = true; }
         if (setCompany(d, p, employer)) changed = true;
-        if (goLive && !jobContactOf(db, d.id) && EMAIL_RE.test(item.entry.contactEmail || '')) { setJobContact(db, d.id, item.entry.contactEmail); changed = true; }
+        if (goLive) { // fill only the empty contact fields
+          const rec = jobContactRec(db, d.id) || {};
+          const fill = { ...(!rec.email && p.contactEmail ? { email: p.contactEmail } : {}), ...(!rec.phone && p.contactPhone ? { phone: p.contactPhone } : {}) };
+          if (Object.keys(fill).length) { setJobContact(db, d.id, fill); changed = true; }
+        }
+        if (p.recruiterName && !d.recruiterName) { applyJob(d, { recruiterName: p.recruiterName }); changed = true; }
         if (d.status === 'draft' && goLive) { publish(d); changed = true; }
         if (changed) { d.updatedAt = Date.now(); updated += 1; } else skipped += 1;
         continue;
@@ -1752,7 +1767,7 @@ async function importJobDrafts(employerId, sourceSystem, entries, { ai = null } 
       if (full) { job.fullDescription = full; job.description = item.parsed.aiSummary || summaryOf(full); }
       Object.assign(job, item.metadata, { internalJobId: job.id, importNeedsReview: item.missing });
       publish(job);
-      if (goLive && EMAIL_RE.test(item.entry.contactEmail || '')) setJobContact(db, job.id, item.entry.contactEmail);
+      if (goLive && (item.parsed.contactEmail || item.parsed.contactPhone)) setJobContact(db, job.id, contactOfParsed(item.parsed));
       if (!job.screeningQuestions?.length && job.requiredSkillsDetail?.length) job.screeningQuestions = suggestScreeningQuestions(job);
       if (!job.geo && employer.geo) job.geo = employer.geo;
       db.jobs.push(job);
@@ -1956,26 +1971,41 @@ app.post('/api/jobs/:id/hire/confirm', async (req, res, next) => {
 // Recruiter email per role (founder, 2026-11-25): JobFinder recruiters only. Stored apart from the role so no role
 // view can leak it; candidates write to the relay address instead. Empty email clears it.
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
-function jobContactOf(db, jobId) { return (db.jobContacts || []).find((c) => c.jobId === jobId)?.email || ''; }
-function setJobContact(db, jobId, email) {
+const PHONE_RE = /^\+?[\d\s().-]{6,24}$/;
+const validPhone = (p) => PHONE_RE.test(p) && p.replace(/\D/g, '').length >= 6 && p.replace(/\D/g, '').length <= 15;
+function jobContactRec(db, jobId) { return (db.jobContacts || []).find((c) => c.jobId === jobId) || null; }
+function jobContactOf(db, jobId) { return jobContactRec(db, jobId)?.email || ''; }
+/** Upsert the private contact; only the fields given change; empty values clear them; no fields left = removed. */
+function setJobContact(db, jobId, changes) {
   if (!Array.isArray(db.jobContacts)) db.jobContacts = [];
+  const prev = jobContactRec(db, jobId) || {};
+  const next = { email: prev.email || '', phone: prev.phone || '', ...(typeof changes === 'string' ? { email: changes } : changes) };
   db.jobContacts = db.jobContacts.filter((c) => c.jobId !== jobId);
-  if (email) db.jobContacts.push({ id: jobId, jobId, email, updatedAt: Date.now() });
+  if (next.email || next.phone) db.jobContacts.push({ id: jobId, jobId, email: next.email || '', phone: next.phone || '', updatedAt: Date.now() });
 }
 app.put('/api/jobs/:id/contact', async (req, res, next) => {
   try {
     const session = authSession(req);
     if (!session) { const error = new Error('Sign in to continue'); error.status = 401; throw error; }
-    const email = String(req.body?.email ?? '').trim().slice(0, 254);
-    if (email && !EMAIL_RE.test(email)) throw new ValidationError('email', 'Enter a valid email address');
-    await store.transaction((db) => {
+    const changes = {};
+    if (req.body?.email !== undefined) {
+      changes.email = String(req.body.email ?? '').trim().slice(0, 254);
+      if (changes.email && !EMAIL_RE.test(changes.email)) throw new ValidationError('email', 'Enter a valid email address');
+    }
+    if (req.body?.phone !== undefined) {
+      changes.phone = String(req.body.phone ?? '').trim().slice(0, 30);
+      if (changes.phone && !validPhone(changes.phone)) throw new ValidationError('phone', 'Enter a valid phone number');
+    }
+    const saved = await store.transaction((db) => {
       const job = db.jobs.find((entry) => entry.id === req.params.id);
       if (!job) { const error = new Error('Job not found'); error.status = 404; throw error; }
       const user = db.users.find((u) => u.id === session.sub);
       if (job.employerId !== session.sub || !isJobFinderUser(user)) { const error = new Error('Only the JobFinder account can set a recruiter email'); error.status = 403; throw error; }
-      setJobContact(db, job.id, email);
+      setJobContact(db, job.id, changes);
+      const rec = jobContactRec(db, job.id);
+      return { email: rec?.email || '', phone: rec?.phone || '' };
     });
-    res.json({ ok: true, email });
+    res.json({ ok: true, ...saved });
   } catch (error) { next(error); }
 });
 
@@ -2142,7 +2172,8 @@ app.get('/api/bootstrap', async (req, res, next) => {
       const employer = pool.users.find((user) => user.id === job.employerId);
       // Real haversine distance when both sides have coordinates; else demo fallback.
       const realDist = haversineKm(viewer.geo, job.geo);
-      const withDistance = { ...job, distanceKm: realDist ?? job.distanceKm ?? demoDistances[job.id] };
+      // Recruiter emails/phones written in the role's text are masked for everyone but its owner (2026-11-25).
+      const withDistance = { ...(job.employerId === viewer.id ? job : maskJobContacts(job)), distanceKm: realDist ?? job.distanceKm ?? demoDistances[job.id] };
       if (job.employerId !== viewer.id) delete withDistance.geo; // private distance range only
       const match = scoreCandidateForJob(viewer, withDistance);
       // JobFinder listing (2026-11-25): the employer is not a member, so no recruiter card, no company profile from
@@ -2157,8 +2188,10 @@ app.get('/api/bootstrap', async (req, res, next) => {
         withDistance.salaryHidden = true;
       }
       const incomingLike = incomingEmployerLikes.find((swipe) => swipe.actorId === job.employerId && swipe.jobId === job.id);
-      // Public recruiter card shown on each role (photo/name/title only — no contact info pre-match).
-      const recruiter = employer ? { name: employer.name, title: employer.title, photo: employer.photo, company: employer.company } : undefined;
+      // Public recruiter card shown on each role (photo/name/title only — no contact info pre-match). A role's own
+      // recruiter details (e.g. imported listings) win over the account's (founder, 2026-11-25).
+      const recruiter = job.recruiterName ? { name: job.recruiterName, title: job.recruiterTitle, company: job.company }
+        : employer ? { name: employer.name, title: employer.title, photo: employer.photo, company: employer.company } : undefined;
       // Public company profile for the role's "Company" page (no contact details).
       const companyProfile = employer ? { about: employer.about, industry: employer.industry, companySize: employer.companySize, headquarters: employer.headquarters, website: employer.website, foundedYear: employer.foundedYear, officeLocations: employer.officeLocations, techStack: employer.techStack, benefits: employer.benefits } : undefined;
       // A role posted by a demo recruiter is a demo role, even if the role record itself lacks the flag (DEMO ACCOUNT stamp).
@@ -2166,8 +2199,10 @@ app.get('/api/bootstrap', async (req, res, next) => {
       const demo = job.demo === true || (employer?.demo === true && !employer?.sample && !job.sample) || undefined;
       // Recruiter email per role (founder, 2026-11-25): kept in db.jobContacts, never on the role. Only the JobFinder
       // owner sees it; everyone else only learns that candidates can write through the JobsMatchNow relay address.
-      const contactEmail = jobContactOf(db, job.id);
-      const contact = contactEmail ? (job.employerId === viewer.id && isJobFinderUser(viewer) ? { contactEmail } : { relayContact: true }) : {};
+      const rec = jobContactRec(db, job.id);
+      const contact = rec?.email || rec?.phone
+        ? (job.employerId === viewer.id && isJobFinderUser(viewer) ? { contactEmail: rec.email || undefined, contactPhone: rec.phone || undefined } : (rec.email ? { relayContact: true } : {}))
+        : {};
       return { ...withDistance, ...contact, ...(demo ? { demo: true } : {}), companyLogo: employer?.companyLogo, recruiter, companyProfile, match, likedYou: Boolean(incomingLike), superLikedYou: Boolean(incomingLike?.superLike), verified: verifiedUser(employer), promoted: boostedJobIds.has(job.id) };
     });
     // Boosted cards ride to the front of the deck, keeping their own relative
@@ -2436,6 +2471,8 @@ app.post('/api/swipes', async (req, res, next) => {
     if (targetType === 'job' && direction === 'like' && result.swipe && !result.duplicate) {
       const jf = await afterJobFinderLike(jobFinderCtx, { candidateId: actorId, jobId: targetId }).catch(() => null);
       if (jf) result.jobFinder = jf;
+      const notified = await afterRoleInterest(roleInterestCtx, { candidateId: actorId, jobId: targetId }).catch(() => null);
+      if (notified) result.recruiterNotified = notified.status;
     }
     res.status(201).json(result);
   } catch (error) { next(error); }
@@ -5149,15 +5186,40 @@ const jobFinderCtx = {
   limiter: rateLimit({ windowMs: 60000, max: 30, bucket: 'jobfinder' }),
 };
 mountJobFinder(app, jobFinderCtx);
+// Interest emails to the recruiters of the JobFinder account's roles (2026-11-25): anonymised, replies to the relay
+// address, one per candidate per role, weekly cap, signed unsubscribe shared with JobFinder's opt-out list.
+const roleInterestCtx = { store, origin: publicOrigin, contactOf: jobContactRec, scoreCandidateForJob, send: (mail) => sendMail(mail), ...mountRoleInterest(app, { store, secret: () => sessionSecret }) };
+
+// Public addresses (founder, 2026-11-25): jobsmatchnow.com/firstname.lastname (candidates) and
+// jobsmatchnow.com/role/<category>/<code>-<id> (roles). Existing candidates get their address once, at startup.
+await store.transaction((db) => { ensureProfileSlugs(db); }).catch((e) => console.warn(`profile slugs: ${e.message}`));
+app.get('/api/public/profile/:slug', async (req, res, next) => {
+  try {
+    const db = await store.read();
+    const user = db.users.find((u) => u.profileSlug && u.profileSlug === String(req.params.slug).toLowerCase());
+    const profile = publicProfileView(user, user?.photo);
+    if (!profile) { const error = new Error('This profile is not public'); error.status = 404; throw error; }
+    res.json({ profile, appUrl: `${publicOrigin}/app/` });
+  } catch (error) { next(error); }
+});
+app.get('/api/public/role/:slug', async (req, res, next) => {
+  try {
+    const db = await store.read();
+    const job = findRoleBySlug(db, req.params.slug);
+    if (!job || HIDDEN_FROM_CANDIDATES.includes(String(job.status).toLowerCase())) { const error = new Error('This role is not available'); error.status = 404; throw error; }
+    res.json({ jobId: job.id, path: rolePath(job) });
+  } catch (error) { next(error); }
+});
 
 // Full job view for a signed-in member (same rules as the deck: no contacts; members' salaries after a match).
 function jobFullView(db, job, viewer) {
-  const base = jobPublicView(job);
+  const base = jobPublicView(viewer && job.employerId === viewer.id ? job : maskJobContacts(job));
   if (isJobFinderJob(job) && job.jobFinder.listingStatus !== 'claimed') return { ...base, jobFinder: { ...job.jobFinder, reachability: reachabilityOf(db, job) } };
   const employer = db.users.find((user) => user.id === job.employerId);
   const out = {
     ...base, companyLogo: employer?.companyLogo,
-    recruiter: employer ? { name: employer.name, title: employer.title, photo: employer.photo, company: employer.company } : undefined,
+    recruiter: job.recruiterName ? { name: job.recruiterName, title: job.recruiterTitle, company: job.company }
+      : employer ? { name: employer.name, title: employer.title, photo: employer.photo, company: employer.company } : undefined,
     companyProfile: employer ? { about: employer.about, industry: employer.industry, companySize: employer.companySize, headquarters: employer.headquarters, website: employer.website, foundedYear: employer.foundedYear, officeLocations: employer.officeLocations, techStack: employer.techStack, benefits: employer.benefits } : undefined,
     ...(viewer.role === 'candidate' ? { match: scoreCandidateForJob(viewer, job) } : {}),
   };

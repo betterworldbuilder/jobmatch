@@ -115,6 +115,34 @@
 .td-section-title .td-delete-all:hover { background:#fff1f3; border-color:#e5485d; }
 .td-section-title .td-delete-all:disabled { opacity:.6; cursor:wait; }
 .td-role-edit.td-role-delete:hover { color:#c8233d; border-color:#e5485d; background:#fff1f3; }
+/* Candidate public address on the dashboard profile card. */
+.td-public-link { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:6px; font:700 12px 'Manrope'; }
+.td-public-link a { color:#0a66c2; text-decoration:none; word-break:break-all; }
+.td-public-link.off a { color:#8a93a6; text-decoration:line-through; }
+.td-public-link button { padding:2px 9px; border:1px solid #d8e2f2; border-radius:999px; background:#fff; color:#26304a; font:800 11px 'Manrope'; cursor:pointer; }
+.td-public-link.off button[aria-pressed] { background:#f2f4f8; color:#6b7280; }
+.rp-relay small { flex-basis:100%; color:#5b6578; font-size:11.5px; }
+/* Public profile page jobsmatchnow.com/firstname.lastname */
+.pp-card { max-width:720px; margin:24px auto; padding:24px; border:1px solid #e6e8ef; border-radius:20px; background:#fff; box-shadow:0 14px 34px rgba(13,24,52,.08); }
+.pp-head { display:flex; gap:18px; align-items:center; }
+.pp-photo { width:96px; height:96px; flex:none; border-radius:50%; object-fit:cover; background:linear-gradient(135deg,#fd267a,#ff6036); }
+.pp-initials { display:grid; place-items:center; color:#fff; font:800 32px 'Manrope'; }
+.pp-head h1 { margin:0; font:800 26px 'Manrope'; color:#0d1834; }
+.pp-title { margin:4px 0 0; color:#26304a; font-weight:700; }
+.pp-meta { display:flex; flex-wrap:wrap; gap:12px; margin:6px 0 0; color:#5b6578; font-size:13px; }
+.pp-meta span { display:inline-flex; align-items:center; gap:4px; }
+.pp-url { margin:6px 0 0; color:#0a66c2; font:700 12.5px 'Manrope'; }
+.pp-card h2 { display:flex; align-items:center; gap:6px; margin:20px 0 8px; font:800 14px 'Manrope'; color:#0d1834; }
+.pp-about { margin:0; color:#26304a; line-height:1.55; white-space:pre-line; }
+.pp-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.pp-chips span { padding:4px 10px; border-radius:999px; background:#f2f6fd; color:#1d3b6e; font:700 12px 'Manrope'; }
+.pp-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+.pp-actions a { display:inline-flex; align-items:center; gap:6px; text-decoration:none; }
+.pp-note { margin:12px 0 0; color:#7a8494; font-size:12.5px; }
+@media (max-width:639px) { .pp-card { margin:12px; padding:16px; } .pp-head { flex-direction:column; text-align:center; } .pp-meta { justify-content:center; } }
+/* Role editor: Recruiter details box (replaces the cover image). */
+.wz-recruiter { margin:0 0 6px; padding:12px 14px 4px; border:1px solid #e3e7ef; border-radius:14px; background:#fafbfe; }
+.wz-recruiter legend { padding:0 6px; font:800 12px 'Manrope'; color:#26304a; }
 /* Recruiter email column (JobFinder only): one more column after "Created". */
 @media (min-width:1101px) { .td-role-head.has-email { grid-template-columns:minmax(220px,1fr) auto auto minmax(120px,160px) auto auto auto 20px; } }
 @media (min-width:640px) and (max-width:1100px) { .td-role-head.has-email { grid-template-columns:minmax(180px,1fr) auto auto minmax(110px,150px) auto auto 20px; } }

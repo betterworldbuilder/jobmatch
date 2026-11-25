@@ -15,9 +15,9 @@ let testSender = null;
 /** Tests only: replace the SMTP transport with a function ({to, subject, text, replyTo}) => {messageId} | throws. */
 export function __setTestSender(fn) { testSender = fn; }
 
-export async function sendMail({ to, subject, text, html, replyTo }) {
+export async function sendMail({ to, subject, text, html, replyTo, fromName }) {
   if (testSender) {
-    const info = await testSender({ to, subject, text, html, replyTo });
+    const info = await testSender({ to, subject, text, html, replyTo, fromName });
     return { delivered: true, messageId: info?.messageId };
   }
   if (!mailerConfigured()) {
@@ -33,6 +33,9 @@ export async function sendMail({ to, subject, text, html, replyTo }) {
     secure: process.env.SMTP_SECURE === 'true',
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
   });
-  const info = await transport.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, text, html, ...(replyTo ? { replyTo } : {}) });
+  // fromName (e.g. "JobMatcher at JobsMatchNow") keeps the configured sending address and only changes the display name.
+  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = fromName ? `"${String(fromName).replace(/["\r\n]/g, '')}" <${(String(fromAddress).match(/<([^>]+)>/)?.[1] || fromAddress).trim()}>` : fromAddress;
+  const info = await transport.sendMail({ from, to, subject, text, html, ...(replyTo ? { replyTo } : {}) });
   return { delivered: true, messageId: info?.messageId };
 }

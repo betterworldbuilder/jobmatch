@@ -66,6 +66,9 @@ export function applyCandidateProfile(user, body) {
   set('email', str(body.email, 200));
   set('photo', str(body.photo, 600));
   set('headline', str(body.headline, 160));
+  // Public profile page jobsmatchnow.com/<profileSlug> (founder, 2026-11-25): on by default, the candidate can hide it.
+  // Off also means the link is not sent to recruiters in interest emails.
+  if (body.publicProfile !== undefined) user.publicProfile = Boolean(body.publicProfile);
   set('phone', str(body.phone, 40));
   set('city', str(body.city, 80));
   set('country', str(body.country, 80));

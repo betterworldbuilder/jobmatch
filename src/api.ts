@@ -202,7 +202,7 @@ export const api = {
   requestRecommendation: (payload: { userId: string; contact: string }) => request<{ request: RecommendationRequest; mailer: boolean }>('/api/recommendation-requests', { method: 'POST', body: JSON.stringify(payload) }),
   cancelRecommendationRequest: (id: string, userId: string) => request<{ ok: boolean }>(`/api/recommendation-requests/${id}?userId=${encodeURIComponent(userId)}`, { method: 'DELETE' }),
   deleteJob: (id: string) => request<{ ok: boolean }>(`/api/jobs/${id}`, { method: 'DELETE' }),
-  setJobContact: (id: string, email: string) => request<{ ok: boolean; email: string }>(`/api/jobs/${encodeURIComponent(id)}/contact`, { method: 'PUT', body: JSON.stringify({ email }) }),
+  setJobContact: (id: string, contact: { email?: string; phone?: string }) => request<{ ok: boolean; email: string; phone: string }>(`/api/jobs/${encodeURIComponent(id)}/contact`, { method: 'PUT', body: JSON.stringify(contact) }),
 
   // --- Recruiter billing (candidates never call any of this) ---
   billingSubscription: (userId: string) => request<BillingInfo>(`/api/billing/subscription?userId=${encodeURIComponent(userId)}`),

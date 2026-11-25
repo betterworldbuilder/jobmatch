@@ -30,6 +30,12 @@ export function applyJob(job, body, { strict = false } = {}) {
   const set = (field, value) => { if (value !== undefined) job[field] = value; };
   set('title', str(body.title, 140));
   set('department', str(body.department, 80));
+  // Recruiter details on the role (founder, 2026-11-25, replaces the cover image): company and recruiter name/title,
+  // shown on the card. The recruiter's email and phone are NOT stored here (private, see jobContacts).
+  if (body.company !== undefined) { const c = str(body.company, 80); if (c) { job.company = c; job.logo = c[0].toUpperCase(); } }
+  for (const k of ['recruiterName', 'recruiterTitle']) {
+    if (body[k] !== undefined) { const v = str(body[k], 80); if (v) job[k] = v; else delete job[k]; }
+  }
   if (body.seniority !== undefined) {
     if (!SENIORITIES.includes(body.seniority)) throw new ValidationError('seniority', `seniority must be one of ${SENIORITIES.join(', ')}`);
     job.seniority = body.seniority;
@@ -310,6 +316,15 @@ export function heuristicParse(text, url) {
   parsed.responsibilities = (respBullets.length ? respBullets : allBullets).slice(0, 8).map((l) => clip(l, 300));
   const benefitBullets = bulletsIn(sections.filter((s) => s.kind === 'benefits').flatMap((s) => s.lines));
   if (benefitBullets.length) parsed.benefits = benefitBullets.slice(0, 12).map((l) => clip(l.replace(/^[^\w(]+/u, ''), 80)).filter(Boolean);
+
+  // Recruiter contact written in the text ("send your CV to hr@acme.com", "Contact: Jane Doe, +84 90 123 4567").
+  // Email/phone are private (JobFinder only) and never shown to candidates; the name is shown on the card.
+  const emails = [...text.matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,24}/g)].map((m) => m[0]).filter((e) => !/jobsmatchnow|example\.(com|org)|noreply|no-reply/i.test(e));
+  if (emails.length) parsed.contactEmail = emails[0].replace(/[.,;]+$/, '');
+  const phone = text.match(/(?:\+\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?){2,4}\d{3,4}/g)?.map((p) => p.trim()).find((p) => p.replace(/\D/g, '').length >= 9 && p.replace(/\D/g, '').length <= 15 && !/^(19|20)\d{2}\b/.test(p));
+  if (phone && /(phone|tel|call|zalo|whatsapp|mobile|hotline|contact|\+\d)/i.test(text.slice(Math.max(0, text.indexOf(phone) - 40), text.indexOf(phone) + phone.length))) parsed.contactPhone = phone;
+  const who = text.match(/^[ \t]*(?:recruiter|contact(?: person)?|hiring manager|talent (?:partner|acquisition))[ \t]*[:\-–][ \t]*([A-ZÀ-Ỹ][\p{L}.'-]+(?:[ \t]+[A-ZÀ-Ỹ][\p{L}.'-]+){0,3})/imu);
+  if (who) parsed.recruiterName = who[1].trim();
 
   const departmentMatch = text.match(/^\s*(?:department|team)\s*[:\-–]\s*([A-Za-z &]{3,50})$/im);
   if (departmentMatch) parsed.department = departmentMatch[1].trim();
