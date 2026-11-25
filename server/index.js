@@ -1632,16 +1632,44 @@ async function importJobDrafts(employerId, sourceSystem, entries) {
     prepared.push(...batch);
   }
 
+  // The file's job description goes, as written, into Role details (fullDescription); the short summary is
+  // its first real paragraph (founder, 2026-11-25: the whole text had landed in the short summary).
+  const fullDescriptionOf = (entry) => String(entry.description || entry.rawText || '').replace(/\r\n/g, '\n').trim().slice(0, 20000);
+  const summaryOf = (full) => {
+    const para = full.split(/\n+/).map((line) => line.trim()).find((line) => line.length > 60) || full.replace(/\s+/g, ' ').trim();
+    return para.length > 400 ? `${para.slice(0, 397).replace(/\s+\S*$/, '')}…` : para;
+  };
   return store.transaction((db) => {
     const employer = db.users.find((user) => user.id === employerId && user.role === 'employer');
     if (!employer) throw new ValidationError('employerId', 'Unknown recruiter account');
+    // JobFinder's imports are external listings: they go live at once, without the salary rule (founder, 2026-11-25).
+    // Real recruiters' imports stay drafts until they meet the publish rules.
+    const goLive = isJobFinderUser(employer);
+    const publish = (job) => {
+      if (!goLive || job.status !== 'draft') return;
+      job.status = 'active';
+      if (!job.salaryRange && (!job.salary || job.salary === 'Review salary')) job.salary = 'Salary not disclosed';
+    };
     const jobs = [];
     let skipped = 0;
+    let updated = 0;
     for (const item of prepared) {
       const duplicate = db.jobs.find((job) => job.employerId === employerId
         && job.sourceSystem === item.metadata.sourceSystem
         && job.sourceJobId === item.metadata.sourceJobId);
-      if (duplicate) { skipped += 1; continue; }
+      if (duplicate) {
+        // Same file again: fill an empty Role details (older imports), never overwrite the recruiter's edits.
+        const full = fullDescriptionOf(item.entry);
+        if (!duplicate.fullDescription && full) {
+          const oldAutoSummary = !duplicate.description || duplicate.description.length > 400 || duplicate.description === item.parsed.description || item.entry.rawText.startsWith(duplicate.description);
+          duplicate.fullDescription = full;
+          if (oldAutoSummary) duplicate.description = summaryOf(full);
+          publish(duplicate);
+          duplicate.updatedAt = Date.now();
+          updated += 1;
+        } else skipped += 1;
+        continue;
+      }
       const job = {
         id: `j-${crypto.randomUUID().slice(0, 8)}`,
         employerId,
@@ -1665,13 +1693,17 @@ async function importJobDrafts(employerId, sourceSystem, entries) {
         createdAt: Date.now(),
       };
       applyJob(job, item.parsed);
+      const full = fullDescriptionOf(item.entry);
+      if (full) { job.fullDescription = full; job.description = summaryOf(full); }
+      if (job.location === 'Review location' && item.entry.location) job.location = item.entry.location.slice(0, 120);
       Object.assign(job, item.metadata, { internalJobId: job.id, importNeedsReview: item.missing });
+      publish(job);
       if (!job.screeningQuestions?.length && job.requiredSkillsDetail?.length) job.screeningQuestions = suggestScreeningQuestions(job);
       if (!job.geo && employer.geo) job.geo = employer.geo;
       db.jobs.push(job);
       jobs.push(job);
     }
-    return { jobs, skipped };
+    return { jobs, skipped, updated, live: goLive };
   });
 }
 

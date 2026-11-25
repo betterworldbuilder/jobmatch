@@ -97,8 +97,9 @@ export function JobImportModal({ viewer, onClose, onImported, onManual }: {
 
       {mode === 'success' && result && <div className="job-import-success">
         <span><Check size={30} /></span>
-        <h2>{result.jobs.length} job {result.jobs.length === 1 ? 'offer' : 'offers'} ready</h2>
-        <p>We created reviewable drafts. Complete any missing salary, work mode, culture, or hiring details before publishing.</p>
+        <h2>{result.jobs.length} job {result.jobs.length === 1 ? 'offer' : 'offers'} {result.live ? 'live' : 'ready'}</h2>
+        <p>{result.live ? 'Your imported offers are active now. The full job description is in Role details; edit any offer to add salary, skills or hiring details.' : 'We created reviewable drafts. Complete any missing salary, work mode, culture, or hiring details before publishing.'}</p>
+        {(result.updated || 0) > 0 && <small>{result.updated} existing {result.updated === 1 ? 'job was' : 'jobs were'} updated with the full job description.</small>}
         {result.skipped > 0 && <small>{result.skipped} existing {result.skipped === 1 ? 'job was' : 'jobs were'} skipped to prevent duplicates.</small>}
         <button className="primary-button" onClick={onImported}>Review job offers <ArrowRight size={16} /></button>
       </div>}

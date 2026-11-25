@@ -173,7 +173,7 @@ export interface InterviewPrep { generator: string; topics: string[]; skillQuest
 export interface InterviewKit { generator: string; skillQuestions: SkillQuestions[]; gapProbes?: { skill: string; question: string }[]; gaps: string[]; salarySummary: string; salaryStatus: SalaryStatus }
 export interface ScreeningAnswer { question: string; answer: string }
 export type JobDraft = Partial<Omit<Job, 'id' | 'match'>>;
-export interface JobImportResult { jobs: Job[]; found: number; skipped: number }
+export interface JobImportResult { jobs: Job[]; found: number; skipped: number; updated?: number; live?: boolean }
 export type StepKind = 'match' | 'hr' | 'technical' | 'manager' | 'culture' | 'assignment' | 'offer' | 'hired' | 'other';
 /** One hiring step (a round). `owner` = who runs it (e.g. "Priya Nair, Talent Partner"); `date` = YYYY-MM-DD. */
 export interface PipelineStep { id: string; name: string; owner: string; hidden?: boolean; kind?: StepKind; date?: string; format?: string }
