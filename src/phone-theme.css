@@ -115,6 +115,20 @@
 .td-section-title .td-delete-all:hover { background:#fff1f3; border-color:#e5485d; }
 .td-section-title .td-delete-all:disabled { opacity:.6; cursor:wait; }
 .td-role-edit.td-role-delete:hover { color:#c8233d; border-color:#e5485d; background:#fff1f3; }
+/* Recruiter email column (JobFinder only): one more column after "Created". */
+@media (min-width:1101px) { .td-role-head.has-email { grid-template-columns:minmax(220px,1fr) auto auto minmax(120px,160px) auto auto auto 20px; } }
+@media (min-width:640px) and (max-width:1100px) { .td-role-head.has-email { grid-template-columns:minmax(180px,1fr) auto auto minmax(110px,150px) auto auto 20px; } }
+.td-section-title .td-role-tools { flex-direction:row; flex-wrap:nowrap; white-space:nowrap; }
+.td-role-status select { max-width:150px; }
+.td-role-head > span.td-role-email { display:inline-flex; align-items:center; gap:4px; min-width:0; padding:0 8px; border:1px solid #e3e7ef; border-radius:999px; background:#fff; color:#7a8494; }
+.td-role-email input { width:100%; min-width:0; border:0; outline:0; background:transparent; padding:5px 0; font:700 10.5px 'Manrope'; color:#0d1834; }
+.td-role-email:focus-within { border-color:#0a66c2; box-shadow:0 0 0 2px rgba(10,102,194,.12); }
+.td-role-email.s-saved { border-color:#9fd8b5; }
+.td-role-email.s-error { border-color:#e5485d; }
+@media (max-width:639px) { .td-role-head > span.td-role-email { grid-column:1; grid-row:4; justify-self:stretch; } }
+/* Candidates: the relay line on a role's Job description page. */
+.rp-relay { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin:12px 0 0; padding:8px 10px; border-radius:10px; background:#eef4ff; color:#26304a; font-size:12.5px; }
+.rp-relay a { color:#0a66c2; font-weight:800; }
 /* Candidate view (test mode): the real Surf phone, centred, with a note under it. */
 .rpv-test { display:flex; flex-direction:column; align-items:center; gap:14px; }
 .rpv-test .nm-phone-col { position:relative; display:flex; justify-content:center; width:100%; }

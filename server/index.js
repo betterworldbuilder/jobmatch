@@ -1719,6 +1719,7 @@ async function importJobDrafts(employerId, sourceSystem, entries, { ai = null } 
         if (p.workMode && (!d.workMode || (preFix && d.workMode === 'Flexible'))) { d.workMode = p.workMode; changed = true; }
         if (p.salaryRange && !d.salaryRange) { applyJob(d, { salaryRange: p.salaryRange }); changed = true; }
         if (setCompany(d, p, employer)) changed = true;
+        if (goLive && !jobContactOf(db, d.id) && EMAIL_RE.test(item.entry.contactEmail || '')) { setJobContact(db, d.id, item.entry.contactEmail); changed = true; }
         if (d.status === 'draft' && goLive) { publish(d); changed = true; }
         if (changed) { d.updatedAt = Date.now(); updated += 1; } else skipped += 1;
         continue;
@@ -1751,6 +1752,7 @@ async function importJobDrafts(employerId, sourceSystem, entries, { ai = null } 
       if (full) { job.fullDescription = full; job.description = item.parsed.aiSummary || summaryOf(full); }
       Object.assign(job, item.metadata, { internalJobId: job.id, importNeedsReview: item.missing });
       publish(job);
+      if (goLive && EMAIL_RE.test(item.entry.contactEmail || '')) setJobContact(db, job.id, item.entry.contactEmail);
       if (!job.screeningQuestions?.length && job.requiredSkillsDetail?.length) job.screeningQuestions = suggestScreeningQuestions(job);
       if (!job.geo && employer.geo) job.geo = employer.geo;
       db.jobs.push(job);
@@ -1951,6 +1953,32 @@ app.post('/api/jobs/:id/hire/confirm', async (req, res, next) => {
 // Recruiter deletes their own job posting — cascades to its swipes, matches,
 // messages, and calls so nothing orphaned lingers behind (same cleanup shape
 // as swipe-undo and account deletion above).
+// Recruiter email per role (founder, 2026-11-25): JobFinder recruiters only. Stored apart from the role so no role
+// view can leak it; candidates write to the relay address instead. Empty email clears it.
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
+function jobContactOf(db, jobId) { return (db.jobContacts || []).find((c) => c.jobId === jobId)?.email || ''; }
+function setJobContact(db, jobId, email) {
+  if (!Array.isArray(db.jobContacts)) db.jobContacts = [];
+  db.jobContacts = db.jobContacts.filter((c) => c.jobId !== jobId);
+  if (email) db.jobContacts.push({ id: jobId, jobId, email, updatedAt: Date.now() });
+}
+app.put('/api/jobs/:id/contact', async (req, res, next) => {
+  try {
+    const session = authSession(req);
+    if (!session) { const error = new Error('Sign in to continue'); error.status = 401; throw error; }
+    const email = String(req.body?.email ?? '').trim().slice(0, 254);
+    if (email && !EMAIL_RE.test(email)) throw new ValidationError('email', 'Enter a valid email address');
+    await store.transaction((db) => {
+      const job = db.jobs.find((entry) => entry.id === req.params.id);
+      if (!job) { const error = new Error('Job not found'); error.status = 404; throw error; }
+      const user = db.users.find((u) => u.id === session.sub);
+      if (job.employerId !== session.sub || !isJobFinderUser(user)) { const error = new Error('Only the JobFinder account can set a recruiter email'); error.status = 403; throw error; }
+      setJobContact(db, job.id, email);
+    });
+    res.json({ ok: true, email });
+  } catch (error) { next(error); }
+});
+
 app.delete('/api/jobs/:id', async (req, res, next) => {
   try {
     const session = authSession(req);
@@ -1961,6 +1989,7 @@ app.delete('/api/jobs/:id', async (req, res, next) => {
       if (session && job.employerId !== session.sub) { const error = new Error('You can only delete your own postings'); error.status = 403; throw error; }
       assertDemoActor(req, db, job.employerId);
       db.jobs = db.jobs.filter((entry) => entry.id !== req.params.id);
+      if (Array.isArray(db.jobContacts)) db.jobContacts = db.jobContacts.filter((c) => c.jobId !== req.params.id);
       const removedMatches = db.matches.filter((m) => m.jobId === req.params.id);
       const removedIds = new Set(removedMatches.map((m) => m.id));
       db.matches = db.matches.filter((m) => m.jobId !== req.params.id);
@@ -2135,7 +2164,11 @@ app.get('/api/bootstrap', async (req, res, next) => {
       // A role posted by a demo recruiter is a demo role, even if the role record itself lacks the flag (DEMO ACCOUNT stamp).
       // Starter sample roles (real accounts' starter deck) stay `sample`, never `demo`: the client stamps those too.
       const demo = job.demo === true || (employer?.demo === true && !employer?.sample && !job.sample) || undefined;
-      return { ...withDistance, ...(demo ? { demo: true } : {}), companyLogo: employer?.companyLogo, recruiter, companyProfile, match, likedYou: Boolean(incomingLike), superLikedYou: Boolean(incomingLike?.superLike), verified: verifiedUser(employer), promoted: boostedJobIds.has(job.id) };
+      // Recruiter email per role (founder, 2026-11-25): kept in db.jobContacts, never on the role. Only the JobFinder
+      // owner sees it; everyone else only learns that candidates can write through the JobsMatchNow relay address.
+      const contactEmail = jobContactOf(db, job.id);
+      const contact = contactEmail ? (job.employerId === viewer.id && isJobFinderUser(viewer) ? { contactEmail } : { relayContact: true }) : {};
+      return { ...withDistance, ...contact, ...(demo ? { demo: true } : {}), companyLogo: employer?.companyLogo, recruiter, companyProfile, match, likedYou: Boolean(incomingLike), superLikedYou: Boolean(incomingLike?.superLike), verified: verifiedUser(employer), promoted: boostedJobIds.has(job.id) };
     });
     // Boosted cards ride to the front of the deck, keeping their own relative
     // order. The match score is never touched — a promoted card shows the same

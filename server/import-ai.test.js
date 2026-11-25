@@ -144,6 +144,35 @@ test('CSV columns win; a hard row uses Claude only for the allowlisted account w
   assert.equal(ai.fullDescription, WEAK, 'Role details keep the text as written');
 });
 
+test('recruiter email per role: JobFinder only, private; candidates only get the relay flag', async () => {
+  const jf = await register('Job Finder Mail', `jf-mail-${pid}@example.com`);
+  process.env.JOBFINDER_ACCOUNT_IDS = jf.id;
+  const other = await register('Other Mail Recruiter', `other-mail-${pid}@example.com`);
+  const cand = await call('POST', '/api/auth/register', { role: 'candidate', name: 'Mail Candidate', email: `cand-mail-${pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+  const r = await upload(jf, `id,title,location,description,contact_email\nm-1,Data Engineer,Hanoi,"${'Build pipelines with Python and SQL for analytics teams. '.repeat(3)}",hiring.lead@acme.example\nm-2,QA Engineer,Hanoi,"${'Test web apps with Playwright and write clear bug reports. '.repeat(3)}",\n`);
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  const [a, b] = r.body.jobs;
+  // Owner (JobFinder): sees and edits it.
+  assert.equal((await call('PUT', `/api/jobs/${b.id}/contact`, { email: 'not-an-email' }, jf.cookie)).status, 400);
+  assert.equal((await call('PUT', `/api/jobs/${b.id}/contact`, { email: 'qa.boss@acme.example' }, jf.cookie)).status, 200);
+  const own = (await call('GET', `/api/bootstrap?userId=${jf.id}`, undefined, jf.cookie)).body.jobs;
+  assert.equal(own.find((j) => j.id === a.id).contactEmail, 'hiring.lead@acme.example', 'imported from the CSV column');
+  assert.equal(own.find((j) => j.id === b.id).contactEmail, 'qa.boss@acme.example');
+  // Another recruiter cannot set one (not JobFinder), even on their own role.
+  const mine = (await call('POST', '/api/jobs', { employerId: other.id, postSource: 'quick_post', status: 'active', type: 'Full-time', title: 'Ops Lead', location: 'Remote', workMode: 'Remote', requiredSkillsDetail: [{ name: 'Linux', weight: 3 }], description: 'Ops role.' }, other.cookie)).body.job;
+  assert.equal((await call('PUT', `/api/jobs/${mine.id}/contact`, { email: 'x@acme.example' }, other.cookie)).status, 403);
+  // Candidate: relay flag, never the address.
+  const boot = await call('GET', `/api/bootstrap?userId=${cand.body.user.id}`, undefined, cand.session);
+  const seenA = boot.body.jobs.find((j) => j.id === a.id);
+  assert.ok(seenA, 'the live JobFinder role is in the candidate deck');
+  assert.equal(seenA.relayContact, true); assert.equal(seenA.contactEmail, undefined);
+  assert.ok(!JSON.stringify(boot.body).includes('acme.example'), 'no recruiter email anywhere in the candidate payload');
+  // Clearing removes it.
+  assert.equal((await call('PUT', `/api/jobs/${b.id}/contact`, { email: '' }, jf.cookie)).status, 200);
+  const after = (await call('GET', `/api/bootstrap?userId=${jf.id}`, undefined, jf.cookie)).body.jobs;
+  assert.equal(after.find((j) => j.id === b.id).contactEmail, undefined);
+});
+
 test('salary is optional to publish; a given salary must be real', async () => {
   const rec = await register('Salary Recruiter', `salary-${pid}@example.com`);
   const post = (over) => call('POST', '/api/jobs', { employerId: rec.id, postSource: 'quick_post', status: 'active', type: 'Full-time', title: 'Frontend Engineer', location: 'Remote', workMode: 'Remote', requiredSkillsDetail: [{ name: 'React', weight: 3 }], description: 'React role.', ...over }, rec.cookie);

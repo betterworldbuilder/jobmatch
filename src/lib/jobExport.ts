@@ -6,7 +6,7 @@ import { downloadXlsx, type Cell } from './xlsx';
 
 export type ExportFormat = 'xlsx' | 'csv' | 'json' | 'xml';
 const COLUMNS = ['id', 'source_job_id', 'title', 'company', 'status', 'hiring_status', 'location', 'employment_type', 'work_mode',
-  'salary', 'salary_min', 'salary_max', 'salary_currency', 'seniority', 'must_have', 'nice_to_have', 'languages', 'url',
+  'salary', 'salary_min', 'salary_max', 'salary_currency', 'seniority', 'must_have', 'nice_to_have', 'languages', 'url', 'contact_email',
   'created_at', 'summary', 'description'] as const;
 type Row = Record<(typeof COLUMNS)[number], string | number>;
 
@@ -18,7 +18,7 @@ export function jobRow(job: Job, hiringStatus: string): Row {
     salary: job.salary || '', salary_min: r?.min ?? '', salary_max: r?.max ?? '', salary_currency: r?.currency || '',
     seniority: job.seniority || job.experienceLevel || '', must_have: (job.requiredSkills || []).join('; '),
     nice_to_have: (job.niceToHaves || []).join('; '), languages: (job.requiredLanguages || []).join('; '),
-    url: job.externalUrl || job.sourceUrl || '', created_at: job.createdAt ? new Date(job.createdAt).toISOString().slice(0, 10) : '',
+    url: job.externalUrl || job.sourceUrl || '', contact_email: job.contactEmail || '', created_at: job.createdAt ? new Date(job.createdAt).toISOString().slice(0, 10) : '',
     summary: job.description || '', description: job.fullDescription || job.description || '',
   };
 }

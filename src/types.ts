@@ -90,6 +90,10 @@ export interface Job {
   companyLogo?: string;
   /** Recruiter's status label for the role (Open / Conducting interviews / Hired); unset = automatic. */
   hiringStatus?: HiringStatus;
+  /** Recruiter email for this role: only ever sent to its JobFinder owner. */
+  contactEmail?: string;
+  /** Candidates: this role's recruiter can be reached through the JobsMatchNow relay address. */
+  relayContact?: boolean;
   distanceKm?: number; workMode: string; salary: string; type: string; experienceLevel: string;
   requiredSkills: string[]; requiredLanguages: string[]; description: string; mission: string; culture: string[];
   /** "Role details": the whole job description as pasted by the recruiter (plain text, line breaks kept). */

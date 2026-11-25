@@ -40,7 +40,8 @@ export function RolePreview({ job, recruiter, onClose, onEdit }: { job: Job; rec
     if (['like', 'pass', 'super', 'undo'].includes(action)) { setRound((r) => r + 1); setPage(0); }
   };
   // Candidates don't see the recruiter's own fit; the role is shown as published, with the recruiter's ID stamp.
-  const shown: Job = { ...job, match: undefined as unknown as Job['match'], recruiter: job.recruiter || { name: recruiter.name, title: recruiter.title, photo: recruiter.photo, company: recruiter.company } };
+  // The recruiter's email never shows; candidates see the JobsMatchNow relay line instead.
+  const shown: Job = { ...job, contactEmail: undefined, relayContact: Boolean(job.contactEmail || job.relayContact), match: undefined as unknown as Job['match'], recruiter: job.recruiter || { name: recruiter.name, title: recruiter.title, photo: recruiter.photo, company: recruiter.company } };
   return <div className="rpv-page" role="dialog" aria-label="Candidate view of this role">
     <header className="rpv-head">
       <div><span className="overline">Candidate view · test mode</span><h1>How Candidates See This Role</h1><p>The real Surf screen job seekers swipe, with {job.title} on it. Test it, then fix anything with Edit.</p></div>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  ArrowRight, Bell, Bookmark, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, Coffee, Download,
+  ArrowRight, Bell, Bookmark, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, Coffee, Download, Mail,
   Eye, Heart, MapPin, MessageCircle, Pencil, RotateCcw, Sparkles, Star, Target, Trash2, TrendingUp, User, X,
 } from 'lucide-react';
 import { api } from '../../api';
@@ -8,6 +8,25 @@ import { RolePreview } from '../jobs/RolePreview';
 import type { Bootstrap, HiringStatus, Job, MatchEvidence, Note, Person, RoleMatchGroup, View } from '../../types';
 
 import { exportJobs, jobRow, type ExportFormat } from '../../lib/jobExport';
+
+/** Inline recruiter email for one role (JobFinder). Saves on Enter or when leaving the field; empty clears it. */
+function RoleEmailCell({ job, onSaved }: { job: Job; onSaved: () => Promise<void> | void }) {
+  const [value, setValue] = useState(job.contactEmail || '');
+  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const save = async () => {
+    const email = value.trim();
+    if (email === (job.contactEmail || '')) return;
+    setState('saving');
+    try { await api.setJobContact(job.id, email); setState('saved'); await onSaved(); }
+    catch (e) { setState('error'); window.alert(e instanceof Error ? e.message : 'Could not save the email'); }
+  };
+  return <span className={`td-role-email s-${state}`} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} title="Recruiter email: visible only to you. Candidates write to Greatcandidates@jobsmatchnow.com.">
+    <Mail size={11} />
+    <input type="email" value={value} placeholder="Add recruiter email" aria-label={`Recruiter email for ${job.title}`}
+      onChange={(e) => { setValue(e.target.value); setState('idle'); }} onBlur={() => void save()}
+      onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+  </span>;
+}
 
 const HIRING_STATUS_OPTIONS: [HiringStatus, string][] = [['open', 'Open'], ['interviewing', 'Conducting interviews'], ['hired', 'Hired']];
 import { JobDetailModal } from '../coach/CoachModals';
@@ -367,6 +386,8 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
     exportJobs(format, ownJobs.map((job) => jobRow(job, HIRING_STATUS_OPTIONS.find(([v]) => v === statusOf(job))?.[1] || '')));
   };
   const [statusSaving, setStatusSaving] = useState('');
+  // Recruiter email column: JobFinder account only (founder, 2026-11-25); candidates never see it.
+  const showEmail = Boolean(data.viewer.jobFinder);
   const setRoleStatus = async (job: Job, hiringStatus: HiringStatus) => {
     setStatusSaving(job.id);
     try { await api.updateJob(job.id, { hiringStatus }); await reload(); }
@@ -418,7 +439,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
           const status = statusOf(group.job);
           const own = group.job.employerId === data.viewer.id;
           return <article className={open ? 'td-role open' : 'td-role'} key={group.job.id}>
-            <div className="td-role-head" role="button" tabIndex={0} onClick={() => setExpandedId(open ? '__none__' : group.job.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? '__none__' : group.job.id); } }} aria-expanded={open}>
+            <div className={showEmail ? 'td-role-head has-email' : 'td-role-head'} role="button" tabIndex={0} onClick={() => setExpandedId(open ? '__none__' : group.job.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? '__none__' : group.job.id); } }} aria-expanded={open}>
               <JobHeaderBadge job={group.job} compact actions={<>
                 {group.job.employerId === data.viewer.id && <button className="td-role-edit td-role-delete" onClick={(event) => { event.stopPropagation(); void deleteRoles([group.job]); }} disabled={deleting} aria-label={`Delete ${group.job.title}`} title="Delete this job offer"><Trash2 size={12} /></button>}
                 <button className="td-role-edit" onClick={(event) => { event.stopPropagation(); setPreviewJob(group.job); }} aria-label={`How candidates see ${group.job.title}`} title="How candidates see this role"><Eye size={12} /></button>
@@ -433,6 +454,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
                   : HIRING_STATUS_OPTIONS.find(([value]) => value === status)?.[1]}
               </span>
               {group.job.createdAt ? <span className="td-role-date" title="Date created"><Calendar size={12} /> Created {new Date(group.job.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> : null}
+              {showEmail && <RoleEmailCell job={data.jobs.find((j) => j.id === group.job.id) || group.job} onSaved={reload} />}
               <span><Check size={12} /> {matchedForJob.length} matched</span>
               <span><Heart size={12} /> {lovesNotMatched.length} love this job</span>
               <button onClick={(event) => { event.stopPropagation(); navigate('discover'); }}>Review candidates <ArrowRight size={11} /></button>
