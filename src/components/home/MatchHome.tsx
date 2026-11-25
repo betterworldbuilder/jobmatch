@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   ArrowRight, Bell, Bookmark, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, Coffee,
-  Eye, Heart, MapPin, MessageCircle, Pencil, RotateCcw, Sparkles, Star, Target, TrendingUp, User, X,
+  Eye, Heart, MapPin, MessageCircle, Pencil, RotateCcw, Sparkles, Star, Target, Trash2, TrendingUp, User, X,
 } from 'lucide-react';
 import { api } from '../../api';
 import { RolePreview } from '../jobs/RolePreview';
@@ -56,11 +56,12 @@ function Stars({ score = 0 }: { score?: number }) {
   </span>;
 }
 
-export function DashboardTitle({ icon: Icon, title, subtitle, action, onAction }: {
-  icon: typeof Heart; title: string; subtitle?: string; action?: string; onAction?: () => void;
+export function DashboardTitle({ icon: Icon, title, subtitle, action, onAction, extra }: {
+  icon: typeof Heart; title: string; subtitle?: string; action?: string; onAction?: () => void; extra?: React.ReactNode;
 }) {
   return <header className="td-section-title">
     <div><Icon size={16} /><span><strong>{title}</strong>{subtitle && <small>{subtitle}</small>}</span></div>
+    {extra}
     {action && <button onClick={onAction}>{action}<ArrowRight size={13} /></button>}
   </header>;
 }
@@ -332,6 +333,23 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
   const topRole = [...roles].sort((a, b) => ((b.matchingCandidates?.length || 0) + b.candidates.length) - ((a.matchingCandidates?.length || 0) + a.candidates.length))[0];
 
   const reload = async () => setData(await api.bootstrap(data.viewer.id));
+  // Delete one role / all roles (founder, 2026-11-25). Always confirmed: a deleted role takes its matches and chats with it.
+  const [deleting, setDeleting] = useState(false);
+  const deleteRoles = async (jobs: Job[]) => {
+    if (!jobs.length || deleting) return;
+    const one = jobs.length === 1;
+    const question = one
+      ? `Delete "${jobs[0].title}"?\n\nIts matches and conversations are deleted too. This cannot be undone.`
+      : `Delete all ${jobs.length} job offers?\n\nTheir matches and conversations are deleted too. This cannot be undone.`;
+    if (!window.confirm(question)) return;
+    setDeleting(true);
+    let failed = 0;
+    try {
+      for (const job of jobs) { try { await api.deleteJob(job.id); } catch { failed += 1; } }
+      await reload();
+    } finally { setDeleting(false); }
+    if (failed) window.alert(`${failed} job ${failed === 1 ? 'offer' : 'offers'} could not be deleted. Try again.`);
+  };
   const talk = async (person: Person) => {
     const result = await api.swipe({ actorId: data.viewer.id, targetId: person.id, targetType: 'candidate', direction: 'like' });
     await reload();
@@ -354,7 +372,8 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
 
 
     <section className="td-section td-role-section" id="td-roles">
-      <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet." action={bestMatchFirst ? 'Sort by: Best Match' : 'Sort by: Name'} onAction={() => setBestMatchFirst((value) => !value)} />
+      <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet." action={bestMatchFirst ? 'Sort by: Best Match' : 'Sort by: Name'} onAction={() => setBestMatchFirst((value) => !value)}
+        extra={roles.some((group) => group.job.employerId === data.viewer.id) ? <button className="td-delete-all" onClick={() => void deleteRoles(roles.map((group) => group.job).filter((job) => job.employerId === data.viewer.id))} disabled={deleting}><Trash2 size={13} /> {deleting ? 'Deleting…' : 'Delete all jobs'}</button> : null} />
       <div className="td-role-list">
         {roles.map((group) => {
           const open = group.job.id === openId;
@@ -364,6 +383,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
           return <article className={open ? 'td-role open' : 'td-role'} key={group.job.id}>
             <div className="td-role-head" role="button" tabIndex={0} onClick={() => setExpandedId(open ? '__none__' : group.job.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? '__none__' : group.job.id); } }} aria-expanded={open}>
               <JobHeaderBadge job={group.job} compact actions={<>
+                {group.job.employerId === data.viewer.id && <button className="td-role-edit td-role-delete" onClick={(event) => { event.stopPropagation(); void deleteRoles([group.job]); }} disabled={deleting} aria-label={`Delete ${group.job.title}`} title="Delete this job offer"><Trash2 size={12} /></button>}
                 <button className="td-role-edit" onClick={(event) => { event.stopPropagation(); setPreviewJob(group.job); }} aria-label={`How candidates see ${group.job.title}`} title="How candidates see this role"><Eye size={12} /></button>
                 <button className="td-role-edit" onClick={(event) => { event.stopPropagation(); onEditJob?.(group.job.id); }} aria-label={`Edit ${group.job.title}`}><Pencil size={12} /></button>
               </>} />

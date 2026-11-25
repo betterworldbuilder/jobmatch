@@ -44,7 +44,7 @@ export function ApplicationsList({ data, setData, navigate, onOpenMessages, comp
   };
   const shown = compact ? rows.slice(0, 5) : rows;
   return <section className={compact ? 'td-section ap-section compact' : 'td-section ap-section'} id="td-applications">
-    <DashboardTitle icon={Inbox} title="Applications (likes)" subtitle="Candidates who applied to your roles. Like back to match and open a chat." action={compact && rows.length > 5 ? `See all ${rows.length}` : undefined} onAction={() => navigate('applied')} />
+    <DashboardTitle icon={Inbox} title="Jobs Candidates" subtitle="Candidates who applied to your roles. Like back to match and open a chat." action={compact && rows.length > 5 ? `See all ${rows.length}` : undefined} onAction={() => navigate('applied')} />
     <div className="ap-top">
       <RolePicker label="Role" options={options} value={role} onChange={setRole} />
       {fromLinkedIn > 0 && <span className="ap-li"><Linkedin size={13} /> {fromLinkedIn} from LinkedIn</span>}

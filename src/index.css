@@ -3835,7 +3835,8 @@ img.avatar-mini { object-fit:cover; }
 @media (max-width:639px) {
   .td-match-page .nm-screen { height:calc(100svh - 68px - 84px - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height:460px; }
   .td-match-page .fmm-rolebar { margin-bottom:22px; } /* the deck below pulls itself up 14px */
-  .td-match-page .nm-screen { height:calc(100svh - 68px - 98px - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height:380px; }
+  /* No top bar on Surf (founder, 2026-11-25): the 68px it took goes to the card. */
+  .td-match-page .nm-screen { height:calc(100svh - 98px - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height:380px; }
   .sp-card:not(.on-detail) .sp-arrow { top:68%; } /* page 1: below the recruiter's ID stamp */
 }
 /* ---- Pages inside swipe cards (founder, 2026-11-22): progress bars, page name, ‹ ›, tap zones ---- */

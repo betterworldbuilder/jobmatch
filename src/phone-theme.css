@@ -99,3 +99,38 @@
   .td-role-head > span.td-role-date { grid-column:1; grid-row:2; justify-self:start; }
   .td-role-head > svg { grid-column:2; grid-row:1; }
 }
+
+/* My Jobs list (founder, 2026-11-25): "Delete all jobs" next to Sort by, and a delete icon on each role. */
+.td-section-title .td-delete-all { margin-left:auto; margin-right:10px; display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border:1px solid #f3c2c9; border-radius:999px; background:#fff; color:#c8233d; font:800 11.5px 'Manrope'; cursor:pointer; }
+.td-section-title .td-delete-all:hover { background:#fff1f3; border-color:#e5485d; }
+.td-section-title .td-delete-all:disabled { opacity:.6; cursor:wait; }
+.td-role-edit.td-role-delete:hover { color:#c8233d; border-color:#e5485d; background:#fff1f3; }
+
+/* Recommended Candidates / Roles under the deck (founder, 2026-11-25, phone and desktop): a compact "stories" row of
+   round photos with a small ★ match badge and a one-line name, instead of big mini-phones. Tap = show it in the deck. */
+@media all {
+  .nm-list { padding-top:4px; }
+  .nm-list .nm-carousel-head { margin-bottom:2px; }
+  .nm-list .nm-carousel-head h3 { font:800 13px 'Manrope'; color:#26304a; }
+  .nm-list .nm-carousel-head h3::after { content:' · tap to view'; font-weight:600; color:#8a93a6; }
+  .nm-list .nm-carousel-nav { display:none; }
+  .nm-list ul.nm-carousel { gap:12px; padding:10px 4px 6px; scroll-snap-type:x proximity; }
+  .nm-list .nm-carousel li.nm-mini { flex:0 0 66px; gap:0; padding-bottom:20px; position:relative; }
+  .nm-list .nm-mini-like { display:none; }
+  .nm-mini-phone { width:62px; aspect-ratio:auto; height:62px; padding:0; border-radius:50%; background:none; box-shadow:none; }
+  .nm-mini-phone:hover { transform:none; }
+  .nm-mini-island { display:none; }
+  .nm-mini-screen { width:58px; height:58px; margin:2px; border-radius:50%; overflow:visible;
+    box-shadow:0 0 0 2px #fff, 0 0 0 4px #ffb3cf; }
+  .nm-mini-phone.on { box-shadow:none; }
+  .nm-mini-phone.on .nm-mini-screen { box-shadow:0 0 0 2px #fff, 0 0 0 4px #fd267a; }
+  .nm-mini-screen::after { display:none; }
+  .nm-mini-logo { top:50%; }
+  .nm-mini-logo .job-company-mark { width:34px; height:34px; font-size:15px; }
+  .nm-mini-fit { top:-7px; right:-12px; padding:1px 5px; font-size:9.5px; box-shadow:0 1px 4px rgba(20,20,60,.18); }
+  .nm-mini-fit::before { content:'★ '; color:#f5a524; }
+  .nm-mini-info { position:absolute; top:calc(100% + 7px); bottom:auto; left:50%; right:auto; width:72px; transform:translateX(-50%); padding:0; color:#26304a; text-align:center; }
+  .nm-mini-info strong { display:block; font:800 10.5px/1.2 'Manrope'; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .nm-mini-info small, .nm-mini-chips { display:none; }
+  .nm-list .nm-see-all { margin-top:2px; font-size:12px; }
+}
