@@ -33,6 +33,16 @@ export function WhatItIsSection() {
   </section>;
 }
 
+const SOLVES: [string, string, 'Job seekers' | 'Hiring teams' | 'Both sides'][] = [
+  ['Endless scrolling, the same forms again and again', 'One profile, once. Then a personal deck ranked by fit: like or pass in seconds.', 'Job seekers'],
+  ['Applications from people who don’t fit', 'You only talk to people who chose you too, ranked by fit.', 'Hiring teams'],
+  ['Screening by keyword guesswork', 'A fit score from 0 to 100 with the reasons: skills, salary, location and work mode.', 'Hiring teams'],
+  ['Silence, no feedback', 'A conversation opens only on a mutual match. When a process stops, the candidate gets a reason and feedback.', 'Job seekers'],
+  ['Slow processes, weeks between steps', 'A match is the application, the screening and the first contact in one step. Every round is tracked in Hiring Stages.', 'Both sides'],
+  ['Steps back and forth', 'One shared hiring timeline per match: both sides see the current step and what comes next.', 'Both sides'],
+  ['Too many actions, steps and tools just to connect: calendar, WhatsApp, email…', 'All in one place: one swipe to show interest, then chat, interview scheduling, calendar sync (Google, Apple, Outlook) and hiring stages in the same app.', 'Both sides'],
+];
+
 export function ProblemSection() {
   return <section className="story story-problem" id="problem">
     <div className="story-head"><span className="story-kicker">The problems</span><h2>The Problems We Solve in Hiring</h2></div>
@@ -41,12 +51,29 @@ export function ProblemSection() {
         <li><X size={15} /> Endless scrolling and the same forms again and again</li>
         <li><X size={15} /> Applications that vanish into silence, with no feedback</li>
         <li><X size={15} /> No idea why a role fits, or why it didn’t work out</li>
+        <li><X size={15} /> Slow processes: weeks between each step, often with no news</li>
+        <li><X size={15} /> Back and forth: the same questions and documents, step after step</li>
+        <li><X size={15} /> Too many actions, steps and tools just to connect: calendar, WhatsApp, email…</li>
       </ul></article>
       <article><h3><BriefcaseBusiness size={18} /> Hiring teams</h3><ul>
         <li><X size={15} /> Piles of applications from people who don’t fit</li>
         <li><X size={15} /> Screening by keyword guesswork</li>
-        <li><X size={15} /> Email chains and calendar ping-pong</li>
+        <li><X size={15} /> Slow hiring: weeks lost between each step</li>
+        <li><X size={15} /> Too many steps back and forth with every candidate</li>
+        <li><X size={15} /> Too many actions, steps and tools just to connect: calendar, WhatsApp, email…</li>
       </ul></article>
+    </div>
+    {/* How we solve them (founder, 2026-11-25): only features the app really has; no time or number claims. */}
+    <div className="solve-wrap">
+      <h3 className="solve-title"><Check size={18} /> How we solve those problems</h3>
+      <table className="solve-table">
+        <thead><tr><th scope="col">The problem</th><th scope="col">The new process in JobsMatchNow</th><th scope="col">Helps</th></tr></thead>
+        <tbody>{SOLVES.map(([problem, fix, who]) => <tr key={problem}>
+          <th scope="row" data-label="The problem">{problem}</th>
+          <td data-label="In JobsMatchNow"><Check size={15} /> {fix}</td>
+          <td data-label="Helps"><span className={`solve-who ${who === 'Both sides' ? 'both' : who === 'Job seekers' ? 'seek' : 'hire'}`}>{who}</span></td>
+        </tr>)}</tbody>
+      </table>
     </div>
   </section>;
 }
