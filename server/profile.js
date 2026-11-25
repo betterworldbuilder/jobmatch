@@ -113,6 +113,8 @@ export function applyCandidateProfile(user, body) {
   // Human stack (card 4) — how the candidate presents as a person.
   set('presentation', str(body.presentation, 2000));
   set('aboutMeArchetype', str(body.aboutMeArchetype, 40)); // drives recruiter conversation-starter suggestions
+  // Several identities (founder, 2026-11-25); `aboutMeArchetype` stays the first one.
+  set('aboutMeArchetypes', strArray(body.aboutMeArchetypes, 3, 40));
   set('mindset', strArray(body.mindset, 8, 40));
   set('humanSkills', strArray(body.humanSkills, 8, 40));
   set('workingPrefer', strArray(body.workingPrefer, 8, 80));

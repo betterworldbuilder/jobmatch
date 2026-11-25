@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
+import { groupSkills } from '../../lib/skillGroups';
 
 export function Field({ label, required, hint, children }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
   return <div className="wz-field">
@@ -46,19 +47,21 @@ export function TagInput({ value, onChange, placeholder, suggestions }: { value:
   </div>;
 }
 
-export function LevelTagInput({ value, onChange, placeholder, maxLevel = 5 }: { value: { name: string; level: number }[]; onChange: (tags: { name: string; level: number }[]) => void; placeholder?: string; maxLevel?: number }) {
+export function LevelTagInput({ value, onChange, placeholder, maxLevel = 5, grouped = false }: { value: { name: string; level: number }[]; onChange: (tags: { name: string; level: number }[]) => void; placeholder?: string; maxLevel?: number; grouped?: boolean }) {
   const [draft, setDraft] = useState('');
   const add = () => { const clean = draft.trim(); if (clean && !value.some((tag) => tag.name.toLowerCase() === clean.toLowerCase())) onChange([...value, { name: clean, level: 3 }]); setDraft(''); };
+  const chip = (tag: { name: string; level: number }) => <span key={tag.name} className="wz-leveltag">
+    <b>{tag.name}</b>
+    <span className="wz-dots" role="slider" aria-label={`${tag.name} level`} aria-valuenow={tag.level} aria-valuemin={1} aria-valuemax={maxLevel}>
+      {Array.from({ length: maxLevel }, (_, index) => <button type="button" key={index} className={index < tag.level ? 'on' : ''} aria-label={`Set ${tag.name} level to ${index + 1}`} onClick={() => onChange(value.map((item) => item.name === tag.name ? { ...item, level: index + 1 } : item))} />)}
+    </span>
+    <button type="button" className="wz-tag-remove" aria-label={`Remove ${tag.name}`} onClick={() => onChange(value.filter((item) => item.name !== tag.name))}><X size={11} /></button>
+  </span>;
   return <div className="wz-taginput">
-    <div className="wz-leveltags">
-      {value.map((tag) => <span key={tag.name} className="wz-leveltag">
-        <b>{tag.name}</b>
-        <span className="wz-dots" role="slider" aria-label={`${tag.name} level`} aria-valuenow={tag.level} aria-valuemin={1} aria-valuemax={maxLevel}>
-          {Array.from({ length: maxLevel }, (_, index) => <button type="button" key={index} className={index < tag.level ? 'on' : ''} aria-label={`Set ${tag.name} level to ${index + 1}`} onClick={() => onChange(value.map((item) => item.name === tag.name ? { ...item, level: index + 1 } : item))} />)}
-        </span>
-        <button type="button" className="wz-tag-remove" aria-label={`Remove ${tag.name}`} onClick={() => onChange(value.filter((item) => item.name !== tag.name))}><X size={11} /></button>
-      </span>)}
-    </div>
+    {/* Grouped by type of role (founder, 2026-11-25): AI · Data · Cloud · DevOps · …, strongest first in each. */}
+    {grouped
+      ? <div className="wz-skillgroups">{groupSkills(value).map((g) => <div key={g.group} className="wz-skillgroup"><span className="wz-skillgroup-h">{g.group}</span><div className="wz-leveltags">{g.skills.map(chip)}</div></div>)}</div>
+      : <div className="wz-leveltags">{value.map(chip)}</div>}
     <div className="wz-tags">
       <input value={draft} placeholder={placeholder || 'Add a skill, press Enter'} onChange={(event) => setDraft(event.target.value)}
         onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ',') { event.preventDefault(); add(); } }} onBlur={() => draft.trim() && add()} />

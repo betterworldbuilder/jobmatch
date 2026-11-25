@@ -8,6 +8,7 @@ import { DemoBadge } from '../DemoBadge';
 import { ContactBar } from '../home/TodayPanel';
 import { MyChatbotCard } from '../home/PremiumTrial';
 import { NationalityVisaCard } from './NationalityVisaCard';
+import { groupSkills, roleSkillGroups } from '../../lib/skillGroups';
 
 // On your own profile page "Who I am" comes first, then "My Dream Job" (founder, 2026-11-25; was Dream Job first).
 // ORDER lists CandidateCards' card numbers (0 Who I am, 1 Human Stack, 2 Skills, 3 Built, 4 Dream Job,
@@ -34,6 +35,11 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
   };
   const changeCard = useCallback((card: number) => { setActiveCard(card); onCardChange?.(card); }, [onCardChange]);
   const comparisonJob = useMemo(() => jobs.find((job) => job.id === jobId), [jobId, jobs]);
+  // "View per role" (founder, 2026-11-25): the candidate's own target roles, then matched job offers.
+  const targetRoles = viewer.preferences?.desiredRoles || [];
+  const focusRole = jobId.startsWith('role:') ? jobId.slice(5) : '';
+  const focusGroups = focusRole ? roleSkillGroups(focusRole) : [];
+  const roleTop = focusRole ? groupSkills(viewer.skillsDetail || [], focusGroups).filter((g) => g.focus).flatMap((g) => g.skills).slice(0, 6) : [];
   const completion = viewer.completeness || 0;
   const strengths = [
     { label: 'Profile Basics', value: Math.min(100, completion + 18), step: 0 },
@@ -58,12 +64,16 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
     <div className="rp-visibility">
       <strong>Recruiter visibility</strong><span><i className="public" /> Public before match</span><span><i className="after" /> Visible after mutual match</span><span><i className="private" /> Private</span>
       {(viewer.demo || viewer.sample) && <DemoBadge label={viewer.sample ? 'Starter sample profile — auto-generated for you' : 'Demo profile — not a real candidate'} />}
-      <label>Preview against<select value={jobId} onChange={(event) => setJobId(event.target.value)}><option value="">General recruiter view</option>{jobs.slice(0, 12).map((job) => <option key={job.id} value={job.id}>{job.title} · {job.company}</option>)}</select></label>
+      <label>View per role<select value={jobId} onChange={(event) => setJobId(event.target.value)}>
+        <option value="">All roles (general view)</option>
+        {targetRoles.length > 0 && <optgroup label="My target roles">{targetRoles.map((role) => <option key={role} value={`role:${role}`}>{role}</option>)}</optgroup>}
+        {jobs.length > 0 && <optgroup label="Matched job offers">{jobs.slice(0, 12).map((job) => <option key={job.id} value={job.id}>{job.title} · {job.company}</option>)}</optgroup>}
+      </select></label>
     </div>
 
     <section className="rp-layout">
       <div className="rp-deck-wrap">
-        <CandidateCards person={viewer} match={comparisonJob?.match} onEdit={onEdit} visibilityInspector={inspector} initialCard={initialCard} onActiveChange={changeCard} order={ORDER} />
+        <CandidateCards person={viewer} match={comparisonJob?.match} onEdit={onEdit} visibilityInspector={inspector} initialCard={initialCard} onActiveChange={changeCard} order={ORDER} focusRole={focusRole || undefined} />
         {/* Job status under the photo card: recruiters see the status on the card; role and recruiter stay private. */}
         {/* Job status editor removed from the profile view (founder, 2026-11-22: "noise"). Kept switchable. */}
         {SHOW_STATUS_EDITOR && onViewerSaved && <div className="rp-status-wrap"><JobStatusPicker key={viewer.id} variant="card" collapsible viewer={viewer} matches={matches} onSaved={onViewerSaved} onOpen={onOpenMessages} onReload={onReload} /></div>}
@@ -78,12 +88,15 @@ export function CandidateProfilePage({ viewer, jobs, onEdit, initialCard = 0, on
         <div className="rp-recommendations"><h3><Sparkles size={16} /> Highest-impact improvements</h3>
           {[
             { text: 'Add or confirm a recruiter-safe contact method', done: Boolean(viewer.contactChannels?.length), step: 0 },
-            { text: 'Complete salary and work-mode preferences', done: Boolean(viewer.preferences?.salary?.min && viewer.preferences?.workMode), step: 2 },
+            { text: 'Complete salary and work-mode preferences', done: Boolean(viewer.preferences?.workMode), step: 2 }, // salary optional since 2026-11-25
             { text: 'Add your Human Stack introduction', done: Boolean(viewer.presentation), step: 3 },
           ].map((item) => <button key={item.text} onClick={() => onEdit(item.step)}><span className={item.done ? 'done' : ''}>{item.done ? <Check size={13} /> : <ShieldCheck size={13} />}</span><b>{item.text}</b></button>)}
         </div>
-        {comparisonJob ? <div className="rp-comparison"><span className="overline">Personalized view</span><strong>{comparisonJob.match.score}% match with {comparisonJob.title}</strong><p>{comparisonJob.match.matchedSkills.length} matching skills · {comparisonJob.match.missingSkills?.length || 0} development gaps · {comparisonJob.match.salaryStatus || 'salary pending'} salary fit</p></div>
-          : <div className="rp-comparison neutral"><span className="overline">General recruiter view</span><strong>No fabricated match score</strong><p>Select a matched role to inspect skills, salary, work-mode, and availability compatibility.</p></div>}
+        {focusRole ? <div className="rp-comparison"><span className="overline">View for {focusRole}</span>
+            <strong>{focusGroups.length ? `Most relevant: ${focusGroups.join(' · ')}` : 'All your skill groups'}</strong>
+            <p>{roleTop.length ? `Your strongest skills for this role: ${roleTop.map((s) => s.name).join(', ')}.` : 'Add skills from these groups to stand out for this role.'} The My Skills card shows these groups first.</p></div>
+          : comparisonJob ? <div className="rp-comparison"><span className="overline">Personalized view</span><strong>{comparisonJob.match.score}% match with {comparisonJob.title}</strong><p>{comparisonJob.match.matchedSkills.length} matching skills · {comparisonJob.match.missingSkills?.length || 0} development gaps · {comparisonJob.match.salaryStatus || 'salary pending'} salary fit</p></div>
+          : <div className="rp-comparison neutral"><span className="overline">All roles (general view)</span><strong>No fabricated match score</strong><p>Pick one of your target roles in “View per role” to see your most relevant skills first, or a matched job offer to inspect skills, salary, work-mode and availability fit.</p></div>}
         <button className="primary-button wide" onClick={() => onEdit(EDIT_STEPS[activeCard])}>Edit This Card</button>
       </aside>
       {/* Owner-only cards under Profile strength (founder, 2026-11-22): "Use my chatbot" (Premium) and Nationality & visa. */}

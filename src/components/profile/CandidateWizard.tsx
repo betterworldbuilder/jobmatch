@@ -54,14 +54,18 @@ export const ARCHETYPES: Archetype[] = [
 type AboutMeAnswers = { bestWhen: string; relyOnMe: string; proudResult: string };
 
 /** Deterministic template composition — no LLM involved. Archetype paragraph + the candidate's own sentence endings. */
-function composeAboutMe(archetype: Archetype, answers: AboutMeAnswers): string {
+// Several identities at once (founder, 2026-11-25): their template paragraphs are joined, answers added after.
+function composeAboutMe(archetypes: Archetype | Archetype[], answers: AboutMeAnswers): string {
+  const list = Array.isArray(archetypes) ? archetypes : [archetypes];
   const extra = [
     answers.bestWhen.trim() && `I am at my best when ${answers.bestWhen.trim()}.`,
     answers.relyOnMe.trim() && `People can rely on me to ${answers.relyOnMe.trim()}.`,
     answers.proudResult.trim() && `A result I am proud of is ${answers.proudResult.trim()}.`,
   ].filter(Boolean).join(' ');
-  return extra ? `${archetype.prefilled}\n\n${extra}` : archetype.prefilled;
+  const base = list.map((a) => a.prefilled).join('\n\n');
+  return extra ? `${base}\n\n${extra}` : base;
 }
+const MAX_IDENTITIES = 3;
 
 // The six wizard steps mirror the profile cards recruiters swipe through, plus the About Me step.
 // The first four carry every must-have field; the last two are optional and skippable.
@@ -85,7 +89,7 @@ type Form = {
   salaryMin: string; salaryMax: string; currency: string; salaryPeriod: string; salaryNegotiable: boolean;
   availability?: string; travel: string;
   relocateOpen: boolean; relocateLocations: string[]; companySize: string; prefIndustries: string[]; workStyle: string[];
-  presentation: string; aboutMeArchetype?: string; mindset: string[]; humanSkills: string[]; workingPrefer: string[]; workingAvoid: string[];
+  presentation: string; aboutMeArchetype?: string; aboutMeArchetypes: string[]; mindset: string[]; humanSkills: string[]; workingPrefer: string[]; workingAvoid: string[];
   interests: string[]; motto: string; favoriteSong: string; recommendations: Recommendation[];
   resume?: ResumeMeta; coverLetter: string; visibility?: 'all' | 'after-swipe' | 'paused'; blockedCompanies: string[]; openToWork: boolean;
 };
@@ -113,7 +117,7 @@ function fromPerson(p: Person): Form {
     availability: p.preferences?.availability, travel: p.preferences?.travel || '',
     relocateOpen: p.preferences?.relocate?.open ?? false, relocateLocations: p.preferences?.relocate?.locations || [],
     companySize: p.preferences?.companySize || '', prefIndustries: p.preferences?.industries || [], workStyle: p.preferences?.workStyle || [],
-    presentation: p.presentation || '', aboutMeArchetype: p.aboutMeArchetype, mindset: p.mindset || [], humanSkills: p.humanSkills || [],
+    presentation: p.presentation || '', aboutMeArchetype: p.aboutMeArchetype, aboutMeArchetypes: p.aboutMeArchetypes?.length ? p.aboutMeArchetypes : p.aboutMeArchetype ? [p.aboutMeArchetype] : [], mindset: p.mindset || [], humanSkills: p.humanSkills || [],
     workingPrefer: p.workingPrefer || [], workingAvoid: p.workingAvoid || [], interests: p.interests || [],
     motto: p.motto || '', favoriteSong: p.favoriteSong || '', recommendations: p.recommendations || [],
     resume: p.documents?.resume, coverLetter: p.documents?.coverLetter || '',
@@ -153,7 +157,7 @@ function stepPayload(step: number, form: Form, finishing: boolean) {
     },
   };
   if (step === 3) return {
-    presentation: form.presentation || undefined, aboutMeArchetype: form.aboutMeArchetype, motto: form.motto || undefined, humanSkills: form.humanSkills,
+    presentation: form.presentation || undefined, aboutMeArchetype: form.aboutMeArchetypes[0] ?? form.aboutMeArchetype, aboutMeArchetypes: form.aboutMeArchetypes, motto: form.motto || undefined, humanSkills: form.humanSkills,
   };
   if (step === 4) return {
     mindset: form.mindset, workingPrefer: form.workingPrefer, workingAvoid: form.workingAvoid,
@@ -210,14 +214,21 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
   const [idv, setIdv] = useState(viewer.idVerification);
   const [error, setError] = useState('');
   const [aboutMeAnswers, setAboutMeAnswers] = useState<AboutMeAnswers>({ bestWhen: '', relyOnMe: '', proudResult: '' });
+  // Toggle an identity on/off (up to 3); the first picked stays the main one (`aboutMeArchetype`).
   const pickArchetype = (archetype: Archetype) => {
+    const ids = form.aboutMeArchetypes.includes(archetype.id)
+      ? form.aboutMeArchetypes.filter((id) => id !== archetype.id)
+      : form.aboutMeArchetypes.length < MAX_IDENTITIES ? [...form.aboutMeArchetypes, archetype.id] : form.aboutMeArchetypes;
+    const chosen = ids.map((id) => ARCHETYPES.find((a) => a.id === id)!).filter(Boolean);
     patch({
-      aboutMeArchetype: archetype.id,
-      motto: archetype.cardTitle,
-      presentation: composeAboutMe(archetype, aboutMeAnswers),
-      humanSkills: form.humanSkills.length ? form.humanSkills : archetype.defaultTraits,
+      aboutMeArchetypes: ids,
+      aboutMeArchetype: ids[0],
+      motto: chosen.map((a) => a.cardTitle).join(' · ') || form.motto,
+      presentation: chosen.length ? composeAboutMe(chosen, aboutMeAnswers) : form.presentation,
+      humanSkills: form.humanSkills.length ? form.humanSkills : [...new Set(chosen.flatMap((a) => a.defaultTraits))].slice(0, 6),
     });
   };
+  const chosenArchetypes = form.aboutMeArchetypes.map((id) => ARCHETYPES.find((a) => a.id === id)!).filter(Boolean);
   const captureLocation = async () => {
     setGeoBusy(true); setError('');
     try { const { getBrowserLocation } = await import('../../lib/geo'); patch({ geo: await getBrowserLocation() }); }
@@ -277,6 +288,40 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
     }
     catch (e) { setError(e instanceof Error ? e.message : 'Upload failed'); }
     finally { setUploading(false); }
+  };
+
+  // "Parse resume" (founder, 2026-11-25): read the uploaded resume again. Skills are MERGED (the candidate's own
+  // levels win, new ones are added) and sorted strongest first; other lists are filled only when still empty.
+  const [parsing, setParsing] = useState(false);
+  const [parseNote, setParseNote] = useState('');
+  const parseResume = async () => {
+    setParsing(true); setError('');
+    try {
+      const { fields, generator } = await api.resumeAutofill(viewer.id);
+      const parsed = (fields.skills || []) as { name: string; level: number }[];
+      let added = 0;
+      setForm((current) => {
+        const byName = new Map(current.skillsDetail.map((s) => [s.name.toLowerCase(), s]));
+        for (const s of parsed) if (!byName.has(s.name.toLowerCase())) { byName.set(s.name.toLowerCase(), s); added += 1; }
+        const order = new Map(parsed.map((s, i) => [s.name.toLowerCase(), i]));
+        const skillsDetail = [...byName.values()].sort((a, b) => b.level - a.level || (order.get(a.name.toLowerCase()) ?? 99) - (order.get(b.name.toLowerCase()) ?? 99));
+        const fill = <T,>(have: T[], got?: T[]) => (have.length ? have : got?.length ? got : have);
+        return {
+          ...current, skillsDetail,
+          headline: current.headline || fields.headline || current.headline,
+          title: current.title || fields.title || current.title,
+          yearsExperience: current.yearsExperience || (fields.yearsExperience !== undefined ? String(fields.yearsExperience) : current.yearsExperience),
+          languageDetail: fill(current.languageDetail, fields.languages),
+          industries: fill(current.industries, fields.industries),
+          workExperience: fill(current.workExperience, fields.workExperience),
+          education: fill(current.education, fields.education),
+          certifications: fill(current.certifications, fields.certifications),
+          links: fields.links ? { ...fields.links, ...current.links } : current.links,
+        };
+      });
+      setParseNote(`${generator === 'claude' ? 'AI-read your resume.' : 'Read your resume.'} ${parsed.length ? `${parsed.length} skills found${added ? `, ${added} new` : ''}; your skills are now sorted strongest first.` : 'No skills found in it.'} Review, then continue to save.`);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not read your resume'); }
+    finally { setParsing(false); }
   };
 
   // Upload a resume and pre-fill the whole wizard from it (review then continue).
@@ -410,7 +455,7 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
         </div>
         <Field label="Seniority" required><Segmented options={['junior', 'mid', 'senior', 'lead', 'exec'] as const} value={form.seniority} onChange={(seniority) => patch({ seniority })} labels={SENIORITY_LABELS} /></Field>
         <Field label="Skills" required hint="At least 1 — add more any time. Click the dots to set your level (1–5).">
-          <LevelTagInput value={form.skillsDetail} onChange={(skillsDetail) => patch({ skillsDetail })} />
+          <LevelTagInput value={form.skillsDetail} onChange={(skillsDetail) => patch({ skillsDetail })} grouped />
           <div className="wz-suggestions">{SKILL_SUGGESTIONS.filter((skill) => !form.skillsDetail.some((item) => item.name === skill)).slice(0, 5).map((skill) => <button type="button" key={skill} onClick={() => patch({ skillsDetail: [...form.skillsDetail, { name: skill, level: 3 }] })}>+ {skill}</button>)}</div>
         </Field>
         <Field label="Industries"><TagInput value={form.industries} onChange={(industries) => patch({ industries })} suggestions={['SaaS', 'Fintech', 'Health', 'E-commerce', 'Education', 'Agency']} /></Field>
@@ -437,10 +482,18 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
         <Field label="LinkedIn"><TextInput value={form.links.linkedin || ''} onChange={(e) => patch({ links: { ...form.links, linkedin: e.target.value } })} placeholder="linkedin.com/in/…" /></Field>
         <Field label="Resume (optional)" hint="PDF or DOCX, up to 10MB. Speeds up recruiter review, but you can add it later.">
           <label className={form.resume ? 'wz-upload has-file' : 'wz-upload'}>
-            <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => e.target.files?.[0] && uploadResume(e.target.files[0])} />
-            {uploading ? <><Loader2 size={17} className="spin" /> Uploading…</> : form.resume ? <><FileText size={17} /> {form.resume.originalName} <em>Replace</em></> : <><Upload size={17} /> Upload resume</>}
+            {/* value reset after each pick, so choosing the same file again re-uploads it (founder, 2026-11-25) */}
+            <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadResume(f).then(() => setParseNote('New resume uploaded. Parse it to update your skills.')); }} />
+            {uploading ? <><Loader2 size={17} className="spin" /> Uploading…</> : form.resume ? <><FileText size={17} /> {form.resume.originalName} <em>Upload a new version</em></> : <><Upload size={17} /> Upload resume</>}
           </label>
         </Field>
+        {/* Parse resume (founder, 2026-11-25): skills merged and sorted strongest first; other lists filled only if empty. */}
+        <div className="wz-parse">
+          <button type="button" className="secondary-button wz-parse-btn" disabled={!form.resume || parsing || uploading} onClick={() => void parseResume()}>
+            {parsing ? <><Loader2 size={15} className="spin" /> Reading your resume…</> : <><Sparkles size={15} /> Parse resume</>}
+          </button>
+          <span className="wz-parse-note">{parseNote || (form.resume ? 'Reads your resume and sorts your skills, strongest first, with a level for each. Your own levels are kept; nothing is saved until you continue.' : 'Upload a resume first, then parse it.')}</span>
+        </div>
         <Field label="Cover letter (optional)"><textarea className="wz-input wz-textarea" rows={4} value={form.coverLetter} onChange={(e) => patch({ coverLetter: e.target.value })} placeholder="A short default note recruiters see with your profile." /></Field>
       </div>}
 
@@ -476,9 +529,9 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
 
       {step === 3 && <div className="wz-body">
         <p className="wz-hint" style={{ margin: '-6px 0 4px' }}>Pick a professional identity for a prefilled starting point, personalize it, and edit anything — or skip the picker and write your own.</p>
-        <Field label="Choose your professional identity" hint="Sets a prefilled About Me you can edit below.">
+        <Field label="Choose your professional identity" hint={`Pick up to ${MAX_IDENTITIES}. Sets a prefilled About Me you can edit below.`}>
           <div className="wz-chips">
-            {ARCHETYPES.map((a) => <button type="button" key={a.id} className={form.aboutMeArchetype === a.id ? 'active' : ''} aria-pressed={form.aboutMeArchetype === a.id} onClick={() => pickArchetype(a)}>{a.cardTitle}</button>)}
+            {ARCHETYPES.map((a) => { const on = form.aboutMeArchetypes.includes(a.id); const full = !on && form.aboutMeArchetypes.length >= MAX_IDENTITIES; return <button type="button" key={a.id} className={on ? 'active' : ''} aria-pressed={on} disabled={full} onClick={() => pickArchetype(a)}>{a.cardTitle}</button>; })}
           </div>
         </Field>
         <Field label="Supporting traits (optional)" hint="Pick up to 6."><Chips options={ABOUT_ME_TRAITS} value={form.humanSkills} onToggle={(option) => patch({ humanSkills: form.humanSkills.includes(option) ? form.humanSkills.filter((item) => item !== option) : form.humanSkills.length < 6 ? [...form.humanSkills, option] : form.humanSkills })} /></Field>
@@ -487,7 +540,7 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
           <Field label="People can rely on me to… (optional)"><TextInput value={aboutMeAnswers.relyOnMe} onChange={(e) => setAboutMeAnswers({ ...aboutMeAnswers, relyOnMe: e.target.value })} /></Field>
         </div>
         <Field label="A result I am proud of is… (optional)"><TextInput value={aboutMeAnswers.proudResult} onChange={(e) => setAboutMeAnswers({ ...aboutMeAnswers, proudResult: e.target.value })} /></Field>
-        {form.aboutMeArchetype && <button type="button" className="secondary-button" onClick={() => patch({ presentation: composeAboutMe(ARCHETYPES.find((a) => a.id === form.aboutMeArchetype)!, aboutMeAnswers) })}>Apply answers to About Me text</button>}
+        {chosenArchetypes.length > 0 && <button type="button" className="secondary-button" onClick={() => patch({ presentation: composeAboutMe(chosenArchetypes, aboutMeAnswers) })}>Apply answers to About Me text</button>}
         <Field label="About Me" required hint="Recruiters read this first. Personalize the template above or write your own — either way, edit freely.">
           <textarea className="wz-input wz-textarea" rows={8} value={form.presentation} onChange={(e) => patch({ presentation: e.target.value })} placeholder="Choose an identity above to start from a template, or write your own." />
         </Field>

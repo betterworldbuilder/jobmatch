@@ -15,6 +15,73 @@ const SKILL_DICTIONARY = [
   'Product strategy', 'Product management', 'Roadmapping', 'Analytics', 'A/B testing', 'Stakeholder management', 'Agile', 'Scrum', 'Kanban', 'Leadership', 'Mentorship', 'Facilitation', 'Communication', 'Go-to-market', 'SEO', 'Content strategy', 'Growth', 'SQL', 'Excel', 'Tableau', 'Power BI', 'Project management', 'Jira',
 ];
 
+// More skills (founder, 2026-11-25: "do a better job parsing the resume to sort the skillset"): cloud, data, AI, DevOps.
+SKILL_DICTIONARY.push(
+  'Linux', 'Bash', 'PowerShell', 'Ansible', 'Helm', 'Prometheus', 'Grafana', 'Datadog', 'Jenkins', 'GitHub Actions', 'GitLab CI', 'ArgoCD', 'Serverless', 'Lambda', 'CloudFormation', 'Pulumi', 'Nginx', 'Networking', 'Security', 'IAM',
+  'Snowflake', 'Databricks', 'Spark', 'PySpark', 'Hadoop', 'Airflow', 'dbt', 'BigQuery', 'Redshift', 'Synapse', 'Data Factory', 'ETL', 'ELT', 'Data warehouse', 'Data lake', 'Data modeling', 'Data governance', 'Elasticsearch', 'Cassandra', 'DynamoDB', 'Oracle', 'SQL Server', 'Pandas', 'NumPy', 'scikit-learn',
+  'Generative AI', 'RAG', 'LangChain', 'LangGraph', 'LlamaIndex', 'OpenAI', 'Claude', 'Bedrock', 'SageMaker', 'Vertex AI', 'Azure OpenAI', 'Hugging Face', 'MLOps', 'Computer vision', 'Prompt engineering', 'Vector databases', 'AI agents', 'MCP',
+  'Solution architecture', 'Cloud architecture', 'Pre-sales', 'Consulting', 'Salesforce', 'SAP', 'ServiceNow',
+);
+const CASE_SENSITIVE = new Set(['Go', 'REST', 'Rust', 'Swift', 'Spring', 'Express', 'Claude', 'Spark', 'Growth', 'Lambda', 'IAM', 'ETL', 'ELT', 'MCP', 'RAG', 'LLM', 'NLP', 'SAP', 'Research', 'Security', 'Networking', 'Analytics', 'Excel', 'Kanban', 'Oracle']);
+const SOFT_SKILLS = new Set(['Leadership', 'Mentorship', 'Facilitation', 'Communication', 'Stakeholder management', 'Agile', 'Scrum', 'Kanban', 'Research', 'Consulting', 'Pre-sales', 'Growth', 'Project management']);
+// Other spellings of the same skill.
+const SKILL_ALIASES = {
+  postgres: 'PostgreSQL', psql: 'PostgreSQL', k8s: 'Kubernetes', 'google cloud': 'GCP', 'google cloud platform': 'GCP', 'amazon web services': 'AWS',
+  'microsoft azure': 'Azure', js: 'JavaScript', ts: 'TypeScript', nodejs: 'Node.js', 'node js': 'Node.js', reactjs: 'React', 'react.js': 'React',
+  golang: 'Go', ml: 'Machine learning', 'machine-learning': 'Machine learning', genai: 'Generative AI', 'gen ai': 'Generative AI', llms: 'LLM',
+  'large language models': 'LLM', 'retrieval augmented generation': 'RAG', 'ci cd': 'CI/CD', cicd: 'CI/CD', 'github action': 'GitHub Actions',
+  'azure data factory': 'Data Factory', sklearn: 'scikit-learn', 'aws lambda': 'Lambda', 'amazon bedrock': 'Bedrock', 'aws sagemaker': 'SageMaker',
+};
+
+/**
+ * Skills with a level from the CV's own evidence (founder, 2026-11-25), strongest first.
+ * Evidence: how often a skill is mentioned, a Skills section, "N years of X", recent roles.
+ * Level 5 = 5+ years stated or very frequent; 1 = listed once with nothing else.
+ */
+export function rankSkills(text, skillSectionText = '', recentText = '') {
+  const flat = text.replace(/\s+/g, ' ');
+  const count = (name, hay) => {
+    // Words that are also ordinary English are matched with their exact capitals; "Go" never in "go-to"/"go-live".
+    const exact = CASE_SENSITIVE.has(name);
+    const tail = name === 'Go' ? '(?!\\s*-?\\s*(?:to|live)\\b)' : '';
+    const re = new RegExp(`(^|[^A-Za-z0-9+#.])${escapeRe(name)}(?![A-Za-z0-9+#])${tail}`, exact ? 'g' : 'gi');
+    return (hay.match(re) || []).length;
+  };
+  const evidence = new Map(); // canonical name -> { mentions, inSkills, recent, years }
+  const add = (canon, mentions, inSkills, recent) => {
+    if (!mentions && !inSkills) return;
+    const e = evidence.get(canon) || { mentions: 0, inSkills: false, recent: 0, years: 0 };
+    e.mentions += mentions; e.inSkills ||= inSkills; e.recent += recent;
+    evidence.set(canon, e);
+  };
+  for (const skill of [...new Set(SKILL_DICTIONARY)]) add(skill, count(skill, flat), count(skill, skillSectionText) > 0, count(skill, recentText));
+  for (const [alias, canon] of Object.entries(SKILL_ALIASES)) add(canon, count(alias, flat), count(alias, skillSectionText) > 0, count(alias, recentText));
+  // Tokens of a Skills section that are not in the dictionary still count once.
+  for (const token of skillSectionText.split(/[,;•|/·\n]+/).map((t) => t.replace(/^[-*\s]+/, '').trim()).filter((t) => t.length >= 2 && t.length <= 30 && !/\s{2,}/.test(t) && t.split(' ').length <= 3)) {
+    const lower = token.toLowerCase();
+    const known = SKILL_DICTIONARY.find((s) => s.toLowerCase() === lower) || SKILL_ALIASES[lower];
+    if (!known && !evidence.has(token) && /^[A-Za-z0-9][A-Za-z0-9+#.\- ]*$/.test(token)) evidence.set(token, { mentions: 1, inSkills: true, recent: 0, years: 0 });
+  }
+  // "6 years of Python", "Python (5 yrs)", "5+ years with AWS".
+  for (const name of evidence.keys()) {
+    const n = escapeRe(name);
+    const m = flat.match(new RegExp(`(\\d{1,2})\\+?\\s*(?:years?|yrs?)\\s+(?:of\\s+|with\\s+|in\\s+)?(?:hands-on\\s+)?${n}(?![A-Za-z])`, 'i'))
+      || flat.match(new RegExp(`${n}\\s*[(:\\-–]\\s*(\\d{1,2})\\+?\\s*(?:years?|yrs?)`, 'i'));
+    if (m) evidence.get(name).years = Math.min(Number(m[1]), 40);
+  }
+  const ranked = [...evidence.entries()].map(([name, e]) => {
+    const raw = Math.min(e.mentions, 6) + (e.inSkills ? 1.5 : 0) + Math.min(e.recent, 3) * 0.75;
+    const points = SOFT_SKILLS.has(name) ? raw * 0.5 : raw; // prose mentions of soft skills count less
+
+    let level = points >= 6 ? 5 : points >= 4 ? 4 : points >= 2.5 ? 3 : points >= 1.5 ? 2 : 1;
+    if (e.years >= 5) level = 5; else if (e.years >= 3) level = Math.max(level, 4); else if (e.years >= 1) level = Math.max(level, 3);
+    return { name, level, points: points + e.years };
+  });
+  // A short skill name inside a longer one found too ("Go" in "Google") is not double counted: drop exact-duplicate names.
+  return ranked.sort((a, b) => b.level - a.level || b.points - a.points || a.name.localeCompare(b.name))
+    .slice(0, 20).map(({ name, level }) => ({ name, level }));
+}
+
 const KNOWN_LANGUAGES = ['English', 'Vietnamese', 'French', 'Spanish', 'German', 'Mandarin', 'Chinese', 'Cantonese', 'Japanese', 'Korean', 'Hindi', 'Portuguese', 'Italian', 'Russian', 'Arabic', 'Thai', 'Indonesian', 'Malay', 'Dutch'];
 
 const SENIORITY_RULES = [
@@ -56,15 +123,10 @@ function heuristicParse(text) {
 
   const seniority = (SENIORITY_RULES.find(([, re]) => re.test(flat)) || [])[0];
 
-  // Skills: dictionary hits + tokens from a Skills section.
-  const found = new Set();
-  for (const skill of SKILL_DICTIONARY) if (new RegExp(`\\b${escapeRe(skill)}\\b`, 'i').test(text)) found.add(skill);
-  const skillSection = findSection(lines, /^skills\b|technical skills|core skills/i).join(' ');
-  for (const token of skillSection.split(/[,•|/·•]+/).map((t) => t.trim()).filter((t) => t && t.length <= 40)) {
-    const match = SKILL_DICTIONARY.find((s) => s.toLowerCase() === token.toLowerCase());
-    found.add(match || token);
-  }
-  const skills = [...found].slice(0, 15).map((name) => ({ name, level: 3 }));
+  // Skills: ranked by the CV's own evidence, strongest first (founder, 2026-11-25).
+  const skillSection = findSection(lines, /^(skills|technical skills|core skills|key skills|competencies|technologies|tech stack)\b/i).join('\n');
+  const recent = findSection(lines, /^(experience|employment|work experience|professional experience)/i).slice(0, 25).join(' ');
+  const skills = rankSkills(text, skillSection, recent);
 
   // Languages
   const languages = [];
@@ -141,7 +203,7 @@ async function claudeParse(text) {
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({
         model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001', max_tokens: 1800,
-        messages: [{ role: 'user', content: `Extract structured profile data from this resume. Reply with ONLY JSON: {"headline": one-line professional headline, "title": current or most recent job title, "yearsExperience": integer, "seniority": "junior"|"mid"|"senior"|"lead"|"exec", "skills": [{"name": string, "level": 1-5}] (top 12), "industries": [string], "workExperience": [{"title","company","from","to","description"}], "education": [{"school","degree","from","to"}], "certifications": [string], "languages": [{"name","level"}], "links": {"github","linkedin","portfolio","website"}}. Omit unknown fields.\n\nResume:\n${text.slice(0, 9000)}` }],
+        messages: [{ role: 'user', content: `Extract structured profile data from this resume. Reply with ONLY JSON: {"headline": one-line professional headline, "title": current or most recent job title, "yearsExperience": integer, "seniority": "junior"|"mid"|"senior"|"lead"|"exec", "skills": [{"name": string, "level": 1-5}] (top 20, strongest first, level from the evidence in the resume: years, frequency, recent roles), "industries": [string], "workExperience": [{"title","company","from","to","description"}], "education": [{"school","degree","from","to"}], "certifications": [string], "languages": [{"name","level"}], "links": {"github","linkedin","portfolio","website"}}. Omit unknown fields.\n\nResume:\n${text.slice(0, 9000)}` }],
       }),
     });
     if (!response.ok) return null;

@@ -3,6 +3,7 @@ import { Award, Upload, Zap, BadgeCheck, Brain, Briefcase, CalendarClock, CheckC
 import { api, apiBase } from '../../api';
 import { jobStatusText } from '../JobStatusPicker';
 import { workModesText } from '../../lib/today';
+import { groupSkills, roleSkillGroups } from '../../lib/skillGroups';
 import type { ContactChannel, MatchEvidence, Person, RecommendationDoc } from '../../types';
 
 /** Recommendation letters (PDF, Word, image), up to 5: the owner uploads and removes them; the owner and recruiters
@@ -104,7 +105,9 @@ const DEFAULT_ORDER = [0, 1, 2, 3, 4, 6, 5, 7];
 /** `order` lists card numbers (NAV indexes) in display order; positions (initialCard, onActiveChange) follow that order. */
 // variant 'swipe' (founder, 2026-11-22): one page at a time inside a swipe card — `page` picks order[page];
 // no page-button row and no resume button under it (the swipe card has its own pager and a resume page).
-export function CandidateCards({ person: p, match, onEdit, unlocked = false, visibilityInspector = false, initialCard = 0, onActiveChange, order = DEFAULT_ORDER, variant = 'deck', page = 0 }: { person: Person; match?: MatchEvidence; onEdit?: (step: number) => void; unlocked?: boolean; visibilityInspector?: boolean; initialCard?: number; onActiveChange?: (card: number) => void; order?: number[]; variant?: 'deck' | 'swipe'; page?: number }) {
+export function CandidateCards({ person: p, match, onEdit, unlocked = false, visibilityInspector = false, initialCard = 0, onActiveChange, order = DEFAULT_ORDER, variant = 'deck', page = 0, focusRole }: { person: Person; match?: MatchEvidence; onEdit?: (step: number) => void; unlocked?: boolean; visibilityInspector?: boolean; initialCard?: number; onActiveChange?: (card: number) => void; order?: number[]; variant?: 'deck' | 'swipe'; page?: number; focusRole?: string }) {
+  // "View per role" (founder, 2026-11-25): the skill groups that matter for this target role come first.
+  const focusGroups = focusRole ? roleSkillGroups(focusRole) : [];
   const swipe = variant === 'swipe';
   const m = match || p.match;
   const deckRef = useRef<HTMLDivElement>(null);
@@ -260,7 +263,12 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
           <div className="tskill-group ok"><span className="tskill-h"><CheckCircle2 size={13} /> Matching</span><ul className="tskill-rows">{m.matchedSkills.length ? m.matchedSkills.map((s) => { const d = skill(s); return <li key={s}><b>{s}</b>{d?.years ? <em>{d.years}y</em> : null}{d?.level ? <i>{'●'.repeat(d.level)}{'○'.repeat(5 - d.level)}</i> : null}</li>; }) : <li><em>None yet</em></li>}</ul></div>
           {(m.missingSkills?.length ?? 0) > 0 && <div className="tskill-group miss"><span className="tskill-h"><XCircle size={13} /> Development gaps</span><div className="skill-list">{m.missingSkills!.map((s) => <span key={s} className="miss">{s}</span>)}</div></div>}
           {(m.extraSkills?.length ?? 0) > 0 && <div className="tskill-group extra"><span className="tskill-h"><PlusCircle size={13} /> Additional value</span><div className="skill-list">{m.extraSkills!.map((s) => <span key={s}>{s}</span>)}</div></div>}
-        </div> : <div className="skill-list pf-skills">{(p.skillsDetail || (p.skills || []).map((name) => ({ name, level: 0, years: undefined }))).map((s) => <span key={s.name}>{s.name}{s.years ? <em className="pf-skill-years">{s.years}y</em> : null}{s.level ? <i className="pf-skill-level">{'●'.repeat(s.level)}{'○'.repeat(5 - s.level)}</i> : null}</span>)}</div>}
+        </div> : <div className="pf-skillgroups">{/* grouped by type of role, strongest first (founder, 2026-11-25) */}
+          {groupSkills(p.skillsDetail || (p.skills || []).map((name) => ({ name, level: 0, years: undefined })), focusGroups).map((g) => <div key={g.group} className={g.focus ? 'pf-skillgroup focus' : 'pf-skillgroup'}>
+            <span className="pf-skillgroup-h">{g.group}{g.focus && focusRole ? <em> · key for {focusRole}</em> : null}</span>
+            <div className="skill-list pf-skills">{g.skills.map((s) => <span key={s.name}>{s.name}{s.years ? <em className="pf-skill-years">{s.years}y</em> : null}{s.level ? <i className="pf-skill-level">{'●'.repeat(s.level)}{'○'.repeat(5 - s.level)}</i> : null}</span>)}</div>
+          </div>)}
+        </div>}
         {p.documents?.resume && <div className="tcard-docs">
           <a className="tdoc-btn" href={p.documents.resume.previewUrl || p.documents.resume.url} target="_blank" rel="noreferrer"><FileText size={14} /> Read resume</a>
           <a className="tdoc-btn ghost" href={p.documents.resume.url} download><Download size={14} /> PDF</a>

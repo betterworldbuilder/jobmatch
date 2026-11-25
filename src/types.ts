@@ -61,7 +61,7 @@ export interface Person {
   links?: { github?: string; portfolio?: string; website?: string; linkedin?: string; appStore?: string; playStore?: string };
   /** Links to articles, papers, or talks — shown on the "What I Have Built" card. */
   publications?: string[];
-  presentation?: string; aboutMeArchetype?: string; mindset?: string[]; humanSkills?: string[]; workingPrefer?: string[]; workingAvoid?: string[];
+  presentation?: string; aboutMeArchetype?: string; aboutMeArchetypes?: string[]; mindset?: string[]; humanSkills?: string[]; workingPrefer?: string[]; workingAvoid?: string[];
   interests?: string[]; motto?: string; favoriteSong?: string; recommendations?: Recommendation[];
   /** Pending "please recommend me" invites sent to a LinkedIn profile or email — private, owner-only. */
   recommendationRequests?: RecommendationRequest[];

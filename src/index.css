@@ -2038,6 +2038,15 @@ img.avatar-mini { object-fit:cover; }
 .wz-suggestions button { display:inline-flex; align-items:center; gap:4px; border:1px dashed #cfd6d1; background:#fafbfa; color:var(--muted); border-radius:999px; padding:5px 11px; font-size:10px; font-weight:700; }
 .wz-suggestions button:hover { color:var(--green); border-color:#ffd7e5; background:#fff0f5; }
 .wz-leveltags,.wz-langs { display:flex; flex-wrap:wrap; gap:7px; }
+/* Skills grouped by type of role (founder, 2026-11-25). */
+.wz-skillgroups, .pf-skillgroups { display:flex; flex-direction:column; gap:10px; margin-bottom:8px; }
+.pf-skillgroup.focus { padding:8px 10px; border-radius:12px; background:rgba(253,38,122,.07); box-shadow:inset 0 0 0 1px rgba(253,38,122,.22); }
+.pf-skillgroup-h em { font-style:normal; color:#fd267a; letter-spacing:.02em; text-transform:none; }
+.wz-skillgroup-h, .pf-skillgroup-h { display:block; margin:0 0 5px; font:800 10.5px 'Manrope', sans-serif; letter-spacing:.07em; text-transform:uppercase; color:#6b7280; }
+/* Parse resume (founder, 2026-11-25). */
+.wz-parse { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:-4px 0 14px; }
+.wz-parse-btn { flex:none; display:inline-flex; align-items:center; gap:7px; }
+.wz-parse-note { flex:1; min-width:180px; font-size:11.5px; color:var(--muted); line-height:1.45; }
 .wz-leveltag { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:999px; padding:6px 7px 6px 12px; font-size:11px; background:white; }
 .wz-leveltag b { font-weight:700; }
 .wz-leveltag select { border:1px solid var(--line); border-radius:7px; font-size:10px; padding:3px 4px; background:#fafbfa; }
