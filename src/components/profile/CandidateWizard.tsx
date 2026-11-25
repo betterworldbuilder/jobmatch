@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { CameraCaptureModal } from '../CameraCaptureModal';
 import { Chips, Field, LevelTagInput, MultiSegmented, Repeat, Segmented, TagInput, TextInput, Toggle } from './fields';
 import { RecommendationLetters } from './CandidateCards';
+import { TEXT_MAX, clipText, fitSentences } from '../../lib/textLimit';
 import { IdVerification } from './IdVerification';
 import type { AgePrivacy, ContactChannel, ContactChannelType, Education, LanguageTag, Person, Recommendation, ResumeMeta, Seniority, SkillTag, WorkExperience } from '../../types';
 
@@ -62,8 +63,15 @@ function composeAboutMe(archetypes: Archetype | Archetype[], answers: AboutMeAns
     answers.relyOnMe.trim() && `People can rely on me to ${answers.relyOnMe.trim()}.`,
     answers.proudResult.trim() && `A result I am proud of is ${answers.proudResult.trim()}.`,
   ].filter(Boolean).join(' ');
-  const base = list.map((a) => a.prefilled).join('\n\n');
-  return extra ? `${base}\n\n${extra}` : base;
+  // 500-character cap (founder, 2026-11-25): each identity gets an equal share, cut at a sentence end.
+  const room = TEXT_MAX - (extra ? extra.length + 2 : 0) - (list.length - 1) * 2;
+  const share = Math.max(80, Math.floor(room / Math.max(1, list.length)));
+  const base = list.map((a) => fitSentences(a.prefilled, share)).join('\n\n');
+  return clipText(extra ? `${base}\n\n${extra}` : base);
+}
+/** "432 / 500" under a capped text box. */
+function Count({ value }: { value: string }) {
+  return <span className={`wz-count${value.length >= TEXT_MAX ? ' full' : ''}`}>{value.length} / {TEXT_MAX}</span>;
 }
 const MAX_IDENTITIES = 3;
 
@@ -117,10 +125,10 @@ function fromPerson(p: Person): Form {
     availability: p.preferences?.availability, travel: p.preferences?.travel || '',
     relocateOpen: p.preferences?.relocate?.open ?? false, relocateLocations: p.preferences?.relocate?.locations || [],
     companySize: p.preferences?.companySize || '', prefIndustries: p.preferences?.industries || [], workStyle: p.preferences?.workStyle || [],
-    presentation: p.presentation || '', aboutMeArchetype: p.aboutMeArchetype, aboutMeArchetypes: p.aboutMeArchetypes?.length ? p.aboutMeArchetypes : p.aboutMeArchetype ? [p.aboutMeArchetype] : [], mindset: p.mindset || [], humanSkills: p.humanSkills || [],
+    presentation: clipText(p.presentation), aboutMeArchetype: p.aboutMeArchetype, aboutMeArchetypes: p.aboutMeArchetypes?.length ? p.aboutMeArchetypes : p.aboutMeArchetype ? [p.aboutMeArchetype] : [], mindset: p.mindset || [], humanSkills: p.humanSkills || [],
     workingPrefer: p.workingPrefer || [], workingAvoid: p.workingAvoid || [], interests: p.interests || [],
     motto: p.motto || '', favoriteSong: p.favoriteSong || '', recommendations: p.recommendations || [],
-    resume: p.documents?.resume, coverLetter: p.documents?.coverLetter || '',
+    resume: p.documents?.resume, coverLetter: clipText(p.documents?.coverLetter),
     visibility: p.privacy?.visibility || 'all', blockedCompanies: p.privacy?.blockedCompanies || [],
     openToWork: p.privacy?.openToWork ?? true,
   };
@@ -494,7 +502,7 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
           </button>
           <span className="wz-parse-note">{parseNote || (form.resume ? 'Reads your resume and sorts your skills, strongest first, with a level for each. Your own levels are kept; nothing is saved until you continue.' : 'Upload a resume first, then parse it.')}</span>
         </div>
-        <Field label="Cover letter (optional)"><textarea className="wz-input wz-textarea" rows={4} value={form.coverLetter} onChange={(e) => patch({ coverLetter: e.target.value })} placeholder="A short default note recruiters see with your profile." /></Field>
+        <Field label="Cover letter (optional)"><textarea className="wz-input wz-textarea" rows={4} maxLength={TEXT_MAX} value={form.coverLetter} onChange={(e) => patch({ coverLetter: e.target.value.slice(0, TEXT_MAX) })} placeholder="A short default note recruiters see with your profile." /><Count value={form.coverLetter} /></Field>
       </div>}
 
       {step === 2 && <div className="wz-body">
@@ -542,7 +550,8 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
         <Field label="A result I am proud of is… (optional)"><TextInput value={aboutMeAnswers.proudResult} onChange={(e) => setAboutMeAnswers({ ...aboutMeAnswers, proudResult: e.target.value })} /></Field>
         {chosenArchetypes.length > 0 && <button type="button" className="secondary-button" onClick={() => patch({ presentation: composeAboutMe(chosenArchetypes, aboutMeAnswers) })}>Apply answers to About Me text</button>}
         <Field label="About Me" required hint="Recruiters read this first. Personalize the template above or write your own — either way, edit freely.">
-          <textarea className="wz-input wz-textarea" rows={8} value={form.presentation} onChange={(e) => patch({ presentation: e.target.value })} placeholder="Choose an identity above to start from a template, or write your own." />
+          <textarea className="wz-input wz-textarea" rows={8} maxLength={TEXT_MAX} value={form.presentation} onChange={(e) => patch({ presentation: e.target.value.slice(0, TEXT_MAX) })} placeholder="Choose an identity above to start from a template, or write your own." />
+          <Count value={form.presentation} />
         </Field>
       </div>}
 
@@ -565,7 +574,8 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
               <TextInput placeholder="Their role" value={item.role || ''} onChange={(e) => update({ role: e.target.value })} />
               <TextInput placeholder="Company" value={item.company || ''} onChange={(e) => update({ company: e.target.value })} />
               <TextInput placeholder="Relationship (e.g. Former manager)" value={item.relationship || ''} onChange={(e) => update({ relationship: e.target.value })} />
-              <textarea className="wz-input wz-textarea" placeholder="What they said about working with you" value={item.text || ''} onChange={(e) => update({ text: e.target.value })} />
+              <textarea className="wz-input wz-textarea" maxLength={TEXT_MAX} placeholder="What they said about working with you" value={item.text || ''} onChange={(e) => update({ text: e.target.value.slice(0, TEXT_MAX) })} />
+              <Count value={item.text || ''} />
             </div>} />
         </Field>
         {/* Recommendation letters as files (founder, 2026-11-25): same uploader as the Recommendations card. */}

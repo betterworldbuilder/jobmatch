@@ -2043,6 +2043,9 @@ img.avatar-mini { object-fit:cover; }
 .pf-skillgroup.focus { padding:8px 10px; border-radius:12px; background:rgba(253,38,122,.07); box-shadow:inset 0 0 0 1px rgba(253,38,122,.22); }
 .pf-skillgroup-h em { font-style:normal; color:#fd267a; letter-spacing:.02em; text-transform:none; }
 .wz-skillgroup-h, .pf-skillgroup-h { display:block; margin:0 0 5px; font:800 10.5px 'Manrope', sans-serif; letter-spacing:.07em; text-transform:uppercase; color:#6b7280; }
+/* 500-character counter (founder, 2026-11-25). */
+.wz-count { display:block; margin-top:4px; text-align:right; font-size:11px; color:var(--muted); }
+.wz-count.full { color:#d91863; font-weight:700; }
 /* Parse resume (founder, 2026-11-25). */
 .wz-parse { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:-4px 0 14px; }
 .wz-parse-btn { flex:none; display:inline-flex; align-items:center; gap:7px; }

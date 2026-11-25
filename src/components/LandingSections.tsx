@@ -19,7 +19,8 @@ const JOURNEY = [
 
 export function JourneyPipeline() {
   return <section className="section journey-section" id="journey">
-    <div className="section-heading centered"><span className="eyebrow"><Sparkles size={14} /> Five simple candidate steps</span><h2>From swipe to hired — approximately 13–36 days.</h2><p>The 3–8-day base process is separated from interview and negotiation time because those stages vary by case.</p></div>
+    {/* Founder, 2026-11-25: one clear heading for both sides, no day-count claim. */}
+    <div className="section-heading centered"><span className="eyebrow"><Sparkles size={14} /> From swipe to hired</span><h2>5 simple steps to hire and get hired</h2></div>
     <div className="journey-track">
       {JOURNEY.map((step, index) => <div className="journey-step" key={step.title}>
         <div className="journey-node" style={{ ['--hue' as string]: step.hue }}>

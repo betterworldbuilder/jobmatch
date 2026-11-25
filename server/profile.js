@@ -7,6 +7,17 @@ import { ValidationError } from './matching.js';
 const has = (value) => value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0);
 
 const str = (value, max = 500) => (typeof value === 'string' && value.trim() && value.length <= max ? value.trim() : undefined);
+// Long profile texts (About Me, cover letter, recommendation text) are capped at 500 characters (founder, 2026-11-25).
+// Longer text is shortened at a word end with "…", never rejected, so older long profiles still save.
+export const TEXT_MAX = 500;
+export const clipText = (value, max = TEXT_MAX) => {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const t = value.trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max - 1);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:.-]+$/, '')}…`;
+};
 const num = (value, min, max) => (typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max ? value : undefined);
 const strArray = (value, maxItems = 40, maxLen = 120) => (Array.isArray(value) ? [...new Set(value.filter((item) => typeof item === 'string' && item.trim() && item.length <= maxLen).map((item) => item.trim()))].slice(0, maxItems) : undefined);
 
@@ -111,7 +122,7 @@ export function applyCandidateProfile(user, body) {
   set('certifications', strArray(body.certifications));
   set('publications', strArray(body.publications));
   // Human stack (card 4) — how the candidate presents as a person.
-  set('presentation', str(body.presentation, 2000));
+  set('presentation', clipText(body.presentation, TEXT_MAX));
   set('aboutMeArchetype', str(body.aboutMeArchetype, 40)); // drives recruiter conversation-starter suggestions
   // Several identities (founder, 2026-11-25); `aboutMeArchetype` stays the first one.
   set('aboutMeArchetypes', strArray(body.aboutMeArchetypes, 3, 40));
@@ -134,7 +145,7 @@ export function applyCandidateProfile(user, body) {
     };
     user.recommendations = objArray(body.recommendations, {
       recruiterName: (v) => str(v, 120), company: (v) => str(v, 120), role: (v) => str(v, 120),
-      text: (v) => str(v, 1200), date: (v) => str(v, 20), photo: (v) => str(v, 600),
+      text: (v) => clipText(v, TEXT_MAX), date: (v) => str(v, 20), photo: (v) => str(v, 600),
       relationship: (v) => str(v, 60), candidateResponse: (v) => str(v, 600),
       wouldWorkAgain: (v) => (typeof v === 'boolean' ? v : undefined),
       verified: (v) => (typeof v === 'boolean' ? v : undefined),
@@ -173,7 +184,7 @@ export function applyCandidateProfile(user, body) {
     if (p.workStyle !== undefined) prefs.workStyle = strArray(p.workStyle, 6, 40) || [];
     user.preferences = prefs;
   }
-  if (body.coverLetter !== undefined) { user.documents = { ...(user.documents || {}) }; user.documents.coverLetter = str(body.coverLetter, 4000) ?? ''; }
+  if (body.coverLetter !== undefined) { user.documents = { ...(user.documents || {}) }; user.documents.coverLetter = clipText(body.coverLetter, TEXT_MAX) ?? ''; }
   if (body.privacy !== undefined && typeof body.privacy === 'object' && body.privacy !== null) {
     const privacy = { ...(user.privacy || {}) };
     if (body.privacy.visibility !== undefined) {

@@ -16,12 +16,12 @@ const portrait = (gender, n) => `https://randomuser.me/api/portraits/${gender ==
 // Vietnam / Southeast Asia software engineers (our Phase B candidate pool).
 const CANDIDATE_NAMES = [
   // First five renamed to English names that fit their photos (founder, 2026-11-23; shown on "New Matches Hired").
-  ['Emily Carter', 'f'], ['Marcus Bennett', 'm'], ['Hannah Brooks', 'f'], ['Robert Hayes', 'm'], ['Laura Mitchell', 'f'],
+  ['Emily Carter', 'f'], ['Tyler Bennett', 'm'], ['Hannah Brooks', 'f'], ['Robert Hayes', 'm'], ['Laura Mitchell', 'f'],
   ['Hoang Gia Khang', 'm'], ['Dang Mai Phuong', 'f'], ['Bui Thanh Tung', 'm'], ['Do Khanh Linh', 'f'], ['Ngo Hai Nam', 'm'],
-  ['Maria Santos', 'f'], ['Joshua Reyes', 'm'], ['Angelica Cruz', 'f'], ['Mark Villanueva', 'm'], ['Bea Mendoza', 'f'],
+  ['Camille Santos', 'f'], ['Joshua Reyes', 'm'], ['Angelica Cruz', 'f'], ['Mark Villanueva', 'm'], ['Bea Mendoza', 'f'],
   ['Putri Lestari', 'f'], ['Rizky Pratama', 'm'], ['Dewi Anggraini', 'f'], ['Budi Santoso', 'm'], ['Ayu Wulandari', 'f'],
   ['Nattaya Srisuk', 'f'], ['Kittipong Chaiyaporn', 'm'], ['Siriporn Wongsa', 'f'], ['Thanawat Boonmee', 'm'],
-  ['Nurul Aisyah', 'f'], ['Hafiz Rahman', 'm'], ['Mei Ling Tan', 'f'], ['Wei Jie Lim', 'm'], ['Priya Menon', 'f'], ['Arjun Pillai', 'm'],
+  ['Nurul Aisyah', 'f'], ['Hafiz Rahman', 'm'], ['Mei Ling Tan', 'f'], ['Wei Jie Lim', 'm'], ['Kavya Menon', 'f'], ['Arjun Pillai', 'm'],
   ['Truong Bich Ngoc', 'f'], ['Ly Van Phuc', 'm'], ['Phan Thao Vy', 'f'], ['Huynh Tan Loc', 'm'], ['Mai Quynh Chi', 'f'],
   ['Carlo Bautista', 'm'], ['Kristine Navarro', 'f'], ['Agus Setiawan', 'm'], ['Somchai Rattana', 'm'], ['Farah Iskandar', 'f'],
   ['Dinh Hoang Long', 'm'], ['Vu Thi Hoa', 'f'],
@@ -92,12 +92,12 @@ const AGENCIES = [
   ['Meridian Search', 'Recruiting', 'Bootstrapped', '1–10', 'Remote (US)', 'Technical headhunting for remote-first engineering teams.'],
 ];
 const RECRUITER_PEOPLE = [
-  ['Rachel Moore', 'f', 'Head of Talent'], ['Kevin Brooks', 'm', 'CTO & Co-founder'], ['Olivia Grant', 'f', 'Technical Recruiter'],
-  ['Ethan Park', 'm', 'Engineering Manager'], ['Sophia Diaz', 'f', 'Founder & CEO'], ['Noah Bennett', 'm', 'VP Engineering'],
+  ['Rachel Moore', 'f', 'Head of Talent'], ['Kevin Murphy', 'm', 'CTO & Co-founder'], ['Olivia Grant', 'f', 'Technical Recruiter'],
+  ['Ethan Park', 'm', 'Engineering Manager'], ['Sophia Diaz', 'f', 'Founder & CEO'], ['Noah Sullivan', 'm', 'VP Engineering'],
   ['Ava Collins', 'f', 'Talent Partner'], ['Lucas Ward', 'm', 'Head of Engineering'], ['Mia Foster', 'f', 'People Operations Lead'],
-  ['Henry Cole', 'm', 'CTO'], ['Chloe Hayes', 'f', 'Technical Recruiter'], ['Owen Price', 'm', 'Founder'],
-  ['Grace Turner', 'f', 'Head of People'], ['Jack Rivera', 'm', 'Engineering Director'], ['Lily Chen', 'f', 'Recruiting Lead'],
-  ['Daniel Ross', 'm', 'Senior Headhunter'], ['Natalie Kim', 'f', 'Managing Partner'],
+  ['Henry Cole', 'm', 'CTO'], ['Chloe Adams', 'f', 'Technical Recruiter'], ['Owen Price', 'm', 'Founder'],
+  ['Ella Turner', 'f', 'Head of People'], ['Jack Rivera', 'm', 'Engineering Director'], ['Lily Zhang', 'f', 'Recruiting Lead'],
+  ['Samuel Ross', 'm', 'Senior Headhunter'], ['Natalie Reed', 'f', 'Managing Partner'],
 ];
 const ACCENTS = ['#007AFF', '#AF52DE', '#FF9500', '#34C759', '#FF2D55', '#5856D6', '#00C7BE', '#FF3B30'];
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');

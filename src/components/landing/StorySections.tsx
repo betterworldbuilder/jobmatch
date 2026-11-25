@@ -70,7 +70,7 @@ export function ProblemSection() {
         <thead><tr><th scope="col">The problem</th><th scope="col">The new process in JobsMatchNow</th><th scope="col">Helps</th></tr></thead>
         <tbody>{SOLVES.map(([problem, fix, who]) => <tr key={problem}>
           <th scope="row" data-label="The problem">{problem}</th>
-          <td data-label="In JobsMatchNow"><Check size={15} /> {fix}</td>
+          <td data-label="In JobsMatchNow"><span className="solve-fix"><Check size={15} /><span>{fix}</span></span></td>
           <td data-label="Helps"><span className={`solve-who ${who === 'Both sides' ? 'both' : who === 'Job seekers' ? 'seek' : 'hire'}`}>{who}</span></td>
         </tr>)}</tbody>
       </table>
@@ -99,7 +99,7 @@ const AI_FEATURES: { title: string; text: string }[] = [
 ];
 
 // "Connect your AI agent" (founder, 2026-11-25, flag `agents`): the read-only MCP connector.
-const AGENT_FEATURE = { title: 'Connect your AI agent', text: 'Use JobsMatchNow from OpenClaw, Muse (Meta), Claude or any MCP agent. A personal read-only key you can revoke anytime: your agent reads your matches, hiring stages and next interview, and can’t send or change anything.' };
+const AGENT_FEATURE = { title: 'Use AI task automation to be more productive', text: 'Use your OpenClaw or Muse agent to automate your tasks when needed: morning summaries, interview reminders and weekly reports from your JobsMatchNow data. A personal read-only key you can revoke anytime: your agent can’t send or change anything.' };
 
 // Key feature (founder, 2026-11-25), shown first and highlighted once the 48-hour answer timer is live (flag answer48).
 export const ANSWER_48 = { icon: Timer, title: 'An answer within 48 hours', text: 'No more silence: pilot hiring teams answer every like within 48 working hours, yes or no. JobsMatch Assistant reminds them and keeps you posted.' };

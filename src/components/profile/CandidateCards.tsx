@@ -4,6 +4,7 @@ import { api, apiBase } from '../../api';
 import { jobStatusText } from '../JobStatusPicker';
 import { workModesText } from '../../lib/today';
 import { groupSkills, roleSkillGroups } from '../../lib/skillGroups';
+import { clipText } from '../../lib/textLimit';
 import type { ContactChannel, MatchEvidence, Person, RecommendationDoc } from '../../types';
 
 /** Recommendation letters (PDF, Word, image), up to 5: the owner uploads and removes them; the owner and recruiters
@@ -244,7 +245,7 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
 
       /* ---------- Card 2 — Human stack ---------- */
       <div className="tcard-slide" key="human"><Card label="My Human Stack" icon={Brain} step={3} onEdit={onEdit} tone="human">
-        {p.presentation ? <p className="tcard-presentation">{p.presentation}</p> : onEdit ? <p className="tcard-empty">Add a short personal introduction — who you are beyond the CV.</p> : null}
+        {p.presentation ? <p className="tcard-presentation">{clipText(p.presentation)}</p> : onEdit ? <p className="tcard-empty">Add a short personal introduction — who you are beyond the CV.</p> : null}
         {p.motto ? <p className="tcard-motto"><Quote size={13} /> {p.motto}</p> : null}
         {p.mindset?.length ? <><span className="tcard-sub">Mindset</span><div className="skill-list soft">{p.mindset.map((s) => <span key={s}>{s}</span>)}</div></> : null}
         {p.humanSkills?.length ? <><span className="tcard-sub">Human capabilities</span><div className="skill-list soft">{p.humanSkills.map((s) => <span key={s}>{s}</span>)}</div></> : null}
@@ -273,7 +274,7 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
           <a className="tdoc-btn" href={p.documents.resume.previewUrl || p.documents.resume.url} target="_blank" rel="noreferrer"><FileText size={14} /> Read resume</a>
           <a className="tdoc-btn ghost" href={p.documents.resume.url} download><Download size={14} /> PDF</a>
         </div>}
-        {p.documents?.coverLetter && <p className="tcard-cover"><Quote size={13} /> {p.documents.coverLetter}</p>}
+        {p.documents?.coverLetter && <p className="tcard-cover"><Quote size={13} /> {clipText(p.documents.coverLetter)}</p>}
       </Card></div>,
 
       /* ---------- Card 4 — What I Have Built ---------- */
@@ -312,7 +313,7 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
         {avgRating !== undefined && <div className="tcard-rating"><strong>{avgRating.toFixed(1)}</strong><div className="tcard-stars">{[1, 2, 3, 4, 5].map((n) => <Star key={n} size={14} className={n <= Math.round(avgRating) ? 'on' : ''} />)}</div><small>{p.recommendations!.length} recommendation{p.recommendations!.length > 1 ? 's' : ''}</small></div>}
         {p.recommendations?.length ? <ul className="tcard-recs">{p.recommendations.map((r, i) => <li key={i}>
           <div className="trec-head">{r.photo && <img src={r.photo} alt="" />}<div><strong>{r.recruiterName}{r.verified && <BadgeCheck size={13} className="verified-mark" />}</strong>{(r.role || r.company) && <small>{[r.role, r.company].filter(Boolean).join(' · ')}</small>}{r.relationship && <em className="trec-rel">{r.relationship}</em>}</div></div>
-          <p>“{r.text}”</p>
+          <p>“{clipText(r.text)}”</p>
           {r.candidateResponse && <p className="trec-response"><Quote size={11} /> {r.candidateResponse}</p>}
           <div className="trec-foot">{r.wouldWorkAgain && <span className="trec-again"><Heart size={11} /> Would work with again</span>}{r.date && <time>{r.date}</time>}</div>
           {r.recommenderEmail && <p className="trec-email"><Send size={11} /> {r.recommenderEmail}</p>}

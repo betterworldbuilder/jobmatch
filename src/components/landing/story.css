@@ -14,16 +14,19 @@
 .problem-grid li { display:flex; gap:10px; align-items:flex-start; color:#4a5463; font-size:15px; line-height:1.45; }
 .problem-grid li svg { flex:none; margin-top:2px; color:#fff; background:#f04b5d; border-radius:50%; padding:2px; width:18px; height:18px; }
 /* How JobsMatchNow solves them (founder, 2026-11-25): table on desktop, one card per row on phones. */
-.solve-wrap { margin-top:22px; background:#fff; border:1px solid #e3efe7; border-radius:20px; padding:22px 24px; box-shadow:0 10px 30px rgba(15,23,42,.05); }
-.solve-title { display:flex; align-items:center; gap:8px; margin:0 0 12px; font:800 17px 'Manrope'; color:#0b102b; }
+.solve-wrap { margin-top:18px; background:#fff; border:1px solid #eee6ee; border-radius:20px; padding:20px 24px; box-shadow:0 10px 30px rgba(15,23,42,.05); }
+.solve-title { display:flex; align-items:center; gap:8px; margin:0 0 8px; font:800 17px 'Manrope'; color:#0b102b; }
+/* Compact like the problem cards (founder, 2026-11-25): ✓ inline with its text, tight rows. */
+.solve-fix { display:flex; align-items:flex-start; gap:8px; }
+.solve-fix svg { flex:none; margin-top:2px; color:#fff !important; background:#16a34a; border-radius:50%; padding:2px; width:18px; height:18px; }
 .solve-title svg { color:#fff; background:#16a34a; border-radius:50%; padding:3px; width:22px; height:22px; }
-.solve-table { width:100%; border-collapse:collapse; font-size:14.5px; }
-.solve-table thead th { text-align:left; font:800 11.5px 'Manrope'; letter-spacing:.06em; text-transform:uppercase; color:#6b7280; padding:0 12px 10px; border-bottom:1px solid #eef0f3; }
-.solve-table tbody th, .solve-table td { padding:12px; border-bottom:1px solid #f1f3f6; vertical-align:top; text-align:left; line-height:1.45; }
+.solve-table { width:100%; border-collapse:collapse; font-size:14px; }
+.solve-table thead th { text-align:left; font:800 10.5px 'Manrope'; letter-spacing:.06em; text-transform:uppercase; color:#9ca3af; padding:0 8px 6px; border-bottom:1px solid #f1f3f6; }
+.solve-table tbody th, .solve-table td { padding:7px 8px; border-bottom:1px solid #f6f7f9; vertical-align:top; text-align:left; line-height:1.4; }
 .solve-table tbody tr:last-child th, .solve-table tbody tr:last-child td { border-bottom:0; }
-.solve-table tbody th { font-weight:700; color:#7f1d1d; width:30%; }
+.solve-table tbody th { font-weight:600; color:#4a5463; width:32%; }
 .solve-table td { color:#1f2937; }
-.solve-table td svg { color:#16a34a; vertical-align:-2px; margin-right:4px; }
+.solve-table td:last-child { width:1%; white-space:nowrap; }
 .solve-who { display:inline-block; white-space:nowrap; font:800 11px 'Manrope'; padding:4px 9px; border-radius:999px; }
 .solve-who.seek { background:#ffe4ef; color:#be185d; }
 .solve-who.hire { background:#e0efff; color:#0a66c2; }
