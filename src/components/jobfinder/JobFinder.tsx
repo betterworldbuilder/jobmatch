@@ -6,7 +6,8 @@
 // - JobFinderManager: the JobFinder account's listings, contacts (verified + approved), claims and counts.
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, ExternalLink, Flag, Mail, Plus, RefreshCw, Search, Send, ShieldCheck, X } from 'lucide-react';
-import { api, jf } from '../../api';
+import { api, groupsApi, jf } from '../../api';
+import { JobGroupsField, LinkedInTools } from '../groups/Groups';
 import type { JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, Job, JobFinderInfo, JobFinderPublicJob } from '../../types';
 
 export const REACH_TEXT: Record<JfReach, string> = {
@@ -165,6 +166,7 @@ export function PublicJobPage({ jobId }: { jobId: string }) {
         {(job.salary || job.salaryRange) && <p><b>Salary:</b> {job.salaryRange ? `${job.salaryRange.currency} ${job.salaryRange.min.toLocaleString('en-US')}–${job.salaryRange.max.toLocaleString('en-US')}` : job.salary}</p>}
         {job.requiredSkills.length > 0 && <p><b>Skills:</b> {job.requiredSkills.join(', ')}</p>}
         {(job.fullDescription || job.description) && <div className="jf-desc">{(job.fullDescription || job.description || '').split(/\n+/).map((line, i) => <p key={i}>{line}</p>)}</div>}
+        {job.gated && <p className="jf-help"><a href={`/?job=${encodeURIComponent(job.id)}&auth=register`}>Register free</a> or <a href={`/?job=${encodeURIComponent(job.id)}&auth=login`}>sign in</a> to read the full job.</p>}
         {job.missing.length > 0 && <p className="jf-help">Not provided by the source: {job.missing.join(', ')}.</p>}
         <p className="jf-help">{info?.lastCheckedAt ? `Last checked ${fmtDate(info.lastCheckedAt)}` : ''}{info?.closingDate ? ` · closes ${fmtDate(info.closingDate)}` : ''}{job.interested ? ` · ${job.interested} candidate${job.interested === 1 ? '' : 's'} interested` : ''}</p>
         <div className="jf-public-actions">
@@ -187,7 +189,7 @@ export function PublicJobPage({ jobId }: { jobId: string }) {
 }
 
 /* ---------------- Manager (JobFinder account + admins) ---------------- */
-const EMPTY_FORM = { title: '', company: '', location: '', workMode: '', type: 'Full-time', salary: '', requiredSkills: '', description: '', sourceName: '', sourceUrl: '', applyUrl: '', closingDate: '', listingStatus: 'draft' };
+const EMPTY_FORM = { title: '', company: '', location: '', workMode: '', type: 'Full-time', salary: '', requiredSkills: '', description: '', sourceName: '', sourceUrl: '', applyUrl: '', closingDate: '', listingStatus: 'draft', jobGroups: [] as string[] };
 type Form = typeof EMPTY_FORM;
 
 /** Best-effort fill from a pasted listing: only lines that say what they are ("Title:", "Location:", …) and URLs.
@@ -212,7 +214,7 @@ function toBody(f: Form) {
     title: f.title, company: f.company, location: f.location, workMode: f.workMode, type: f.type, salary: f.salary,
     requiredSkills: f.requiredSkills.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
     description: f.description, fullDescription: f.description, sourceName: f.sourceName, sourceUrl: f.sourceUrl, applyUrl: f.applyUrl,
-    closingDate: f.closingDate || undefined, listingStatus: f.listingStatus,
+    closingDate: f.closingDate || undefined, listingStatus: f.listingStatus, jobGroups: f.jobGroups,
   };
 }
 
@@ -253,6 +255,8 @@ export function JobFinderManager() {
   const [paste, setPaste] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [dupes, setDupes] = useState<JfManagerRow['duplicates']>([]);
+  const [groupNames, setGroupNames] = useState<Record<string, string>>({});
+  useEffect(() => { groupsApi.list().then((r) => setGroupNames(Object.fromEntries(r.groups.map((g) => [g.id, g.name])))).catch(() => undefined); }, []);
   const query = useMemo(() => Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), [filters]);
   const load = () => {
     jf.list(query).then((r) => setRows(r.jobs)).catch((e) => setError(e instanceof Error ? e.message : 'Could not load'));
@@ -274,7 +278,7 @@ export function JobFinderManager() {
   };
   const edit = (r: JfManagerRow) => {
     setEditing(r.id); setOpen(null);
-    setForm({ title: r.title, company: r.company, location: r.location || '', workMode: r.workMode || '', type: r.type || '', salary: r.salary || '', requiredSkills: r.requiredSkills.join(', '), description: r.fullDescription || r.description || '', sourceName: r.jobFinder.source || '', sourceUrl: r.jobFinder.sourceUrl || '', applyUrl: r.jobFinder.applyUrl || '', closingDate: r.jobFinder.closingDate || '', listingStatus: r.jobFinder.listingStatus === 'published' ? 'published' : 'draft' });
+    setForm({ title: r.title, company: r.company, location: r.location || '', workMode: r.workMode || '', type: r.type || '', salary: r.salary || '', requiredSkills: r.requiredSkills.join(', '), description: r.fullDescription || r.description || '', sourceName: r.jobFinder.source || '', sourceUrl: r.jobFinder.sourceUrl || '', applyUrl: r.jobFinder.applyUrl || '', closingDate: r.jobFinder.closingDate || '', listingStatus: r.jobFinder.listingStatus === 'published' ? 'published' : 'draft', jobGroups: r.jobGroups || [] });
   };
   const decide = async (id: string, decision: 'approve' | 'reject') => {
     if (decision === 'approve' && !window.confirm('Approve this claim? The job moves to this recruiter\'s account.')) return;
@@ -310,6 +314,7 @@ export function JobFinderManager() {
         <label>Status<select value={form.listingStatus} onChange={(e) => setForm({ ...form, listingStatus: e.target.value })}><option value="draft">Draft</option><option value="published">Published</option></select></label>
         <label className="wide">Description<textarea rows={6} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
       </div>
+      <JobGroupsField value={form.jobGroups} onChange={(jobGroups) => setForm({ ...form, jobGroups })} title={form.title} />
       <p className="jf-help">Only public listings from sources that allow it; no scraping. Leave unknown fields empty rather than guessing.</p>
       <div className="jf-row-actions"><button type="button" className="primary-button" onClick={() => void save()}>Save</button><button type="button" className="secondary-button" onClick={() => { setForm(null); setEditing(null); }}>Cancel</button></div>
     </section>}
@@ -352,6 +357,8 @@ export function JobFinderManager() {
           </div>
           <p className="jf-help">Source: {r.jobFinder.source || '—'}{r.jobFinder.sourceUrl ? <> · <a href={r.jobFinder.sourceUrl} target="_blank" rel="noopener noreferrer nofollow">original</a></> : null} · last checked {fmtDate(r.jobFinder.lastCheckedAt) || '—'} · apply clicks {r.applyClicks} · closed reports {r.closedReports} · claims {r.claims.pending} pending / {r.claims.approved} approved</p>
           {r.missing.length > 0 && <p className="jf-help">Missing: {r.missing.join(', ')}</p>}
+          <p className="jf-help">Job groups: {r.jobGroups?.length ? r.jobGroups.map((id) => groupNames[id] || id).join(', ') : 'none (not on any public group page)'}</p>
+          {['published', 'claimed'].includes(r.jobFinder.listingStatus || '') && <LinkedInTools jobId={r.id} compact />}
           {r.jobFinder.listingStatus !== 'claimed' && <ContactForm row={r} onSaved={load} />}
           {r.history.length > 0 && <details><summary>History</summary><ul className="jf-history">{r.history.slice().reverse().map((h, i) => <li key={i}>{new Date(h.at).toLocaleString()} · {h.action}</li>)}</ul></details>}
         </div>}

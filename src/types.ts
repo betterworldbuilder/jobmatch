@@ -1,5 +1,5 @@
 export type Role = 'candidate' | 'employer' | 'admin';
-export type View = 'jobfinder' | 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired' | 'prep';
+export type View = 'jobfinder' | 'applied' | 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired' | 'prep';
 export type EmployerKind = 'company' | 'headhunter';
 /** A recommendation letter the candidate uploaded (PDF, Word or image). Opens for matched recruiters only. */
 export interface RecommendationDoc { id: string; originalName: string; ext: string; size: number; uploadedAt: number }
@@ -38,6 +38,8 @@ export interface Person {
   demoOrder?: number;
   /** The JobFinder account (manages listings of external jobs). */
   jobFinder?: boolean;
+  /** Recruiter's per-role list only: when this candidate applied (liked the role), and from where. */
+  appliedAt?: number; appliedSuper?: boolean; appliedSrc?: string;
   location?: string; distanceKm?: number; company?: string; photo: string; skills: string[]; languages: string[];
   experienceLevel: string; completeness?: number; availability?: string; match?: MatchEvidence; onboarding?: boolean; salaryHidden?: boolean; demo?: boolean; sample?: boolean; invitesSent?: number; superLikedYou?: boolean; likedYou?: boolean; viewedYou?: boolean; verified?: boolean;
   /** Paid placement. Moves the card up the deck; the match score is untouched. */
@@ -128,7 +130,24 @@ export interface Job {
   companyProfile?: CompanyProfile;
   /** JobFinder listing (an external job listed before its employer joined). No contact details, ever. */
   jobFinder?: JobFinderInfo;
+  /** Job group ids (public lists at /app/{group}); ticking one lists the job publicly (card fields only). */
+  jobGroups?: string[];
 }
+/** Admin-managed job group (public page /app/{slug}). */
+export interface JobGroup { id: string; slug: string; name: string; description: string; examples: string[]; count?: number; active?: boolean; order?: number; oldSlugs?: string[]; url?: string }
+export type Eligibility = { kind: 'any' | 'us' | 'europe' | 'custom' | 'right-to-work' | 'unknown'; countries?: string[] };
+/** Public job card: what anyone may see before signing in. */
+export interface GroupCard {
+  id: string; title: string; company: string; location: string | null; workMode: string | null; type: string | null; level: string | null;
+  postedAt: number | null; salary: string | null; salaryAfterMatch: boolean; groups: { id: string; slug: string; name: string }[]; preview: string;
+  companyLogo?: string; jobFinder?: { addedBy: 'JobFinder'; employerStatus: string; source?: string };
+  eligibility: Eligibility; visaSponsorship?: boolean; country: string | null; city: string | null;
+}
+export type Facet = { name: string; n: number };
+export interface GroupPageData { group: JobGroup; jobs: GroupCard[]; total: number; nationalityNotStated: number; redirect?: string;
+  facets: { countries: Facet[]; cities: Facet[]; modes: string[]; levels: string[]; withSalary: number; nationalities: string[]; europe: boolean } }
+/** "Jobs Applied (liked)": a job this candidate liked, with its state today. */
+export interface AppliedJob { jobId: string; at: number; superLike?: boolean; src?: string; matchId?: string; open: boolean; job: Job }
 export type JfReach = 'email' | 'apply' | 'none';
 export type JfOutreach = { status: 'submitted' | 'sent' | 'failed' | 'not_sent' | 'suppressed'; viaAuto?: boolean; submittedAt?: number; sentAt?: number; failedAt?: number; reason?: string; shared?: { skills: string[]; profileLink: string | null; replyEmail: boolean } } | null;
 export interface JobFinderInfo {
@@ -136,7 +155,7 @@ export interface JobFinderInfo {
   reachability?: JfReach; source?: string; sourceUrl?: string; applyUrl?: string; lastCheckedAt?: string; discoveredAt?: string; closingDate?: string;
   myOutreach?: JfOutreach;
 }
-export type JobFinderPublicJob = Pick<Job, 'id' | 'title' | 'company' | 'location' | 'workMode' | 'type' | 'salary' | 'salaryRange' | 'experienceLevel' | 'description' | 'fullDescription' | 'requiredSkills' | 'niceToHaves' | 'responsibilities' | 'requiredLanguages'> & { country?: string; jobFinder: JobFinderInfo; interested: number; missing: string[] };
+export type JobFinderPublicJob = Pick<Job, 'id' | 'title' | 'company' | 'location' | 'workMode' | 'type' | 'salary' | 'salaryRange' | 'experienceLevel' | 'description' | 'fullDescription' | 'requiredSkills' | 'niceToHaves' | 'responsibilities' | 'requiredLanguages'> & { country?: string; jobFinder: JobFinderInfo; interested: number; missing: string[]; jobGroups?: string[]; gated?: boolean };
 export type JfConsent = { autoSend: boolean; skills: string[]; profileLink: string | null; replyEmail: boolean; agreedAt: number | null; version: string | null };
 export type JfManagerRow = JobFinderPublicJob & {
   createdAt?: number; likes: number; emails: { submitted: number; sent: number; failed: number }; views: number; applyClicks: number; closedReports: number;
@@ -329,7 +348,7 @@ export interface TrialInfo {
 export interface PostingsInfo {
   termDays: number; live: number; paused: number; lockedSlots: number; verifiedHire: boolean;
 }
-export interface Bootstrap { viewer: Person; jobs: Job[]; candidates: Person[]; roleMatches?: RoleMatchGroup[]; matches: JobMatch[]; messages: Message[]; calls: ScheduledCall[]; notes: Note[]; bookmarkedIds: string[]; likesRemaining: number; billing?: BillingInfo; billingNotifications?: BillingNotification[] }
+export interface Bootstrap { viewer: Person; jobs: Job[]; candidates: Person[]; roleMatches?: RoleMatchGroup[]; matches: JobMatch[]; messages: Message[]; calls: ScheduledCall[]; notes: Note[]; bookmarkedIds: string[]; likesRemaining: number; billing?: BillingInfo; billingNotifications?: BillingNotification[]; applied?: AppliedJob[] }
 
 // Admin: account management, fraud/scam reports, support requests (minimal —
 // no roles/invitations, no incident state machine, see admin plan notes).

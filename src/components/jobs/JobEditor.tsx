@@ -5,6 +5,7 @@ import { Chips, Field, LevelTagInput, Segmented, TagInput, TextInput, Toggle } f
 import { demoAdapter, pasteAdapter } from '../../lib/jobSources';
 import { samplePasteText } from '../../content/jobSamples';
 import type { Job, JobDraft, Person, Seniority } from '../../types';
+import { JobGroupsField, LinkedInTools } from '../groups/Groups';
 
 const SENIORITY_LABELS = { junior: 'Junior', mid: 'Mid', senior: 'Senior', lead: 'Lead', exec: 'Exec' };
 const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship'] as const;
@@ -36,6 +37,7 @@ type Form = {
   mission: string; culture: string[]; values: string[]; teamSize: string; teamComposition: string[]; teamLocations: string;
   managerName: string; managerTitle: string; managerStyle: string; managementStyleTags: string[]; teamStyle: string[]; teamSong: string;
   hiringTimeline: string; backgroundCheck: boolean; referenceCheck: boolean;
+  jobGroups: string[];
 };
 
 const emptyForm = (): Form => ({
@@ -50,6 +52,7 @@ const emptyForm = (): Form => ({
   mission: '', culture: [], values: [], teamSize: '', teamComposition: [], teamLocations: '',
   managerName: '', managerTitle: '', managerStyle: '', managementStyleTags: [], teamStyle: [], teamSong: '',
   hiringTimeline: '', backgroundCheck: false, referenceCheck: false,
+  jobGroups: [],
 });
 
 function fromJob(job: Job): Form {
@@ -78,6 +81,7 @@ function fromJob(job: Job): Form {
     managerName: job.managerName || '', managerTitle: job.managerTitle || '', managerStyle: job.managerStyle || '',
     managementStyleTags: job.managementStyleTags || [], teamStyle: job.teamStyle || [], teamSong: job.teamSong || '',
     hiringTimeline: job.hiringTimeline || '', backgroundCheck: job.backgroundCheck ?? false, referenceCheck: job.referenceCheck ?? false,
+    jobGroups: job.jobGroups || [],
   };
 }
 
@@ -195,6 +199,7 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
       managerName: form.managerName || undefined, managerTitle: form.managerTitle || undefined, managerStyle: form.managerStyle || undefined,
       managementStyleTags: form.managementStyleTags, teamStyle: form.teamStyle, teamSong: form.teamSong || undefined,
       hiringTimeline: form.hiringTimeline || undefined, backgroundCheck: form.backgroundCheck, referenceCheck: form.referenceCheck,
+      jobGroups: form.jobGroups,
     };
     try {
       let jobId = job?.id;
@@ -290,6 +295,8 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
         </div>
         {form.workVisaRequired === 'no' && form.natMode === 'custom' && <Field label="Custom nationality list" hint="Countries whose citizens may apply — press Enter after each."><TagInput value={form.natCustom} onChange={(natCustom) => patch({ natCustom: natCustom.slice(0, 30) })} placeholder="e.g. Vietnam" /></Field>}
         <Field label="Status"><Segmented options={STATUSES} value={form.status} onChange={(status) => patch({ status })} labels={{ draft: 'Draft', active: 'Active', paused: 'Paused', filled: 'Filled' }} /></Field>
+        <JobGroupsField value={form.jobGroups} onChange={(jobGroups) => patch({ jobGroups })} title={form.title} />
+        {job && String(job.status).toLowerCase() === 'active' && !job.demo && <LinkedInTools jobId={job.id} />}
       </div>}
 
       {step === 1 && <div className="wz-body">

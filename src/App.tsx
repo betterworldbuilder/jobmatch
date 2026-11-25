@@ -9,8 +9,11 @@ import { MobileTabs } from './components/MobileTabs';
 import { likesWaiting, workModesText } from './lib/today';
 import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Ban, Flag,Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
-import { apiBase, JOBFINDER_LIKED_EVENT, SESSION_EXPIRED_EVENT, type JfLikeResult } from './api';
+import { apiBase, groupsApi, JOBFINDER_LIKED_EVENT, JOBFINDER_OPEN_EVENT, SESSION_EXPIRED_EVENT, type JfLikeResult } from './api';
 import { InterestPanel, JobFinderManager } from './components/jobfinder/JobFinder';
+import { AdminJobGroupsPage, JobDetailsSheet } from './components/groups/Groups';
+import { AppliedPage, OPEN_JOB_EVENT } from './components/home/AppliedPage';
+import { capturePendingFromUrl, clearPendingJob, readPendingJob, type PendingJob } from './lib/pendingJob';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { App as NativeApp } from '@capacitor/app';
@@ -117,6 +120,8 @@ const CHATBOT_LABEL = featureOn('agents') ? 'Use My ChatBot' : 'Use your chatbot
 const candidateNav: NavItem[] = [
   // "My dashboard" (was "Things to do") is first in the menu (founder, 2026-11-22); the app still opens on Find My Match.
   { label: 'My dashboard', short: 'Dashboard', icon: Compass, anchor: 'td-today' },
+  // Right under My dashboard (founder, 2026-11-25): every job applied to, per target role.
+  { label: 'Jobs Applied (liked)', short: 'Applied', icon: Inbox, view: 'applied' },
   // "Find My Match" (the swipe deck + Recommended Roles) is the page the app opens on.
   { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
@@ -136,7 +141,7 @@ const candidateNav: NavItem[] = [
 ];
 // One colour per menu item, so each section is easy to spot.
 const NAV_COLORS: Record<string, string> = {
-  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
+  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'Jobs Applied (liked)': '#f472b6', 'Applications (likes)': '#f472b6', 'JobFinder listings': '#38bdf8', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
   Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', 'Use My ChatBot': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
   'Coffee Invitations': '#e0a96d', 'Hired Results': '#fbbf24', 'Interview AI coach': '#a78bfa', 'Recruiter Invitation': '#2dd4bf', Interviews: '#2dd4bf',
@@ -144,6 +149,8 @@ const NAV_COLORS: Record<string, string> = {
 // Mirrors the candidate menu (same order and pages), plus the recruiter-only lists.
 const employerNav: NavItem[] = [
   { label: 'My dashboard', short: 'Dashboard', icon: Compass, view: 'home' },
+  // Right under My dashboard (founder, 2026-11-25): candidates who applied, per role.
+  { label: 'Applications (likes)', short: 'Applications', icon: Inbox, view: 'applied' },
   // "Find My Match": the candidate swipe deck + Recommended Candidates, the page recruiters open on too.
   { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
   // Order (founder, 2026-11-22): My JobMatches, then Conversations, then Coffee Invitations.
@@ -179,6 +186,9 @@ export default function App() {
   const [tour, setTour] = useState<TourRole | null>(null);
   // "I'm interested" on a JobFinder job page (/?jf=<id>): remember the job, ask a visitor to join or sign in first.
   const [landingModal, setLandingModal] = useState<'login' | 'register' | null>(() => {
+    // "View job" on a public group / job page (2026-11-25): /?job=<id>&auth=register|login → sign up or in, then the job.
+    const auth = new URLSearchParams(window.location.search).get('auth');
+    if (capturePendingFromUrl()) return auth === 'login' ? 'login' : 'register';
     const id = new URLSearchParams(window.location.search).get('jf');
     if (!id) return null;
     try { sessionStorage.setItem('jm-jf', id); } catch { /* private mode */ }
@@ -520,7 +530,7 @@ function Feature({ icon: Icon, title, text }: { icon: typeof Target; title: stri
  * Bootstrap dashboard (jobs/matches/swipes make no sense for an admin
  * account), just the billing moderation dashboard and a way to log out. */
 function AdminWorkspace({ session, onExit }: { session: SessionUser; onExit: () => void }) {
-  const [tab, setTab] = useState<'kpis' | 'queue' | 'analytics' | 'traffic' | 'integrations' | 'users' | 'jobs' | 'billing' | 'safety'>('kpis');
+  const [tab, setTab] = useState<'kpis' | 'queue' | 'analytics' | 'traffic' | 'integrations' | 'users' | 'jobs' | 'groups' | 'billing' | 'safety'>('kpis');
   const adminNav: { id: typeof tab; label: string; icon: typeof Inbox }[] = [
     { id: 'kpis', label: 'KPI dashboard', icon: Target },
     { id: 'queue', label: 'Action Queue', icon: Inbox },
@@ -529,6 +539,7 @@ function AdminWorkspace({ session, onExit }: { session: SessionUser; onExit: () 
     { id: 'integrations', label: 'Integrations', icon: Layers3 },
     { id: 'users', label: 'Candidates & Recruiters', icon: Users },
     { id: 'jobs', label: 'Jobs', icon: BriefcaseBusiness },
+    { id: 'groups', label: 'Job groups', icon: Layers3 },
     { id: 'billing', label: 'Billing & Subscriptions', icon: CreditCard },
     { id: 'safety', label: 'Safety & Support', icon: ShieldCheck },
   ];
@@ -556,6 +567,7 @@ function AdminWorkspace({ session, onExit }: { session: SessionUser; onExit: () 
     {tab === 'analytics' && <AdminAnalyticsPage />}
     {tab === 'users' && <AdminUsersPage />}
     {tab === 'jobs' && <AdminJobsPage />}
+    {tab === 'groups' && <AdminJobGroupsPage />}
     {tab === 'billing' && <AdminBillingPage />}
     {tab === 'safety' && <AdminSafetyPage />}
     </div>
@@ -641,14 +653,31 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   const filtersOn = featureOn('filters');
   // The JobFinder account (and only it) gets its listings page right under My dashboard.
   const baseNav = role === 'candidate' ? candidateNav
-    : data?.viewer.jobFinder ? [employerNav[0], { label: 'JobFinder listings', short: 'JobFinder', icon: Search, view: 'jobfinder' as View }, ...employerNav.slice(1)] : employerNav;
+    : data?.viewer.jobFinder ? [employerNav[0], employerNav[1], { label: 'JobFinder listings', short: 'JobFinder', icon: Search, view: 'jobfinder' as View }, ...employerNav.slice(2)] : employerNav;
   // JobFinder interest panel: after a like on a JobFinder job, from a notification, or from the public job page.
   const [jfPanel, setJfPanel] = useState<string | null>(null);
   useEffect(() => {
     const open = (event: Event) => { const d = (event as CustomEvent<JfLikeResult>).detail; if (d?.jobId) setJfPanel(d.jobId); };
     window.addEventListener(JOBFINDER_LIKED_EVENT, open);
-    return () => window.removeEventListener(JOBFINDER_LIKED_EVENT, open);
+    window.addEventListener(JOBFINDER_OPEN_EVENT, open);
+    return () => { window.removeEventListener(JOBFINDER_LIKED_EVENT, open); window.removeEventListener(JOBFINDER_OPEN_EVENT, open); };
   }, []);
+  // Full job details (job groups / LinkedIn links, 2026-11-25): the job a visitor picked before signing up or in,
+  // or one opened from "Jobs Applied". Opens after the profile wizard when the account still needs it.
+  const [jobSheet, setJobSheet] = useState<PendingJob | null>(null);
+  useEffect(() => {
+    if (!data || data.viewer.onboarding) return;
+    const p = capturePendingFromUrl() || readPendingJob();
+    if (!p) return;
+    clearPendingJob(); setJobSheet(p);
+    void groupsApi.event('grp_returned', p.src);
+  }, [data === null, data?.viewer.onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const open = (event: Event) => { const id = (event as CustomEvent<{ jobId: string }>).detail?.jobId; if (id) setJobSheet({ id }); };
+    window.addEventListener(OPEN_JOB_EVENT, open);
+    return () => window.removeEventListener(OPEN_JOB_EVENT, open);
+  }, []);
+  const pendingTitle = data?.viewer.onboarding ? readPendingJob() : null;
   useEffect(() => {
     if (role !== 'candidate' || !data) return;
     let id: string | null = null;
@@ -707,6 +736,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     <AnimatePresence>{rulesOpen && <RecruitmentRulesModal onClose={() => setRulesOpen(false)} />}</AnimatePresence>
     {mobileNav && <button className="nav-scrim" aria-label="Close navigation" onClick={() => setMobileNav(false)} />}
     <section className="app-main">{session.emailVerified === false && <div className="verify-banner"><span><ShieldCheck size={15} /> Verify your email to secure your account and unlock everything.</span><button onClick={() => setSettingsOpen(true)}>Verify now</button></div>}<header className="topbar"><button className="menu-button" onClick={() => setMobileNav(true)}><Menu /></button><div className="search-box"><Search size={17} /><input aria-label="Search" placeholder={role === 'candidate' ? 'Search jobs, companies, skills…' : 'Search talent, jobs, messages…'} onKeyDown={(event) => { if (event.key === 'Enter') setView('discover'); }} /><kbd><Command size={12} /> K</kbd></div><div className="topbar-actions">{bell('')}{data?.viewer.demo && <button className="role-chip" onClick={() => changeRole(role === 'candidate' ? 'employer' : 'candidate')}>{role === 'candidate' ? 'Recruiter view' : 'Candidate view'}<ChevronDown size={14} /></button>}</div></header>
+      {pendingTitle && <div className="verify-banner"><span><Check size={15} /> Finish your profile: we then take you straight back to the job you picked.</span></div>}
       {loading ? <LoadingState /> : error ? <ErrorState message={error} retry={load} /> : data && (
         (data.viewer.onboarding || editStep !== null)
           ? (data.viewer.role === 'candidate'
@@ -728,6 +758,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     <MobileTabs role={role} userId={session.id} nav={nav} navColors={NAV_COLORS} view={view} activeAnchor={activeAnchor} unread={notifications.length} likes={data ? likesWaiting(data) : 0} gotoNav={gotoNav} setView={setView} openFullMenu={() => setMobileNav(true)}
       filtersOn={filtersOn} onFilter={() => setFilterOpen(true)} filterCount={filterCount} filterOpen={filterOpen} onLogout={onExit} />
     {filtersOn && filterOpen && data && <SearchFiltersSheet role={role} data={data} onClose={() => setFilterOpen(false)} onShow={() => { setFilterOpen(false); setView('match'); }} />}
+    {jobSheet && data && <JobDetailsSheet jobId={jobSheet.id} src={jobSheet.src} from={jobSheet.from} viewer={data.viewer} onClose={() => setJobSheet(null)} onApplied={() => { void api.bootstrap(session.id).then(setData).catch(() => undefined); }} />}
     {jfPanel && <InterestPanel jobId={jfPanel} viewerName={data?.viewer.name || session.name} onClose={() => { setJfPanel(null); void api.bootstrap(session.id).then(setData).catch(() => undefined); }} />}
     <AnimatePresence>{settingsOpen && <SettingsModal user={session} onClose={() => setSettingsOpen(false)} onDeleted={() => { setSettingsOpen(false); onExit(); }} />}</AnimatePresence>
   </div></RoleBarExtra.Provider></TryDemoContext.Provider>;
@@ -754,6 +785,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'selected') return <SelectedCandidates data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'coffee') return <CoffeeInvitations data={data} onOpenMessages={onOpenMessages} />;
   if (view === 'jobfinder' && data.viewer.jobFinder) return <JobFinderManager />;
+  if (view === 'applied') return <AppliedPage data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} />;
   if (view === 'hired') return <HiredResults data={data} onOpenMessages={onOpenMessages} />;
   if (view === 'prep') return <InterviewPreparation data={data} navigate={navigate} />;
   if (view === 'billing' && role === 'candidate') return <CandidateSubscription data={data} navigate={navigate} />;

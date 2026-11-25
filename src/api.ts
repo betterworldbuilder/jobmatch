@@ -1,4 +1,5 @@
-import type { JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, JobFinderPublicJob } from './types';
+import type { GroupCard, GroupPageData, JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, JobFinderPublicJob, JobGroup } from './types';
+import { acquisitionSource } from './lib/pendingJob';
 import type { AdminCatalog, AdminKpi, AdminPaymentMethods, AdminPlanInput, BankInstructionsPayload, ConnectorKey, IntegrationStatus, LivePlan, RecommendationDoc, WebAnalyticsReport } from './types';
 import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
@@ -33,9 +34,22 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+/** Job groups (2026-11-25): public pages /app/{slug}, one public job, full details (signed in), admin. */
+export const groupsApi = {
+  list: () => request<{ groups: JobGroup[] }>('/api/public/groups'),
+  page: (slug: string, q: string) => request<GroupPageData>(`/api/public/groups/${encodeURIComponent(slug)}${q ? `?${q}` : ''}`),
+  job: (id: string, q = '') => request<{ job: GroupCard }>(`/api/public/job/${encodeURIComponent(id)}${q ? `?${q}` : ''}`),
+  details: (id: string) => request<{ job: Job; liked: boolean }>(`/api/jobs/${encodeURIComponent(id)}/details`),
+  event: (name: 'grp_gate_shown' | 'grp_register_started' | 'grp_returned', src?: string) => request<unknown>('/api/public/event', { method: 'POST', body: JSON.stringify({ name, src }) }).catch(() => undefined),
+  adminList: () => request<{ groups: JobGroup[] }>('/api/admin/job-groups'),
+  adminCreate: (body: Omit<Partial<JobGroup>, 'examples'> & { examples?: string[] | string }) => request<{ group: JobGroup }>('/api/admin/job-groups', { method: 'POST', body: JSON.stringify(body) }),
+  adminUpdate: (id: string, body: Omit<Partial<JobGroup>, 'examples'> & { examples?: string[] | string }) => request<{ group: JobGroup }>(`/api/admin/job-groups/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) }),
+};
+
 /** What the server says after a candidate likes a JobFinder job. App opens the interest panel on this event. */
 export type JfLikeResult = { jobId: string; reachability: JfReach; applyUrl: string | null; autoSend: boolean; outreach: JfOutreach };
 export const JOBFINDER_LIKED_EVENT = 'jmn:jobfinder-liked';
+/** Open the JobFinder interest panel for a job ({ jobId }), e.g. from "Jobs Applied". */
 export const JOBFINDER_OPEN_EVENT = 'jmn:jobfinder-open';
 const json = (method: string, body?: unknown): RequestInit => ({ method, body: body === undefined ? undefined : JSON.stringify(body) });
 
@@ -80,7 +94,8 @@ export const api = {
   login: (userId: string) => request<{ user: SessionUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ userId }) }),
   loginPassword: (email: string, password: string) => request<{ user: SessionUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   ssoLogin: (provider: 'linkedin' | 'google') => request<{ user: SessionUser }>('/api/auth/sso', { method: 'POST', body: JSON.stringify({ provider }) }),
-  register: (payload: { role: Role; kind?: EmployerKind; provider?: string; name: string; email: string; password?: string; photo?: string; conductAccepted?: boolean; country?: string; citizenship?: string }) => request<{ user: SessionUser }>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
+  // Sign-ups from a job group / job / LinkedIn link carry where they came from (counts only; see lib/pendingJob).
+  register: (payload: { role: Role; kind?: EmployerKind; provider?: string; name: string; email: string; password?: string; photo?: string; conductAccepted?: boolean; country?: string; citizenship?: string }) => request<{ user: SessionUser }>('/api/auth/register', { method: 'POST', body: JSON.stringify({ ...payload, source: acquisitionSource() }) }),
   me: () => request<{ authenticated: boolean; user: SessionUser }>('/api/auth/me'),
   logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
   forgotPassword: (email: string) => request<{ ok: boolean; mailer: boolean; account?: boolean }>('/api/auth/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
@@ -168,7 +183,7 @@ export const api = {
   jobPrep: (jobId: string) => request<InterviewPrep>(`/api/jobs/${encodeURIComponent(jobId)}/prep`),
   suggestScreening: (requiredSkillsDetail: WeightedSkill[]) => request<{ questions: string[] }>('/api/coach/screening', { method: 'POST', body: JSON.stringify({ requiredSkillsDetail }) }),
   matchIcebreakers: (matchId: string) => request<{ icebreakers: string[]; generator: string }>(`/api/matches/${encodeURIComponent(matchId)}/icebreakers`),
-  swipe: (payload: { actorId: string; targetId: string; targetType: 'job' | 'candidate'; direction: 'like' | 'pass'; superLike?: boolean; answers?: ScreeningAnswer[]; note?: string; jobId?: string }) => request<{ match: JobMatch | null; likesRemaining: number; duplicate: boolean; jobFinder?: JfLikeResult }>('/api/swipes', { method: 'POST', body: JSON.stringify(payload) }),
+  swipe: (payload: { actorId: string; targetId: string; targetType: 'job' | 'candidate'; direction: 'like' | 'pass'; superLike?: boolean; answers?: ScreeningAnswer[]; note?: string; jobId?: string; src?: string }) => request<{ match: JobMatch | null; likesRemaining: number; duplicate: boolean; jobFinder?: JfLikeResult }>('/api/swipes', { method: 'POST', body: JSON.stringify(payload) }),
   undoSwipe: (actorId: string) => request<{ undone: { targetId: string; targetType: string; direction: string } | null; likesRemaining?: number }>('/api/swipes/undo', { method: 'POST', body: JSON.stringify({ actorId }) }),
   // Recruitment process rules: Hired fills the role and thanks the other candidates; stopping needs a reason + feedback.
   hireMatch: (id: string) => request<JobMatch & { effects?: { closed: number; meetingsCancelled: number; messages: number } }>(`/api/matches/${id}`, { method: 'PATCH', body: JSON.stringify({ stage: 'Hired' }) }),

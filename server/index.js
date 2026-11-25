@@ -59,6 +59,7 @@ import { basePlanIdFor, googlePlaySubscriptionProductId, isGooglePlayConfigured,
 import { decodeJws, getTransactionInfo, isAppleConfigured, subscriptionProductId as appleSubscriptionProductId, verifyJws } from './billing/providers/applestore.js';
 import { assertRecruiterAccess, requireAdminRole } from './billing/middleware.js';
 import { confirmPayment } from './billing/confirm.js';
+import { assignGroups, cleanSrc, ensureGroups, mountGroups } from './groups.js';
 import { afterJobFinderLike, ensureCollections as ensureJobFinderCollections, isJobFinderJob, isJobFinderUser, jobFinderIds, mountJobFinder, reachabilityOf } from './jobfinder.js';
 import { runDailyBilling } from './billing/daily.js';
 
@@ -86,6 +87,7 @@ await store.transaction((db) => {
   }
   // JobFinder (2026-11-25): mark the JobFinder identity account(s) and create its private collections.
   ensureJobFinderCollections(db);
+  ensureGroups(db);
   for (const u of db.users) if (u.role === 'employer' && !u.demo && jobFinderIds().includes(u.id)) u.jobFinder = true;
   // Remove the retired flagship demo relationships that were replaced by the
   // Sofia/Sarah reference dataset. User-created records are never touched.
@@ -157,7 +159,7 @@ function otherPartyView(user) {
   // date) so recruiters know who just got hired; the role, company, recruiter name and match stay private.
   // `calendarFeedToken` is the secret in the member's private calendar feed URL.
   // `jobFinderConsent(Log)`: the candidate's private sharing choices for JobFinder emails.
-  const { geo, verification, jobStatus, calendarFeedToken, jobFinderConsent, jobFinderConsentLog, ...rest } = selfView(user);
+  const { geo, verification, jobStatus, calendarFeedToken, jobFinderConsent, jobFinderConsentLog, acquisition, ...rest } = selfView(user);
   if (jobStatus?.kind) rest.jobStatus = { kind: jobStatus.kind, ...(jobStatus.kind === 'contract' && jobStatus.until ? { until: jobStatus.until } : {}) };
   return rest;
 }
@@ -794,7 +796,13 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
         skills: [], languages: [], experienceLevel: 'mid', completeness: 15, onboarding: true, createdAt: Date.now(),
         conductAcceptedAt: Date.now(),
       };
+      // Where the visitor came from (job groups / LinkedIn links, 2026-11-25): only known values, no tracking ids.
+      const acq = req.body?.source && typeof req.body.source === 'object' ? req.body.source : {};
+      const acquisition = { src: cleanSrc(acq.src), group: typeof acq.group === 'string' ? acq.group.slice(0, 60) : undefined, jobId: typeof acq.jobId === 'string' ? acq.jobId.slice(0, 60) : undefined };
+      if (acquisition.src || acquisition.group || acquisition.jobId) created.acquisition = { ...Object.fromEntries(Object.entries(acquisition).filter(([, v]) => v)), at: Date.now() };
       db.users.push(created);
+      if (acquisition.group || acquisition.jobId) track(db, 'grp_register_completed', { dim: acquisition.src || '' });
+      if (acquisition.src === 'linkedin') track(db, 'li_signup', { dim: actorSide(created) });
       // Only brand-new accounts count — the dev mock-SSO re-use above returns
       // early and is never a signup.
       track(db, 'signup_completed', { dim: `${actorSide(created)}/${provider || 'email'}` });
@@ -1721,6 +1729,7 @@ app.post('/api/jobs', async (req, res, next) => {
         requiredLanguages: [], culture: [], mission: employer.about ? employer.about.slice(0, 80) : 'Posted on JobsMatchNow.',
         responseTime: '< 1 week', applicants: 0, status: 'draft', createdAt, expiresAt: createdAt + JOB_EXPIRY_DAYS * DAY_MS,
       }, req.body, { strict: true });
+      assignGroups(db, created, req.body); // job groups (founder, 2026-11-25): the recruiter's own choice
       // Item 11: suggest screening questions from the required skills.
       if (!created.screeningQuestions?.length) created.screeningQuestions = suggestScreeningQuestions(created);
       // Inherit the recruiter's location so distance matching works out of the box.
@@ -1779,6 +1788,7 @@ app.patch('/api/jobs/:id', async (req, res, next) => {
         applyPublishEntitlement(db, employer, item);
       }
       const updated = applyJob(item, req.body);
+      assignGroups(db, updated, req.body); // own postings only (checked above)
       if (updated.sourceSystem) updated.importNeedsReview = importedJobMissing(updated);
       // Publishing (draft/paused → active) must meet the same contract as
       // POST: real salary range, title, skills, location, etc. Throwing here
@@ -2074,9 +2084,10 @@ app.get('/api/bootstrap', async (req, res, next) => {
     const roleMatches = role === 'employer' ? pool.jobs
       .filter((job) => job.employerId === viewer.id && String(job.status).toLowerCase() === 'active')
       .map((job) => {
-        const likedCandidateIds = new Set(pool.swipes
+        const likesByCandidate = new Map(pool.swipes
           .filter((swipe) => swipe.direction === 'like' && swipe.targetType === 'job' && swipe.targetId === job.id)
-          .map((swipe) => swipe.actorId));
+          .map((swipe) => [swipe.actorId, swipe]));
+        const likedCandidateIds = new Set(likesByCandidate.keys());
         const ranked = scoredCandidates.map((candidate) => {
           // Score with the private source profile, but return only the recruiter-safe
           // candidate payload. Salary expectations remain hidden until mutual match.
@@ -2084,6 +2095,8 @@ app.get('/api/bootstrap', async (req, res, next) => {
           return {
             ...candidate,
             likedYou: likedCandidateIds.has(candidate.id),
+            // Applications page (2026-11-25): when they applied, Super Like, and whether it came from a LinkedIn link.
+            ...(likedCandidateIds.has(candidate.id) ? { appliedAt: likesByCandidate.get(candidate.id).createdAt, appliedSuper: likesByCandidate.get(candidate.id).superLike === true || undefined, appliedSrc: likesByCandidate.get(candidate.id).src } : {}),
             match: scoreCandidateForJob({ ...sourceCandidate, distanceKm: candidate.distanceKm }, { ...job, distanceKm: candidate.distanceKm }),
           };
         }).sort((a, b) => Number(b.likedYou) - Number(a.likedYou)
@@ -2148,9 +2161,21 @@ app.get('/api/bootstrap', async (req, res, next) => {
       };
     }
     // Candidates only get their JobFinder notices ("the recruiter is now reachable"); recruiters get all of theirs.
+    // "Jobs Applied (liked)" (2026-11-25): every job this candidate liked, newest first, with its state today.
+    const applied = role === 'candidate' ? pool.swipes
+      .filter((s) => s.actorId === viewer.id && s.targetType === 'job' && s.direction === 'like')
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((s) => {
+        const card = scoredJobs.find((j) => j.id === s.targetId);
+        const raw = pool.jobs.find((j) => j.id === s.targetId);
+        if (!card && !raw) return null;
+        const match = pool.matches.find((m) => m.candidateId === viewer.id && m.jobId === s.targetId);
+        const job = card || { id: raw.id, title: raw.title, company: raw.company, location: raw.location, workMode: raw.workMode, status: raw.status, employerId: raw.employerId };
+        return { jobId: s.targetId, at: s.createdAt, superLike: s.superLike === true || undefined, src: s.src, matchId: match?.id, open: Boolean(card), job };
+      }).filter(Boolean) : undefined;
     const myNotices = (db.billingNotifications || []).filter((entry) => entry.userId === viewer.id && (billing || entry.kind === 'jobfinder_contact'));
     const billingNotifications = billing || myNotices.length ? myNotices.slice(-20).reverse() : undefined;
-    res.json({ viewer: selfView(viewer), jobs: scoredJobs, candidates: scoredCandidates, roleMatches, matches, messages: db.messages.filter((message) => matchIds.has(message.matchId)), calls: db.calls.filter((call) => matchIds.has(call.matchId)), notes, bookmarkedIds, likesRemaining: likesRemainingToday(pool.swipes, viewer.id), billing, billingNotifications });
+    res.json({ viewer: selfView(viewer), jobs: scoredJobs, candidates: scoredCandidates, roleMatches, matches, messages: db.messages.filter((message) => matchIds.has(message.matchId)), calls: db.calls.filter((call) => matchIds.has(call.matchId)), notes, bookmarkedIds, likesRemaining: likesRemainingToday(pool.swipes, viewer.id), billing, billingNotifications, ...(applied ? { applied } : {}) });
   } catch (error) { next(error); }
 });
 
@@ -2223,7 +2248,9 @@ app.post('/api/swipes', async (req, res, next) => {
       // A recruiter swiping from one role's deck tags the swipe with that role (must be their own job).
       const roleJobId = actor.role === 'employer' && targetType === 'candidate' && typeof req.body.jobId === 'string'
         && db.jobs.some((job) => job.id === req.body.jobId && job.employerId === actor.id) ? req.body.jobId : undefined;
-      const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(roleJobId ? { jobId: roleJobId } : {}), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}), ...(note ? { note } : {}) };
+      // An application that came from a LinkedIn link (this visit, or the account was created from one).
+      const fromLinkedIn = targetType === 'job' && direction === 'like' && (cleanSrc(req.body.src) === 'linkedin' || actor.acquisition?.src === 'linkedin');
+      const swipe = { id: crypto.randomUUID(), actorId, targetId, targetType, direction, createdAt: Date.now(), ...(roleJobId ? { jobId: roleJobId } : {}), ...(fromLinkedIn ? { src: 'linkedin' } : {}), ...(superLike && direction === 'like' ? { superLike: true } : {}), ...(answers ? { answers } : {}), ...(note ? { note } : {}) };
       const matchedPair = (p) => db.matches.find((m) => m.candidateId === p.candidateId && m.jobId === p.jobId);
       let mutual = detectMutualMatch(swipe, db);
       // Demo: a mutual like with someone already matched is just a like (counted below), not an instant match.
@@ -2259,6 +2286,7 @@ app.post('/api/swipes', async (req, res, next) => {
       }
       // The stamp lives on the swipe so undo can retract exactly this count.
       swipe.tracked = track(db, 'swipe', { demo: involvesDemo(actor, targetUser, targetJob), dim: `${direction}/${actorSide(actor)}`, at: swipe.createdAt });
+      if (fromLinkedIn) track(db, 'li_apply', { demo: involvesDemo(actor, targetUser, targetJob) });
       let match = null;
       // One match (and so one match_created) per candidate × job pair.
       if (mutual && !db.matches.some((item) => item.candidateId === mutual.candidateId && item.jobId === mutual.jobId)) {
@@ -5003,6 +5031,24 @@ const jobFinderCtx = {
   limiter: rateLimit({ windowMs: 60000, max: 30, bucket: 'jobfinder' }),
 };
 mountJobFinder(app, jobFinderCtx);
+
+// Full job view for a signed-in member (same rules as the deck: no contacts; members' salaries after a match).
+function jobFullView(db, job, viewer) {
+  const base = jobPublicView(job);
+  if (isJobFinderJob(job) && job.jobFinder.listingStatus !== 'claimed') return { ...base, jobFinder: { ...job.jobFinder, reachability: reachabilityOf(db, job) } };
+  const employer = db.users.find((user) => user.id === job.employerId);
+  const out = {
+    ...base, companyLogo: employer?.companyLogo,
+    recruiter: employer ? { name: employer.name, title: employer.title, photo: employer.photo, company: employer.company } : undefined,
+    companyProfile: employer ? { about: employer.about, industry: employer.industry, companySize: employer.companySize, headquarters: employer.headquarters, website: employer.website, foundedYear: employer.foundedYear, officeLocations: employer.officeLocations, techStack: employer.techStack, benefits: employer.benefits } : undefined,
+    ...(viewer.role === 'candidate' ? { match: scoreCandidateForJob(viewer, job) } : {}),
+  };
+  const matched = db.matches.some((m) => m.jobId === job.id && (m.candidateId === viewer.id || m.employerId === viewer.id));
+  if (!matched && job.employerId !== viewer.id) { delete out.salary; delete out.salaryRange; out.salaryHidden = true; }
+  return out;
+}
+// Job groups (2026-11-25): admin-managed public lists at /app/{slug}, card-only public views, sign-in for details.
+mountGroups(app, { store, authSession, track, origin: publicOrigin, limiter: rateLimit({ windowMs: 60000, max: 60, bucket: 'groups' }), jobFullView });
 
 app.use('/assets', express.static(path.join(root, 'dist', 'assets'), { immutable: true, maxAge: '1y' }));
 app.use(express.static(path.join(root, 'dist')));

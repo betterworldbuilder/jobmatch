@@ -3,12 +3,22 @@ import { createRoot } from 'react-dom/client';
 import { Capacitor } from '@capacitor/core';
 import App from './App';
 import { PublicJobPage } from './components/jobfinder/JobFinder';
+import { GroupPage, PublicJobCardPage } from './components/groups/Groups';
+import { APP_RESERVED } from './lib/pendingJob';
 import './index.css';
 import './phone-theme.css';
 
-// /jobs/<id>: the public page of a JobFinder listing (shareable, linked from recruiter emails).
-const publicJob = window.location.pathname.match(/^\/jobs\/([A-Za-z0-9_-]{3,60})\/?$/)?.[1];
-createRoot(document.getElementById('root')!).render(<StrictMode>{publicJob ? <PublicJobPage jobId={publicJob} /> : <App />}</StrictMode>);
+// Public pages (no sign-in): /jobs/<id> JobFinder listing (linked from recruiter emails), /app/job/<id> any public
+// job (LinkedIn "external website" link), /app/<group> a job group (founder, 2026-11-25). Everything else is the app.
+const path = window.location.pathname;
+const publicJob = path.match(/^\/jobs\/([A-Za-z0-9_-]{3,60})\/?$/)?.[1];
+const cardJob = path.match(/^\/app\/job\/([A-Za-z0-9_-]{2,60})\/?$/)?.[1];
+const groupSlug = path.match(/^\/app\/([a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?)\/?$/)?.[1];
+const page = publicJob ? <PublicJobPage jobId={publicJob} />
+  : cardJob ? <PublicJobCardPage jobId={cardJob} />
+    : groupSlug && !APP_RESERVED.has(groupSlug) ? <GroupPage slug={groupSlug} />
+      : <App />;
+createRoot(document.getElementById('root')!).render(<StrictMode>{page}</StrictMode>);
 
 // Copyright and safety warning in the browser's developer console (founder, 2026-11-25): it protects members from
 // "paste this code" scams and reminds visitors the code is proprietary. Production only.

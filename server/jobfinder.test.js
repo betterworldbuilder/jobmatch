@@ -49,6 +49,11 @@ test('JobFinder end to end: permissions, privacy, consent, sending, fallbacks, c
   const job = created.body.job;
   assert.equal(job.employerId, jf.id); assert.equal(job.status, 'active'); assert.equal(job.jobFinder.reachability, 'apply');
   assert.equal((await call('PATCH', `/api/jobfinder/jobs/${job.id}`, { title: 'x' }, other.cookie)).status, 403);
+  // The manager form's plain values are kept (bug found 2026-11-25: skills and salary were dropped, "" refused).
+  const plain = await call('POST', '/api/jobfinder/jobs', { title: 'Platform Engineer', company: 'Gamma', location: 'Da Nang, Vietnam', workMode: '', type: '', salary: 'USD 3,000–4,000 / month', requiredSkills: ['Kubernetes', 'Go'], sourceUrl: 'https://gamma.example/1' }, jf.cookie);
+  assert.equal(plain.status, 201, JSON.stringify(plain.body));
+  assert.deepEqual(plain.body.job.requiredSkills, ['Kubernetes', 'Go']); assert.equal(plain.body.job.salary, 'USD 3,000–4,000 / month');
+  assert.equal(plain.body.job.workMode, undefined, 'not stated stays empty');
   const dup = await call('POST', '/api/jobfinder/jobs', { ...listing, sourceUrl: 'https://other.example/1', listingStatus: 'draft' }, jf.cookie);
   assert.equal(dup.body.duplicates.length, 1, 'same company + title + location is flagged');
 

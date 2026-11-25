@@ -20,7 +20,10 @@ export const TRACKED_EVENTS = ['signup_completed', 'role_posted', 'swipe', 'matc
   // JobFinder pilot funnel (2026-11-25). Recruiter sign-up, recruiter interest and mutual matches reuse
   // signup_completed / swipe (like/team) / match_created.
   'jf_job_viewed', 'jf_job_liked', 'jf_consent_given', 'jf_autosend_on', 'jf_autosend_off', 'jf_message_submitted',
-  'jf_message_sent', 'jf_message_failed', 'jf_apply_clicked', 'jf_claim_requested', 'jf_claim_approved', 'jf_job_reported_closed'];
+  'jf_message_sent', 'jf_message_failed', 'jf_apply_clicked', 'jf_claim_requested', 'jf_claim_approved', 'jf_job_reported_closed',
+  // Public job groups (/app/{group}) and LinkedIn links (2026-11-25).
+  'grp_viewed', 'grp_filter', 'grp_job_selected', 'grp_gate_shown', 'grp_register_started', 'grp_register_completed', 'grp_returned',
+  'li_visit', 'li_signup', 'li_apply'];
 
 /** 'team' for any hiring-side account (company or headhunter), else 'candidate'. */
 export function actorSide(user) {

@@ -17,6 +17,7 @@ import crypto from 'node:crypto';
 import { applyJob } from './jobs.js';
 import { ValidationError } from './matching.js';
 import { involvesDemo } from './analytics.js';
+import { assignGroups } from './groups.js';
 
 // The founder's "JobFinder" recruiter account is the JobFinder identity (decision 2026-11-25). Override with
 // JOBFINDER_ACCOUNT_IDS (comma-separated) without a code change.
@@ -111,8 +112,15 @@ function applyJobFinderFields(job, body) {
   if (body.lastCheckedAt !== undefined) jf.lastCheckedAt = isoDate(body.lastCheckedAt) || jf.lastCheckedAt;
   if (body.closingDate !== undefined) jf.closingDate = isoDate(body.closingDate);
   if (body.company !== undefined) { const c = str(body.company, 120); if (!c) throw new ValidationError('company', 'The employer / company is required'); job.company = c; }
+  // The JobFinder form sends plain values: a skills list, the salary as published, and "" for "not stated".
+  if (Array.isArray(body.requiredSkills)) {
+    job.requiredSkillsDetail = body.requiredSkills.filter((s) => typeof s === 'string' && s.trim()).slice(0, 25).map((s) => ({ name: s.trim().slice(0, 60), weight: 2 }));
+    job.requiredSkills = job.requiredSkillsDetail.map((s) => s.name);
+  }
+  if (body.salary !== undefined) { const s = str(body.salary, 120); if (s) job.salary = s; else delete job.salary; }
   // Standard job fields go through the normal job sanitizer (no status: JobFinder sets it from listingStatus).
-  const { status, employerId, id, jobFinder, ...rest } = body;
+  const { status, employerId, id, jobFinder, requiredSkills, salary, jobGroups, ...rest } = body;
+  for (const k of ['workMode', 'type', 'seniority']) if (rest[k] === '' || rest[k] === null) { delete rest[k]; if (body[k] === '') delete job[k]; }
   applyJob(job, rest);
 }
 
@@ -127,6 +135,7 @@ export function publicJobView(db, job) {
     jobFinder: { addedBy: 'JobFinder', employerStatus: jf.employerStatus, reachability: reachabilityOf(db, job), source: jf.source, sourceUrl: jf.sourceUrl, applyUrl: jf.applyUrl, lastCheckedAt: jf.lastCheckedAt, closingDate: jf.closingDate, listingStatus: jf.listingStatus },
     // Aggregate only (claim page): how many candidates liked it. Never who.
     interested: db.swipes.filter((s) => s.targetType === 'job' && s.targetId === job.id && s.direction === 'like').length,
+    jobGroups: job.jobGroups || [],
     missing: missingInfo(job),
   };
 }
@@ -259,6 +268,7 @@ export function mountJobFinder(app, ctx) {
           jobFinder: { addedBy: 'JobFinder', employerStatus: 'pending', listingStatus, discoveredAt: nowIso(), lastCheckedAt: nowIso() },
         };
         applyJobFinderFields(job, req.body);
+        assignGroups(db, job, req.body);
         if (!job.title) throw new ValidationError('title', 'The job title is required');
         if (!job.company) throw new ValidationError('company', 'The employer / company is required');
         db.jobs.push(job);
@@ -292,6 +302,7 @@ export function mountJobFinder(app, ctx) {
           history(db, job.id, s.sub, action, req.body.reason ? { reason: str(req.body.reason, 300) } : {}, audit);
         } else {
           applyJobFinderFields(job, req.body);
+          assignGroups(db, job, req.body);
           history(db, job.id, s.sub, 'edited', { fields: Object.keys(req.body).slice(0, 20) }, audit);
         }
         refreshPublic(db, job);
@@ -389,7 +400,15 @@ export function mountJobFinder(app, ctx) {
         if (!job || ['draft', 'removed'].includes(job.jobFinder.listingStatus)) { const e = new Error('This job is not available'); e.status = 404; throw e; }
         internalOf(db, job.id).stats.views += 1;
         if (req.query.notrack !== '1') track(db, 'jf_job_viewed', { demo: false });
-        return publicJobView(db, job);
+        const view = publicJobView(db, job);
+        // Full details need a sign-in (founder, 2026-11-25): visitors get a short preview only.
+        if (!session(req)) {
+          const t = String(view.description || view.fullDescription || '').replace(/\s+/g, ' ').trim();
+          view.description = t.length > 300 ? `${t.slice(0, 297).replace(/\s+\S*$/, '')}…` : t;
+          delete view.fullDescription; view.responsibilities = []; view.niceToHaves = [];
+          view.gated = true;
+        }
+        return view;
       });
       res.json({ job: view });
     } catch (error) { next(error); }
