@@ -115,6 +115,10 @@
 .td-section-title .td-delete-all:hover { background:#fff1f3; border-color:#e5485d; }
 .td-section-title .td-delete-all:disabled { opacity:.6; cursor:wait; }
 .td-role-edit.td-role-delete:hover { color:#c8233d; border-color:#e5485d; background:#fff1f3; }
+/* Candidate view (test mode): the real Surf phone, centred, with a note under it. */
+.rpv-test { display:flex; flex-direction:column; align-items:center; gap:14px; }
+.rpv-test .nm-phone-col { position:relative; display:flex; justify-content:center; width:100%; }
+.rpv-test-note { max-width:420px; margin:0; padding:10px 14px; border-radius:12px; background:#fff4f8; color:#6b2142; font-size:13px; line-height:1.45; text-align:center; }
 /* Status column per role: Open (blue) / Conducting interviews (amber) / Hired (green). */
 @media (min-width:1101px) { .td-role-head { grid-template-columns:minmax(160px,1fr) auto auto auto auto auto 20px; } }
 @media (min-width:640px) and (max-width:1100px) { .td-role-head { grid-template-columns:minmax(150px,1fr) auto auto auto auto 20px; } }
@@ -133,7 +137,8 @@
   .nm-list { padding-top:4px; }
   .nm-list .nm-carousel-head { margin-bottom:2px; }
   .nm-list .nm-carousel-head h3 { font:800 13px 'Manrope'; color:#26304a; }
-  .nm-list .nm-carousel-head h3::after { content:' · tap to view'; font-weight:600; color:#8a93a6; }
+  .nm-list .nm-carousel-head { display:flex; align-items:center; gap:8px; }
+  .nm-recs-toggle { display:none; }
   .nm-list .nm-carousel-nav { display:none; }
   .nm-list ul.nm-carousel { gap:12px; padding:10px 4px 6px; scroll-snap-type:x proximity; }
   .nm-list .nm-carousel li.nm-mini { flex:0 0 66px; gap:0; padding-bottom:20px; position:relative; }
@@ -154,4 +159,15 @@
   .nm-mini-info strong { display:block; font:800 10.5px/1.2 'Manrope'; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .nm-mini-info small, .nm-mini-chips { display:none; }
   .nm-list .nm-see-all { margin-top:2px; font-size:12px; }
+}
+/* Phones: "Recommended … · Tap to view" sits at the bottom of the swipe screen; the badges open under it. */
+@media (max-width:639px) {
+  .nm-recs-toggle { display:inline-flex; align-items:center; gap:3px; margin-left:auto; padding:5px 11px; border:1px solid #f6c2d6; border-radius:999px; background:#fff4f8; color:#d81b67; font:800 12px 'Manrope'; cursor:pointer; }
+  .nm-recs-toggle svg { transition:transform .2s ease; }
+  .nm-list.recs-open .nm-recs-toggle svg { transform:rotate(180deg); }
+  .nm-list:not(.recs-open) ul.nm-carousel, .nm-list:not(.recs-open) .nm-list-empty, .nm-list:not(.recs-open) .nm-see-all { display:none; }
+  /* The deck leaves room for the "Tap to view" bar above the bottom tab bar (role bar ~98 + tab bar ~70 + this bar ~46). */
+  .td-match-page .nm-screen { height:calc(100svh - 98px - 70px - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height:360px; }
+  /* Open: the badges and names clear the bottom tab bar. */
+  .td-match-page .nm-list.recs-open { padding-bottom:calc(76px + env(safe-area-inset-bottom)); }
 }

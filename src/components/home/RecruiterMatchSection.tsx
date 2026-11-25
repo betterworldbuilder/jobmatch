@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
 import type { PanInfo } from 'motion/react';
-import { ChevronLeft, ChevronRight, Download, FileText, Forward, Heart, Lock, MapPin, RotateCcw, Send, User, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Download, FileText, Forward, Heart, Lock, MapPin, RotateCcw, Send, User, X } from 'lucide-react';
 import { pageKey, SwipePager } from '../swipe/SwipePager';
 import { api, apiBase } from '../../api';
 import type { Bootstrap, JobMatch, Person, View } from '../../types';
@@ -105,6 +105,7 @@ export function RecruiterMatchSection({ data, setData, navigate, onOpenMessages,
   });
   const { deck, filtered, index, setIndex, current, next, busy, match, setMatch, commitSwipe, act, undo } = deckState;
   const [picked, setPicked] = useState<Person | null>(null);
+  const [recsOpen, setRecsOpen] = useState(false); // phones: Recommended badges closed until "Tap to view"
   const [detail, setDetail] = useState<Person | null>(null);
   const [forwardOpen, setForwardOpen] = useState(false);
   const [dmOpen, setDmOpen] = useState(false);
@@ -191,9 +192,11 @@ export function RecruiterMatchSection({ data, setData, navigate, onOpenMessages,
         {featureOn('filters') ? <DeckActionBar role="employer" userId={data.viewer.id} navigate={navigate} likes={likesWaiting(data)} />
           : <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>}
       </div>
-      <aside className="nm-list" aria-label="Recommended Candidates">
+      <aside className={recsOpen ? 'nm-list recs-open' : 'nm-list'} aria-label="Recommended Candidates">
         <div className="nm-carousel-head">
           <h3>Recommended Candidates</h3>
+          {/* Phones (founder, 2026-11-25): the badges open under the deck on "Tap to view". */}
+          <button type="button" className="nm-recs-toggle" aria-expanded={recsOpen} onClick={(e) => { const box = e.currentTarget.closest('.nm-list'); setRecsOpen((v) => !v); window.setTimeout(() => box?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 60); }}>{recsOpen ? 'Hide' : 'Tap to view'} <ChevronDown size={13} /></button>
           {list.length > 2 && <span className="nm-carousel-nav">
             <button type="button" aria-label="Previous candidates" onClick={() => carouselRef.current?.scrollBy({ left: -360, behavior: 'smooth' })}><ChevronLeft size={18} /></button>
             <button type="button" aria-label="More candidates" onClick={() => carouselRef.current?.scrollBy({ left: 360, behavior: 'smooth' })}><ChevronRight size={18} /></button>

@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
 import type { PanInfo } from 'motion/react';
-import { ArrowRight, Check, ChevronLeft, ChevronRight, ChevronsRight, Copy, Forward, Heart, Mail, MapPin, MessageCircle, RotateCcw, Send, Star, User, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsRight, Copy, Forward, Heart, Mail, MapPin, MessageCircle, RotateCcw, Send, Star, User, X } from 'lucide-react';
 import { api, apiBase } from '../../api';
 import type { Bootstrap, Job, JobMatch, Person, View } from '../../types';
 import { JobDetailModal, ScreeningModal } from '../coach/CoachModals';
@@ -67,7 +67,7 @@ export function PhoneBrand() {
   return <span className="nm-brand"><span className="brand-heart-mark nm-logo" aria-hidden="true" /><span className="brand-wordmark"><b>Jobs</b><b>Match</b><b>Now</b></span></span>;
 }
 
-function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, page, onPage, onRecruiter }: {
+export function PhoneJobCard({ job, reducedMotion, canLike, onSwipe, page, onPage, onRecruiter }: {
   job: Job; reducedMotion: boolean; canLike: boolean; onSwipe: (action: 'like' | 'pass' | 'super') => void; page: number; onPage: (p: number) => void; onRecruiter: () => void;
 }) {
   const x = useMotionValue(0);
@@ -233,6 +233,7 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
   const [detail, setDetail] = useState<Job | null>(null);
   // A role picked from "Recommended Roles" is shown in the phone until it is swiped (or closed).
   const [picked, setPicked] = useState<Job | null>(null);
+  const [recsOpen, setRecsOpen] = useState(false); // phones: Recommended badges closed until "Tap to view"
   const [dmOpen, setDmOpen] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
   const phoneRef = useRef<HTMLDivElement>(null);
@@ -331,9 +332,11 @@ export function NewMatchesSection({ data, setData, navigate, onOpenMessages, hea
         {featureOn('filters') ? <DeckActionBar role="candidate" userId={data.viewer.id} navigate={navigate} likes={likesWaiting(data)} />
           : <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Apply</span><span>Click the deck first</span></div>}
       </div>
-      <aside className="nm-list" id="td-recommended" aria-label="Recommended Roles">
+      <aside className={recsOpen ? 'nm-list recs-open' : 'nm-list'} id="td-recommended" aria-label="Recommended Roles">
         <div className="nm-carousel-head">
           <h3>Recommended Roles</h3>
+          {/* Phones (founder, 2026-11-25): the badges open under the deck on "Tap to view". */}
+          <button type="button" className="nm-recs-toggle" aria-expanded={recsOpen} onClick={(e) => { const box = e.currentTarget.closest('.nm-list'); setRecsOpen((v) => !v); window.setTimeout(() => box?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 60); }}>{recsOpen ? 'Hide' : 'Tap to view'} <ChevronDown size={13} /></button>
           {list.length > 2 && <span className="nm-carousel-nav">
             <button type="button" aria-label="Previous roles" onClick={() => carouselRef.current?.scrollBy({ left: -360, behavior: 'smooth' })}><ChevronLeft size={18} /></button>
             <button type="button" aria-label="More roles" onClick={() => carouselRef.current?.scrollBy({ left: 360, behavior: 'smooth' })}><ChevronRight size={18} /></button>
