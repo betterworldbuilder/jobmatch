@@ -134,6 +134,28 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
       ['Candidate filter', 'All candidates (filter by fit in Discover)'],
     ];
 
+  // My search settings (founder, 2026-11-26): first on the candidate's My jobs Search page.
+  const settingsCard = <>
+      {/* "Next interview" moved to the Interviews page (founder, 2026-11-26): NextInterviewCard below. */}
+      <div className="tp-row single">
+
+        {/* Search settings */}
+        <div className="tp-card" id="tp-search-settings">
+          <h3><SlidersHorizontal size={16} /> My search settings</h3>
+          <dl className="tp-settings">{settings.map(([k, val]) => <div key={k}><dt>{k}</dt><dd>{val || <em>Not set</em>}</dd></div>)}</dl>
+          {candidate && (v.preferences?.desiredRoles?.length || 0) > 1 && <p className="tp-locked">{(v.preferences?.desiredRoles?.length || 1) - 1} more saved {(v.preferences?.desiredRoles?.length || 1) - 1 === 1 ? 'role' : 'roles'}: {v.preferences!.desiredRoles!.slice(1).join(', ')}</p>}
+          <div className="tp-setting-actions">
+            {candidate && <button type="button" className="tp-add-roles" onClick={() => setRolesOpen(true)}><Plus size={14} /> Add roles</button>}
+            <button type="button" className="tp-link" onClick={() => (candidate ? onEditProfile(2) : navigate('profile'))}>Edit settings <ArrowRight size={13} /></button>
+          </div>
+          <div className="tp-agent">
+            <span><Bot size={15} /> <b>Use personal AI agent</b><small>{agent ? `Connected: ${PROVIDERS[agent.provider].label}` : 'ChatGPT or Claude — preview'}</small></span>
+            <button type="button" className="secondary-button small" onClick={() => setAgentOpen(true)}>{agent ? 'Manage' : 'Set up'}</button>
+          </div>
+        </div>
+      </div>
+  </>;
+
   // The profile card left "Things to do" (founder, 2026-11-22): the profile lives in the sidebar box and on
   // "My full profile"; the recruiter contact bar moved to the recruiter profile page.
   return <section className="td-section tp-section tp-no-profile" id="td-today" aria-label="Today">
@@ -176,7 +198,8 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
     </article>}
 
     <div className="tp-side">
-      {/* Summary */}
+      {candidate && settingsCard}
+      {/* Summary */}{/* (candidates: below My search settings) */}
       <div className="tp-summary">{summary.map((s) => { const Icon = s.icon; return <button type="button" key={s.label} onClick={s.onClick}><Icon size={16} /><strong>{s.value}</strong><small>{s.label}</small></button>; })}</div>
 
       {/* Urgent */}
@@ -186,24 +209,8 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
           : <p className="tp-muted">Nothing urgent. You are all caught up.</p>}
       </div>
 
-      {/* "Next interview" moved to the Interviews page (founder, 2026-11-26): NextInterviewCard below. */}
-      <div className="tp-row single">
-
-        {/* Search settings */}
-        <div className="tp-card" id="tp-search-settings">
-          <h3><SlidersHorizontal size={16} /> My search settings</h3>
-          <dl className="tp-settings">{settings.map(([k, val]) => <div key={k}><dt>{k}</dt><dd>{val || <em>Not set</em>}</dd></div>)}</dl>
-          {candidate && (v.preferences?.desiredRoles?.length || 0) > 1 && <p className="tp-locked">{(v.preferences?.desiredRoles?.length || 1) - 1} more saved {(v.preferences?.desiredRoles?.length || 1) - 1 === 1 ? 'role' : 'roles'}: {v.preferences!.desiredRoles!.slice(1).join(', ')}</p>}
-          <div className="tp-setting-actions">
-            {candidate && <button type="button" className="tp-add-roles" onClick={() => setRolesOpen(true)}><Plus size={14} /> Add roles</button>}
-            <button type="button" className="tp-link" onClick={() => (candidate ? onEditProfile(2) : navigate('profile'))}>Edit settings <ArrowRight size={13} /></button>
-          </div>
-          <div className="tp-agent">
-            <span><Bot size={15} /> <b>Use personal AI agent</b><small>{agent ? `Connected: ${PROVIDERS[agent.provider].label}` : 'ChatGPT or Claude — preview'}</small></span>
-            <button type="button" className="secondary-button small" onClick={() => setAgentOpen(true)}>{agent ? 'Manage' : 'Set up'}</button>
-          </div>
-        </div>
-      </div>
+      {/* Recruiters keep My search settings after Urgent; candidates have it first (settingsCard). */}
+      {!candidate && settingsCard}
     </div>
     {agentOpen && <AgentSettingsModal onClose={() => setAgentOpen(false)} onChange={setAgent} />}
     {rolesOpen && <div className="modal-scrim" onClick={() => setRolesOpen(false)}>
