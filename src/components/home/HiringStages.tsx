@@ -88,7 +88,8 @@ function StopProcessForm({ match, onCancel, onDone }: { match: JobMatch; onCance
   </div>;
 }
 
-export function HiringStages({ data, setData, onOpenMessages }: { data: Bootstrap; setData: (d: Bootstrap) => void; onOpenMessages: (matchId: string) => void }) {
+/** `embedded` (founder, 2026-11-26): shown as a section of the Interviews page (candidates and recruiters). */
+export function HiringStages({ data, setData, onOpenMessages, embedded }: { data: Bootstrap; setData: (d: Bootstrap) => void; onOpenMessages: (matchId: string) => void; embedded?: boolean }) {
   // Quiet refresh after a rule changed several records (other matches, messages, meetings) — keeps the notice on screen.
   const reload = () => { void api.bootstrap(data.viewer.id).then(setData).catch(() => undefined); };
   const isRecruiter = data.viewer.role === 'employer';
@@ -116,9 +117,11 @@ export function HiringStages({ data, setData, onOpenMessages }: { data: Bootstra
   };
   const stepsFor = (m: JobMatch) => (m.pipeline?.length ? m.pipeline : defaultSteps(m.job));
 
-  return <div className="page hs-page">
-    <div className="page-title"><div><span className="overline">Milestones</span><h1>Hiring Stages</h1>
-      <p>{isRecruiter ? 'Every role, every candidate: which round they are in, who interviews them and when — up to the finish line.' : 'Where you stand with each team: the rounds ahead, who you meet and when.'}</p></div></div>
+  const intro = isRecruiter ? 'Every role, every candidate: which round they are in, who interviews them and when — up to the finish line.' : 'Where you stand with each team: the rounds ahead, who you meet and when.';
+  return <div className={embedded ? 'hs-page hs-embedded' : 'page hs-page'} id={embedded ? 'hiring-stages' : undefined}>
+    {embedded
+      ? <div className="hs-embedded-head"><span className="overline">Milestones</span><h2>Hiring Stages</h2><p>{intro}</p></div>
+      : <div className="page-title"><div><span className="overline">Milestones</span><h1>Hiring Stages</h1><p>{intro}</p></div></div>}
     {notice && <p className="hs-notice" role="status"><Check size={14} /> {notice} <button type="button" className="text-button" onClick={() => setNotice('')}>OK</button></p>}
     {mine.length === 0 && <div className="sc-empty"><Flag size={26} /><strong>No hiring stages yet</strong><p>Stages start when you and {isRecruiter ? 'a candidate' : 'a team'} both say yes.</p></div>}
     {[...byJob.entries()].map(([jobId, matches]) => {

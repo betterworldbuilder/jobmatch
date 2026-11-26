@@ -5526,6 +5526,12 @@ button.rs-row:hover { border-color:#fd267a; }
   .ic-head h2 { font-size:16px; } .ic-count { display:none; }
 }
 
+/* Hiring Stages as a section of the Interviews page (2026-11-26). */
+.hs-embedded { margin:4px 0 22px; scroll-margin-top:16px; }
+.hs-embedded-head { margin:0 0 12px; }
+.hs-embedded-head h2 { margin:2px 0 4px; font:800 22px/1.2 'Manrope',sans-serif; color:#0d1834; letter-spacing:-.02em; }
+.hs-embedded-head p { margin:0; color:#667085; font-size:13px; }
+
 /* Next interview moved to the Interviews page (2026-11-26): search settings take the full row on the dashboard. */
 .tp-row.single { grid-template-columns:1fr; }
 .meetings-page .tp-next-card { margin:0 0 16px; background:#fff; border:1px solid #eceef4; border-radius:16px; padding:16px 18px; }

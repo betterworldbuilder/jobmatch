@@ -137,7 +137,7 @@ const candidateNav: NavItem[] = [
   // AI interview preparation (refresh plan with your own chatbot = Premium), renamed and moved below the
   // invitations (founder, 2026-11-22).
   { label: 'Interview AI coach', short: 'Coach', icon: GraduationCap, view: 'prep' },
-  { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
+  // Hiring Stages moved into Interviews (founder, 2026-11-26).
   { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: CHATBOT_LABEL, short: 'Chatbot', icon: Bot, view: 'assistant' },
@@ -166,7 +166,7 @@ const employerNav: NavItem[] = [
   { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   // "Saved" left the recruiter menu (founder, 2026-11-22); "Hired Results" sits after Hiring Stages.
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
-  { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
+  // Hiring Stages moved into Interviews (founder, 2026-11-26).
   { label: 'Hired Results', short: 'Hired', icon: Trophy, view: 'hired' },
   { label: 'Reports', icon: BarChart3, view: 'analytics' },
   { label: CHATBOT_LABEL, short: 'Chatbot', icon: Bot, view: 'assistant' },
@@ -771,7 +771,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   };
   const navActive = (item: NavItem) => item.anchor
     ? view === 'home' && activeAnchor === item.anchor
-    : view === item.view && !(item.view === 'home' && activeAnchor);
+    : (view === 'stages' ? 'meetings' : view) === item.view && !(item.view === 'home' && activeAnchor); // stages live in Interviews
   const initials = (session.name || '?').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase();
   // Notification bell: in the top bar; with the phone top bar removed (?bar=1), next to "Swipe for role" instead.
   const phoneBarV2 = featureOn('bar');
@@ -837,7 +837,8 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'match') return <main className="td-dashboard td-candidate td-match-page"><FindMyMatchPage data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} /></main>;
   if (view === 'assistant') return <ChatbotPage data={data} navigate={navigate} />;
   if (view === 'feedback') return <FeedbackPage data={data} />;
-  if (view === 'stages') return <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} />;
+  // Hiring Stages live on the Interviews page now (founder, 2026-11-26): old links open it there.
+  if (view === 'stages') return <Meetings role={role} data={data} setData={setData} onOpenMessages={onOpenMessages} navigate={navigate} focusStages />;
   if (view === 'selected') return <SelectedCandidates data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'coffee') return <CoffeeInvitations data={data} onOpenMessages={onOpenMessages} />;
   if (view === 'jobfinder' && data.viewer.jobFinder) return <JobFinderManager />;
@@ -1286,7 +1287,8 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
  * own page (not folded into Conversations): meetings are a cross-match
  * concept, so "what's on my calendar this week" shouldn't require opening
  * every thread one by one to check. */
-function Meetings({ role, data, setData, onOpenMessages, navigate }: { role: Role; data: Bootstrap; setData: (d: Bootstrap) => void; onOpenMessages: (matchId: string) => void; navigate: (v: View) => void }) {
+function Meetings({ role, data, setData, onOpenMessages, navigate, focusStages }: { role: Role; data: Bootstrap; setData: (d: Bootstrap) => void; onOpenMessages: (matchId: string) => void; navigate: (v: View) => void; focusStages?: boolean }) {
+  useEffect(() => { if (focusStages) window.setTimeout(() => document.getElementById('hiring-stages')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 250); }, [focusStages]);
   const [schedulingFor, setSchedulingFor] = useState<JobMatch | null>(null);
   const now = Date.now();
   // Cancelled meetings (a process closed: someone got hired or it was stopped) move to the past list.
@@ -1327,6 +1329,8 @@ function Meetings({ role, data, setData, onOpenMessages, navigate }: { role: Rol
     <CalendarSync userId={data.viewer.id} />
     {/* Every booked interview, Google Calendar style (founder, 2026-11-26). */}
     <InterviewCalendar data={data} onOpenMessages={onOpenMessages} />
+    {/* Hiring Stages moved here (founder, 2026-11-26), for candidates and recruiters. */}
+    <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} embedded />
 
     <section className="td-section" id="meetings-upcoming">
       <DashboardTitle icon={Calendar} title="Upcoming" subtitle={`${upcoming.length} scheduled`} />
