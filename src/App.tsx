@@ -152,17 +152,16 @@ const NAV_COLORS: Record<string, string> = {
 };
 // Mirrors the candidate menu (same order and pages), plus the recruiter-only lists.
 const employerNav: NavItem[] = [
-  // "Find My Match" first (founder, 2026-11-26): the swipe deck recruiters open on.
-  { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
+  // Order (founder, 2026-11-26): My Jobs list, Find My Match, Jobs Candidates.
   // Recruiters: "My Jobs list" (founder, 2026-11-25: was "My dashboard"): only the roles list (2026-11-26).
   { label: 'My Jobs list', short: 'Jobs', icon: Compass, view: 'home' },
+  { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
+  // Jobs Candidates (restored, founder 2026-11-26): matches, applications and the rest of the recruiter dashboard.
+  { label: 'Jobs Candidates', short: 'Candidates', icon: Inbox, view: 'applied' },
   // Order (founder, 2026-11-22): My JobMatches, then Conversations, then Coffee Invitations.
-  // My JobMatches (founder, 2026-11-26): matches, applications and the rest of the recruiter dashboard; "Jobs Candidates"
-  // (a duplicate) left the menu.
-  { label: 'My JobMatches', short: 'Matches', icon: BriefcaseBusiness, view: 'applied' },
+  // "My JobMatches" and "Selected Candidates" left the recruiter menu (founder, 2026-11-26).
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
-  { label: 'Selected Candidates', short: 'Candidates', icon: Users, view: 'selected' },
   // "Saved" left the recruiter menu (founder, 2026-11-22); "Hired Results" sits after Hiring Stages.
   { label: 'Meetings', icon: Calendar, view: 'meetings' },
   { label: 'Hiring Stages', short: 'Stages', icon: ListChecks, view: 'stages' },
@@ -670,7 +669,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   // "JobFinder listings" left the menu (founder, 2026-11-26): imported roles live in My Jobs list like any other role.
   // The JobFinder account gets "Outreach" (cold emails, opens, claims, recruiter contact book) after My Jobs list.
   const baseNav = role === 'candidate' ? candidateNav
-    : data?.viewer.jobFinder ? [employerNav[0], employerNav[1], { label: 'Outreach', short: 'Outreach', icon: Send, view: 'outreach' as View }, ...employerNav.slice(2)] : employerNav;
+    : data?.viewer.jobFinder ? [employerNav[0], { label: 'Outreach', short: 'Outreach', icon: Send, view: 'outreach' as View }, ...employerNav.slice(1)] : employerNav;
   // JobFinder interest panel: after a like on a JobFinder job, from a notification, or from the public job page.
   const [jfPanel, setJfPanel] = useState<string | null>(null);
   useEffect(() => {

@@ -530,7 +530,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
   </>;
   if (part === 'candidates') return <main className="td-dashboard td-recruiter">
     <header className="td-recruiter-head">
-      <div><h1 className="td-recruiter-title">My JobMatches</h1><p>Your matches, the candidates who applied, and what needs you today.</p></div>
+      <div><h1 className="td-recruiter-title">Jobs Candidates</h1><p>Your matches, the candidates who applied, and what needs you today.</p></div>
     </header>
     {/* Every mutual match, newest first, with its role. */}
     <section className="td-section" id="td-all-matches">
@@ -654,12 +654,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
                   ? matchedForJob.map((match) => <CandidateRow key={match.id} person={match.candidate} matched onView={() => setSelected(match.candidate)} onTalk={() => onOpenMessages ? onOpenMessages(match.id) : navigate('messages')} />)
                   : <EmptyRow>No mutual matches yet for this role.</EmptyRow>}
               </div>
-              <div className="td-role-sublist">
-                <span className="td-sublabel"><Heart size={12} /> Loves this job · not matched yet ({lovesNotMatched.length})</span>
-                {lovesNotMatched.length
-                  ? lovesNotMatched.slice(0, 8).map((person) => <CandidateRow key={person.id} person={person} onView={() => setSelected(person)} onTalk={() => void talk(person)} />)
-                  : <EmptyRow>No new admirers yet — candidates who like this role show up here.</EmptyRow>}
-              </div>
+              {/* "Loves this job · not matched yet" removed (founder, 2026-11-26): applicants are on Jobs Candidates. */}
             </div>}
           </article>;
         })}
