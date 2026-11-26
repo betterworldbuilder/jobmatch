@@ -44,6 +44,28 @@ function ageOf(birthdate?: string) {
   return Number.isNaN(t) ? undefined : Math.floor((Date.now() - t) / (365.25 * 86400000));
 }
 
+/** Next interview + add to calendar (founder, 2026-11-26: shown at the top of the Interviews page). */
+export function NextInterviewCard({ data, navigate }: { data: Bootstrap; navigate: (v: View) => void }) {
+  const next = nextInterview(data);
+  return <div className="tp-card tp-next-card">
+    <h3><Calendar size={16} /> Next interview</h3>
+    {next ? <div className="tp-next">
+      <strong>{next.title}</strong>
+      <span>{new Date(next.at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}{next.source === 'call' ? ` · ${new Date(next.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''}</span>
+      <small>With {next.who}</small>
+      <div className="tp-cal">
+        <span>Add to my calendar:</span>
+        {(() => { const ev = { title: next.title, description: `JobsMatchNow — with ${next.who}`, startAt: next.at, durationMinutes: next.durationMinutes }; return <>
+          <a href={googleCalendarUrl(ev)} target="_blank" rel="noopener noreferrer">Google</a>
+          <a href={outlookCalendarUrl(ev)} target="_blank" rel="noopener noreferrer">Outlook</a>
+          <a href={icsDataUrl(ev)} download="jobsmatchnow-meeting.ics">Phone alarm</a>
+        </>; })()}
+      </div>
+      <button type="button" className="tp-link" onClick={() => navigate('stages')}>See all stages <ArrowRight size={13} /></button>
+    </div> : <p className="tp-muted">No interview planned yet. It shows here once a round has a date.</p>}
+  </div>;
+}
+
 export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessages, onPreview, onScroll }: Props) {
   const v = data.viewer;
   const candidate = v.role === 'candidate';
@@ -164,26 +186,8 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
           : <p className="tp-muted">Nothing urgent. You are all caught up.</p>}
       </div>
 
-      <div className="tp-row">
-        {/* Next interview */}
-        <div className="tp-card">
-          <h3><Calendar size={16} /> Next interview</h3>
-          {next ? <div className="tp-next">
-            <strong>{next.title}</strong>
-            <span>{new Date(next.at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}{next.source === 'call' ? ` · ${new Date(next.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''}</span>
-            <small>With {next.who}</small>
-            {/* Add to my calendar (moved here with the profile card) */}
-            <div className="tp-cal">
-              <span>Add to my calendar:</span>
-              {(() => { const ev = { title: next.title, description: `JobsMatchNow — with ${next.who}`, startAt: next.at, durationMinutes: next.durationMinutes }; return <>
-                <a href={googleCalendarUrl(ev)} target="_blank" rel="noopener noreferrer">Google</a>
-                <a href={outlookCalendarUrl(ev)} target="_blank" rel="noopener noreferrer">Outlook</a>
-                <a href={icsDataUrl(ev)} download="jobsmatchnow-meeting.ics">Phone alarm</a>
-              </>; })()}
-            </div>
-            <button type="button" className="tp-link" onClick={() => navigate('stages')}>See all stages <ArrowRight size={13} /></button>
-          </div> : <p className="tp-muted">No interview planned yet. It shows here once a round has a date.</p>}
-        </div>
+      {/* "Next interview" moved to the Interviews page (founder, 2026-11-26): NextInterviewCard below. */}
+      <div className="tp-row single">
 
         {/* Search settings */}
         <div className="tp-card" id="tp-search-settings">

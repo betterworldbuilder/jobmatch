@@ -80,6 +80,25 @@ export function nextInterview(data: Pick<Bootstrap, 'viewer' | 'matches' | 'call
   return items.sort((a, b) => a.at - b.at)[0] || null;
 }
 
+/** Every booked interview, past and future (founder, 2026-11-26: the calendar on the Interviews page): scheduled calls
+ *  (not cancelled) and every hiring round with a date, for open processes. */
+export function allInterviews(data: Pick<Bootstrap, 'viewer' | 'matches' | 'calls'>): NextInterview[] {
+  const items: NextInterview[] = [];
+  for (const call of data.calls) {
+    if (call.cancelledAt) continue;
+    const m = data.matches.find((x) => x.id === call.matchId);
+    if (m) items.push({ matchId: m.id, title: `${call.title.split(' - ')[0]}${m.job ? ` · ${m.job.title}` : ''}`, who: otherName(m, data), withName: otherName(m, data), at: call.startAt, source: 'call', durationMinutes: call.durationMinutes || 30 });
+  }
+  for (const m of data.matches) {
+    if (m.stage === 'Archived') continue;
+    for (const step of timeline(m).steps) {
+      if (!step.round || !step.date) continue;
+      items.push({ matchId: m.id, title: `Round ${step.round}: ${step.name}${m.job ? ` · ${m.job.title}` : ''}`, who: step.owner || otherName(m, data), withName: otherName(m, data), at: dayStart(step.date), source: 'round', durationMinutes: Number(step.format?.match(/(\d+)\s*min/)?.[1]) || 45 });
+    }
+  }
+  return items.sort((a, b) => a.at - b.at);
+}
+
 export function interviewsThisWeek(data: Pick<Bootstrap, 'viewer' | 'matches' | 'calls'>, now = Date.now()) {
   const end = now + 7 * DAY;
   const calls = data.calls.filter((c) => c.startAt >= now && c.startAt <= end && !c.cancelledAt).length;

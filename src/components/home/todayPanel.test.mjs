@@ -63,7 +63,11 @@ test('Today panel: no profile card (founder 2026-11-22); summary, urgent, next i
   const { React, renderToStaticMarkup, mod } = await loadTsx(new URL('./TodayPanel.tsx', import.meta.url));
   const html = renderToStaticMarkup(React.createElement(mod.TodayPanel, { data: base(), setData: () => undefined, navigate: () => undefined, onEditProfile: () => undefined, onPreview: () => undefined }));
   assert.doesNotMatch(html, /class="tp-profile"/, 'profile card removed from Things to do');
-  for (const text of ['Add to my calendar', 'calendar.google.com', 'Urgent', 'Next interview', 'My search settings', 'Replies waiting', 'Interviews this week', 'Not set'])
+  for (const text of ['Urgent', 'My search settings', 'Replies waiting', 'Interviews this week', 'Not set'])
     assert.ok(html.includes(text), `shows ${text}`);
+  // "Next interview" moved to the Interviews page (founder, 2026-11-26).
+  assert.ok(!html.includes('Next interview'), 'no Next interview on the dashboard');
+  const card = renderToStaticMarkup(React.createElement(mod.NextInterviewCard, { data: base(), navigate: () => undefined }));
+  for (const text of ['Next interview', 'Add to my calendar', 'calendar.google.com']) assert.ok(card.includes(text), `Next interview card shows ${text}`);
   assert.doesNotMatch(html, /profile views/, 'no invented view counts');
 });

@@ -34,6 +34,8 @@ import { RecruiterProfilePage } from './components/profile/RecruiterProfilePage'
 import { CandidateCards } from './components/profile/CandidateCards';
 import { JobCards } from './components/jobs/JobCards';
 import { CandidateHome, CandidateProfileModal, DashboardTitle, EmptyRow, RecruiterHome } from './components/home/MatchHome';
+import { NextInterviewCard } from './components/home/TodayPanel';
+import { InterviewCalendar } from './components/meetings/InterviewCalendar';
 import { SelectedCandidates } from './components/home/SelectedCandidates';
 import { HiringStages } from './components/home/HiringStages';
 import { BillingPage } from './components/billing/BillingPage';
@@ -826,7 +828,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'companies') return <Companies data={data} navigate={navigate} />;
   if (view === 'pipeline') return <Pipeline data={data} setData={setData} />;
   if (view === 'messages') return <Messages role={role} data={data} setData={setData} initialMatchId={openMatchId} />;
-  if (view === 'meetings') return <Meetings role={role} data={data} setData={setData} onOpenMessages={onOpenMessages} />;
+  if (view === 'meetings') return <Meetings role={role} data={data} setData={setData} onOpenMessages={onOpenMessages} navigate={navigate} />;
   if (view === 'saved') return <Saved role={role} data={data} setData={setData} navigate={navigate} />;
   if (view === 'analytics') return <Analytics role={role} data={data} />;
   if (view === 'jobs') return <Jobs data={data} reload={reload} onAddJobs={onAddJobs} manualJobRequest={manualJobRequest} onOpenMessages={onOpenMessages} editJobId={editJobId} />;
@@ -1284,7 +1286,7 @@ function Messages({ role, data, setData, initialMatchId }: { role: Role; data: B
  * own page (not folded into Conversations): meetings are a cross-match
  * concept, so "what's on my calendar this week" shouldn't require opening
  * every thread one by one to check. */
-function Meetings({ role, data, setData, onOpenMessages }: { role: Role; data: Bootstrap; setData: (d: Bootstrap) => void; onOpenMessages: (matchId: string) => void }) {
+function Meetings({ role, data, setData, onOpenMessages, navigate }: { role: Role; data: Bootstrap; setData: (d: Bootstrap) => void; onOpenMessages: (matchId: string) => void; navigate: (v: View) => void }) {
   const [schedulingFor, setSchedulingFor] = useState<JobMatch | null>(null);
   const now = Date.now();
   // Cancelled meetings (a process closed: someone got hired or it was stopped) move to the past list.
@@ -1320,7 +1322,11 @@ function Meetings({ role, data, setData, onOpenMessages }: { role: Role; data: B
 
   return <div className="page meetings-page">
     <div className="page-title"><div><span className="overline">Calendar</span><h1>{featureOn('filters') ? 'Interviews' : role === 'candidate' ? 'Recruiter Invitation' : 'Meetings'}</h1><p>{role === 'candidate' ? 'Every interview and call teams invited you to, with one-click add to Google, Outlook, or Apple Calendar.' : 'Every scheduled call across your matches, with one-click add to Google, Outlook, or Apple Calendar.'}</p></div></div>
+    {/* Next interview, moved here from the dashboard (founder, 2026-11-26). */}
+    <NextInterviewCard data={data} navigate={navigate} />
     <CalendarSync userId={data.viewer.id} />
+    {/* Every booked interview, Google Calendar style (founder, 2026-11-26). */}
+    <InterviewCalendar data={data} onOpenMessages={onOpenMessages} />
 
     <section className="td-section" id="meetings-upcoming">
       <DashboardTitle icon={Calendar} title="Upcoming" subtitle={`${upcoming.length} scheduled`} />
