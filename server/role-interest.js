@@ -24,7 +24,7 @@ export const FROM_NAME = 'JobMatcher at JobsMatchNow';
  * The email sent to the recruiter: the founder's template (2026-11-25), word for word, plus the legally needed
  * unsubscribe line. Job link: the LinkedIn/original posting URL, else the role's JobsMatchNow page.
  */
-export function interestEmail({ job, candidate, origin, unsubscribeUrl, profileUrl, roleUrl }) {
+export function interestEmail({ job, candidate, origin, unsubscribeUrl, profileUrl, roleUrl, claimLink }) {
   const first = String(job.recruiterName || '').trim().split(/\s+/)[0];
   const posting = job.externalUrl || job.sourceUrl || roleUrl;
   const text = [
@@ -34,6 +34,8 @@ export function interestEmail({ job, candidate, origin, unsubscribeUrl, profileU
     '',
     `Your job posting: ${posting}`,
     `Candidate profile: ${profileUrl}`,
+    // Stage 1 (2026-11-26, behind ROLE_CLAIM_LINKS): one click to every applicant and to claiming the role.
+    ...(claimLink ? [`See all candidates for this role and reply (free): ${claimLink}`] : []),
     '',
     'The candidate is interested in connecting with you. Feel free to review their profile and connect with them on JobsMatchNow.',
     '',
@@ -89,7 +91,7 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
     if (candidate.publicProfile === false) { row.status = 'no_consent'; return { skip: 'no_consent' }; }
     const slug = assignProfileSlug(db, candidate);
     row.status = 'submitted';
-    const msg = interestEmail({ job, candidate, origin, unsubscribeUrl: ctx.unsubscribeUrl(origin, email), profileUrl: `${origin}/${slug}`, roleUrl: `${origin}${rolePath(job)}` });
+    const msg = interestEmail({ job, candidate, origin, unsubscribeUrl: ctx.unsubscribeUrl(origin, email), profileUrl: `${origin}/${slug}`, roleUrl: `${origin}${rolePath(job)}`, claimLink: ctx.claimLink?.(job.id, email) || null });
     return { rowId: row.id, mail: { to: email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: msg.subject, text: msg.text } };
   }).catch(() => null);
   if (!prepared || prepared.skip) return prepared ? { status: prepared.skip } : null;

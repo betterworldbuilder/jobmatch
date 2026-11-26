@@ -5286,3 +5286,46 @@ button.rs-row:hover { border-color:#fd267a; }
   .ap-picker { flex:1 1 100%; }
   .ap-picker select { flex:1; max-width:none; }
 }
+
+/* Import job from link (2026-11-25) */
+.jli { z-index:1; }
+.jli .job-import-form label > span { font-size:12px; font-weight:700; color:#3b4255; }
+.jli .job-import-form > label { display:grid; gap:6px; }
+.jli input, .jli select, .jli textarea { width:100%; border:1px solid #dfe4ec; border-radius:10px; padding:8px 10px; font:inherit; font-size:13px; background:#fff; }
+.jli-tabs { display:flex; flex-wrap:wrap; gap:8px; }
+.jli-tabs button { display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border:1px solid #dfe4ec; border-radius:999px; background:#fff; font-size:12px; font-weight:700; color:#3b4255; cursor:pointer; }
+.jli-tabs button.on { border-color:#0f62fe; background:#eef4ff; color:#0f62fe; }
+.jli-source { background:#f6f8fb; border:1px solid #e6e8ef; border-radius:12px; padding:10px 12px; font-size:12.5px; display:grid; gap:4px; word-break:break-all; }
+.jli-source p { margin:0; }
+.jli-fallback { display:grid; gap:8px; }
+.jli-labels { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.jli-tag { margin-left:6px; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:800; }
+.jli-tag.ok { background:#e8f7ee; color:#11703a; }
+.jli-tag.check { background:#fff6e0; color:#8a5a00; }
+.jli-salary { display:grid; grid-template-columns:1fr 1fr 70px; gap:6px; }
+.jli-dupes { display:grid; gap:6px; }
+.jli-dupes details { border:1px solid #f1d3d0; border-radius:10px; padding:6px 10px; font-size:12.5px; }
+.jli .job-import-actions { display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; }
+@media (max-width:640px) { .job-import-choices { grid-template-columns:1fr; } .jli .job-import-actions > button { flex:1 1 100%; } }
+
+/* Stage 1 (2026-11-26): recruiter claim page, admin funnel table, claim-link preview */
+.cl-card { max-width:720px; margin:24px auto; padding:24px; background:#fff; border:1px solid #e6e8ef; border-radius:16px; display:grid; gap:12px; }
+.cl-card h1 { margin:0; font-size:24px; }
+.cl-card h2 { margin:8px 0 0; font-size:16px; }
+.cl-sub { margin:0; color:#5b6475; font-size:13.5px; }
+.cl-preview { margin:0; padding:8px 12px; border-radius:10px; background:#fff6e0; color:#8a5a00; font-size:12.5px; font-weight:700; }
+.cl-list { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+.cl-list a { display:flex; gap:12px; align-items:center; padding:10px 12px; border:1px solid #e6e8ef; border-radius:12px; color:inherit; text-decoration:none; }
+.cl-list a:hover { border-color:#0f62fe; }
+.cl-list img, .cl-initials { width:44px; height:44px; border-radius:50%; object-fit:cover; flex:none; }
+.cl-initials { display:grid; place-items:center; background:#eef4ff; color:#0f62fe; font-weight:800; }
+.cl-list span { display:grid; gap:2px; min-width:0; }
+.cl-list small { color:#5b6475; font-size:12px; }
+.cl-list em { font-style:normal; color:#0f62fe; font-size:12px; }
+.cl-empty, .cl-note { margin:0; color:#5b6475; font-size:13px; }
+.cl-done { margin:0; padding:10px 12px; border-radius:10px; background:#e8f7ee; color:#11703a; font-weight:700; }
+.stage1-scroll { overflow-x:auto; }
+.stage1-funnel th, .stage1-funnel td { white-space:nowrap; text-align:right; }
+.stage1-funnel th:first-child, .stage1-funnel td:first-child { text-align:left; }
+.td-role-email a { flex:none; font-size:10.5px; font-weight:700; color:#0a66c2; text-decoration:none; }
+@media (max-width:640px) { .cl-card { margin:12px 16px; padding:16px; } }

@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import App from './App';
 import { PublicJobPage } from './components/jobfinder/JobFinder';
 import { GroupPage, PublicJobCardPage } from './components/groups/Groups';
-import { PublicProfilePage, RoleLinkPage } from './components/public/PublicPages';
+import { ClaimPage, PublicProfilePage, RoleLinkPage } from './components/public/PublicPages';
 import { APP_RESERVED } from './lib/pendingJob';
 import './index.css';
 import './phone-theme.css';
@@ -18,10 +18,12 @@ const groupSlug = path.match(/^\/app\/([a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?)\/?$
 // jobsmatchnow.com/role/<category>/<code>-<id> and jobsmatchnow.com/firstname.lastname (founder, 2026-11-25).
 const roleSlug = path.match(/^\/role\/[a-z0-9-]{2,30}\/([a-z0-9]+-[a-z0-9]+)\/?$/)?.[1];
 const profileSlug = path.match(/^\/([a-z0-9]+(?:\.[a-z0-9]+)+)\/?$/)?.[1];
-const isFile = /\.(html?|js|css|txt|xml|json|png|jpe?g|svg|ico|webmanifest|apk|pdf)$/i.test(path);
+const claim = path.match(/^\/claim\/([A-Za-z0-9_-]{1,60})\/([0-9a-f]{32})\/?$/);
+const isFile =/\.(html?|js|css|txt|xml|json|png|jpe?g|svg|ico|webmanifest|apk|pdf)$/i.test(path);
 const page = publicJob ? <PublicJobPage jobId={publicJob} />
   : cardJob ? <PublicJobCardPage jobId={cardJob} />
     : groupSlug && !APP_RESERVED.has(groupSlug) ? <GroupPage slug={groupSlug} />
+      : claim ? <ClaimPage jobId={claim[1]} sig={claim[2]} />
       : roleSlug ? <RoleLinkPage slug={roleSlug} />
         : profileSlug && !isFile ? <PublicProfilePage slug={profileSlug} />
           : <App />;

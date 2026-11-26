@@ -87,6 +87,14 @@ export interface WeightedSkill { name: string; weight: number }
 /** A role's salary: the maximum is optional ("From $40k", founder 2026-11-25). */
 export interface SalaryRange { min: number; max?: number; currency: string }
 export type HiringStatus = 'open' | 'interviewing' | 'hired';
+/** Stage 1 (2026-11-26): the recruiter's "See your candidates / claim this role" page. */
+export interface ClaimCandidate { slug: string; name: string; title?: string; photo?: string; yearsExperience?: number; city?: string; country?: string; skills: string[]; appliedAt?: number }
+export interface ClaimView {
+  job: { id: string; title: string; company?: string; location?: string; workMode?: string; type?: string; summary?: string; path: string };
+  candidates: ClaimCandidate[]; hidden: number; claimed: boolean; claimedByYou: boolean; preview: boolean;
+}
+export interface Stage1Week { week: string; likes: number; emailsSent: number; linkOpens: number; claims: number; likeBacks: number; matches: number; conversations: number; interviews: number }
+export interface Stage1Funnel { weeks: Stage1Week[]; snapshot: { rolesLive: number; importedRolesLive: number; importedWithRecruiterEmail: number; claimedRoles: number }; claimLinksOn: boolean }
 export interface Job {
   id: string; employerId: string; title: string; company: string; logo: string; accent: string; location: string;
   companyLogo?: string;
@@ -94,6 +102,8 @@ export interface Job {
   hiringStatus?: HiringStatus;
   /** Recruiter email / phone for this role: only ever sent to its JobFinder owner (never to candidates). */
   contactEmail?: string; contactPhone?: string;
+  /** JobFinder owner only: preview of the recruiter's "See your candidates / claim this role" link. */
+  claimUrl?: string;
   /** The role's own recruiter shown on the card (e.g. imported listings); falls back to the account's. */
   recruiterName?: string; recruiterTitle?: string;
   /** Candidates: this role's recruiter can be reached through the JobsMatchNow relay address. */

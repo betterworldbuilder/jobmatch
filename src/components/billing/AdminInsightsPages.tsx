@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Briefcase, Check, HeartHandshake, Loader2, Send, UserPlus } from 'lucide-react';
 import { api } from '../../api';
-import type { AdminKpi, IntegrationStatus, WebAnalyticsReport } from '../../types';
+import type { AdminKpi, IntegrationStatus, Stage1Funnel, Stage1Week, WebAnalyticsReport } from '../../types';
 import { Heatmap } from './Heatmap';
 import { deviceNotCounted, setDeviceNotCounted, showNoTrackToast } from '../../lib/tracker';
 
@@ -41,7 +41,8 @@ function delta(a: number, b: number) {
 
 export function AdminKpisPage() {
   const [kpis, setKpis] = useState<Record<string, AdminKpi> | null>(null);
-  useEffect(() => { api.adminKpis().then(setKpis).catch(() => undefined); }, []);
+  const [stage1, setStage1] = useState<Stage1Funnel | null>(null);
+  useEffect(() => { api.adminKpis().then(setKpis).catch(() => undefined); api.adminStage1().then(setStage1).catch(() => undefined); }, []);
   if (!kpis) return <div className="page"><Loader2 className="spin" size={20} /></div>;
   return <div className="page admin-kpi-page">
     <div className="page-title"><div><span className="overline">Admin</span><h1>KPI dashboard</h1><p>The 3 numbers that show whether the marketplace works. Real accounts only — demo and sample data excluded.</p></div></div>
@@ -55,8 +56,18 @@ export function AdminKpisPage() {
         <p className="kpi-hint">{k.hint}</p>
       </article>; })}
     </div>
+    {stage1 && <section className="admin-section stage1-funnel">
+      <h3>Stage 1 funnel <small className="muted">(real accounts, per week from Monday)</small></h3>
+      <p className="muted">Roles live {stage1.snapshot.rolesLive} · imported {stage1.snapshot.importedRolesLive} (with recruiter email {stage1.snapshot.importedWithRecruiterEmail}) · claimed {stage1.snapshot.claimedRoles} · claim links in emails: {stage1.claimLinksOn ? 'on' : 'off (ROLE_CLAIM_LINKS)'}</p>
+      <div className="stage1-scroll"><table className="admin-table">
+        <thead><tr>{STAGE1_COLS.map(([, label]) => <th key={label}>{label}</th>)}</tr></thead>
+        <tbody>{stage1.weeks.slice().reverse().map((w) => <tr key={w.week}>{STAGE1_COLS.map(([k]) => <td key={k}>{w[k]}</td>)}</tr>)}</tbody>
+      </table></div>
+    </section>}
   </div>;
 }
+
+const STAGE1_COLS: [keyof Stage1Week, string][] = [['week', 'Week'], ['likes', 'Applies'], ['emailsSent', 'Emails sent'], ['linkOpens', 'Link opens'], ['claims', 'Claims'], ['likeBacks', 'Like-backs'], ['matches', 'Matches'], ['conversations', 'Conversations'], ['interviews', 'Interviews']];
 
 export function AdminTrafficPage() {
   const [days, setDays] = useState(30);

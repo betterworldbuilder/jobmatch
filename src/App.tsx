@@ -190,6 +190,14 @@ export default function App() {
   const [landingModal, setLandingModal] = useState<'login' | 'register' | null>(() => {
     // "View job" on a public group / job page (2026-11-25): /?job=<id>&auth=register|login → sign up or in, then the job.
     const auth = new URLSearchParams(window.location.search).get('auth');
+    // "Claim this role" from a recruiter's link (Stage 1, 2026-11-26): /app/?claim=<jobId>.<sig>&auth=register|login.
+    const claim = new URLSearchParams(window.location.search).get('claim');
+    if (claim && /^[A-Za-z0-9_-]{1,60}\.[0-9a-f]{32}$/.test(claim)) {
+      try { localStorage.setItem('jm-claim', claim); } catch { /* private mode */ }
+      const u = new URL(window.location.href); u.searchParams.delete('claim'); u.searchParams.delete('auth');
+      window.history.replaceState({}, '', u.pathname + u.search);
+      return auth === 'login' ? 'login' : 'register';
+    }
     if (capturePendingFromUrl()) return auth === 'login' ? 'login' : 'register';
     const id = new URLSearchParams(window.location.search).get('jf');
     if (!id) return null;
@@ -673,6 +681,18 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     if (!p) return;
     clearPendingJob(); setJobSheet(p);
     void groupsApi.event('grp_returned', p.src);
+  }, [data === null, data?.viewer.onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A recruiter who came from a "claim this role" link: finish the claim once signed in (and past onboarding).
+  useEffect(() => {
+    if (!data || data.viewer.onboarding) return;
+    let c: string | null = null;
+    try { c = localStorage.getItem('jm-claim'); localStorage.removeItem('jm-claim'); } catch { /* private mode */ }
+    if (!c) return;
+    const dot = c.lastIndexOf('.');
+    const viewerId = data.viewer.id;
+    api.postClaim(c.slice(0, dot), c.slice(dot + 1))
+      .then(async (r) => { setData(await api.bootstrap(viewerId)); setView('home'); window.alert(r.already ? 'This role is already in your My Jobs list.' : 'Role claimed: it is now in your My Jobs list, with the candidates who applied.'); })
+      .catch((e) => window.alert(e instanceof Error ? e.message : 'Could not claim this role'));
   }, [data === null, data?.viewer.onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const open = (event: Event) => { const id = (event as CustomEvent<{ jobId: string }>).detail?.jobId; if (id) setJobSheet({ id }); };

@@ -47,6 +47,7 @@ function RoleEmailCell({ job, onSaved }: { job: Job; onSaved: () => Promise<void
     <input type="email" value={value} placeholder="Add recruiter email" aria-label={`Recruiter email for ${job.title}`}
       onChange={(e) => { setValue(e.target.value); setState('idle'); }} onBlur={() => void save()}
       onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+    {job.claimUrl && <a href={job.claimUrl} target="_blank" rel="noopener noreferrer" title="Preview the recruiter's “See your candidates / claim this role” page (your visits are not counted)">Preview link</a>}
   </span>;
 }
 

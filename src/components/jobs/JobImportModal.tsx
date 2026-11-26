@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, BriefcaseBusiness, Check, FileUp, Linkedin, Loader2, Plus, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BriefcaseBusiness, Check, FileUp, Link2, Linkedin, Loader2, Plus, Sparkles, X } from 'lucide-react';
 import { api } from '../../api';
+import { JobLinkImport } from './JobLinkImport';
+import { featureOn } from '../../lib/flags';
 import type { JobImportResult, Person } from '../../types';
 
 type Mode = 'choose' | 'feed' | 'linkedin' | 'success';
@@ -20,6 +22,7 @@ export function JobImportModal({ viewer, onClose, onImported, onManual }: {
   const [result, setResult] = useState<JobImportResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [linkOpen, setLinkOpen] = useState(false);
 
   const finish = (value: JobImportResult) => {
     setResult(value);
@@ -64,7 +67,9 @@ export function JobImportModal({ viewer, onClose, onImported, onManual }: {
         <button onClick={() => setMode('feed')}><span className="blue"><FileUp /></span><strong>ATS or job feed</strong><small>Upload CSV, XML, or JSON</small><ArrowRight /></button>
         <button onClick={() => setMode('linkedin')}><span className="linkedin"><Linkedin /></span><strong>LinkedIn jobs</strong><small>Paste links and descriptions</small><ArrowRight /></button>
         <button onClick={onManual}><span className="pink"><BriefcaseBusiness /></span><strong>Create manually</strong><small>Build one offer from scratch</small><ArrowRight /></button>
+        {featureOn('jobLink') && <button onClick={() => setLinkOpen(true)}><span className="blue"><Link2 /></span><strong>Import job from link</strong><small>Paste a link, review, save or publish</small><ArrowRight /></button>}
       </div>}
+      {linkOpen && <JobLinkImport mode="recruiter" onClose={() => setLinkOpen(false)} onDone={() => { setLinkOpen(false); onImported(); }} />}
 
       {mode === 'feed' && <div className="job-import-form">
         <label><span>Where are the jobs from?</span>

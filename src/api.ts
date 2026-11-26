@@ -1,6 +1,6 @@
 import type { GroupCard, GroupPageData, JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, JobFinderPublicJob, JobGroup } from './types';
 import { acquisitionSource } from './lib/pendingJob';
-import type { AdminCatalog, AdminKpi, AdminPaymentMethods, AdminPlanInput, BankInstructionsPayload, ConnectorKey, IntegrationStatus, LivePlan, RecommendationDoc, WebAnalyticsReport } from './types';
+import type { AdminCatalog, AdminKpi, AdminPaymentMethods, AdminPlanInput, BankInstructionsPayload, ClaimView, ConnectorKey, IntegrationStatus, LivePlan, RecommendationDoc, Stage1Funnel, WebAnalyticsReport } from './types';
 import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
 /** A demo hire shown on the landing ("New Matches Hired"); both people are demo accounts. */
@@ -68,6 +68,22 @@ export const jf = {
   interest: (id: string) => request<{ job: JobFinderPublicJob; reachability: JfReach; liked: boolean; outreach: JfOutreach; consent: JfConsent; shareOptions: { skills: string[]; links: Record<string, string> }; draftBody: string | null; mailer: boolean }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/interest`),
   setConsent: (body: { autoSend: boolean; agree?: boolean; skills: string[]; profileLink: string | null; replyEmail: boolean }) => request<{ consent: JfConsent }>('/api/jobfinder/consent', json('PUT', body)),
   send: (id: string, body: { consent: true; share: { skills: string[]; profileLink: string | null; replyEmail: boolean }; body?: string }) => request<{ outreach: JfOutreach }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/send`, json('POST', body)),
+};
+
+/** Import a job from a link (2026-11-25): analyze → review → save draft / publish. */
+export type LinkField<T = string> = { value: T | null; from: 'source' | 'text' | 'link' | null; review: boolean };
+export type LinkDuplicate = { id: string; title: string; company: string; location: string; status: string; sourceUrl: string; createdAt?: number; description: string };
+export type LinkAnalysis = {
+  mode: 'jobfinder' | 'recruiter'; sourceUrl: string | null; sourceName: string | null; sourceJobId: string | null; provider: string;
+  retrieved: boolean; method: 'imported' | 'pasted' | 'manual'; extraction: string; notice: string | null; reason: string | null; importedAt: string;
+  fields: { title: LinkField; company: LinkField; location: LinkField; workMode: LinkField; type: LinkField; salaryRange: LinkField<{ min: number; max: number; currency: string }>;
+    description: LinkField; skills: LinkField<string[]>; experienceLevel: LinkField; deadline: LinkField; applyUrl: LinkField };
+  duplicates: LinkDuplicate[]; company?: string;
+};
+export const jobLink = {
+  analyze: (body: { url?: string; text?: string; mode: 'jobfinder' | 'recruiter' }) => request<LinkAnalysis>('/api/job-link/analyze', json('POST', body)),
+  duplicates: (body: { mode: 'jobfinder' | 'recruiter'; sourceUrl?: string; title?: string; company?: string; location?: string }) => request<{ duplicates: LinkDuplicate[] }>('/api/job-link/duplicates', json('POST', body)),
+  recruiterDraft: (body: Record<string, unknown>) => request<{ job: Job }>('/api/job-link/recruiter-draft', json('POST', body)),
 };
 
 export const api = {
@@ -149,6 +165,9 @@ export const api = {
   revokeConnectorKey: (userId: string, id: string) => request<{ ok: boolean }>(`/api/me/connector-keys/${encodeURIComponent(id)}?userId=${encodeURIComponent(userId)}`, { method: 'DELETE' }),
   adminPasswordReset: (token: string, password: string) => request<{ ok: boolean; email: string }>('/api/admin/password-reset', { method: 'POST', body: JSON.stringify({ token, password }) }),
   adminKpis: () => request<Record<'registrations' | 'matches' | 'hires', AdminKpi>>('/api/admin/kpis'),
+  adminStage1: () => request<Stage1Funnel>('/api/admin/stage1'),
+  getClaim: (jobId: string, sig: string) => request<ClaimView>(`/api/claim/${encodeURIComponent(jobId)}/${encodeURIComponent(sig)}`),
+  postClaim: (jobId: string, sig: string) => request<{ ok: boolean; jobId: string; already?: boolean }>(`/api/claim/${encodeURIComponent(jobId)}/${encodeURIComponent(sig)}`, { method: 'POST', body: '{}' }),
   adminWebAnalytics: (days: number) => request<WebAnalyticsReport>(`/api/admin/web-analytics?days=${days}`),
   adminIntegrations: () => request<{ integrations: Record<string, IntegrationStatus> }>('/api/admin/integrations'),
   adminSaveIntegration: (vendor: string, payload: { key?: string; enabled?: boolean }) => request<{ integrations: Record<string, IntegrationStatus> }>(`/api/admin/integrations/${vendor}`, { method: 'PUT', body: JSON.stringify(payload) }),

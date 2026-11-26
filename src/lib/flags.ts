@@ -28,6 +28,9 @@ const FLAGS = {
    *  chatbot page + AI settings + home page (founder, 2026-11-25). Switched on for everyone by the founder,
    *  2026-11-25 (?agents=0 hides). */
   agents: { param: 'agents', defaultOn: true },
+  /** "Import job from link" in the recruiter's import window (2026-11-26). Off until the founder enables it;
+   *  preview: ?joblink=1. The JobFinder manager (founder's own account) always shows it. */
+  jobLink: { param: 'joblink', defaultOn: false },
 } as const;
 
 export type FlagName = keyof typeof FLAGS;

@@ -5,9 +5,10 @@
 // - PublicJobPage: /jobs/:id, shareable; "I'm interested" signs in, "Is this your job?" claims it.
 // - JobFinderManager: the JobFinder account's listings, contacts (verified + approved), claims and counts.
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, ExternalLink, Flag, Mail, Plus, RefreshCw, Search, Send, ShieldCheck, X } from 'lucide-react';
+import { AlertTriangle, Check, ExternalLink, Flag, Link2, Mail, Plus, RefreshCw, Search, Send, ShieldCheck, X } from 'lucide-react';
 import { api, groupsApi, jf } from '../../api';
 import { JobGroupsField, LinkedInTools } from '../groups/Groups';
+import { JobLinkImport } from '../jobs/JobLinkImport';
 import type { JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, Job, JobFinderInfo, JobFinderPublicJob } from '../../types';
 
 export const REACH_TEXT: Record<JfReach, string> = {
@@ -256,6 +257,7 @@ export function JobFinderManager() {
   const [open, setOpen] = useState<string | null>(null);
   const [dupes, setDupes] = useState<JfManagerRow['duplicates']>([]);
   const [groupNames, setGroupNames] = useState<Record<string, string>>({});
+  const [linkImport, setLinkImport] = useState(false);
   useEffect(() => { groupsApi.list().then((r) => setGroupNames(Object.fromEntries(r.groups.map((g) => [g.id, g.name])))).catch(() => undefined); }, []);
   const query = useMemo(() => Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), [filters]);
   const load = () => {
@@ -290,8 +292,12 @@ export function JobFinderManager() {
   return <main className="jf-manager">
     <header className="jf-m-head">
       <div><h1>JobFinder listings</h1><p>External jobs listed before their employer joins. Candidates see who added them, how fresh they are and whether the recruiter is reachable.</p></div>
-      <button type="button" className="primary-button" onClick={() => { setEditing(null); setForm({ ...EMPTY_FORM }); }}><Plus size={15} /> Add a job</button>
+      <div className="jf-row-actions">
+        <button type="button" className="primary-button" onClick={() => setLinkImport(true)}><Link2 size={15} /> Import job from link</button>
+        <button type="button" className="secondary-button" onClick={() => { setEditing(null); setForm({ ...EMPTY_FORM }); }}><Plus size={15} /> Add a job</button>
+      </div>
     </header>
+    {linkImport && <JobLinkImport mode="jobfinder" onClose={() => setLinkImport(false)} onDone={() => { setLinkImport(false); load(); }} />}
     <div className="jf-stats">
       <span><b>{totals.jobs}</b> listings</span><span><b>{totals.published}</b> published</span><span><b>{totals.likes}</b> applications</span>
       <span><b>{totals.sent}</b> emails sent</span><span><b>{totals.failed}</b> not sent / failed</span><span><b>{totals.matches}</b> matches</span><span><b>{pending.length}</b> claims to review</span>

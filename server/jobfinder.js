@@ -18,6 +18,10 @@ import { applyJob } from './jobs.js';
 import { ValidationError } from './matching.js';
 import { involvesDemo } from './analytics.js';
 import { assignGroups } from './groups.js';
+import { validateJobUrl } from './url-safety.js';
+
+/** How a listing's content arrived (job-link import, 2026-11-25). */
+export const IMPORT_METHODS = ['imported', 'pasted', 'manual'];
 
 // The founder's "JobFinder" recruiter account is the JobFinder identity (decision 2026-11-25). Override with
 // JOBFINDER_ACCOUNT_IDS (comma-separated) without a code change.
@@ -67,6 +71,11 @@ export function reachabilityOf(db, job) {
   if (c?.approved && c.email && c.verifiedHow && c.verifiedAt && !suppressed(db, c.email)) return 'email';
   if (job.jobFinder?.applyUrl) return 'apply';
   return 'none';
+}
+/** The jobFinder block as members see it: no internal import/publish audit fields. */
+export function memberJobFinder(jf) {
+  const { import: _imp, publishedBy: _by, publishedAt: _at, ...rest } = jf || {};
+  return rest;
 }
 export function refreshPublic(db, job) {
   if (!job.jobFinder) return;
@@ -247,6 +256,7 @@ export function mountJobFinder(app, ctx) {
           matches: db.matches.filter((m) => m.jobId === j.id).length,
           contact: c ? { name: c.name, email: c.email, verifiedHow: c.verifiedHow, verifiedAt: c.verifiedAt, approved: c.approved === true, suppressed: c.email ? suppressed(db, c.email) : false } : null,
           flags: reviewFlags(db, j), duplicates: findDuplicates(db, j), history: (internal.history || []).slice(-10),
+          importInfo: j.jobFinder.import || null, publishedBy: j.jobFinder.publishedBy || null, publishedAt: j.jobFinder.publishedAt || null,
         };
       });
       const sort = String(f.sort || 'created');
@@ -271,9 +281,17 @@ export function mountJobFinder(app, ctx) {
         assignGroups(db, job, req.body);
         if (!job.title) throw new ValidationError('title', 'The job title is required');
         if (!job.company) throw new ValidationError('company', 'The employer / company is required');
+        // Job-link import: the source link must pass the URL safety check; who imported it comes from the session.
+        const imp = req.body.importInfo;
+        if (imp && typeof imp === 'object') {
+          if (job.jobFinder.sourceUrl) job.jobFinder.sourceUrl = validateJobUrl(job.jobFinder.sourceUrl).href;
+          job.jobFinder.import = { method: IMPORT_METHODS.includes(imp.method) ? imp.method : 'manual', extraction: str(imp.extraction, 120), sourceJobId: str(imp.sourceJobId, 80), importedBy: s.sub, importedAt: Date.now() };
+        }
+        if (listingStatus === 'published') Object.assign(job.jobFinder, { publishedBy: s.sub, publishedAt: Date.now() });
         db.jobs.push(job);
         refreshPublic(db, job);
-        history(db, job.id, s.sub, 'created', { listingStatus }, audit);
+        history(db, job.id, s.sub, job.jobFinder.import ? 'imported' : 'created', { listingStatus, ...(job.jobFinder.import ? { method: job.jobFinder.import.method } : {}) }, audit);
+        if (listingStatus === 'published') history(db, job.id, s.sub, 'publish', {}, audit);
         return { job, duplicates: findDuplicates(db, job) };
       });
       res.status(201).json(result);
@@ -292,6 +310,7 @@ export function mountJobFinder(app, ctx) {
           if (to) {
             if (job.jobFinder.listingStatus === 'claimed') { const e = new Error('This listing was claimed by its employer; they manage it now'); e.status = 409; throw e; }
             job.jobFinder.listingStatus = to;
+            if (action === 'publish') Object.assign(job.jobFinder, { publishedBy: s.sub, publishedAt: Date.now() });
             if (action === 'remove') internalOf(db, job.id).removedReason = str(req.body.reason, 300) || 'removed';
           } else if (action === 'checked') {
             job.jobFinder.lastCheckedAt = nowIso();

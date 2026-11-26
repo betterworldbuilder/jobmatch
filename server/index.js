@@ -20,6 +20,7 @@ import { applyJob, assertPublishable, heuristicParse, legacySkills, parseJobText
 import { aiParseJob, importAiAllowed } from './import-ai.js';
 import { afterRoleInterest, mountRoleInterest } from './role-interest.js';
 import { assignProfileSlug, ensureProfileSlugs, findRoleBySlug, maskJobContacts, publicProfileView, rolePath } from './public-urls.js';
+import { claimLinksOn, claimUrl, mountClaims, stage1Funnel } from './stage1.js';
 import { backupToS3, mirrorToS3, removeFromS3, restoreFromS3, s3Enabled } from './storage.js';
 import { parseResumeToProfile } from './resume-parse.js';
 import os from 'node:os';
@@ -63,7 +64,8 @@ import { decodeJws, getTransactionInfo, isAppleConfigured, subscriptionProductId
 import { assertRecruiterAccess, requireAdminRole } from './billing/middleware.js';
 import { confirmPayment } from './billing/confirm.js';
 import { assignGroups, cleanSrc, ensureGroups, mountGroups } from './groups.js';
-import { afterJobFinderLike, ensureCollections as ensureJobFinderCollections, isJobFinderJob, isJobFinderUser, jobFinderIds, mountJobFinder, reachabilityOf } from './jobfinder.js';
+import { afterJobFinderLike, ensureCollections as ensureJobFinderCollections, isJobFinderJob, isJobFinderUser, jobFinderIds, memberJobFinder, mountJobFinder, reachabilityOf } from './jobfinder.js';
+import { mountJobLinkImport } from './job-link-import.js';
 import { runDailyBilling } from './billing/daily.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -2180,7 +2182,7 @@ app.get('/api/bootstrap', async (req, res, next) => {
       // the JobFinder account, and the public salary stays visible. Reachability is refreshed live.
       if (isJobFinderJob(job) && job.jobFinder.listingStatus !== 'claimed') {
         const mine = (db.jfOutreach || []).find((o) => o.jobId === job.id && o.candidateId === viewer.id);
-        const jobFinder = { ...job.jobFinder, reachability: reachabilityOf(db, job), ...(role === 'candidate' ? { myOutreach: mine ? { status: mine.status } : null } : {}) };
+        const jobFinder = { ...memberJobFinder(job.jobFinder), reachability: reachabilityOf(db, job), ...(role === 'candidate' ? { myOutreach: mine ? { status: mine.status } : null } : {}) };
         return { ...withDistance, jobFinder, match, verified: false, likedYou: false, superLikedYou: false, promoted: boostedJobIds.has(job.id) };
       }
       if (role === 'candidate' && !matchedJobIds.has(job.id)) {
@@ -2201,7 +2203,10 @@ app.get('/api/bootstrap', async (req, res, next) => {
       // owner sees it; everyone else only learns that candidates can write through the JobsMatchNow relay address.
       const rec = jobContactRec(db, job.id);
       const contact = rec?.email || rec?.phone
-        ? (job.employerId === viewer.id && isJobFinderUser(viewer) ? { contactEmail: rec.email || undefined, contactPhone: rec.phone || undefined } : (rec.email ? { relayContact: true } : {}))
+        ? (job.employerId === viewer.id && isJobFinderUser(viewer)
+          // claimUrl: the JobFinder owner's preview of the recruiter's "See your candidates" link.
+          ? { contactEmail: rec.email || undefined, contactPhone: rec.phone || undefined, ...(rec.email ? { claimUrl: claimUrl(publicOrigin, sessionSecret, job.id, rec.email) } : {}) }
+          : (rec.email ? { relayContact: true } : {}))
         : {};
       return { ...withDistance, ...contact, ...(demo ? { demo: true } : {}), companyLogo: employer?.companyLogo, recruiter, companyProfile, match, likedYou: Boolean(incomingLike), superLikedYou: Boolean(incomingLike?.superLike), verified: verifiedUser(employer), promoted: boostedJobIds.has(job.id) };
     });
@@ -5188,7 +5193,14 @@ const jobFinderCtx = {
 mountJobFinder(app, jobFinderCtx);
 // Interest emails to the recruiters of the JobFinder account's roles (2026-11-25): anonymised, replies to the relay
 // address, one per candidate per role, weekly cap, signed unsubscribe shared with JobFinder's opt-out list.
-const roleInterestCtx = { store, origin: publicOrigin, contactOf: jobContactRec, scoreCandidateForJob, send: (mail) => sendMail(mail), ...mountRoleInterest(app, { store, secret: () => sessionSecret }) };
+const roleInterestCtx = { store, origin: publicOrigin, contactOf: jobContactRec, scoreCandidateForJob, send: (mail) => sendMail(mail), ...mountRoleInterest(app, { store, secret: () => sessionSecret }),
+  // "See your candidates / claim this role" link in the email: only when ROLE_CLAIM_LINKS=on (Stage 1, 2026-11-26).
+  claimLink: (jobId, email) => (claimLinksOn() ? claimUrl(publicOrigin, sessionSecret, jobId, email) : null) };
+// Stage 1 (2026-11-26): the recruiter's claim page /claim/<jobId>/<sig>, and the weekly funnel for the admin dashboard.
+mountClaims(app, { store, authSession, secret: () => sessionSecret, contactOf: jobContactRec, track });
+app.get('/api/admin/stage1', async (req, res, next) => {
+  try { requireAdminRole(authSession(req)); res.json(stage1Funnel(await store.read())); } catch (error) { next(error); }
+});
 
 // Public addresses (founder, 2026-11-25): jobsmatchnow.com/firstname.lastname (candidates) and
 // jobsmatchnow.com/role/<category>/<code>-<id> (roles). Existing candidates get their address once, at startup.
@@ -5210,11 +5222,13 @@ app.get('/api/public/role/:slug', async (req, res, next) => {
     res.json({ jobId: job.id, path: rolePath(job) });
   } catch (error) { next(error); }
 });
+// Import a job from a link (2026-11-25): URL kept as the source; LinkedIn never fetched; review before save/publish.
+mountJobLinkImport(app, { store, authSession, audit: logBillingEvent, assertRecruiterAccess, limiter: rateLimit({ windowMs: 60000, max: Number(process.env.JOB_LINK_RATE_MAX || 20), bucket: 'job-link' }) });
 
 // Full job view for a signed-in member (same rules as the deck: no contacts; members' salaries after a match).
 function jobFullView(db, job, viewer) {
   const base = jobPublicView(viewer && job.employerId === viewer.id ? job : maskJobContacts(job));
-  if (isJobFinderJob(job) && job.jobFinder.listingStatus !== 'claimed') return { ...base, jobFinder: { ...job.jobFinder, reachability: reachabilityOf(db, job) } };
+  if (isJobFinderJob(job) && job.jobFinder.listingStatus !== 'claimed') return { ...base, jobFinder: { ...memberJobFinder(job.jobFinder), reachability: reachabilityOf(db, job) } };
   const employer = db.users.find((user) => user.id === job.employerId);
   const out = {
     ...base, companyLogo: employer?.companyLogo,
