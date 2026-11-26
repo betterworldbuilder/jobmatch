@@ -158,7 +158,9 @@ export interface Job {
   jobGroups?: string[];
 }
 /** Admin-managed job group (public page /app/{slug}). */
-export interface JobGroup { id: string; slug: string; name: string; description: string; examples: string[]; count?: number; active?: boolean; order?: number; oldSlugs?: string[]; url?: string }
+export interface JobGroup { id: string; slug: string; name: string; description: string; examples: string[]; count?: number; active?: boolean; order?: number; oldSlugs?: string[]; url?: string;
+  /** Title keywords that put a role in the group (custom groups); custom = added by the JobFinder account. */
+  keywords?: string[]; custom?: boolean }
 export type Eligibility = { kind: 'any' | 'us' | 'europe' | 'custom' | 'right-to-work' | 'unknown'; countries?: string[] };
 /** Public job card: what anyone may see before signing in. */
 export interface GroupCard {

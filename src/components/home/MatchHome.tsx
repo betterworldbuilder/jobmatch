@@ -1,13 +1,17 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight, Bell, Bookmark, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, Coffee, Download, Mail,
   Eye, Heart, MapPin, MessageCircle, Pencil, RotateCcw, Sparkles, Star, Target, Trash2, TrendingUp, User, X,
 } from 'lucide-react';
-import { api, jf } from '../../api';
+import { api, groupsApi, jf } from '../../api';
+import { primaryGroup } from '../../lib/jobGroups';
 import { RolePreview } from '../jobs/RolePreview';
 import { UpdateRolesButton } from '../jobs/UpdateRoles';
-import { FOR_WHO, forWhoOf, type ForWho } from '../../lib/forWho';
-import type { Bootstrap, HiringStatus, Job, MatchEvidence, Note, Person, RoleMatchGroup, View } from '../../types';
+import { FOR_WHO, FOR_WHO_CODES, forWhoOf, type ForWho } from '../../lib/forWho';
+
+type GroupBy = 'group' | 'workers' | 'company' | 'status' | 'none';
+type SortBy = 'newest' | 'oldest' | 'title' | 'company' | 'apps' | 'matches';
+import type { Bootstrap, HiringStatus, Job, JobGroup, MatchEvidence, Note, Person, RoleMatchGroup, View } from '../../types';
 
 import { exportJobs, jobRow, type ExportFormat } from '../../lib/jobExport';
 
@@ -393,6 +397,52 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
   const workerCodes = [...new Set(roles.flatMap((g) => forWhoOf(g.job)))];
   const shownRoles = roles.filter((g) => (show === 'all' ? true : show === 'draft' ? isDraft(g.job) : !isDraft(g.job)))
     .filter((g) => !workers || (workers === 'none' ? !forWhoOf(g.job).length : forWhoOf(g.job).includes(workers as ForWho)));
+  // Group by + sort by, combined (founder, 2026-11-26). Choices remembered on this device.
+  const [groupBy, setGroupByState] = useState<GroupBy>(() => { try { return (localStorage.getItem('jm-roles-group') as GroupBy) || 'group'; } catch { return 'group'; } });
+  const [sortBy, setSortByState] = useState<SortBy>(() => { try { return (localStorage.getItem('jm-roles-sort') as SortBy) || 'newest'; } catch { return 'newest'; } });
+  const setGroupBy = (v: GroupBy) => { setGroupByState(v); try { localStorage.setItem('jm-roles-group', v); } catch { /* private mode */ } };
+  const setSortBy = (v: SortBy) => { setSortByState(v); try { localStorage.setItem('jm-roles-sort', v); } catch { /* private mode */ } };
+  const [jobGroups, setJobGroups] = useState<JobGroup[]>([]);
+  useEffect(() => { groupsApi.list().then((r) => setJobGroups(r.groups)).catch(() => undefined); }, []);
+  const appsOf = (g: RoleMatchGroup) => g.candidates.length;
+  const matchesOf = (g: RoleMatchGroup) => data.matches.filter((m) => m.jobId === g.job.id).length;
+  const byText = (a?: string, b?: string) => String(a || '').localeCompare(String(b || ''), undefined, { sensitivity: 'base' });
+  const sortRoles = (list: RoleMatchGroup[]) => list.slice().sort((a, b) => {
+    switch (sortBy) {
+      case 'oldest': return (a.job.createdAt || 0) - (b.job.createdAt || 0);
+      case 'title': return byText(a.job.title, b.job.title);
+      case 'company': return byText(a.job.company, b.job.company) || byText(a.job.title, b.job.title);
+      case 'apps': return appsOf(b) - appsOf(a) || (b.job.createdAt || 0) - (a.job.createdAt || 0);
+      case 'matches': return matchesOf(b) - matchesOf(a) || (b.job.createdAt || 0) - (a.job.createdAt || 0);
+      default: return (b.job.createdAt || 0) - (a.job.createdAt || 0);
+    }
+  });
+  type Section = { key: string; label: string; items: RoleMatchGroup[] };
+  const sections: Section[] = (() => {
+    if (groupBy === 'none') return [{ key: 'all', label: 'All roles', items: sortRoles(shownRoles) }];
+    const keyOf = (g: RoleMatchGroup): [string, string] => {
+      if (groupBy === 'group') { const id = primaryGroup(jobGroups, g.job); return [id || 'zz-other', jobGroups.find((x) => x.id === id)?.name || 'Other']; }
+      if (groupBy === 'workers') { const c = forWhoOf(g.job)[0]; return [c ? String(FOR_WHO_CODES.indexOf(c)).padStart(2, '0') : 'zz', c ? `For ${FOR_WHO[c]}` : 'For who not known']; }
+      if (groupBy === 'company') { const c = (g.job.company || '').trim(); return [c ? c.toLowerCase() : 'zz', c || 'Company not stated']; }
+      return isDraft(g.job) ? ['b', 'Drafts'] : ['a', 'Live'];
+    };
+    const map = new Map<string, Section>();
+    for (const g of shownRoles) { const [key, label] = keyOf(g); if (!map.has(key)) map.set(key, { key, label, items: [] }); map.get(key)!.items.push(g); }
+    const order = groupBy === 'group' ? (k: string) => (k === 'zz-other' ? 999 : jobGroups.findIndex((x) => x.id === k)) : null;
+    return [...map.values()].sort((a, b) => (order ? order(a.key) - order(b.key) : a.key.localeCompare(b.key))).map((s) => ({ ...s, items: sortRoles(s.items) }));
+  })();
+  // "+ Add group" (JobFinder): a custom group with title keywords; matching roles join it at once.
+  const addGroup = async () => {
+    const name = window.prompt('Name of the new job group (e.g. SAP, Product Management, Sales):')?.trim();
+    if (!name) return;
+    const keywords = window.prompt(`Words in a role title that put it in "${name}", comma separated (e.g. sap, abap, s/4hana):`, name.toLowerCase())?.trim() || '';
+    try {
+      const r = await jf.addGroup({ name, keywords });
+      setJobGroups((await groupsApi.list()).groups);
+      await reload();
+      window.alert(`Group "${r.group.name}" added: ${r.added} role(s) joined it. It also has its own public page: jobsmatchnow.com/app/${r.group.slug}`);
+    } catch (e) { window.alert(e instanceof Error ? e.message : 'Could not add the group'); }
+  };
   const publishOne = async (job: Job) => (job.jobFinder ? jf.update(job.id, { action: 'publish' }) : api.updateJob(job.id, { status: 'active' }));
   const publish = async (jobs: Job[]) => {
     if (!jobs.length || publishing) return;
@@ -481,16 +531,11 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
 
 
     <section className="td-section td-role-section" id="td-roles">
-      <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet." action={bestMatchFirst ? 'Sort by: Best Match' : 'Sort by: Name'} onAction={() => setBestMatchFirst((value) => !value)}
+      <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet."
         extra={ownJobs.length || data.viewer.jobFinder ? <span className="td-role-tools">
           {data.viewer.jobFinder && <UpdateRolesButton onDone={() => void reload()} />}
           {data.viewer.jobFinder && <button type="button" className="td-dedupe" onClick={() => void removeDuplicates()} disabled={deduping}>{deduping ? 'Checking…' : 'Remove duplicates'}</button>}
-          {workerCodes.length > 1 && <select className="td-role-show" value={workers} onChange={(e) => setWorkers(e.target.value)} aria-label="For who">
-            <option value="">All workers</option>{workerCodes.map((c) => <option key={c} value={c}>For {FOR_WHO[c]}</option>)}<option value="none">For who not known</option>
-          </select>}
-          {drafts.length > 0 && <select className="td-role-show" value={show} onChange={(e) => setShow(e.target.value as typeof show)} aria-label="Show roles">
-            <option value="all">All roles ({roles.length})</option><option value="live">Live ({roles.length - drafts.length})</option><option value="draft">Drafts ({drafts.length})</option>
-          </select>}
+          {data.viewer.jobFinder && <button type="button" className="td-dedupe" onClick={() => void addGroup()}>+ Add group</button>}
           {drafts.length > 0 && <button type="button" className="td-publish-all" onClick={() => void publish(drafts)} disabled={Boolean(publishing)}>{publishing === 'all' ? 'Publishing…' : `Publish all drafts (${drafts.length})`}</button>}
           {ownJobs.length > 0 && <details className="td-export">
             <summary><Download size={13} /> Export</summary>
@@ -504,8 +549,28 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
           </details>}
           {roles.some((group) => group.job.employerId === data.viewer.id) && <button className="td-delete-all" onClick={() => void deleteRoles(roles.map((group) => group.job).filter((job) => job.employerId === data.viewer.id))} disabled={deleting}><Trash2 size={13} /> {deleting ? 'Deleting…' : 'Delete all jobs'}</button>}
         </span> : null} />
+      {/* Group by + sort by (founder, 2026-11-26): combined, e.g. by job group, newest first inside each group. */}
+      <div className="td-role-toolbar">
+        <label>Group by<select value={groupBy} onChange={(e) => setGroupBy(e.target.value as GroupBy)}>
+          <option value="group">Job group</option><option value="workers">Workers (For who)</option><option value="company">Company</option><option value="status">Live / draft</option><option value="none">No grouping</option>
+        </select></label>
+        <label>Sort by<select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
+          <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="title">Title A–Z</option><option value="company">Company A–Z</option><option value="apps">Most applications</option><option value="matches">Most matches</option>
+        </select></label>
+        {workerCodes.length > 1 && <label>Workers<select value={workers} onChange={(e) => setWorkers(e.target.value)}>
+          <option value="">All workers</option>{workerCodes.map((c) => <option key={c} value={c}>For {FOR_WHO[c]}</option>)}<option value="none">For who not known</option>
+        </select></label>}
+        {drafts.length > 0 && <label>Show<select value={show} onChange={(e) => setShow(e.target.value as typeof show)}>
+          <option value="all">All roles ({roles.length})</option><option value="live">Live ({roles.length - drafts.length})</option><option value="draft">Drafts ({drafts.length})</option>
+        </select></label>}
+        <label>Candidates<select value={bestMatchFirst ? 'best' : 'name'} onChange={(e) => setBestMatchFirst(e.target.value === 'best')}>
+          <option value="best">Best match first</option><option value="name">By name</option>
+        </select></label>
+      </div>
       <div className="td-role-list">
-        {shownRoles.map((group) => {
+        {sections.map((sec) => <Fragment key={sec.key}>
+        {groupBy !== 'none' && <h3 className="td-group-head">{sec.label} <span>{sec.items.length}</span></h3>}
+        {sec.items.map((group) => {
           const open = group.job.id === openId;
           const matchedForJob = data.matches.filter((match) => match.jobId === group.job.id);
           const matchedIds = new Set(matchedForJob.map((match) => match.candidateId));
@@ -554,6 +619,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
             </div>}
           </article>;
         })}
+        </Fragment>)}
       </div>
     </section>
 

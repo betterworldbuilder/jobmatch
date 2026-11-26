@@ -5361,3 +5361,12 @@ button.rs-row:hover { border-color:#fd267a; }
 @media (max-width:639px) { .td-role-head > span.td-role-draft { grid-row:auto; } }
 .td-dedupe { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border:1px solid #dfe4ec; border-radius:999px; background:#fff; color:#3b4255; font-size:12px; font-weight:700; cursor:pointer; }
 .td-dedupe:disabled { opacity:.6; cursor:default; }
+
+/* My Jobs list: group by + sort by toolbar and group headings (2026-11-26) */
+.td-role-toolbar { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; margin:2px 0 12px; }
+.td-role-toolbar label { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:#5b6475; }
+.td-role-toolbar select { padding:5px 8px; border:1px solid #dfe4ec; border-radius:999px; background:#fff; font:inherit; font-size:12px; font-weight:700; color:#0d1834; }
+.td-group-head { display:flex; align-items:center; gap:8px; margin:14px 2px 6px; font-size:14px; font-weight:800; color:#0d1834; }
+.td-group-head:first-child { margin-top:2px; }
+.td-group-head span { padding:1px 8px; border-radius:999px; background:#eef4ff; color:#0f62fe; font-size:11px; font-weight:800; }
+@media (max-width:640px) { .td-role-toolbar label { flex:1 1 45%; } .td-role-toolbar select { flex:1; min-width:0; } }

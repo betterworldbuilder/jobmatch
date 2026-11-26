@@ -21,6 +21,9 @@ export const DEFAULT_GROUPS = [
   { id: 'g-data', slug: 'data', name: 'Data', description: 'Data engineering, data science and analytics roles.', examples: ['Data Engineer', 'Data Scientist', 'Analytics Engineer', 'Data Architect'] },
   { id: 'g-cloud-devops', slug: 'cloud-devops', name: 'Cloud & DevOps', description: 'Cloud, DevOps, SRE and platform roles.', examples: ['Cloud Architect', 'DevOps Engineer', 'SRE', 'Platform Engineer'] },
   { id: 'g-software', slug: 'software-engineering', name: 'Software Engineering', description: 'Backend, frontend, full-stack and mobile engineering roles.', examples: ['Backend Engineer', 'Frontend Engineer', 'Full-Stack Engineer', 'Mobile Engineer'] },
+  // Added by the founder, 2026-11-26.
+  { id: 'g-security', slug: 'cybersecurity', name: 'Cybersecurity', description: 'Security engineering, SOC, cloud security and governance roles.', examples: ['Security Engineer', 'SOC Analyst', 'Cloud Security Engineer', 'Penetration Tester'] },
+  { id: 'g-marketing', slug: 'marketing', name: 'Marketing', description: 'Marketing, growth, content and brand roles.', examples: ['Growth Marketer', 'Digital Marketing Manager', 'Content Marketer', 'Brand Manager'] },
 ];
 const DAY = 86400000;
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$/;
@@ -32,6 +35,13 @@ export const cleanSrc = (v) => (LINK_SOURCES.includes(v) ? v : undefined);
 export function ensureGroups(db) {
   if (!Array.isArray(db.jobGroups)) db.jobGroups = [];
   if (!db.jobGroups.length) DEFAULT_GROUPS.forEach((g, i) => db.jobGroups.push({ ...g, oldSlugs: [], order: i + 1, active: true, createdAt: Date.now() }));
+  // Default groups added later (Cybersecurity, Marketing) join existing databases once; an admin can still hide them.
+  for (const [i, g] of DEFAULT_GROUPS.entries()) {
+    if (!db.jobGroups.some((x) => x.id === g.id) && !db.jobGroups.some((x) => x.slug === g.slug)) db.jobGroups.push({ ...g, oldSlugs: [], order: i + 1, active: true, createdAt: Date.now() });
+  }
+  // Founder, 2026-11-26: "Cloud, DevOps & SRE" (was "Cloud & DevOps"); the link /app/cloud-devops stays.
+  const cloud = db.jobGroups.find((x) => x.id === 'g-cloud-devops');
+  if (cloud && cloud.name === 'Cloud & DevOps') cloud.name = 'Cloud, DevOps & SRE';
 }
 const sorted = (db) => (db.jobGroups || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
 
@@ -160,10 +170,24 @@ export function groupJobs(db, group, q = {}) {
   return { jobs, total: all.length, nationalityNotStated: notStated, facets: { countries, cities, modes: facet('workMode'), levels: facet('level'), withSalary: all.filter((j) => j.salary).length, nationalities: named, europe: all.some((j) => j.eligibility.kind === 'europe') } };
 }
 
-const groupView = (db, g) => ({ id: g.id, slug: g.slug, name: g.name, description: g.description || '', examples: g.examples || [], count: db.jobs.filter((j) => (j.jobGroups || []).includes(g.id) && isPublicJob(db, j)).length });
+const groupView = (db, g) => ({ id: g.id, slug: g.slug, name: g.name, description: g.description || '', examples: g.examples || [], keywords: g.keywords || [], custom: Boolean(g.custom), count: db.jobs.filter((j) => (j.jobGroups || []).includes(g.id) && isPublicJob(db, j)).length });
 
-/** Title-based suggestions for the editor (shown as "suggested", never ticked automatically). */
-const SUGGEST = { 'g-ai-ml': /\b(ai|a\.i\.|llm|machine learning|ml|mlops|deep learning|nlp|computer vision|genai|generative)\b/i, 'g-data': /\b(data|analytics|bi|etl|warehouse|database|dba)\b/i, 'g-cloud-devops': /\b(cloud|devops|sre|site reliability|platform|infrastructure|kubernetes|aws|azure|gcp|mlops)\b/i, 'g-software': /\b(software|backend|back-end|frontend|front-end|full[- ]?stack|mobile|ios|android|developer|programmer)\b/i };
+/** Title-based suggestions for the editor (shown as "suggested", never ticked automatically). Same list as src/lib/jobGroups.ts. */
+const SUGGEST = {
+  'g-ai-ml': /\b(ai|a\.i\.|llm|llms|machine learning|ml|mlops|deep learning|nlp|computer vision|genai|generative)\b/i,
+  'g-data': /\b(data|analytics|bi|etl|warehouse|database|dba|databricks|snowflake)\b/i,
+  'g-cloud-devops': /\b(cloud|devops|devsecops|sre|site reliability|platform|infrastructure|kubernetes|aws|azure|gcp|mlops|cloudops)\b/i,
+  'g-software': /\b(software|backend|back-end|frontend|front-end|full[- ]?stack|mobile|ios|android|developer|programmer|java|python|golang|\.net|react|qa|(?<!penetration )tester)\b/i,
+  'g-security': /\b(security|cyber|cybersecurity|soc|pentest|penetration|iam|infosec|devsecops|grc)\b/i,
+  'g-marketing': /\b(marketing|marketer|growth|seo|sem|content|brand|social media|communications|pr)\b/i,
+};
+const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** Groups a title belongs to: the built-in rules plus each custom group's keywords (active groups only). */
+export function groupsForTitle(db, title) {
+  const t = String(title || '');
+  const active = (db.jobGroups || []).filter((g) => g.active);
+  return sorted({ jobGroups: active }).filter((g) => (SUGGEST[g.id]?.test(t)) || (g.keywords || []).some((k) => new RegExp(`(^|[^\\p{L}\\p{N}])${escRe(k)}([^\\p{L}\\p{N}]|$)`, 'iu').test(t))).map((g) => g.id);
+}
 
 function htmlEscape(s) { return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -263,34 +287,13 @@ export function mountGroups(app, ctx) {
   });
 
   // ---------- Admin ----------
-  const slugTaken = (db, slug, exceptId) => RESERVED_SLUGS.includes(slug) || db.jobGroups.some((g) => g.id !== exceptId && (g.slug === slug || (g.oldSlugs || []).includes(slug)));
-  const applyGroup = (db, g, body, creating) => {
-    if (body.name !== undefined || creating) { const n = str(body.name, 60); if (!n) throw new ValidationError('name', 'A group needs a name'); g.name = n; }
-    if (body.description !== undefined) g.description = str(body.description, 300) || '';
-    if (body.examples !== undefined) g.examples = (Array.isArray(body.examples) ? body.examples : String(body.examples).split(',')).map((x) => str(String(x), 60)).filter(Boolean).slice(0, 12);
-    if (body.order !== undefined) g.order = Math.max(0, Math.min(999, Number(body.order) || 0));
-    if (body.active !== undefined) g.active = body.active === true;
-    if (body.slug !== undefined || creating) {
-      const slug = slugify(body.slug || g.name);
-      if (!SLUG_RE.test(slug)) throw new ValidationError('slug', 'Use lowercase letters, numbers and dashes');
-      if (slugTaken(db, slug, g.id)) throw new ValidationError('slug', `The link name "${slug}" is already used`);
-      if (!creating && g.slug && g.slug !== slug) g.oldSlugs = [...new Set([...(g.oldSlugs || []), g.slug])].filter((x) => x !== slug).slice(-10);
-      g.slug = slug;
-    }
-  };
   app.get('/api/admin/job-groups', async (req, res, next) => {
     try { requireAdmin(req); const db = await store.read(); res.json({ groups: sorted(db).map((g) => ({ ...g, count: groupView(db, g).count, url: `${origin}/app/${g.slug}` })) }); } catch (e) { next(e); }
   });
   app.post('/api/admin/job-groups', async (req, res, next) => {
     try {
       const s = requireAdmin(req);
-      const group = await store.transaction((db) => {
-        ensureGroups(db);
-        const g = { id: `g-${crypto.randomUUID().slice(0, 8)}`, oldSlugs: [], examples: [], description: '', order: db.jobGroups.length + 1, active: true, createdAt: Date.now(), createdBy: s.sub };
-        applyGroup(db, g, req.body || {}, true);
-        db.jobGroups.push(g);
-        return g;
-      });
+      const group = await store.transaction((db) => createGroup(db, req.body || {}, s.sub));
       res.status(201).json({ group: { ...group, url: `${origin}/app/${group.slug}` } });
     } catch (e) { next(e); }
   });
@@ -320,6 +323,45 @@ export function mountGroups(app, ctx) {
       res.json(out);
     } catch (e) { next(e); }
   });
+}
+
+const slugTaken = (db, slug, exceptId) => RESERVED_SLUGS.includes(slug) || db.jobGroups.some((g) => g.id !== exceptId && (g.slug === slug || (g.oldSlugs || []).includes(slug)));
+function applyGroup(db, g, body, creating) {
+  if (body.name !== undefined || creating) { const n = str(body.name, 60); if (!n) throw new ValidationError('name', 'A group needs a name'); g.name = n; }
+  if (body.description !== undefined) g.description = str(body.description, 300) || '';
+  if (body.examples !== undefined) g.examples = (Array.isArray(body.examples) ? body.examples : String(body.examples).split(',')).map((x) => str(String(x), 60)).filter(Boolean).slice(0, 12);
+  // Title keywords that put a role in this group (custom groups, 2026-11-26), e.g. "SAP, ABAP, S/4HANA".
+  if (body.keywords !== undefined) g.keywords = (Array.isArray(body.keywords) ? body.keywords : String(body.keywords).split(',')).map((x) => str(String(x), 40)).filter(Boolean).slice(0, 20);
+  if (body.order !== undefined) g.order = Math.max(0, Math.min(999, Number(body.order) || 0));
+  if (body.active !== undefined) g.active = body.active === true;
+  if (body.slug !== undefined || creating) {
+    const slug = slugify(body.slug || g.name);
+    if (!SLUG_RE.test(slug)) throw new ValidationError('slug', 'Use lowercase letters, numbers and dashes');
+    if (slugTaken(db, slug, g.id)) throw new ValidationError('slug', `The link name "${slug}" is already used`);
+    if (!creating && g.slug && g.slug !== slug) g.oldSlugs = [...new Set([...(g.oldSlugs || []), g.slug])].filter((x) => x !== slug).slice(-10);
+    g.slug = slug;
+  }
+}
+/** Create a job group (admin page, or the JobFinder account's "Add group"). */
+export function createGroup(db, body, actorId, { custom = false } = {}) {
+  ensureGroups(db);
+  const g = { id: `g-${crypto.randomUUID().slice(0, 8)}`, oldSlugs: [], examples: [], keywords: [], description: '', order: db.jobGroups.length + 1, active: true, createdAt: Date.now(), createdBy: actorId, ...(custom ? { custom: true } : {}) };
+  applyGroup(db, g, body || {}, true);
+  db.jobGroups.push(g);
+  return g;
+}
+/** Roles of an account with no group get the groups their title matches (`onlyGroupId`: add that one group only). */
+export function assignGroupsFromTitles(db, employerId, { onlyGroupId } = {}) {
+  ensureGroups(db);
+  let changed = 0;
+  for (const j of db.jobs) {
+    if (j.employerId !== employerId || j.deletedAt) continue;
+    const match = groupsForTitle(db, j.title);
+    if (onlyGroupId) {
+      if (match.includes(onlyGroupId) && !(j.jobGroups || []).includes(onlyGroupId)) { j.jobGroups = [...(j.jobGroups || []), onlyGroupId].slice(0, 6); changed += 1; }
+    } else if (!(j.jobGroups || []).length && match.length) { j.jobGroups = match.slice(0, 6); changed += 1; }
+  }
+  return changed;
 }
 
 export function suggestGroups(title) {

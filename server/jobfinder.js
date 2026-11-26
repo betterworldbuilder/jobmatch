@@ -17,7 +17,7 @@ import crypto from 'node:crypto';
 import { applyJob, heuristicParse } from './jobs.js';
 import { ValidationError } from './matching.js';
 import { involvesDemo } from './analytics.js';
-import { assignGroups } from './groups.js';
+import { assignGroups, assignGroupsFromTitles, createGroup, groupsForTitle } from './groups.js';
 import { validateJobUrl } from './url-safety.js';
 import { cleanForWho, FOR_WHO_CODES, forWhoOf, inferForWho } from './for-who.js';
 
@@ -279,6 +279,8 @@ export function importScrapedJobs(db, items, { ownerId, audit, setContact, now =
       };
       const dropped = [];
       applyLenient(job, body, dropped);
+      // Job group (founder, 2026-11-26): every imported role gets the groups its title matches when the file names none.
+      if (!(job.jobGroups || []).length) { const g = groupsForTitle(db, job.title).slice(0, 6); if (g.length) job.jobGroups = g; }
       // "For who": what the file says, else worked out from the location / work mode, with the site's region as a hint.
       const fw = cleanForWho(j.forWho)?.length ? cleanForWho(j.forWho) : inferForWho(job, j.workersFrom || '');
       if (fw.length) job.forWho = fw;
@@ -514,6 +516,35 @@ export function mountJobFinder(app, ctx) {
       if (!process.env.JOBFINDER_IMPORT_KEY) { const e = new Error('Batch import is not switched on'); e.status = 404; throw e; }
       if (!importKeyOk(req.headers.authorization)) { const e = new Error('Missing or invalid import key'); e.status = 401; throw e; }
       res.json(await runImport(req.body?.jobs, req.body?.emailDate));
+    } catch (error) { next(error); }
+  });
+  // Job groups for the JobFinder account (founder, 2026-11-26): add a custom group (name + title keywords; matching roles
+  // join it at once), and give every role without a group the groups its title matches.
+  app.post('/api/jobfinder/job-groups', ...(limiter ? [limiter] : []), async (req, res, next) => {
+    try {
+      const s = session(req);
+      const out = await store.transaction((db) => {
+        requireManager(db, s);
+        const owner = jobFinderAccount(db);
+        if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
+        const group = createGroup(db, { name: req.body?.name, keywords: req.body?.keywords, description: req.body?.description }, s.sub, { custom: true });
+        const added = assignGroupsFromTitles(db, owner.id, { onlyGroupId: group.id });
+        audit?.(db, s.sub, 'job_group_created', 'group', group.id, { name: group.name, added });
+        return { group: { id: group.id, name: group.name, slug: group.slug, keywords: group.keywords, custom: true }, added };
+      });
+      res.status(201).json(out);
+    } catch (error) { next(error); }
+  });
+  app.post('/api/jobfinder/assign-groups', ...(limiter ? [limiter] : []), async (req, res, next) => {
+    try {
+      const keyOk = process.env.JOBFINDER_IMPORT_KEY && importKeyOk(req.headers.authorization);
+      if (!keyOk) requireManager(await store.read(), session(req));
+      const out = await store.transaction((db) => {
+        const owner = jobFinderAccount(db);
+        if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
+        return { changed: assignGroupsFromTitles(db, owner.id) };
+      });
+      res.json(out);
     } catch (error) { next(error); }
   });
   // Remove duplicate roles of the JobFinder account (founder, 2026-11-26). { dryRun: true } only lists them.

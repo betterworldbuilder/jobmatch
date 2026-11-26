@@ -73,6 +73,8 @@ export const jf = {
   importFiles: (body: { jobs: unknown[]; emailDate?: string }) => request<ScrapedImportResult>('/api/jobfinder/import-files', json('POST', body)),
   // Duplicate roles of the JobFinder account (2026-11-26): dryRun lists them, otherwise the extra copies are taken off.
   dedupe: (body: { dryRun?: boolean }) => request<DedupeResult>('/api/jobfinder/dedupe', json('POST', body)),
+  // Custom job group (2026-11-26): name + title keywords; matching roles join it at once.
+  addGroup: (body: { name: string; keywords: string }) => request<{ group: { id: string; name: string; slug: string; keywords: string[] }; added: number }>('/api/jobfinder/job-groups', json('POST', body)),
 };
 type DedupeRole = { id: string; title: string; company?: string; location?: string };
 export type DedupeResult = { removed: number; dryRun: boolean; groups: { keep: DedupeRole; removed: DedupeRole[]; kept: (DedupeRole & { why: string })[] }[] };

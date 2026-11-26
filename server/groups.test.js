@@ -51,9 +51,9 @@ test('job groups end to end', async () => {
   await call('POST', '/api/admin/password-reset', { token, password: 'a-strong-admin-pass' });
   const admin = (await call('POST', '/api/auth/login', { email: adminEmail, password: 'a-strong-admin-pass' })).session;
 
-  // The 4 starting groups exist and are public.
+  // The 6 starting groups exist and are public (Cybersecurity + Marketing added 2026-11-26).
   const groups = (await call('GET', '/api/public/groups')).body.groups;
-  assert.deepEqual(groups.map((g) => g.slug), ['ai-machine-learning', 'data', 'cloud-devops', 'software-engineering']);
+  assert.deepEqual(groups.map((g) => g.slug), ['ai-machine-learning', 'data', 'cloud-devops', 'software-engineering', 'cybersecurity', 'marketing']);
   const id = Object.fromEntries(groups.map((g) => [g.slug, g.id]));
 
   // Only admins create groups; names must be unique and not reserved.
