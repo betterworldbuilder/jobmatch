@@ -5469,6 +5469,16 @@ button.rs-row:hover { border-color:#fd267a; }
 .cl-cand-skills { display:flex; flex-wrap:wrap; gap:3px; margin-top:2px; }
 .cl-cand-skills i { font-style:normal; font-size:10.5px; padding:1px 6px; border-radius:999px; background:#eef4ff; color:#0f62fe; }
 
+/* Profile status under the sidebar profile card (2026-11-26). */
+.workspace-switch .profile-status { display:flex; align-items:center; gap:5px; width:100%; margin-top:6px; padding:5px 10px; border:0; border-radius:10px; font:700 11.5px 'Manrope', sans-serif; text-align:left; }
+.workspace-switch .profile-status.ok { background:rgba(17,163,90,.16); color:#4ade80; }
+.workspace-switch .profile-status.todo { background:rgba(245,165,36,.16); color:#fbbf24; cursor:pointer; }
+.workspace-switch .profile-status.todo:hover { background:rgba(245,165,36,.26); }
+/* "My search settings" highlighted after a candidate's quick sign-up. */
+.tp-card.tp-flash { animation:tp-flash 1.2s ease-in-out 3; }
+@keyframes tp-flash { 50% { box-shadow:0 0 0 4px rgba(253,38,122,.35); } }
+@media (prefers-reduced-motion: reduce) { .tp-card.tp-flash { animation:none; box-shadow:0 0 0 3px rgba(253,38,122,.35); } }
+
 /* Quick recruiter sign-up (2026-11-26): name + email only. */
 .auth-quick-note { margin:10px 0 0; color:#5b6475; font-size:12.5px; line-height:1.5; text-align:center; }
 .auth-quick-note .text-button { padding:0; font-size:inherit; text-decoration:underline; }

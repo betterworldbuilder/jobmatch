@@ -27,7 +27,7 @@ import { HeroAlt, HeroDefault, HeroImage } from './components/landing/HeroBanner
 import { CANDIDATE_OFFERS, LaunchOffers } from './components/LaunchOffers';
 import { PlanCardView, TrialCardView } from './components/landing/PlanCards';
 import { ANNUAL_MONTHS_CHARGED, applyLivePlans, BOOST, EXTRA_JOB_SLOT, HEADLINE_PLANS, planCard, POSTING_TERM_DAYS, SINGLE_POSTING, TRIAL } from './lib/plans';
-import { CANDIDATE_STEPS, CandidateWizard } from './components/profile/CandidateWizard';
+import { CandidateWizard } from './components/profile/CandidateWizard';
 import { CandidateProfilePage } from './components/profile/CandidateProfilePage';
 import { RecruiterWizard } from './components/profile/RecruiterWizard';
 import { RecruiterProfilePage } from './components/profile/RecruiterProfilePage';
@@ -696,7 +696,11 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     try { q = localStorage.getItem('jm-quick-start'); localStorage.removeItem('jm-quick-start'); other = Boolean(localStorage.getItem('jm-claim') || localStorage.getItem('jm-next')); } catch { /* private mode */ }
     if (!q || other) return;
     if (data.viewer.role === 'employer') { setView('jobs'); setManualJobRequest((v) => v + 1); showNotice('Welcome! Add your first role: candidates who match it appear in Surf.'); }
-    else if (data.viewer.role === 'candidate') setEditStep(CANDIDATE_STEPS.indexOf('Preferences'));
+    // Candidates: straight to "My search settings" on their dashboard (founder, 2026-11-26).
+    else if (data.viewer.role === 'candidate') {
+      setView('home'); showNotice('Welcome! Set the role you are looking for in My search settings.');
+      window.setTimeout(() => { const el = document.getElementById('tp-search-settings'); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.classList.add('tp-flash'); }, 600);
+    }
   }, [data === null, data?.viewer.onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
   // A recruiter who came from a blurred candidate profile: back to that profile, now unblurred (2026-11-26).
   useEffect(() => {
@@ -773,7 +777,11 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
 
   return <TryDemoContext.Provider value={tryDemo}><RoleBarExtra.Provider value={null}><div className={`app-shell role-${role}${phoneBarV2 ? ' phone-bar-v2' : ''}`}>
     <aside className={mobileNav ? 'sidebar open' : 'sidebar'}><div className="sidebar-head"><Brand /><button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close menu"><X /></button></div>
-      <div className="workspace-switch"><span>Profile</span><button onClick={() => { setView('profile'); setMobileNav(false); }}>{data?.viewer.photo ? <img className="avatar-mini" src={data.viewer.photo} alt="" /> : <div className="avatar-mini">{initials}</div>}<div><strong>{data?.viewer.name || session.name}</strong><small>{role === 'candidate' ? 'Candidate' : 'Recruiter'}</small></div><ArrowRight size={15} /></button></div>
+      <div className="workspace-switch"><span>Profile</span><button onClick={() => { setView('profile'); setMobileNav(false); }}>{data?.viewer.photo ? <img className="avatar-mini" src={data.viewer.photo} alt="" /> : <div className="avatar-mini">{initials}</div>}<div><strong>{data?.viewer.name || session.name}</strong><small>{role === 'candidate' ? 'Candidate' : 'Recruiter'}</small></div><ArrowRight size={15} /></button>
+        {/* Profile status under the card, both sides (founder, 2026-11-26): complete = every required field filled (score ≥ 70). */}
+        {data && ((data.viewer.completeness ?? 0) >= 70
+          ? <span className="profile-status ok"><Check size={13} /> Profile status: Complete</span>
+          : <button type="button" className="profile-status todo" onClick={() => { setEditStep(0); setMobileNav(false); }}>Profile status: To be completed <ArrowRight size={13} /></button>)}</div>
       <nav className="sidebar-nav">{nav.map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)} style={{ ['--c' as string]: NAV_COLORS[item.label] || '#9fb3d9' }}><i className="nav-ico"><Icon size={18} /></i><span>{item.label}</span>{item.view === 'messages' && notifications.length > 0 && <em>{Math.min(notifications.length, 9)}</em>}</button>; })}</nav>
       <div className="sidebar-bottom"><button onClick={() => setRulesOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><ListChecks size={17} /></i>Recruitment process</button><button onClick={() => setConductOpen(true)} style={{ ['--c' as string]: '#34d399' }}><i className="nav-ico"><ShieldCheck size={17} /></i>Code of Conduct</button><button onClick={() => setSupportOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><CircleHelp size={17} /></i>Help center</button><button onClick={() => setSettingsOpen(true)} style={{ ['--c' as string]: '#c4b5fd' }}><i className="nav-ico"><Settings size={17} /></i>Settings</button><button className="logout-button" onClick={onExit} style={{ ['--c' as string]: '#fb7185' }}><i className="nav-ico"><LogOut size={17} /></i>Log out</button><p className="sidebar-legal">© 2026 JobsMatchNow SARL · <a href="/legal.html" target="_blank" rel="noopener">Legal notice</a></p></div>
     </aside>

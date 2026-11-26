@@ -186,7 +186,7 @@ export function TodayPanel({ data, setData, navigate, onEditProfile, onOpenMessa
         </div>
 
         {/* Search settings */}
-        <div className="tp-card">
+        <div className="tp-card" id="tp-search-settings">
           <h3><SlidersHorizontal size={16} /> My search settings</h3>
           <dl className="tp-settings">{settings.map(([k, val]) => <div key={k}><dt>{k}</dt><dd>{val || <em>Not set</em>}</dd></div>)}</dl>
           {candidate && (v.preferences?.desiredRoles?.length || 0) > 1 && <p className="tp-locked">{(v.preferences?.desiredRoles?.length || 1) - 1} more saved {(v.preferences?.desiredRoles?.length || 1) - 1 === 1 ? 'role' : 'roles'}: {v.preferences!.desiredRoles!.slice(1).join(', ')}</p>}
