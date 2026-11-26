@@ -3,7 +3,7 @@ import {
   ArrowRight, Bell, Bookmark, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, Coffee, Download, Mail,
   Eye, Heart, MapPin, MessageCircle, Pencil, RotateCcw, Sparkles, Star, Target, Trash2, TrendingUp, User, X,
 } from 'lucide-react';
-import { api } from '../../api';
+import { api, jf } from '../../api';
 import { RolePreview } from '../jobs/RolePreview';
 import { UpdateRolesButton } from '../jobs/UpdateRoles';
 import type { Bootstrap, HiringStatus, Job, MatchEvidence, Note, Person, RoleMatchGroup, View } from '../../types';
@@ -381,6 +381,25 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
   const topRole = [...roles].sort((a, b) => ((b.matchingCandidates?.length || 0) + b.candidates.length) - ((a.matchingCandidates?.length || 0) + a.candidates.length))[0];
 
   const reload = async () => setData(await api.bootstrap(data.viewer.id));
+  // Drafts in the role list (founder, 2026-11-26): imported JobFinder drafts were invisible here. Draft badge, Publish
+  // (one or all), and a Show filter. JobFinder listings publish through the JobFinder route; others go active.
+  const [show, setShow] = useState<'all' | 'live' | 'draft'>('all');
+  const [publishing, setPublishing] = useState('');
+  const isDraft = (job: Job) => String(job.status).toLowerCase() === 'draft';
+  const drafts = roles.filter((g) => g.job.employerId === data.viewer.id && isDraft(g.job)).map((g) => g.job);
+  const shownRoles = roles.filter((g) => (show === 'all' ? true : show === 'draft' ? isDraft(g.job) : !isDraft(g.job)));
+  const publishOne = async (job: Job) => (job.jobFinder ? jf.update(job.id, { action: 'publish' }) : api.updateJob(job.id, { status: 'active' }));
+  const publish = async (jobs: Job[]) => {
+    if (!jobs.length || publishing) return;
+    if (jobs.length > 1 && !window.confirm(`Publish all ${jobs.length} drafts?\n\nCandidates will see them in Surf and on the public job pages. Check skills, salary and work mode first if you haven't.`)) return;
+    setPublishing(jobs.length === 1 ? jobs[0].id : 'all');
+    const failed: string[] = [];
+    try {
+      for (const job of jobs) { try { await publishOne(job); } catch (e) { failed.push(`${job.title}: ${e instanceof Error ? e.message : 'could not publish'}`); } }
+      await reload();
+    } finally { setPublishing(''); }
+    if (failed.length) window.alert(`${failed.length} not published:\n\n${failed.slice(0, 8).join('\n')}${failed.length > 8 ? '\n…' : ''}\n\nOpen the role with the pencil, complete it, then publish.`);
+  };
   // Delete one role / all roles (founder, 2026-11-25). Always confirmed: a deleted role takes its matches and chats with it.
   const [deleting, setDeleting] = useState(false);
   const deleteRoles = async (jobs: Job[]) => {
@@ -444,6 +463,10 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
       <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet." action={bestMatchFirst ? 'Sort by: Best Match' : 'Sort by: Name'} onAction={() => setBestMatchFirst((value) => !value)}
         extra={ownJobs.length || data.viewer.jobFinder ? <span className="td-role-tools">
           {data.viewer.jobFinder && <UpdateRolesButton onDone={() => void reload()} />}
+          {drafts.length > 0 && <select className="td-role-show" value={show} onChange={(e) => setShow(e.target.value as typeof show)} aria-label="Show roles">
+            <option value="all">All roles ({roles.length})</option><option value="live">Live ({roles.length - drafts.length})</option><option value="draft">Drafts ({drafts.length})</option>
+          </select>}
+          {drafts.length > 0 && <button type="button" className="td-publish-all" onClick={() => void publish(drafts)} disabled={Boolean(publishing)}>{publishing === 'all' ? 'Publishing…' : `Publish all drafts (${drafts.length})`}</button>}
           {ownJobs.length > 0 && <details className="td-export">
             <summary><Download size={13} /> Export</summary>
             <div className="td-export-menu" role="menu">
@@ -457,7 +480,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
           {roles.some((group) => group.job.employerId === data.viewer.id) && <button className="td-delete-all" onClick={() => void deleteRoles(roles.map((group) => group.job).filter((job) => job.employerId === data.viewer.id))} disabled={deleting}><Trash2 size={13} /> {deleting ? 'Deleting…' : 'Delete all jobs'}</button>}
         </span> : null} />
       <div className="td-role-list">
-        {roles.map((group) => {
+        {shownRoles.map((group) => {
           const open = group.job.id === openId;
           const matchedForJob = data.matches.filter((match) => match.jobId === group.job.id);
           const matchedIds = new Set(matchedForJob.map((match) => match.candidateId));
@@ -479,6 +502,10 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
                   </select>
                   : HIRING_STATUS_OPTIONS.find(([value]) => value === status)?.[1]}
               </span>
+              {own && isDraft(group.job) && <span className="td-role-draft" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                <em>Draft · not visible to candidates</em>
+                <button type="button" onClick={() => void publish([group.job])} disabled={Boolean(publishing)}>{publishing === group.job.id ? 'Publishing…' : 'Publish'}</button>
+              </span>}
               {group.job.createdAt ? <span className="td-role-date" title="Date created"><Calendar size={12} /> Created {new Date(group.job.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> : null}
               {showEmail && <RoleEmailCell job={data.jobs.find((j) => j.id === group.job.id) || group.job} onSaved={reload} />}
               <span><Check size={12} /> {matchedForJob.length} matched</span>

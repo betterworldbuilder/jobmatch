@@ -114,6 +114,12 @@ test('route: 404 when switched off, 401 without the right key, drafts with the k
   assert.equal(state.lastEmailDate, '2026-11-25', 'newest date wins, an older one never moves it back');
   assert.ok(state.knownKeys.includes('linkedin:666666') && state.knownKeys.includes('linkedin:888888'));
   assert.equal((await fetch(`${base}/api/jobfinder/import-state`, { headers: { Cookie: other.session } })).status, 403);
+
+  // Imported drafts are listed in the account's own role list (My Jobs list), after the live roles (2026-11-26 fix).
+  const boot = await (await fetch(`${base}/api/bootstrap?userId=${reg.body.user.id}`, { headers: { Cookie: reg.session } })).json();
+  const roleIds = (boot.roleMatches || []).map((g) => g.job.id);
+  assert.ok(roleIds.includes(ok.body.results[0].id), 'the imported draft is in My Jobs list');
+  assert.equal(boot.roleMatches.find((g) => g.job.id === ok.body.results[0].id).job.status, 'draft');
 });
 
 test('recruiter file import: the same role twice in one file, or already listed, is skipped and named', async () => {

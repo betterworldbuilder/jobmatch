@@ -2247,8 +2247,11 @@ app.get('/api/bootstrap', async (req, res, next) => {
     // Every recruiter role receives its own correctly scored candidate list.
     // Candidate contact details remain stripped because these objects reuse the
     // same recruiter-safe payload as the discovery deck.
+    // Own drafts are listed too (founder, 2026-11-26: imported JobFinder drafts were invisible in My Jobs list),
+    // after the live roles; the page marks them Draft with a Publish button.
     const roleMatches = role === 'employer' ? pool.jobs
-      .filter((job) => job.employerId === viewer.id && String(job.status).toLowerCase() === 'active')
+      .filter((job) => job.employerId === viewer.id && ['active', 'draft'].includes(String(job.status).toLowerCase()))
+      .sort((a, b) => (String(a.status) === 'draft') - (String(b.status) === 'draft'))
       .map((job) => {
         const likesByCandidate = new Map(pool.swipes
           .filter((swipe) => swipe.direction === 'like' && swipe.targetType === 'job' && swipe.targetId === job.id)
