@@ -98,5 +98,7 @@ export function publicProfileView(user, photoUrl) {
     languages: (user.languageDetail || []).map((l) => l.name || l).filter(Boolean).slice(0, 8),
     workModes: user.preferences?.workMode?.modes || (user.preferences?.workMode?.mode ? [user.preferences.workMode.mode] : undefined),
     availability: user.preferences?.availability, linkedin, demo: user.demo === true || undefined,
+    // A resume exists (never the file): the page offers "Download my resume" to registered recruiters (2026-11-26).
+    hasResume: Boolean(user.documents?.resume) || undefined,
   };
 }

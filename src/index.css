@@ -5439,3 +5439,19 @@ button.rs-row:hover { border-color:#fd267a; }
 .ap-withdraw { border:0; background:transparent; color:#7a8494; font:inherit; font-size:12px; font-weight:700; text-decoration:underline; cursor:pointer; padding:4px 2px; }
 .ap-withdraw:hover { color:#b42318; }
 .ap-withdraw:disabled { opacity:.6; cursor:default; }
+
+/* Public profile address on every profile card + resume gate on the public page (2026-11-26) */
+.tcard-public-link { display:inline-flex; align-items:center; gap:5px; align-self:flex-start; margin:4px 0; padding:3px 10px; border-radius:999px; background:rgba(255,255,255,.18); color:#fff; font-size:12px; font-weight:700; text-decoration:none; backdrop-filter:blur(4px); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tcard-public-link:hover { background:rgba(255,255,255,.3); text-decoration:underline; }
+.pp-resume-gate { margin:12px 0 0; padding:12px 14px; border:1px solid #cfe0ff; border-radius:12px; background:#f5f8ff; font-size:13.5px; line-height:1.45; }
+.pp-resume-gate p { margin:0 0 10px; }
+/* Public profile blurred until the visitor registers (2026-11-26) */
+.pp-blur-photo { display:block; background:linear-gradient(135deg,#c9d3e3,#e6ecf5); filter:blur(3px); }
+.pp-blur-text { display:inline-block; filter:blur(7px); user-select:none; }
+.pp-locked-body { position:relative; margin-top:10px; }
+.pp-blur-block { filter:blur(6px); user-select:none; pointer-events:none; opacity:.8; }
+.pp-gate { position:absolute; inset:24px 0 auto 0; margin:0 auto; width:min(440px, calc(100% - 24px)); padding:18px; border-radius:16px; background:#fff; border:1px solid #e6e8ef; box-shadow:0 18px 50px rgba(13,24,52,.18); text-align:center; display:grid; gap:8px; }
+.pp-gate strong { font-size:17px; }
+.pp-gate p { margin:0; color:#5b6475; font-size:13.5px; line-height:1.45; }
+.pp-gate .pp-actions { justify-content:center; flex-wrap:wrap; }
+@media (max-width:560px) { .pp-gate { position:relative; inset:auto; margin-top:-120px; } }

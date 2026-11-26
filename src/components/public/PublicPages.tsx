@@ -2,14 +2,16 @@
 //  - jobsmatchnow.com/firstname.lastname: a candidate's public profile (only what they chose to make public);
 //  - jobsmatchnow.com/role/<category>/<code>-<id>: a role, shown with the existing public role card.
 import { useEffect, useState } from 'react';
-import { ArrowRight, Briefcase, Languages, Linkedin, MapPin } from 'lucide-react';
+import { ArrowRight, Briefcase, FileDown, Languages, Linkedin, MapPin } from 'lucide-react';
 import { api, apiBase } from '../../api';
 import type { ClaimView } from '../../types';
 import { PublicJobCardPage, PublicShell } from '../groups/Groups';
 
 type PublicProfile = {
   slug: string; name: string; title?: string; photo?: string; yearsExperience?: number; city?: string; country?: string;
-  about?: string; skills: string[]; languages: string[]; workModes?: string[]; availability?: string; linkedin?: string; demo?: boolean;
+  about?: string; skills: string[]; languages: string[]; workModes?: string[]; availability?: string; linkedin?: string; demo?: boolean; hasResume?: boolean;
+  /** Blurred teaser for visitors who are not signed-in recruiters (2026-11-26). */
+  locked?: boolean; moreSkills?: number;
 };
 
 const asset = (p?: string) => (!p ? '' : /^(https?:|data:)/.test(p) ? p : `${apiBase}${p}`);
@@ -17,18 +19,47 @@ const asset = (p?: string) => (!p ? '' : /^(https?:|data:)/.test(p) ? p : `${api
 export function PublicProfilePage({ slug }: { slug: string }) {
   const [p, setP] = useState<PublicProfile | null>(null);
   const [error, setError] = useState('');
+  const [resumeAsk, setResumeAsk] = useState(false);
   useEffect(() => {
     // ?v= from a recruiter email: lets the candidate see "Application viewed" (2026-11-26).
     const v = new URLSearchParams(window.location.search).get('v');
-    fetch(`${apiBase}/api/public/profile/${encodeURIComponent(slug)}${v && /^[0-9a-f-]{36}$/.test(v) ? `?v=${v}` : ''}`).then(async (r) => {
+    // credentials: a signed-in recruiter gets the full profile; visitors get the blurred teaser (2026-11-26).
+    fetch(`${apiBase}/api/public/profile/${encodeURIComponent(slug)}${v && /^[0-9a-f-]{36}$/.test(v) ? `?v=${v}` : ''}`, { credentials: 'include' }).then(async (r) => {
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(body.error || 'This profile is not public');
-      setP(body.profile); document.title = `${body.profile.name} · JobsMatchNow`;
+      setP(body.profile); document.title = `${body.profile.name || body.profile.title || 'Candidate'} · JobsMatchNow`;
     }).catch((e) => setError(e instanceof Error ? e.message : 'This profile is not public'));
   }, [slug]);
   const where = p ? [p.city, p.country].filter(Boolean).join(', ') : '';
   return <PublicShell>
     {!p ? <section className="jf-public-card"><h1>{error ? 'Profile not available' : 'Loading…'}</h1>{error && <p>{error}. <a href="/app/">Open JobsMatchNow</a></p>}</section>
+      : p.locked ? <section className="pp-card pp-locked">
+        {/* Blurred until the visitor registers as a recruiter (founder, 2026-11-26). Hidden parts are never sent. */}
+        <div className="pp-head">
+          <span className="pp-photo pp-blur-photo" aria-hidden="true" />
+          <div>
+            <h1><span className="pp-blur-text" aria-label="Name hidden until you register">Candidate Name</span></h1>
+            {p.title && <p className="pp-title">{p.title}{p.yearsExperience ? ` · ${p.yearsExperience} yrs` : ''}</p>}
+            <p className="pp-meta">{where && <span><MapPin size={13} /> {where}</span>}{p.workModes?.length ? <span><Briefcase size={13} /> {p.workModes.join(' · ')}</span> : null}{p.availability && <span>Available {p.availability}</span>}</p>
+          </div>
+        </div>
+        <div className="pp-locked-body">
+          <div className="pp-blur-block" aria-hidden="true">
+            <h2>About</h2><p>Experienced professional with a strong track record delivering products and platforms for fast-growing teams across Asia and Europe, ready for the next challenge.</p>
+            <h2>Skills</h2><div className="pp-chips">{[...p.skills, ...Array.from({ length: Math.min(8, p.moreSkills || 4) }, (_, i) => `Skill ${i + 1}`)].map((s, i) => <span key={`${s}-${i}`}>{s}</span>)}</div>
+            <h2>Languages</h2><div className="pp-chips"><span>English</span><span>Vietnamese</span></div>
+            {p.hasResume && <><h2>Resume</h2><p>Resume.pdf · 2 pages</p></>}
+          </div>
+          <div className="pp-gate">
+            <strong>Register free to see this candidate</strong>
+            <p>Name, photo, full profile{p.hasResume ? ', resume' : ''} and skills{p.skills.length ? ` (${p.skills.join(', ')}${p.moreSkills ? ` and ${p.moreSkills} more` : ''})` : ''}. Create a free recruiter account in 1 minute, then like back to chat.</p>
+            <div className="pp-actions">
+              <a className="primary-button" href={`/app/?auth=register&next=${encodeURIComponent(`/${p.slug}`)}`}>Register free as a recruiter <ArrowRight size={15} /></a>
+              <a className="secondary-button" href={`/app/?auth=login&next=${encodeURIComponent(`/${p.slug}`)}`}>I already have an account</a>
+            </div>
+          </div>
+        </div>
+      </section>
       : <section className="pp-card">
         <div className="pp-head">
           {p.photo ? <img className="pp-photo" src={asset(p.photo)} alt="" /> : <span className="pp-photo pp-initials">{p.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('')}</span>}
@@ -43,10 +74,19 @@ export function PublicProfilePage({ slug }: { slug: string }) {
         {p.skills.length > 0 && <><h2>Skills</h2><div className="pp-chips">{p.skills.map((s) => <span key={s}>{s}</span>)}</div></>}
         {p.languages.length > 0 && <><h2><Languages size={14} /> Languages</h2><div className="pp-chips">{p.languages.map((s) => <span key={s}>{s}</span>)}</div></>}
         <div className="pp-actions">
-          <a className="primary-button" href="/app/">Connect on JobsMatchNow <ArrowRight size={15} /></a>
+          <a className="primary-button" href="/app/?auth=register">Connect on JobsMatchNow <ArrowRight size={15} /></a>
+          {p.hasResume && <button type="button" className="secondary-button" onClick={() => setResumeAsk(true)}><FileDown size={15} /> Download my resume</button>}
           {p.linkedin && <a className="secondary-button" href={p.linkedin} target="_blank" rel="noopener noreferrer"><Linkedin size={15} /> LinkedIn</a>}
         </div>
-        <p className="pp-note">Recruiter? Join JobsMatchNow for free to see full profiles, like back and chat with candidates.</p>
+        {/* Resume (founder, 2026-11-26): recruiters register (free) to view and download it. */}
+        {resumeAsk && <div className="pp-resume-gate" role="dialog" aria-label="Download the resume">
+          <p><b>Register to view {p.name.split(' ')[0]}&rsquo;s resume.</b> Create a free recruiter account on JobsMatchNow (1 minute). Like {p.name.split(' ')[0]} back: when you both say yes, the full resume and contact details unlock and you can chat right away.</p>
+          <div className="pp-actions">
+            <a className="primary-button" href="/app/?auth=register">Register free as a recruiter <ArrowRight size={15} /></a>
+            <a className="secondary-button" href="/app/?auth=login">I already have an account</a>
+          </div>
+        </div>}
+        <p className="pp-note">Recruiter? Join JobsMatchNow for free to see full profiles and resumes, like back and chat with candidates.</p>
       </section>}
   </PublicShell>;
 }

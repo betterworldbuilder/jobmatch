@@ -5294,8 +5294,20 @@ app.get('/api/public/profile/:slug', async (req, res, next) => {
   try {
     const db = await store.read();
     const user = db.users.find((u) => u.profileSlug && u.profileSlug === String(req.params.slug).toLowerCase());
-    const profile = publicProfileView(user, user?.photo);
-    if (!profile) { const error = new Error('This profile is not public'); error.status = 404; throw error; }
+    const full = publicProfileView(user, user?.photo);
+    if (!full) { const error = new Error('This profile is not public'); error.status = 404; throw error; }
+    // Blurred until the visitor registers (founder, 2026-11-26): only signed-in recruiters, admins and the candidate get
+    // the full profile; everyone else gets a teaser (title, place, years, 3 skills) and NO name, photo, about,
+    // languages or resume (never sent, so the blur can't be peeled off in the browser).
+    const s = authSession(req);
+    const viewer = s && db.users.find((u) => u.id === s.sub);
+    const unlocked = Boolean(viewer) && (viewer.role === 'employer' || viewer.role === 'admin' || s.role === 'admin' || viewer.id === user.id);
+    // The name is blurred too (founder): not sent at all until the visitor registers.
+    const profile = unlocked ? full : {
+      slug: full.slug, name: '', title: full.title, yearsExperience: full.yearsExperience,
+      city: full.city, country: full.country, skills: full.skills.slice(0, 3), moreSkills: Math.max(0, full.skills.length - 3), languages: [],
+      workModes: full.workModes, availability: full.availability, hasResume: full.hasResume, demo: full.demo, locked: true,
+    };
     // Opened from a recruiter email (?v=<mail row id>): the candidate's application shows "Application viewed".
     const v = String(req.query.v || '');
     if (/^[0-9a-f-]{36}$/.test(v)) await store.transaction((d) => markViewedByRow(d, v, user.id)).catch(() => {});

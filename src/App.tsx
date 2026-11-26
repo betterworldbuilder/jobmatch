@@ -191,6 +191,9 @@ export default function App() {
   const [landingModal, setLandingModal] = useState<'login' | 'register' | null>(() => {
     // "View job" on a public group / job page (2026-11-25): /?job=<id>&auth=register|login → sign up or in, then the job.
     const auth = new URLSearchParams(window.location.search).get('auth');
+    // Back to a blurred candidate profile after sign-up / sign-in (2026-11-26): /app/?auth=register&next=/first.last.
+    const next = new URLSearchParams(window.location.search).get('next');
+    if (next && /^\/[a-z0-9]+(?:\.[a-z0-9]+)+\/?$/.test(next)) { try { localStorage.setItem('jm-next', next); } catch { /* private mode */ } }
     // "Claim this role" from a recruiter's link (Stage 1, 2026-11-26): /app/?claim=<jobId>.<sig>&auth=register|login.
     const claim = new URLSearchParams(window.location.search).get('claim');
     if (claim && /^[A-Za-z0-9_-]{1,60}\.[0-9a-f]{32}$/.test(claim)) {
@@ -683,6 +686,13 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     if (!p) return;
     clearPendingJob(); setJobSheet(p);
     void groupsApi.event('grp_returned', p.src);
+  }, [data === null, data?.viewer.onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A recruiter who came from a blurred candidate profile: back to that profile, now unblurred (2026-11-26).
+  useEffect(() => {
+    if (!data || data.viewer.onboarding) return;
+    let n: string | null = null;
+    try { n = localStorage.getItem('jm-next'); localStorage.removeItem('jm-next'); } catch { /* private mode */ }
+    if (n && /^\/[a-z0-9]+(?:\.[a-z0-9]+)+\/?$/.test(n)) window.location.assign(n);
   }, [data === null, data?.viewer.onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
   // A recruiter who came from a "claim this role" link: finish the claim once signed in (and past onboarding).
   useEffect(() => {

@@ -106,8 +106,13 @@ test('JobFinder role: import keeps the private contact; a real candidate apply e
   const roleLink = sent[0].text.match(/Your job posting: (\S+)/)[1];
   assert.match(roleLink, /\/role\/data\/dataeng-[a-z0-9]+$/);
   // Both public addresses resolve.
+  // Anonymous visitors get the blurred teaser (founder, 2026-11-26): no name, photo or about until they register.
   const prof = await call('GET', `/api/public/profile/${me.profileSlug}`);
-  assert.equal(prof.status, 200); assert.equal(prof.body.profile.name, 'Interest Candidate'); assert.equal(prof.body.profile.email, undefined);
+  assert.equal(prof.status, 200); assert.equal(prof.body.profile.locked, true); assert.equal(prof.body.profile.name, ''); assert.equal(prof.body.profile.email, undefined);
+  assert.ok(!JSON.stringify(prof.body).includes('Interest Candidate'), 'the name never reaches a visitor');
+  // A signed-in recruiter gets the full profile.
+  const fullProf = await call('GET', `/api/public/profile/${me.profileSlug}`, undefined, jf.cookie);
+  assert.equal(fullProf.body.profile.name, 'Interest Candidate'); assert.equal(fullProf.body.profile.locked, undefined);
   const role = await call('GET', `/api/public/role/${roleLink.split('/').pop()}`);
   assert.equal(role.status, 200); assert.equal(role.body.jobId, job.id);
   assert.equal((await call('GET', '/api/public/role/nope-zzz')).status, 404);

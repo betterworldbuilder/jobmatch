@@ -213,6 +213,8 @@ export function CandidateCards({ person: p, match, onEdit, unlocked = false, vis
             {p.pronouns && <span className="tcard-pronouns">{p.pronouns}</span>}
             <p className="tcard-hero-title"><Briefcase size={14} /> {p.title || p.headline}</p>
             {p.idVerification && <span className="tcard-idv" title="ID checked during sign-up (preview check)"><ShieldCheck size={12} /> ID checked</span>}
+            {/* Public address jobsmatchnow.com/first.last (founder, 2026-11-26): on every profile card, clickable. */}
+            {p.role === 'candidate' && p.profileSlug && p.publicProfile !== false && <a className="tcard-public-link" href={`/${p.profileSlug}`} target="_blank" rel="noopener noreferrer" onPointerDownCapture={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}><Link2 size={12} /> jobsmatchnow.com/{p.profileSlug}</a>}
             {/* Job status pill removed from the profile view (founder, 2026-11-22: "noise"). */}
             {SHOW_STATUS_PILL && p.role === 'candidate' && p.jobStatus?.kind && <span className={`tcard-status st-${p.jobStatus.kind}`}><i aria-hidden="true" />{jobStatusText(p.jobStatus)}</span>}
             <div className="tcard-hero-meta">
