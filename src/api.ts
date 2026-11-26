@@ -66,7 +66,7 @@ export const jf = {
   applyClick: (id: string) => request<unknown>(`/api/public/jobs/${encodeURIComponent(id)}/apply-click`, json('POST')).catch(() => undefined),
   reportClosed: (id: string) => request<{ ok: boolean; message: string }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/report-closed`, json('POST')),
   claim: (id: string, note: string) => request<{ claim: JfClaim; duplicate?: boolean }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/claim`, json('POST', { note })),
-  interest: (id: string) => request<{ job: JobFinderPublicJob; reachability: JfReach; liked: boolean; outreach: JfOutreach; consent: JfConsent; shareOptions: { skills: string[]; links: Record<string, string> }; draftBody: string | null; mailer: boolean }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/interest`),
+  interest: (id: string) => request<{ job: JobFinderPublicJob; reachability: JfReach; liked: boolean; outreach: JfOutreach; consent: JfConsent; shareOptions: { skills: string[]; links: Record<string, string> }; draftBody: string | null; mailer: boolean; recruiterContacted?: boolean }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/interest`),
   setConsent: (body: { autoSend: boolean; agree?: boolean; skills: string[]; profileLink: string | null; replyEmail: boolean }) => request<{ consent: JfConsent }>('/api/jobfinder/consent', json('PUT', body)),
   send: (id: string, body: { consent: true; share: { skills: string[]; profileLink: string | null; replyEmail: boolean }; body?: string }) => request<{ outreach: JfOutreach }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/send`, json('POST', body)),
   // "Update roles" from Scrapy's folder (2026-11-26).

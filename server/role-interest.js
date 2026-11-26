@@ -13,6 +13,7 @@ import crypto from 'node:crypto';
 import { ensureCollections, hashEmail, isJobFinderJob, isJobFinderUser } from './jobfinder.js';
 import { mailerConfigured, sendMail } from './mailer.js';
 import { assignProfileSlug, rolePath } from './public-urls.js';
+import { isTester, isTestRoleFor } from './test-roles.js';
 
 export const RELAY_EMAIL = process.env.CANDIDATE_RELAY_EMAIL || 'Greatcandidates@jobsmatchnow.com';
 const maxPerRecipientWeek = () => Number(process.env.ROLE_INTEREST_MAX_PER_WEEK || 20);
@@ -75,6 +76,8 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
     const job = db.jobs.find((j) => j.id === jobId);
     const candidate = db.users.find((u) => u.id === candidateId);
     if (!job || !candidate || candidate.role !== 'candidate' || candidate.demo || candidate.sample || job.demo) return null;
+    // A tester account only ever emails about its own test roles (never a real recruiter).
+    if (isTester(candidate) && !isTestRoleFor(job, candidate.id)) return null;
     // THE RULE (founder, 2026-11-26): every role managed by the JobFinder account sends this cold email to its
     // recruiter; roles of any other recruiter account never do.
     const owner = db.users.find((u) => u.id === job.employerId);

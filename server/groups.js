@@ -14,6 +14,7 @@ import crypto from 'node:crypto';
 import { ValidationError } from './matching.js';
 import { involvesDemo } from './analytics.js';
 import { isRestricted } from './test-roles.js';
+import { blankCompany, CONFIDENTIAL, isExternal } from './external-roles.js';
 
 export const RESERVED_SLUGS = ['app', 'api', 'assets', 'admin', 'jobs', 'job', 'ref', 'downloads', 'legal', 'index', 'sw', 'manifest',
   'static', 'login', 'register', 'signup', 'settings', 'home', 'privacy', 'terms', 'help', 'groups', 'group', 'search', 'public', 'icons', 'images'];
@@ -117,11 +118,14 @@ function publicSalary(job) {
 const previewOf = (job) => { const t = String(job.description || job.fullDescription || '').replace(/\s+/g, ' ').trim(); return t.length > 300 ? `${t.slice(0, 297).replace(/\s+\S*$/, '')}…` : t; };
 
 /** What anyone may see about a public job. No description beyond a short preview, no contacts, no recruiter. */
-export function cardView(db, job) {
+export function cardView(db, rawJob) {
+  // External role (JobFinder account): the company stays hidden on public cards too, and its name is blanked in the text.
+  const external = isExternal(db, rawJob);
+  const job = external ? { ...rawJob, description: blankCompany(rawJob.description, rawJob.company), fullDescription: blankCompany(rawJob.fullDescription, rawJob.company), company: CONFIDENTIAL } : rawJob;
   const owner = db.users.find((u) => u.id === job.employerId);
   const groups = (job.jobGroups || []).map((id) => db.jobGroups.find((g) => g.id === id && g.active)).filter(Boolean).map((g) => ({ id: g.id, slug: g.slug, name: g.name }));
   const salary = publicSalary(job);
-  const jf = job.jobFinder && job.jobFinder.listingStatus !== 'claimed' ? { addedBy: 'JobFinder', employerStatus: job.jobFinder.employerStatus || 'pending', source: job.jobFinder.source } : undefined;
+  const jf = job.jobFinder && job.jobFinder.listingStatus !== 'claimed' ? { addedBy: 'JobFinder', employerStatus: job.jobFinder.employerStatus || 'pending', ...(external ? {} : { source: job.jobFinder.source }) } : undefined;
   return {
     id: job.id, title: job.title, company: job.company, location: job.location || null, workMode: job.workMode || null, type: job.type || null,
     level: levelOf(job) || null, postedAt: postedAt(job) || null, salary, salaryAfterMatch: !salary && !jf, groups, preview: previewOf(job),
@@ -279,7 +283,7 @@ export function mountGroups(app, ctx) {
       let path = '/app/';
       if (parts[0] === 'job' && parts[1]) {
         const job = db.jobs.find((j) => j.id === parts[1]);
-        if (isPublicJob(db, job)) { title = `${job.title} at ${job.company} · JobsMatchNow`; description = [job.location, job.workMode].filter(Boolean).join(' · ') || description; path = `/app/job/${job.id}`; }
+        if (isPublicJob(db, job)) { title = `${job.title} at ${isExternal(db, job) ? CONFIDENTIAL : job.company} · JobsMatchNow`; description = [job.location, job.workMode].filter(Boolean).join(' · ') || description; path = `/app/job/${job.id}`; }
       } else if (parts[0]) {
         const { group } = groupBySlug(db, parts[0]);
         if (group?.active) { const n = groupView(db, group).count; title = `${group.name} jobs · JobsMatchNow`; description = `${n} open ${n === 1 ? 'role' : 'roles'}. ${group.description || ''}`.trim(); path = `/app/${group.slug}`; }

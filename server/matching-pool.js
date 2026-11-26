@@ -2,7 +2,8 @@
 // real accounts see only real accounts and real roles. Starter "sample" records (once auto-made for new real
 // accounts, posted under the demo recruiter) cross the wall in neither direction any more: they are hidden
 // from everyone (kept in the database, never shown), and no new ones are created.
-import { hiddenFrom } from './test-roles.js';
+import { hiddenFrom, isTester, isTestRoleFor } from './test-roles.js';
+import { jobFinderIds } from './jobfinder.js';
 
 /** Ids of everyone the user blocked or was blocked by. */
 export function blockedBetween(db, userId) {
@@ -21,6 +22,8 @@ export function matchingPool(db, viewer) {
   const hidden = blockedBetween(db, viewer.id);
   const users = db.users.filter((user) => {
     if (hidden.has(user.id)) return false;
+    // Tester accounts are invisible to everyone but themselves and the JobFinder account (2026-11-26).
+    if (isTester(user) && user.id !== viewer.id && !(viewer.jobFinder === true || jobFinderIds().includes(viewer.id))) return false;
     // Starter samples carry no demo flag, so without this they would fall into the real bucket.
     if (user.sample === true) return false;
     return (user.demo === true) === demo;
@@ -28,8 +31,9 @@ export function matchingPool(db, viewer) {
   const userIds = new Set(users.map((user) => user.id));
   const jobs = db.jobs.filter((job) => {
     if (job.sample === true) return false;
-    // Test roles: only their tester account(s) and their owner see them (2026-11-26).
+    // Test roles: only their tester account(s) and their owner see them; a tester sees nothing else (2026-11-26).
     if (hiddenFrom(job, viewer.id)) return false;
+    if (isTester(viewer) && !isTestRoleFor(job, viewer.id)) return false;
     const employer = db.users.find((user) => user.id === job.employerId);
     const jobIsDemo = job.demo === true || employer?.demo === true;
     return jobIsDemo === demo && userIds.has(job.employerId);

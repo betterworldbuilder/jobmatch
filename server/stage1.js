@@ -19,7 +19,7 @@ export function claimSig(secret, jobId, email) {
 }
 export function claimUrl(origin, secret, jobId, email) { return `${origin}/claim/${encodeURIComponent(jobId)}/${claimSig(secret, jobId, email)}`; }
 
-const real = (u) => Boolean(u) && !u.demo && !u.sample;
+const real = (u) => Boolean(u) && !u.demo && !u.sample && !u.tester; // tester accounts never count (2026-11-26)
 
 /** Candidates who applied (liked) to a role, public profiles only; private ones are only counted. */
 export function applicantsOf(db, jobId) {
@@ -28,7 +28,9 @@ export function applicantsOf(db, jobId) {
   for (const s of likes.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))) {
     if (seen.has(s.actorId)) continue; seen.add(s.actorId);
     const u = (db.users || []).find((x) => x.id === s.actorId && x.role === 'candidate');
-    if (!real(u)) continue;
+    // A tester shows only on its own test roles (so the founder sees the whole recruiter side of a test).
+    const testRole = (db.jobs || []).find((j) => j.id === jobId);
+    if (!real(u) && !(u?.tester && Array.isArray(testRole?.visibleTo) && testRole.visibleTo.includes(u.id))) continue;
     if (u.publicProfile === false || !u.profileSlug) { hidden += 1; continue; }
     const skills = (u.skillsDetail || []).slice().sort((a, b) => (b.level || 0) - (a.level || 0)).map((x) => x.name)
       .concat(u.skills || []).filter((x, i, all) => x && all.indexOf(x) === i).slice(0, 5);

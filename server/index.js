@@ -69,6 +69,7 @@ import { mountJobLinkImport } from './job-link-import.js';
 import { isManager as isJobFinderManager } from './jobfinder.js';
 import { outreachReport } from './outreach.js';
 import { isRestricted } from './test-roles.js';
+import { hideExternalCompany } from './external-roles.js';
 import { runDailyBilling } from './billing/daily.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -443,7 +444,7 @@ app.get('/api/showcase', async (_req, res, next) => {
       .slice(-10).reverse()
       .map((job) => {
         const employer = db.users.find((user) => user.id === job.employerId);
-        return { id: job.id, employerId: job.employerId, title: job.title, company: job.company, companyLogo: employer?.companyLogo, logo: job.logo, accent: job.accent, location: job.location, workMode: job.workMode, remoteScope: job.remoteScope, country: job.country, salary: job.salary, type: job.type, department: job.department, status: job.status, createdAt: job.createdAt, requiredSkills: (job.requiredSkills || []).slice(0, 8), description: job.description, responsibilities: (job.responsibilities || []).slice(0, 5), coverImage: job.coverImage, verified: verifiedUser(employer) };
+        return hideExternalCompany(db, { id: job.id, employerId: job.employerId, title: job.title, company: job.company, companyLogo: employer?.companyLogo, logo: job.logo, accent: job.accent, location: job.location, workMode: job.workMode, remoteScope: job.remoteScope, country: job.country, salary: job.salary, type: job.type, department: job.department, status: job.status, createdAt: job.createdAt, requiredSkills: (job.requiredSkills || []).slice(0, 8), description: job.description, responsibilities: (job.responsibilities || []).slice(0, 5), coverImage: job.coverImage, verified: verifiedUser(employer) }, undefined);
       });
     const candidates = db.users
       .filter((user) => user.role === 'candidate' && user.demo)
@@ -2247,7 +2248,8 @@ app.get('/api/bootstrap', async (req, res, next) => {
           : (rec.email ? { relayContact: true } : {}))
         : {};
       return { ...withDistance, ...contact, ...(demo ? { demo: true } : {}), companyLogo: employer?.companyLogo, recruiter, companyProfile, match, likedYou: Boolean(incomingLike), superLikedYou: Boolean(incomingLike?.superLike), verified: verifiedUser(employer), promoted: boostedJobIds.has(job.id) };
-    });
+    // External roles (JobFinder account): company hidden, nothing sends candidates off JobsMatchNow (2026-11-26).
+    }).map((card) => hideExternalCompany(db, card, viewer.id, viewer.role));
     // Boosted cards ride to the front of the deck, keeping their own relative
     // order. The match score is never touched — a promoted card shows the same
     // fit it would have shown unboosted, and is labelled `promoted` so the UI
@@ -2369,7 +2371,7 @@ app.get('/api/bootstrap', async (req, res, next) => {
         const raw = pool.jobs.find((j) => j.id === s.targetId);
         if (!card && !raw) return null;
         const match = pool.matches.find((m) => m.candidateId === viewer.id && m.jobId === s.targetId);
-        const job = card || { id: raw.id, title: raw.title, company: raw.company, location: raw.location, workMode: raw.workMode, status: raw.status, employerId: raw.employerId };
+        const job = card || hideExternalCompany(db, { id: raw.id, title: raw.title, company: raw.company, location: raw.location, workMode: raw.workMode, status: raw.status, employerId: raw.employerId }, viewer.id, viewer.role);
         // Application tracker (2026-11-26): recruiter contacted → application viewed → answer expected within 48 h.
         const tracker = trackerFor(db, s.targetId, viewer.id) || undefined;
         return { jobId: s.targetId, at: s.createdAt, superLike: s.superLike === true || undefined, src: s.src, matchId: match?.id, open: Boolean(card), job, tracker };
@@ -5290,6 +5292,9 @@ mountJobLinkImport(app, { store, authSession, audit: logBillingEvent, assertRecr
 
 // Full job view for a signed-in member (same rules as the deck: no contacts; members' salaries after a match).
 function jobFullView(db, job, viewer) {
+  return hideExternalCompany(db, jobFullViewRaw(db, job, viewer), viewer?.id, viewer?.role); // external roles: company hidden
+}
+function jobFullViewRaw(db, job, viewer) {
   const base = jobPublicView(viewer && job.employerId === viewer.id ? job : maskJobContacts(job));
   if (isJobFinderJob(job) && job.jobFinder.listingStatus !== 'claimed') return { ...base, jobFinder: { ...memberJobFinder(job.jobFinder), reachability: reachabilityOf(db, job) } };
   const employer = db.users.find((user) => user.id === job.employerId);

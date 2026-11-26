@@ -13,10 +13,11 @@ import { FOR_WHO, FOR_WHO_CODES, FOR_WHO_SHORT, type ForWho } from '../../lib/fo
 import { withDuplicateConfirm } from '../../lib/duplicate';
 import type { JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, Job, JobFinderInfo, JobFinderPublicJob } from '../../types';
 
+// External roles (founder, 2026-11-26): candidates apply on JobsMatchNow; we contact the recruiter for them.
 export const REACH_TEXT: Record<JfReach, string> = {
-  email: 'Recruiter reachable through JobsMatchNow',
-  apply: 'Recruiter contact not yet available · apply on the original site',
-  none: 'Recruiter contact not yet available',
+  email: 'Apply here: JobsMatchNow contacts the recruiter for you',
+  apply: 'Apply here: JobsMatchNow reaches out to the recruiter for you',
+  none: 'Apply here: JobsMatchNow reaches out to the recruiter for you',
 };
 const fmtDate = (s?: string | number) => { if (!s) return ''; const d = new Date(s); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
 const stop = (e: React.SyntheticEvent) => e.stopPropagation();
@@ -32,11 +33,11 @@ export function outreachText(o: JfOutreach) {
 export function JobFinderCardInfo({ info }: { info: JobFinderInfo }) {
   const member = info.employerStatus === 'member';
   return <div className="jf-card-info" onPointerDownCapture={stop}>
-    <p className="jf-added"><b>Added by JobFinder</b>{info.source ? ` · from ${info.source}` : ''}{info.lastCheckedAt ? ` · checked ${fmtDate(info.lastCheckedAt)}` : ''}</p>
-    {!member && <p className="jf-member">Employer status: <b>Pending JobsMatchNow membership</b>. This employer hasn&rsquo;t joined yet: JobFinder listed the job from a public source.</p>}
-    {info.reachability && <p className={`jf-reach ${info.reachability}`}>{info.reachability === 'email' ? <Mail size={11} /> : <AlertTriangle size={11} />} {REACH_TEXT[info.reachability]}</p>}
+    {/* External role: company and source stay hidden until the recruiter joins (founder, 2026-11-26). */}
+    <p className="jf-added"><b>Confidential company</b>{info.lastCheckedAt ? ` · checked ${fmtDate(info.lastCheckedAt)}` : ''}</p>
+    {!member && <p className="jf-member">The company name is shown once the recruiter joins JobsMatchNow.</p>}
+    {info.reachability && <p className="jf-reach email"><Mail size={11} /> {REACH_TEXT[info.reachability]}</p>}
     {info.myOutreach && <p className="jf-reach email"><Check size={11} /> {outreachText(info.myOutreach)}</p>}
-    {info.sourceUrl && <a className="jf-link" href={info.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" onClick={stop}>Original listing <ExternalLink size={10} /></a>}
   </div>;
 }
 
@@ -105,10 +106,15 @@ export function InterestPanel({ jobId, viewerName, onClose }: { jobId: string; v
         <span className="ai-badge">Added by JobFinder</span>
         <h2>{d.job.title}</h2>
         <p className="jf-sub">{d.job.company}{d.job.location ? ` · ${d.job.location}` : ''}</p>
-        <p className="jf-member">This employer hasn&rsquo;t joined JobsMatchNow yet. Your application is saved; a chat opens only if the employer joins and likes you back.</p>
-        {!d.liked && <button type="button" className="primary-button" disabled={busy} onClick={() => void like()}>Apply (save my interest)</button>}
+        {/* External role (founder, 2026-11-26): the candidate stays on JobsMatchNow; we contact the recruiter. */}
+        {!d.liked && <p className="jf-member">Apply here: JobsMatchNow contacts the recruiter for you and follows up so you get an answer within 48 hours.</p>}
+        {!d.liked && <button type="button" className="primary-button" disabled={busy} onClick={() => void like()}>Apply</button>}
+        {d.liked && <div className="jf-applied">
+          <p><Check size={16} /> <b>Applied.</b> {d.recruiterContacted ? 'The recruiter has been contacted.' : 'We’re reaching out to the recruiter for you.'} We follow up to make sure they get back to you within 48 hours.</p>
+          <p className="jf-help">Follow it in <b>Jobs Applied</b>: you’ll see when the recruiter views your profile. A chat opens here as soon as they answer.</p>
+        </div>}
         {d.liked && o && <p className={`jf-status ${o.status}`}>{o.status === 'sent' ? <Check size={15} /> : <AlertTriangle size={15} />} {outreachText(o)}</p>}
-        {d.liked && d.reachability === 'email' && !done && <>
+        {d.liked && d.reachability === 'email' && !done && !d.recruiterContacted && <>
           <h3>Send your interest to the recruiter</h3>
           <p className="jf-help">JobsMatchNow emails the recruiter for you. Their address stays private, and only what you tick below is shared.</p>
           {d.shareOptions.skills.length > 0 && <fieldset className="jf-share"><legend>Skills to mention (up to 8)</legend>
@@ -127,13 +133,9 @@ export function InterestPanel({ jobId, viewerName, onClose }: { jobId: string; v
           <label className="jf-check strong"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> I ask JobsMatchNow to send this message to the recruiter on my behalf</label>
           <button type="button" className="primary-button" disabled={busy || !agree} onClick={() => void send()}><Send size={15} /> {o?.status === 'failed' ? 'Try again' : 'Send my interest'}</button>
         </>}
-        {d.liked && d.reachability !== 'email' && !done && <div className="jf-fallback">
-          <p><b>Recruiter contact not yet available.</b> Your application is saved. We&rsquo;ll let you know if JobFinder confirms a way to reach the recruiter; nothing is sent without your OK.</p>
-        </div>}
-        {d.job.jobFinder.applyUrl && <a className="secondary-button" href={d.job.jobFinder.applyUrl} target="_blank" rel="noopener noreferrer nofollow" onClick={() => void jf.applyClick(jobId)}><ExternalLink size={14} /> Apply on the original site</a>}
         {d.consent.autoSend && <p className="jf-help">One-click sending is on. <button type="button" className="jf-textbtn" disabled={busy} onClick={() => void turnOffOneClick()}>Turn off</button></p>}
         <div className="jf-foot">
-          <span>{d.job.jobFinder.source ? `Source: ${d.job.jobFinder.source}` : ''}{d.job.jobFinder.lastCheckedAt ? ` · checked ${fmtDate(d.job.jobFinder.lastCheckedAt)}` : ''}</span>
+          <span>{d.job.jobFinder.lastCheckedAt ? `Checked ${fmtDate(d.job.jobFinder.lastCheckedAt)}` : ''}</span>
           <button type="button" className="jf-textbtn" onClick={() => void report()}><Flag size={12} /> Report job closed</button>
         </div>
         {note && <p className="jf-help">{note}</p>}

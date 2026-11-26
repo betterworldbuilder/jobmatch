@@ -87,7 +87,10 @@ test('JobFinder role: import keeps the private contact; a real candidate apply e
   const seen = (await call('GET', `/api/bootstrap?userId=${cand.id}`, undefined, cand.cookie)).body;
   const card = seen.jobs.find((j) => j.id === job.id);
   assert.ok(card, 'role in the candidate deck');
-  assert.equal(card.recruiter.name, 'Jane Doe', 'the card shows the role\'s recruiter');
+  // External role (founder, 2026-11-26): company and recruiter stay hidden until the recruiter joins.
+  assert.equal(card.company, 'Confidential company'); assert.equal(card.recruiter, undefined);
+  const leaks = Object.entries(card).filter(([, v]) => /Acme Data|Jane Doe/.test(JSON.stringify(v ?? ''))).map(([k, v]) => `${k}=${JSON.stringify(v).slice(0, 160)}`);
+  assert.deepEqual(leaks, [], 'company and recruiter never reach candidates');
   assert.ok(!JSON.stringify(seen).includes('acme-data.io') && !JSON.stringify(seen).includes('123 4567'), 'email and phone never reach candidates');
 
   const like = await call('POST', '/api/swipes', { actorId: cand.id, targetId: job.id, targetType: 'job', direction: 'like' }, cand.cookie);

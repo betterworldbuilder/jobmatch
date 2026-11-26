@@ -21,6 +21,7 @@ import { assignGroups, assignGroupsFromTitles, createGroup, groupsForTitle } fro
 import { validateJobUrl } from './url-safety.js';
 import { cleanForWho, FOR_WHO_CODES, forWhoOf, inferForWho } from './for-who.js';
 import { hiddenFrom } from './test-roles.js';
+import { hideExternalCompany } from './external-roles.js';
 
 /** How a listing's content arrived (job-link import, 2026-11-25). */
 export const IMPORT_METHODS = ['imported', 'pasted', 'manual'];
@@ -528,6 +529,9 @@ export function mountJobFinder(app, ctx) {
         const email = String(req.body?.testerEmail || '').trim().toLowerCase();
         const tester = db.users.find((u) => String(u.email || '').toLowerCase() === email);
         if (!tester) { const e = new Error('No account with that tester email'); e.status = 404; throw e; }
+        if (tester.role !== 'candidate') { const e = new Error('The tester must be a candidate account'); e.status = 400; throw e; }
+        // Tester account: sees only its test roles, hidden from real recruiters, never emails a real recruiter.
+        tester.tester = true;
         const owner = jobFinderAccount(db);
         if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
         const restrict = (job) => { job.visibleTo = [...new Set([...(job.visibleTo || []), tester.id])]; job.testRole = true; };
@@ -539,7 +543,24 @@ export function mountJobFinder(app, ctx) {
           const j = db.jobs.find((x) => x.id === id && x.employerId === owner.id);
           if (j) { restrict(j); restricted.push(j.id); }
         }
-        return { tester: tester.id, created, restricted };
+        // Clean the tester's activity on REAL roles (applications made before it was a tester): likes, matches, and
+        // report the cold emails that already went to real recruiters because of them (they can't be unsent).
+        const testIds = new Set(db.jobs.filter((j) => Array.isArray(j.visibleTo) && j.visibleTo.includes(tester.id)).map((j) => j.id));
+        const realLikes = db.swipes.filter((s) => s.actorId === tester.id && s.targetType === 'job' && !testIds.has(s.targetId));
+        const sentToReal = (db.roleInterestMails || []).filter((m) => m.candidateId === tester.id && !testIds.has(m.jobId));
+        const report = { realApplicationsRemoved: realLikes.length, coldEmailsAlreadySent: sentToReal.filter((m) => m.status === 'sent').length,
+          coldEmailRolesSent: sentToReal.filter((m) => m.status === 'sent').map((m) => db.jobs.find((j) => j.id === m.jobId)?.title || m.jobId) };
+        if (req.body?.cleanup === true) {
+          const drop = new Set(realLikes);
+          db.swipes = db.swipes.filter((s) => !drop.has(s));
+          const matchIds = new Set(db.matches.filter((m) => m.candidateId === tester.id && !testIds.has(m.jobId)).map((m) => m.id));
+          db.matches = db.matches.filter((m) => !matchIds.has(m.id));
+          db.messages = (db.messages || []).filter((m) => !matchIds.has(m.matchId));
+          // Not-yet-sent rows for real roles are dropped; sent ones stay as the record of what went out.
+          db.roleInterestMails = (db.roleInterestMails || []).filter((m) => !(m.candidateId === tester.id && !testIds.has(m.jobId) && m.status !== 'sent'));
+          report.realMatchesRemoved = matchIds.size;
+        }
+        return { tester: tester.id, created, restricted, ...report };
       });
       res.json(out);
     } catch (error) { next(error); }
@@ -749,7 +770,8 @@ export function mountJobFinder(app, ctx) {
         if (!job || ['draft', 'removed'].includes(job.jobFinder.listingStatus) || hiddenFrom(job, session(req)?.sub)) { const e = new Error('This job is not available'); e.status = 404; throw e; }
         internalOf(db, job.id).stats.views += 1;
         if (req.query.notrack !== '1') track(db, 'jf_job_viewed', { demo: false });
-        const view = publicJobView(db, job);
+        const s0 = session(req);
+        const view = hideExternalCompany(db, publicJobView(db, job), s0?.sub, s0?.role); // external role: company hidden
         // Full details need a sign-in (founder, 2026-11-25): visitors get a short preview only.
         if (!session(req)) {
           const t = String(view.description || view.fullDescription || '').replace(/\s+/g, ' ').trim();
@@ -825,7 +847,9 @@ export function mountJobFinder(app, ctx) {
       const reach = reachabilityOf(db, job);
       const draft = reach === 'email' ? composeMessage({ candidate: user, job, contact: contactOf(db, job.id), share, origin, unsubscribeUrl: '(link)' }) : null;
       res.json({
-        job: publicJobView(db, job), reachability: reach,
+        job: hideExternalCompany(db, publicJobView(db, job), user.id, user.role), reachability: reach,
+        // The recruiter cold email for this candidate and role went out (founder, 2026-11-26).
+        recruiterContacted: (db.roleInterestMails || []).some((m) => m.jobId === job.id && m.candidateId === user.id && m.status === 'sent'),
         liked: db.swipes.some((s) => s.actorId === user.id && s.targetType === 'job' && s.targetId === job.id && s.direction === 'like'),
         outreach: outreachView(db.jfOutreach.find((o) => o.jobId === job.id && o.candidateId === user.id)),
         consent, shareOptions: shareOptions(user), draftBody: draft?.defaultBody || null, mailer: mailerConfigured(),

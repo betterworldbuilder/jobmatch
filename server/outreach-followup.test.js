@@ -63,6 +63,22 @@ test('outreach report: per role and per recruiter; hot = opened, not claimed', (
   assert.equal(r.totals.hot, 1);
 });
 
+test('a tester sees only its test roles, is hidden from real recruiters, never cold-emails a real recruiter', async () => {
+  const db = mk();
+  db.users.push({ id: 't1', role: 'candidate', tester: true, name: 'Tester' }, { id: 'r2', role: 'employer' });
+  db.jobs.push({ id: 'jt', employerId: 'jf1', title: 'Test role', company: 'X', status: 'active', visibleTo: ['t1'], jobFinder: { listingStatus: 'published' } });
+  const pool = matchingPool(db, db.users.find((u) => u.id === 't1'));
+  assert.deepEqual([...pool.jobIds], ['jt'], 'only the test role');
+  assert.equal(matchingPool(db, db.users.find((u) => u.id === 'r2')).userIds.has('t1'), false, 'hidden from a real recruiter');
+  assert.equal(matchingPool(db, db.users.find((u) => u.id === 'jf1')).userIds.has('t1'), true, 'the JobFinder account sees it');
+  const { afterRoleInterest } = await import('./role-interest.js');
+  assert.equal(await afterRoleInterest(ctxOf(db, []), { candidateId: 't1', jobId: 'j1' }), null, 'real role: no cold email');
+  await afterRoleInterest(ctxOf(db, []), { candidateId: 't1', jobId: 'jt' });
+  db.jobContacts.push({ jobId: 'jt', email: 'founder@x.example' });
+  await afterRoleInterest(ctxOf(db, []), { candidateId: 't1', jobId: 'jt' });
+  assert.equal(db.roleInterestMails.filter((m) => m.jobId === 'jt').length, 1, 'its test role: cold email prepared');
+});
+
 test('test roles: only the tester and the owner see them', () => {
   const db = mk(); db.users.push({ id: 't1', role: 'candidate' }); db.jobs[0].visibleTo = ['t1'];
   assert.equal(hiddenFrom(db.jobs[0], 'c1'), true); assert.equal(hiddenFrom(db.jobs[0], 't1'), false); assert.equal(hiddenFrom(db.jobs[0], 'jf1'), false);

@@ -9,7 +9,7 @@ import { hashEmail, isJobFinderUser } from './jobfinder.js';
 
 export function outreachReport(db, { contactOf }) {
   const users = new Map((db.users || []).map((u) => [u.id, u]));
-  const real = (id) => { const u = users.get(id); return Boolean(u) && u.role === 'candidate' && !u.demo && !u.sample; };
+  const real = (id) => { const u = users.get(id); return Boolean(u) && u.role === 'candidate' && !u.demo && !u.sample && !u.tester; };
   const jf = new Set((db.users || []).filter((u) => isJobFinderUser(u)).map((u) => u.id));
   const suppressed = new Set((db.jfSuppress || []).map((s) => s.hash));
   const mails = db.roleInterestMails || []; const follows = db.roleFollowups || []; const claims = db.claimEvents || [];
