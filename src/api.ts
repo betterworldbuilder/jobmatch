@@ -158,7 +158,8 @@ export const api = {
   },
   roleResumeUrl: (userId: string, role: string) => `${apiBase}/api/users/${encodeURIComponent(userId)}/resume/role?role=${encodeURIComponent(role)}`,
   deleteRoleResume: (userId: string, role: string) => request<{ ok: boolean }>(`/api/users/${encodeURIComponent(userId)}/resume/role?role=${encodeURIComponent(role)}`, { method: 'DELETE' }),
-  resumeGap: (userId: string, role: string) => request<{ answer: string; role: string; resumeName: string; provider: string; remaining: number }>(`/api/users/${encodeURIComponent(userId)}/resume/gap`, { method: 'POST', body: JSON.stringify({ role }) }),
+  resumeGap: (userId: string, role: string, question?: string, history?: { role: 'user' | 'assistant'; content: string }[]) => request<{ answer: string; role: string; resumeName: string; provider: string; remaining: number }>(`/api/users/${encodeURIComponent(userId)}/resume/gap`, { method: 'POST', body: JSON.stringify({ role, question, history }) }),
+  resumeGapBasic: (userId: string, role: string) => request<{ role: string; resumeName?: string; noResume?: boolean; noText?: boolean; score?: number | null; matched?: string[]; missing?: string[]; tips?: string[]; jobs?: number; broad?: boolean }>(`/api/users/${encodeURIComponent(userId)}/resume/gap-basic`, { method: 'POST', body: JSON.stringify({ role }) }),
   uploadRecommendationDoc: async (userId: string, file: File): Promise<{ doc: RecommendationDoc & { url: string } }> => {
     const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/recommendation-docs`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });
     const body = await response.json().catch(() => ({}));
