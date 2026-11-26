@@ -36,6 +36,7 @@ import { JobCards } from './components/jobs/JobCards';
 import { CandidateHome, CandidateProfileModal, DashboardTitle, EmptyRow, RecruiterHome } from './components/home/MatchHome';
 import { NextInterviewCard } from './components/home/TodayPanel';
 import { InterviewCalendar } from './components/meetings/InterviewCalendar';
+import { ResumePage } from './components/profile/ResumePage';
 import { SelectedCandidates } from './components/home/SelectedCandidates';
 import { HiringStages } from './components/home/HiringStages';
 import { BillingPage } from './components/billing/BillingPage';
@@ -127,10 +128,11 @@ const candidateNav: NavItem[] = [
   // Renamed "My jobs Search" (founder, 2026-11-26).
   // Renamed "My Next Jobs" (founder, 2026-11-26; was "My jobs Search").
   { label: 'My Next Jobs', short: 'Next Jobs', icon: Compass, anchor: 'td-today' },
-  // Right under My dashboard (founder, 2026-11-25): every job applied to, per target role.
-  { label: 'Jobs Applied (liked)', short: 'Applied', icon: Inbox, view: 'applied' },
-  // The swipe deck the app opens on; candidates call it "Find JobMatches" (founder, 2026-11-26; was "Find My Match").
+  // The swipe deck the app opens on; candidates call it "Find JobMatches" (founder, 2026-11-26; was "Find My Match"),
+  // right under My Next Jobs (founder, 2026-11-26).
   { label: 'Find JobMatches', short: 'Match', icon: Flame, view: 'match' },
+  // Every job applied to, per target role (founder, 2026-11-25).
+  { label: 'Jobs Applied (liked)', short: 'Applied', icon: Inbox, view: 'applied' },
   // Job Matches right under Find JobMatches (founder, 2026-11-26).
   // "Saved" and "Recruiters that like you" left the menu (founder, 2026-11-22); both stay on the Things to do page.
   { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
@@ -785,7 +787,10 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
         {/* Profile status under the card, both sides (founder, 2026-11-26): complete = every required field filled (score ≥ 70). */}
         {data && ((data.viewer.completeness ?? 0) >= 70
           ? <span className="profile-status ok"><Check size={13} /> Profile status: Complete</span>
-          : <button type="button" className="profile-status todo" onClick={() => { setEditStep(0); setMobileNav(false); }}>Profile status: To be completed <ArrowRight size={13} /></button>)}</div>
+          : <button type="button" className="profile-status todo" onClick={() => { setEditStep(0); setMobileNav(false); }}>Profile status: To be completed <ArrowRight size={13} /></button>)}
+        {/* My Resume under the profile (founder, 2026-11-26): candidates only. */}
+        {data && role === 'candidate' && <button type="button" className={view === 'resume' ? 'my-resume-link active' : 'my-resume-link'} onClick={() => { setActiveAnchor(''); setView('resume'); setMobileNav(false); }}>
+          <FileText size={14} /> My Resume <small>{(() => { const n = (data.viewer.documents?.resume ? 1 : 0) + Object.keys(data.viewer.documents?.roleResumes || {}).length; return n ? `${n} file${n > 1 ? 's' : ''}` : 'Add yours'; })()}</small></button>}</div>
       <nav className="sidebar-nav">{nav.map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)} style={{ ['--c' as string]: NAV_COLORS[item.label] || '#9fb3d9' }}><i className="nav-ico"><Icon size={18} /></i><span>{item.label}</span>{item.view === 'messages' && notifications.length > 0 && <em>{Math.min(notifications.length, 9)}</em>}</button>; })}</nav>
       <div className="sidebar-bottom"><button onClick={() => setRulesOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><ListChecks size={17} /></i>Recruitment process</button><button onClick={() => setConductOpen(true)} style={{ ['--c' as string]: '#34d399' }}><i className="nav-ico"><ShieldCheck size={17} /></i>Code of Conduct</button><button onClick={() => setSupportOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><CircleHelp size={17} /></i>Help center</button><button onClick={() => setSettingsOpen(true)} style={{ ['--c' as string]: '#c4b5fd' }}><i className="nav-ico"><Settings size={17} /></i>Settings</button><button className="logout-button" onClick={onExit} style={{ ['--c' as string]: '#fb7185' }}><i className="nav-ico"><LogOut size={17} /></i>Log out</button><p className="sidebar-legal">© 2026 JobsMatchNow SARL · <a href="/legal.html" target="_blank" rel="noopener">Legal notice</a></p></div>
     </aside>
@@ -830,6 +835,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'companies') return <Companies data={data} navigate={navigate} />;
   if (view === 'pipeline') return <Pipeline data={data} setData={setData} />;
   if (view === 'messages') return <Messages role={role} data={data} setData={setData} initialMatchId={openMatchId} />;
+  if (view === 'resume' && role === 'candidate') return <ResumePage data={data} setData={setData} navigate={navigate} />;
   if (view === 'meetings') return <Meetings role={role} data={data} setData={setData} onOpenMessages={onOpenMessages} navigate={navigate} />;
   if (view === 'saved') return <Saved role={role} data={data} setData={setData} navigate={navigate} />;
   if (view === 'analytics') return <Analytics role={role} data={data} />;

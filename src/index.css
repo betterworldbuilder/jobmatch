@@ -5469,6 +5469,31 @@ button.rs-row:hover { border-color:#fd267a; }
 .cl-cand-skills { display:flex; flex-wrap:wrap; gap:3px; margin-top:2px; }
 .cl-cand-skills i { font-style:normal; font-size:10.5px; padding:1px 6px; border-radius:999px; background:#eef4ff; color:#0f62fe; }
 
+/* My Resume (2026-11-26): sidebar link under the profile + the page. */
+.workspace-switch .my-resume-link { display:flex; align-items:center; gap:6px; width:100%; margin-top:6px; padding:7px 10px; border:1px solid rgba(255,255,255,.12); border-radius:10px; background:rgba(255,255,255,.06); color:#e8ecf7; font:700 12.5px 'Manrope',sans-serif; text-align:left; cursor:pointer; }
+.workspace-switch .my-resume-link small { margin-left:auto; color:#9fb0d6; font-weight:600; font-size:11px; }
+.workspace-switch .my-resume-link:hover, .workspace-switch .my-resume-link.active { background:rgba(253,38,122,.18); border-color:rgba(253,38,122,.45); }
+.rs-page { max-width:920px; }
+.rs-plan { margin:0 0 14px; padding:10px 14px; border-radius:12px; background:#fff7e8; border:1px solid #f6dfb0; color:#5c4400; font-size:13px; }
+.rs-plan span { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.rs-plan .text-button { padding:0; color:#c2410c; font-weight:800; text-decoration:underline; }
+.rs-card { margin:0 0 12px; padding:16px 18px; background:#fff; border:1px solid #e6e8ef; border-radius:16px; }
+.rs-card.rs-main { border-color:#f9c3d8; background:linear-gradient(180deg,#fff,#fff6fa); }
+.rs-card header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.rs-card h2 { margin:2px 0 0; font:800 17px 'Manrope',sans-serif; color:#0d1834; }
+.rs-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.rs-locked { color:#9a5b00; border-color:#f3d9a4; background:#fffaf0; }
+.rs-file { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid #eceef4; border-radius:12px; background:#fafbfd; }
+.rs-file > svg { color:#fd267a; flex:none; }
+.rs-file span { display:grid; gap:2px; min-width:0; flex:1; }
+.rs-file b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13.5px; }
+.rs-file small, .rs-muted { color:#667085; font-size:12px; }
+.rs-file.empty { border-style:dashed; }
+.rs-gap { margin-top:10px; padding:10px 12px; border-radius:12px; background:#f5f3ff; border:1px solid #e4defc; display:grid; gap:6px; }
+.rs-gap-head { display:flex; align-items:center; gap:6px; flex-wrap:wrap; color:#4c1d95; font-size:13px; }
+.rs-gap-head > button { margin-left:auto; }
+.rs-gap-out { white-space:pre-wrap; font-size:13px; line-height:1.55; color:#1f2937; background:#fff; border-radius:10px; padding:10px 12px; border:1px solid #ece8fb; }
+
 /* Interviews calendar (2026-11-26): Google Calendar-style month / week view of every booked interview. */
 .ic-wrap { background:#fff; border:1px solid #e3e6ee; border-radius:16px; padding:14px 16px 16px; }
 .ic-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; }

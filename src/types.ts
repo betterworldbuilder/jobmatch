@@ -1,5 +1,5 @@
 export type Role = 'candidate' | 'employer' | 'admin';
-export type View = 'jobfinder' | 'outreach' | 'applied' | 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired' | 'prep';
+export type View = 'resume' | 'jobfinder' | 'outreach' | 'applied' | 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired' | 'prep';
 export type EmployerKind = 'company' | 'headhunter';
 /** A recommendation letter the candidate uploaded (PDF, Word or image). Opens for matched recruiters only. */
 export interface RecommendationDoc { id: string; originalName: string; ext: string; size: number; uploadedAt: number }
@@ -71,7 +71,7 @@ export interface Person {
   interests?: string[]; motto?: string; favoriteSong?: string; recommendations?: Recommendation[];
   /** Pending "please recommend me" invites sent to a LinkedIn profile or email — private, owner-only. */
   recommendationRequests?: RecommendationRequest[];
-  preferences?: CandidatePreferences; documents?: { resume?: ResumeMeta; coverLetter?: string; recommendationDocs?: RecommendationDoc[] }; privacy?: PrivacySettings;
+  preferences?: CandidatePreferences; documents?: { resume?: ResumeMeta; roleResumes?: Record<string, ResumeMeta>; coverLetter?: string; recommendationDocs?: RecommendationDoc[] }; privacy?: PrivacySettings;
   /** Named presets of title/skills/desired-roles a candidate can snapshot and
    * switch between — e.g. a "Frontend Engineer" persona vs a "Product
    * Manager" one — so the same account can present differently per job type. */

@@ -149,6 +149,16 @@ export const api = {
     if (!response.ok) { noticeSessionExpired(response.status, body.error); throw new Error(body.error || 'Upload failed'); }
     return body;
   },
+  // My Resume (2026-11-26): a resume for one target role (Premium), its download, removal and the AI gap analysis.
+  uploadRoleResume: async (userId: string, role: string, file: File): Promise<{ resume: ResumeMeta; role: string }> => {
+    const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/resume?role=${encodeURIComponent(role)}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type, 'X-Filename': encodeURIComponent(file.name) }, body: file });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { noticeSessionExpired(response.status, body.error); throw new Error(body.error || 'Upload failed'); }
+    return body;
+  },
+  roleResumeUrl: (userId: string, role: string) => `${apiBase}/api/users/${encodeURIComponent(userId)}/resume/role?role=${encodeURIComponent(role)}`,
+  deleteRoleResume: (userId: string, role: string) => request<{ ok: boolean }>(`/api/users/${encodeURIComponent(userId)}/resume/role?role=${encodeURIComponent(role)}`, { method: 'DELETE' }),
+  resumeGap: (userId: string, role: string) => request<{ answer: string; role: string; resumeName: string; provider: string; remaining: number }>(`/api/users/${encodeURIComponent(userId)}/resume/gap`, { method: 'POST', body: JSON.stringify({ role }) }),
   uploadRecommendationDoc: async (userId: string, file: File): Promise<{ doc: RecommendationDoc & { url: string } }> => {
     const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/recommendation-docs`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });
     const body = await response.json().catch(() => ({}));
