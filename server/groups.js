@@ -233,7 +233,9 @@ export function mountGroups(app, ctx) {
       const out = await store.transaction((db) => {
         ensureGroups(db);
         const job = db.jobs.find((j) => j.id === req.params.id);
-        if (!isPublicJob(db, job)) { const e = new Error('This job is not available any more'); e.status = 404; throw e; }
+        // ?claim=<sig>: the role's own recruiter from their email link sees it even when it is a test role (2026-11-26).
+        const byClaim = Boolean(job && ctx.claimOk?.(db, job, String(req.query.claim || '')) && String(job.status).toLowerCase() === 'active');
+        if (!byClaim && !isPublicJob(db, job)) { const e = new Error('This job is not available any more'); e.status = 404; throw e; }
         if (counted(req)) {
           if (typeof req.query.from === 'string' && req.query.from) track(db, 'grp_job_selected', { demo: false, dim: String(req.query.from).slice(0, 40) });
           if (cleanSrc(req.query.src)) track(db, 'li_visit', { demo: false, dim: 'job' });

@@ -154,7 +154,7 @@ export function RoleLinkPage({ slug }: { slug: string }) {
   const [cv, setCv] = useState<ClaimView | null>(null);
   useEffect(() => { if (claim) api.getClaim(claim.jobId, claim.sig).then(setCv).catch(() => undefined); }, [claim]);
   useEffect(() => {
-    fetch(`${apiBase}/api/public/role/${encodeURIComponent(slug)}`).then(async (r) => {
+    fetch(`${apiBase}/api/public/role/${encodeURIComponent(slug)}${claim ? `?claim=${claim.sig}` : ''}`, { credentials: 'include' }).then(async (r) => {
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(body.error || 'This role is not available');
       setJobId(body.jobId);
@@ -166,7 +166,7 @@ export function RoleLinkPage({ slug }: { slug: string }) {
       try { if (cv?.prefill) sessionStorage.setItem('jm-prefill', JSON.stringify({ role: 'employer', name: cv.prefill.name, email: cv.prefill.email })); } catch { /* private mode */ }
       window.location.href = `/app/?claim=${encodeURIComponent(`${claim.jobId}.${claim.sig}`)}&auth=register`;
     };
-    return <PublicJobCardPage jobId={jobId} recruiter={{ onView: viewResume, note: `${n ? `${n} ${n === 1 ? 'candidate has' : 'candidates have'} applied to your role.` : 'Candidates are applying to your role.'} Create your free recruiter account in 1 minute (your name and email are filled in) to view their resumes and connect.` }} />;
+    return <PublicJobCardPage jobId={jobId} recruiter={{ claimSig: claim.sig, onView: viewResume, note: `${n ? `${n} ${n === 1 ? 'candidate has' : 'candidates have'} applied to your role.` : 'Candidates are applying to your role.'} Create your free recruiter account in 1 minute (your name and email are filled in) to view their resumes and connect.` }} />;
   }
   if (jobId) return <PublicJobCardPage jobId={jobId} />;
   return <PublicShell><section className="jf-public-card"><h1>{error ? 'Role not available' : 'Loading…'}</h1>{error && <p>{error}. <a href="/app/">See open roles on JobsMatchNow</a></p>}</section></PublicShell>;

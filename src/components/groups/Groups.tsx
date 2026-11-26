@@ -188,13 +188,14 @@ export function GroupPage({ slug: initialSlug }: { slug: string }) {
 /** /app/job/{id}: one job's public card (the link recruiters paste in LinkedIn's "external website"). */
 /** `recruiter` (founder, 2026-11-26): the role's own recruiter, from the email link: the role as a phone card with a
  *  "View resume" button that opens the pre-filled recruiter sign-up. */
-export function PublicJobCardPage({ jobId, recruiter }: { jobId: string; recruiter?: { onView: () => void; note: string } }) {
+export function PublicJobCardPage({ jobId, recruiter }: { jobId: string; recruiter?: { claimSig: string; onView: () => void; note: string } }) {
   const [src] = useState(() => (new URLSearchParams(window.location.search).get('src') === 'linkedin' ? 'linkedin' : undefined));
   const [c, setC] = useState<GroupCard | null>(null);
   const [error, setError] = useState('');
   const [gate, setGate] = useState(false);
   const signedIn = useSignedIn();
-  useEffect(() => { groupsApi.job(jobId, src ? `src=${src}` : '').then((r) => { setC(r.job); document.title = `${r.job.title} at ${r.job.company} · JobsMatchNow`; }).catch((e) => setError(e instanceof Error ? e.message : 'This job is not available')); }, [jobId, src]);
+  const claimQ = recruiter?.claimSig ? `claim=${recruiter.claimSig}` : '';
+  useEffect(() => { groupsApi.job(jobId, [src ? `src=${src}` : '', claimQ].filter(Boolean).join('&')).then((r) => { setC(r.job); document.title = `${r.job.title} at ${r.job.company} · JobsMatchNow`; }).catch((e) => setError(e instanceof Error ? e.message : 'This job is not available')); }, [jobId, src, claimQ]);
   return <PublicShell>
     {!c ? <section className="jf-public-card"><h1>{error ? 'Job not available' : 'Loading…'}</h1>{error && <p>{error}. <a href="/">See open jobs on JobsMatchNow</a></p>}</section>
       : recruiter ? <section className="grp-wrap rl-recruiter">

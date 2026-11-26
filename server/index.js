@@ -20,7 +20,7 @@ import { applyJob, assertPublishable, heuristicParse, legacySkills, parseJobText
 import { aiParseJob, importAiAllowed } from './import-ai.js';
 import { afterRoleInterest, FROM_NAME, interestEmail, markViewedByRow, mountRoleInterest, RELAY_EMAIL, runFollowups, trackerFor } from './role-interest.js';
 import { assignProfileSlug, ensureProfileSlugs, findRoleBySlug, maskJobContacts, publicProfileView, rolePath } from './public-urls.js';
-import { claimLinksOn, claimUrl, mountClaims, stage1Funnel } from './stage1.js';
+import { claimLinksOn, claimSig, claimUrl, mountClaims, stage1Funnel } from './stage1.js';
 import { backupToS3, mirrorToS3, removeFromS3, restoreFromS3, s3Enabled } from './storage.js';
 import { parseResumeToProfile } from './resume-parse.js';
 import os from 'node:os';
@@ -5357,12 +5357,19 @@ app.get('/api/public/profile/:slug', async (req, res, next) => {
     res.json({ profile, appUrl: `${publicOrigin}/app/` });
   } catch (error) { next(error); }
 });
+// The recruiter's email link carries ?claim=<sig> (signed with the role's private recruiter email): it opens that role's
+// page even when the role is restricted (test roles), so the recruiter view + "View resume" work (2026-11-26).
+function roleClaimOk(db, job, sig) {
+  const email = job ? jobContactRec(db, job.id)?.email : '';
+  return Boolean(email && /^[0-9a-f]{32}$/.test(String(sig || '')) && claimSig(sessionSecret, job.id, email) === sig);
+}
 app.get('/api/public/role/:slug', async (req, res, next) => {
   try {
     const db = await store.read();
     const job = findRoleBySlug(db, req.params.slug);
     const viewerId = authSession(req)?.sub;
-    if (!job || HIDDEN_FROM_CANDIDATES.includes(String(job.status).toLowerCase()) || (isRestricted(job) && !job.visibleTo.includes(viewerId) && viewerId !== job.employerId)) { const error = new Error('This role is not available'); error.status = 404; throw error; }
+    const byClaim = roleClaimOk(db, job, String(req.query.claim || ''));
+    if (!job || HIDDEN_FROM_CANDIDATES.includes(String(job.status).toLowerCase()) || (isRestricted(job) && !byClaim && !job.visibleTo.includes(viewerId) && viewerId !== job.employerId)) { const error = new Error('This role is not available'); error.status = 404; throw error; }
     res.json({ jobId: job.id, path: rolePath(job) });
   } catch (error) { next(error); }
 });
@@ -5389,7 +5396,7 @@ function jobFullViewRaw(db, job, viewer) {
   return out;
 }
 // Job groups (2026-11-25): admin-managed public lists at /app/{slug}, card-only public views, sign-in for details.
-mountGroups(app, { store, authSession, track, origin: publicOrigin, limiter: rateLimit({ windowMs: 60000, max: 60, bucket: 'groups' }), jobFullView });
+mountGroups(app, { store, authSession, track, origin: publicOrigin, limiter: rateLimit({ windowMs: 60000, max: 60, bucket: 'groups' }), jobFullView, claimOk: roleClaimOk });
 
 app.use('/assets', express.static(path.join(root, 'dist', 'assets'), { immutable: true, maxAge: '1y' }));
 app.use(express.static(path.join(root, 'dist')));
