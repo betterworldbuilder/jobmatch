@@ -32,8 +32,8 @@ const FLAGS = {
    *  2026-11-26 (?joblink=0 hides). The JobFinder manager (founder's own account) always shows it. */
   jobLink: { param: 'joblink', defaultOn: true },
   /** "For who" (founder, 2026-11-26): worker groups on the role card (above the location) and in every role form
-   *  (above Employment type). Off until the founder enables it; preview: ?forwho=1. */
-  forWho: { param: 'forwho', defaultOn: false },
+   *  (above Employment type). Switched on for everyone by the founder, 2026-11-26 (?forwho=0 hides). */
+  forWho: { param: 'forwho', defaultOn: true },
 } as const;
 
 export type FlagName = keyof typeof FLAGS;
