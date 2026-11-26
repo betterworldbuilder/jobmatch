@@ -100,7 +100,7 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
     row.status = 'submitted';
     // ?v=<row id>: when the recruiter opens the profile from this email, the candidate sees "Application viewed".
     const msg = interestEmail({ job, candidate, origin, unsubscribeUrl: ctx.unsubscribeUrl(origin, email), profileUrl: `${origin}/${slug}?v=${row.id}`, roleUrl: `${origin}${rolePath(job)}`, claimLink: ctx.claimLink?.(job.id, email) || null });
-    return { rowId: row.id, mail: { to: email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: msg.subject, text: msg.text } };
+    return { rowId: row.id, mail: { to: email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: msg.subject, text: msg.text, channel: 'outreach', unsubscribeUrl: ctx.unsubscribeUrl(origin, email) } };
   }).catch(() => null);
   if (!prepared || prepared.skip) return prepared ? { status: prepared.skip } : null;
   let status = 'not_sent';
@@ -167,7 +167,7 @@ export async function runFollowups(ctx, { now = Date.now() } = {}) {
       const newCount = likes.filter((s) => (s.createdAt || 0) > m.sentAt).length;
       row.status = 'submitted';
       const msg = followupEmail({ job, newCount, waiting: likes.length, origin, unsubscribeUrl: ctx.unsubscribeUrl(origin, email), roleUrl: `${origin}${rolePath(job)}`, claimLink: ctx.claimLink?.(job.id, email) || null });
-      out.push({ rowId: row.id, mail: { to: email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: msg.subject, text: msg.text } });
+      out.push({ rowId: row.id, mail: { to: email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: msg.subject, text: msg.text, channel: 'outreach', unsubscribeUrl: ctx.unsubscribeUrl(origin, email) } });
     }
     return out;
   }).catch(() => []);

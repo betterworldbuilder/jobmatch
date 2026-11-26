@@ -66,7 +66,7 @@ import { confirmPayment } from './billing/confirm.js';
 import { assignGroups, cleanSrc, ensureGroups, mountGroups } from './groups.js';
 import { afterJobFinderLike, ensureCollections as ensureJobFinderCollections, findImportDuplicate, isJobFinderJob, isJobFinderUser, jobFinderIds, memberJobFinder, mountJobFinder, reachabilityOf } from './jobfinder.js';
 import { mountJobLinkImport } from './job-link-import.js';
-import { isManager as isJobFinderManager } from './jobfinder.js';
+import { importKeyOk, isManager as isJobFinderManager } from './jobfinder.js';
 import { outreachReport } from './outreach.js';
 import { isRestricted } from './test-roles.js';
 import { hideExternalCompany } from './external-roles.js';
@@ -5273,6 +5273,29 @@ if (process.env.NODE_ENV !== 'test') {
   setInterval(runFollowupsNow, 3600000).unref?.();
   setTimeout(runFollowupsNow, 120000).unref?.();
 }
+// Test roles: point their recruiter email at an address (e.g. the tester's own inbox) and send the cold emails again for
+// the tester's applications (founder, 2026-11-26). Import key only; touches the tester's test roles and nothing else.
+app.post('/api/jobfinder/test-roles/resend', async (req, res, next) => {
+  try {
+    if (!process.env.JOBFINDER_IMPORT_KEY || !importKeyOk(req.headers.authorization)) { const error = new Error('Missing or invalid import key'); error.status = 401; throw error; }
+    const testerEmail = String(req.body?.testerEmail || '').trim().toLowerCase();
+    const recruiterEmail = String(req.body?.recruiterEmail || '').trim();
+    if (!EMAIL_RE.test(recruiterEmail)) throw new ValidationError('recruiterEmail', 'Enter a valid email');
+    const prep = await store.transaction((db) => {
+      const tester = db.users.find((u) => String(u.email || '').toLowerCase() === testerEmail && u.tester === true);
+      if (!tester) { const error = new Error('No tester account with that email'); error.status = 404; throw error; }
+      const ids = db.jobs.filter((j) => Array.isArray(j.visibleTo) && j.visibleTo.includes(tester.id)).map((j) => j.id);
+      for (const id of ids) setJobContact(db, id, { email: recruiterEmail });
+      db.roleInterestMails = (db.roleInterestMails || []).filter((m) => !(m.candidateId === tester.id && ids.includes(m.jobId)));
+      db.roleFollowups = (db.roleFollowups || []).filter((f) => !ids.includes(f.jobId));
+      const liked = db.swipes.filter((s) => s.actorId === tester.id && s.targetType === 'job' && s.direction === 'like' && ids.includes(s.targetId)).map((s) => s.targetId);
+      return { testerId: tester.id, roles: ids.length, liked: [...new Set(liked)] };
+    });
+    const results = [];
+    for (const jobId of prep.liked) results.push({ jobId, status: (await afterRoleInterest(roleInterestCtx, { candidateId: prep.testerId, jobId }).catch(() => null))?.status || 'none' });
+    res.json({ roles: prep.roles, resent: results });
+  } catch (error) { next(error); }
+});
 // Outreach dashboard + recruiter contact book for the JobFinder account (founder, 2026-11-26).
 app.get('/api/jobfinder/outreach', async (req, res, next) => {
   try {
