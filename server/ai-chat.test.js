@@ -27,7 +27,9 @@ before(async () => {
   });
   await new Promise((r) => fake.listen(0, r));
   fakeUrl = `http://127.0.0.1:${fake.address().port}/v1/messages`;
-  Object.assign(process.env, { NODE_ENV: 'test', DB_PATH, AI_CHAT_PROVIDER: 'anthropic', USE_SERVER_AI_KEY: 'true', ANTHROPIC_API_KEY: 'test-key-never-logged', AI_CHAT_ANTHROPIC_URL: fakeUrl, AI_CHAT_ANTHROPIC_MODELS_URL: fakeUrl.replace('/messages', '/models'), AI_CHAT_DAILY_LIMIT: '3', AI_CHAT_BURST_PER_MIN: '100' });
+  Object.assign(process.env, { NODE_ENV: 'test', DB_PATH, AI_CHAT_PROVIDER: 'anthropic', USE_SERVER_AI_KEY: 'true', ANTHROPIC_API_KEY: 'test-key-never-logged', AI_CHAT_ANTHROPIC_URL: fakeUrl, AI_CHAT_ANTHROPIC_MODELS_URL: fakeUrl.replace('/messages', '/models'), AI_CHAT_DAILY_LIMIT: '3', AI_CHAT_BURST_PER_MIN: '100',
+    // Test-only: the demo accounts' sample data with Premium (never on outside NODE_ENV=test; see the demo test below).
+    TEST_DEMO_PREMIUM: 'on' });
   const { app } = await import('./index.js');
   server = app.listen(0); await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -149,7 +151,27 @@ test('own key: format checks, refused key, demo accounts blocked, stored encrypt
   assert.equal(after.body.ownKey, null); assert.equal(after.body.source, 'server');
 });
 
-test('premium: trial lasts 7 days, ends on time, demo accounts included, recruiters get 5 live roles', async () => {
+test('demo accounts: nothing can be activated — no Premium, Ask AI, trial, AI key or connector key (founder, 2026-11-27)', async () => {
+  process.env.TEST_DEMO_PREMIUM = '';
+  try {
+    const ck = await loginDemo('candidate-demo');
+    const st = await call('GET', '/api/ai/chat/status', undefined, ck);
+    assert.equal(st.body.premium.active, false); assert.equal(st.body.premium.demo, true);
+    assert.equal((await call('POST', '/api/ai/chat', { question: 'What are my matches?' }, ck)).status, 402);
+    assert.equal((await call('POST', '/api/premium/trial', { citizenship: 'Vietnam' }, ck)).status, 403);
+    assert.equal((await call('PUT', '/api/ai/key', { provider: 'anthropic', apiKey: 'sk-ant-api03-demo-account-key-000000' }, ck)).status, 403);
+    const me = (await call('GET', '/api/auth/me', undefined, ck)).body.user;
+    assert.equal((await call('POST', '/api/me/connector-keys', { userId: me.id, label: 'x' }, ck)).status, 403);
+    const rec = await loginDemo('employer-demo');
+    assert.equal((await call('GET', '/api/ai/chat/status', undefined, rec)).body.premium.active, false, 'demo recruiters too');
+    // A real member without Premium cannot save an AI key either (AI setup is for Premium members).
+    const reg = await call('POST', '/api/auth/register', { role: 'candidate', name: 'No Premium', email: `nopremium-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+    const key = await call('PUT', '/api/ai/key', { provider: 'anthropic', apiKey: 'sk-ant-api03-member-own-key-abcdefghij9999' }, reg.session);
+    assert.equal(key.status, 402); assert.equal(key.body.code, 'premium_required');
+  } finally { process.env.TEST_DEMO_PREMIUM = 'on'; }
+});
+
+test('premium: trial lasts 7 days, ends on time, demo accounts excluded, recruiters get 5 live roles', async () => {
   const { premiumState, startPremiumTrial } = await import('./premium.js');
   const { getRecruiterEntitlements } = await import('./billing/entitlements.js');
   const t0 = Date.UTC(2026, 10, 22);
@@ -159,7 +181,10 @@ test('premium: trial lasts 7 days, ends on time, demo accounts included, recruit
   assert.equal(premiumState(u, t0 + 6.9 * 86400000).active, true);
   assert.equal(premiumState(u, t0 + 7 * 86400000 + 1).active, false, 'ends after 7 days');
   assert.throws(() => startPremiumTrial(u, t0 + 8 * 86400000), /already used/);
-  assert.equal(premiumState({ demo: true }, t0).source, 'demo');
+  process.env.TEST_DEMO_PREMIUM = '';
+  assert.equal(premiumState({ demo: true }, t0).active, false, 'demo accounts never get Premium');
+  assert.throws(() => startPremiumTrial({ demo: true }, t0), /Demo accounts are shared/);
+  process.env.TEST_DEMO_PREMIUM = 'on';
   const db = { jobs: [], jobPostCredits: [] };
   assert.equal(getRecruiterEntitlements(db, u, null, t0 + 86400000).activeJobLimit, 5, 'premium recruiter: 5 roles');
   assert.equal(getRecruiterEntitlements(db, u, null, t0 + 8 * 86400000).activeJobLimit, 1, 'back to the free limit after the trial');

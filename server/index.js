@@ -10,7 +10,7 @@ import { buildIcs, meetingsFor, newFeedToken, validFeedToken, REMINDER_MINUTES }
 import { onCandidateHired, onRoleFilled, stopProcess } from './hiring-rules.js';
 import { demoAnswer } from './demo-replies.js';
 import { buildContext as buildAiContext, callProvider as callAiProvider, citedSources as citedAiSources, ownKeyConfig as aiOwnKeyConfig, providerConfig as aiProviderConfig, today as aiToday } from './ai-chat.js';
-import { PREMIUM_TRIAL_DAYS, premiumActive, premiumState, startPremiumTrial } from './premium.js'; // eslint-disable-line no-unused-vars
+import { demoPremiumForTests, PREMIUM_TRIAL_DAYS, premiumActive, premiumState, startPremiumTrial } from './premium.js'; // eslint-disable-line no-unused-vars
 import { KEY_LINKS as AI_KEY_LINKS, decryptKey as decryptAiKey, encryptKey as encryptAiKey, keyFormatError as aiKeyFormatError, pickModel as pickAiModel, publicKeyInfo as publicAiKeyInfo, verifyKey as verifyAiKey } from './ai-keys.js';
 import { importMetadata, normalizeLinkedInImports, parseJobImportFile } from './job-import.js';
 import { detectMutualMatch, isStrongRoleMatch, likesRemainingToday, scoreCandidateForJob, ValidationError, reqString, optString, optStringArray, oneOf } from './matching.js';
@@ -3937,6 +3937,10 @@ app.post('/api/me/connector-keys', rateLimit({ windowMs: 3600000, max: 10, bucke
     const key = newConnectorKey();
     const record = await store.transaction((db) => {
       assertDemoActor(req, db, userId);
+      // AI agents (connector keys): Premium members only, never in a demo account (founder, 2026-11-27).
+      const owner = db.users.find((u) => u.id === userId);
+      if (owner?.demo === true) { const e = new Error('Demo accounts are shared, so they cannot create a connector key. Create your own free account.'); e.status = 403; throw e; }
+      if (!owner || !premiumFor(db, owner).active) { const e = new Error('Connecting an AI agent is part of Premium. Open Premium options to start your free trial.'); e.status = 402; throw e; }
       if (!Array.isArray(db.connectorKeys)) db.connectorKeys = [];
       if (db.connectorKeys.filter((k) => k.userId === userId).length >= 5) throw new ValidationError('label', 'You already have 5 keys — revoke one first');
       const item = { id: crypto.randomUUID(), userId, label, hash: hashKey(key), last4: key.slice(-4), createdAt: Date.now(), lastUsedAt: null };
@@ -3981,11 +3985,14 @@ function premiumFor(db, user, now = Date.now()) {
   const sub = findSubscription(db, user.id);
   const status = sub ? computeEffectiveStatus(sub, now) : null;
   const onPlan = ['trialing', 'active', 'grace_period'].includes(status);
-  const exempt = isBillingExempt(user) || user.demo === true;
+  // Demo accounts are shared: Premium / AI can never be activated in them (founder, 2026-11-27).
+  const demo = user.demo === true && !demoPremiumForTests();
+  const exempt = !demo && (isBillingExempt(user) || user.demo === true);
   const endsAt = status === 'trialing' ? sub.trialEndsAt : (sub?.currentPeriodEndsAt || null);
   return {
-    active: onPlan || exempt || premiumActive(user, now),
-    source: exempt ? 'demo' : status === 'trialing' ? 'trial' : onPlan ? 'paid' : null,
+    ...(demo ? { demo: true } : {}),
+    active: !demo && (onPlan || exempt || premiumActive(user, now)),
+    source: demo ? null : exempt ? 'exempt' : status === 'trialing' ? 'trial' : onPlan ? 'paid' : null,
     trialUsed: Boolean(sub?.trialStartedAt), trialDays: TRIAL_DAYS, plan: 'recruiter',
     trialEndsAt: sub?.trialEndsAt || null, paidUntil: sub?.currentPeriodEndsAt || null,
     daysLeft: onPlan && endsAt ? Math.max(0, Math.ceil((endsAt - now) / DAY_MS)) : null,
@@ -4027,6 +4034,8 @@ app.put('/api/ai/key', aiKeyLimiter, async (req, res, next) => {
   try {
     const { user } = await aiChatUser(req);
     if (user.demo === true) return res.status(403).json({ error: 'Demo accounts are shared, so they cannot save an AI key. Create your own free account to connect your chatbot.', code: 'demo_account' });
+    // AI setup is for Premium members only (founder, 2026-11-27).
+    { const db0 = await store.read(); if (!premiumFor(db0, user).active) return res.status(402).json({ error: 'Connecting your own AI chatbot is part of Premium. Open Premium options to start your free trial.', code: 'premium_required' }); }
     const provider = String(req.body?.provider || '');
     const apiKey = String(req.body?.apiKey || '').trim();
     const tier = req.body?.tier === 'fast' ? 'fast' : 'best';

@@ -24,7 +24,7 @@ export const musePrompt = () => `Build a custom connector to my JobsMatchNow acc
 
 // The two options, side by side (founder, 2026-11-25): what each does, benefits, use cases per role.
 // Honest limit: the agent only READS JobsMatchNow data; it automates its own work (summaries, reminders, briefs).
-function AiOptions({ recruiter, onChatbot, onAgent }: { recruiter: boolean; onChatbot: () => void; onAgent: () => void }) {
+function AiOptions({ recruiter, onChatbot, onAgent, locked = false }: { recruiter: boolean; onChatbot: () => void; onAgent: () => void; locked?: boolean }) {
   const chatUses = recruiter
     ? ['“Which candidates are at the interview stage?”', '“Who have I matched with this week?”', '“When is my next interview, and with whom?”']
     : ['“Which skills should I learn next, and where?”', '“Where am I in each hiring process?”', '“When is my next interview?”'];
@@ -43,7 +43,7 @@ function AiOptions({ recruiter, onChatbot, onAgent }: { recruiter: boolean; onCh
         <h4>Use cases</h4>
         <ul className="cb-uses">{chatUses.map((u) => <li key={u}>{u}</li>)}</ul>
         <p className="cb-note"><Crown size={12} /> Premium feature, with a free 7-day trial.</p>
-        <button type="button" className="fm-black cb-btn" onClick={onChatbot}><KeyRound size={16} /> Connect ChatGPT or Claude</button>
+        <button type="button" className="fm-black cb-btn" onClick={onChatbot}>{locked ? <><Crown size={16} /> Premium: see Premium options</> : <><KeyRound size={16} /> Connect ChatGPT or Claude</>}</button>
       </article>
       <article className="cb-option agent">
         <span className="cb-option-tag">Option 2</span>
@@ -54,7 +54,7 @@ function AiOptions({ recruiter, onChatbot, onAgent }: { recruiter: boolean; onCh
         <h4>Use cases</h4>
         <ul className="cb-uses">{agentUses.map((u) => <li key={u}>{u}</li>)}</ul>
         <p className="cb-note"><Lock size={12} /> Read-only: your agent can’t swipe, apply or send messages in JobsMatchNow. You stay in control.</p>
-        <button type="button" className="fm-black cb-btn" onClick={onAgent}><Plug size={16} /> Set up OpenClaw or Muse</button>
+        <button type="button" className="fm-black cb-btn" onClick={onAgent}>{locked ? <><Crown size={16} /> Premium: see Premium options</> : <><Plug size={16} /> Set up OpenClaw or Muse</>}</button>
       </article>
     </div>
   </section>;
@@ -105,9 +105,15 @@ export function ChatbotPage({ data, navigate }: { data: Bootstrap; navigate: (v:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [agentOpen, setAgentOpen] = useState(false);
+  // AI setup is for Premium members only, and nothing can be activated in a demo account (founder, 2026-11-27).
+  const [prem, setPrem] = useState<{ active: boolean; demo: boolean } | null>(null);
+  useEffect(() => { api.aiChatStatus().then((s) => setPrem({ active: Boolean(s.premium?.active), demo: Boolean(s.premium?.demo || data.viewer.demo) })).catch(() => setPrem({ active: false, demo: Boolean(data.viewer.demo) })); }, [data.viewer.id, data.viewer.demo]);
+  const allowed = Boolean(prem?.active);
+  const gate = (fn: () => void) => () => (allowed ? fn() : navigate('billing'));
   const load = () => api.connectorKeys(data.viewer.id).then((r) => setKeys(r.keys)).catch(() => undefined);
   useEffect(() => { void load(); }, []);
   const create = async () => {
+    if (!allowed) { navigate('billing'); return; }
     setBusy(true); setError('');
     try { const r = await api.createConnectorKey(data.viewer.id, 'My assistant'); setFresh(r.key); void load(); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not create a key'); }
@@ -124,10 +130,16 @@ export function ChatbotPage({ data, navigate }: { data: Bootstrap; navigate: (v:
       ? <div className="page-title"><div><span className="overline">AI assistant</span><h1>Your Chatbot and OpenClaw</h1><p>Two ways to put AI to work on your {data.viewer.role === 'employer' ? 'hiring' : 'job search'}: a chatbot that answers your questions, or your own AI agent that works for you in the background.</p></div></div>
       : <div className="page-title"><div><span className="overline">AI assistant</span><h1>Use your chatbot here</h1><p>Ask an AI about your own job search: matches, hiring stages, skill gaps and next interview. Use ours in the app, or connect your own ChatGPT or Claude.</p></div></div>}
 
-    {agentsOn ? <AiOptions recruiter={data.viewer.role === 'employer'} onChatbot={() => setAgentOpen(true)} onAgent={() => document.getElementById('connect-agent')?.scrollIntoView({ block: 'center', behavior: 'smooth' })} /> : <section className="cb-card">
+    {prem && !allowed && <div className={prem.demo ? 'cb-gate demo' : 'cb-gate'} role="note">
+      {prem.demo
+        ? <><Lock size={15} /> <span><b>Demo account:</b> it is shared, so the AI chatbot and AI agents can’t be activated here. Create your own free account to try Premium.</span></>
+        : <><Crown size={15} /> <span><b>For Premium members.</b> Connecting your own AI chatbot or agent is part of Premium, with a free 7-day trial.</span><button type="button" className="primary-button small" onClick={() => navigate('billing')}>See Premium options</button></>}
+    </div>}
+
+    {agentsOn ? <AiOptions recruiter={data.viewer.role === 'employer'} locked={!allowed} onChatbot={gate(() => setAgentOpen(true))} onAgent={gate(() => document.getElementById('connect-agent')?.scrollIntoView({ block: 'center', behavior: 'smooth' }))} /> : <section className="cb-card">
       <h2><Sparkles size={18} /> Where the chatbot is in JobsMatchNow</h2>
       <div className="cb-where">
-        <button type="button" onClick={() => setAgentOpen(true)}><KeyRound size={18} /><strong>1. Connect your Claude or ChatGPT</strong><small>Get an API key from Anthropic or OpenAI (links inside) and paste it. Stored encrypted, never shown again.</small></button>
+        <button type="button" onClick={gate(() => setAgentOpen(true))}><KeyRound size={18} /><strong>1. Connect your Claude or ChatGPT</strong><small>Get an API key from Anthropic or OpenAI (links inside) and paste it. Stored encrypted, never shown again.</small></button>
         <button type="button" onClick={() => openAskAi()}><Bot size={18} /><strong>2. “Ask AI” button</strong><small>Bottom-right on every page: ask about your {data.viewer.role === 'employer' ? 'roles, candidates and hiring' : 'matches, skills and interviews'}.</small></button>
         <button type="button" onClick={() => navigate('analytics')}><BarChart3 size={18} /><strong>Reports → AI analyst</strong><small>Ready questions that open Ask AI.</small></button>
       </div>
@@ -139,7 +151,7 @@ export function ChatbotPage({ data, navigate }: { data: Bootstrap; navigate: (v:
       <ol className="cb-steps">
         <li><b>1</b><div><strong>Create a connector key</strong><span>It lets your assistant <em>read</em> your matches, hiring stages, skill gaps and next interview. Nothing else, and it can't send anything.</span>
           {fresh ? <div className="cb-fresh"><span><KeyRound size={14} /> Copy it now — it's shown only once:</span><CopyBox text={fresh} /></div>
-            : <button type="button" className="fm-black cb-btn" disabled={busy} onClick={() => void create()}><KeyRound size={16} /> {busy ? 'Creating…' : 'Create connector key'}</button>}
+            : <button type="button" className="fm-black cb-btn" disabled={busy} onClick={() => void create()}>{allowed ? <><KeyRound size={16} /> {busy ? 'Creating…' : 'Create connector key'}</> : <><Crown size={16} /> Premium members: see Premium options</>}</button>}
           {error && <p className="auth-error">{error}</p>}</div></li>
         {agentsOn
           ? <li><b>2</b><div><strong>Add JobsMatchNow to your agent</strong><AgentSetup keyShown={keyShown} hasKey={Boolean(fresh)} desktopConfig={desktopConfig} /></div></li>
@@ -159,7 +171,7 @@ export function ChatbotPage({ data, navigate }: { data: Bootstrap; navigate: (v:
         <button type="button" className="secondary-button small" onClick={() => void revoke(k.id)}><Trash2 size={13} /> Revoke</button></li>)}</ul>
         : <p className="tp-muted">No keys yet.</p>}
       <p className="cb-note">Read-only and only your own data — never other members. Revoke a key and your assistant loses access at once. Your AI account and its cost stay with you; we never see your ChatGPT or Claude password.</p>
-      <button type="button" className="tp-link" onClick={() => setAgentOpen(true)}>My AI chatbot (Claude / ChatGPT key)</button>
+      <button type="button" className="tp-link" onClick={gate(() => setAgentOpen(true))}>My AI chatbot (Claude / ChatGPT key)</button>
     </section>
     {agentOpen && <AgentSettingsModal onClose={() => setAgentOpen(false)} />}
   </div>;

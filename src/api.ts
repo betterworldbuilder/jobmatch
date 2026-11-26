@@ -13,7 +13,7 @@ export type ShowcaseHire = { id: string; hiredAt?: number; candidate: { name: st
 export type AiKeyInfo = { provider: 'anthropic' | 'openai'; tier: 'best' | 'fast'; model: string; last4: string; savedAt: number };
 
 /** Premium add-on state (server/premium.js). */
-export type PremiumState = { active: boolean; source: 'paid' | 'trial' | 'demo' | null; trialUsed: boolean; trialDays: number; trialEndsAt: number | null; paidUntil: number | null; daysLeft: number | null; roleLimit?: number };
+export type PremiumState = { active: boolean; source: 'paid' | 'trial' | 'demo' | 'exempt' | null; trialUsed: boolean; trialDays: number; trialEndsAt: number | null; paidUntil: number | null; daysLeft: number | null; roleLimit?: number; demo?: boolean };
 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 

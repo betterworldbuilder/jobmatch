@@ -16,20 +16,25 @@ export const PREMIUM_TRIAL_DAYS = intFromEnv('PREMIUM_TRIAL_DAYS', 7);
 export const PREMIUM_ACTIVE_JOB_LIMIT = intFromEnv('PREMIUM_ACTIVE_JOB_LIMIT', 5);
 const DAY = 86400000;
 
+/** Test-only: lets the automated tests use the demo accounts' sample data with Premium. Never on outside NODE_ENV=test. */
+export const demoPremiumForTests = () => process.env.NODE_ENV === 'test' && process.env.TEST_DEMO_PREMIUM === 'on';
+
 /** Is Premium on for this user right now, and why. */
 export function premiumState(user, now = Date.now()) {
   const p = user?.premium || {};
   const trialUsed = Boolean(p.trialStartedAt);
   const trialActive = trialUsed && Number(p.trialEndsAt) > now;
   const paidActive = Number(p.paidUntil) > now;
+  // Demo accounts are shared: nothing can be activated in them, Premium included (founder, 2026-11-27).
   const demo = user?.demo === true;
-  const source = paidActive ? 'paid' : trialActive ? 'trial' : demo ? 'demo' : null;
+  const source = demo ? (demoPremiumForTests() ? 'demo' : null) : paidActive ? 'paid' : trialActive ? 'trial' : null;
   const endsAt = paidActive ? p.paidUntil : trialActive ? p.trialEndsAt : null;
   return {
     active: Boolean(source), source, trialUsed, trialDays: PREMIUM_TRIAL_DAYS,
     trialEndsAt: p.trialEndsAt || null, paidUntil: p.paidUntil || null,
     daysLeft: endsAt ? Math.max(0, Math.ceil((endsAt - now) / DAY)) : null,
     roleLimit: user?.role === 'employer' ? PREMIUM_ACTIVE_JOB_LIMIT : undefined,
+    ...(demo && !demoPremiumForTests() ? { demo: true } : {}),
   };
 }
 
@@ -37,7 +42,7 @@ export const premiumActive = (user, now = Date.now()) => premiumState(user, now)
 
 /** Start the one-time trial on the user record (call inside a store transaction). Throws {status} on refusal. */
 export function startPremiumTrial(user, now = Date.now()) {
-  if (user.demo === true) throw Object.assign(new Error('Demo accounts already include Premium.'), { status: 409 });
+  if (user.demo === true) throw Object.assign(new Error('Demo accounts are shared, so Premium cannot be activated in them. Create your own free account to start the trial.'), { status: 403, code: 'demo_account' });
   if (user.premium?.trialStartedAt) throw Object.assign(new Error('Your free trial was already used.'), { status: 409 });
   user.premium = { ...(user.premium || {}), trialStartedAt: now, trialEndsAt: now + PREMIUM_TRIAL_DAYS * DAY };
   return premiumState(user, now);

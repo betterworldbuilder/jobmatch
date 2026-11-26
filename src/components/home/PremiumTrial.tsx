@@ -2,7 +2,7 @@
 // "My AI chatbot" card for the profile. State comes from the server (GET /api/premium); the trial is one-time,
 // takes no card and never renews by itself.
 import { useEffect, useState } from 'react';
-import { Bot, Check, Crown, KeyRound, Loader2, Sparkles } from 'lucide-react';
+import { Bot, Check, Crown, KeyRound, Loader2, Lock, Sparkles } from 'lucide-react';
 import { api, type PremiumState } from '../../api';
 import { AgentSettingsModal, modelName, openAskAi, PROVIDERS, useAgent } from './AiAnalyst';
 import { COUNTRY_OPTIONS, guessCountryName } from '../../lib/countries';
@@ -14,7 +14,9 @@ export const PREMIUM_FEATURES = {
   candidate: [
     { text: 'Ask AI: your own Claude or ChatGPT answers questions about your matches, skills and interviews', live: true },
     { text: 'Interview AI coach: a skills refresh plan for every role, written by your chatbot', live: true },
-    { text: '3 target roles at once, each with its own matches and report', live: true },
+    // Founder, 2026-11-27: 3 roles + 3 resumes (one per role), and the resume gap analysis by AI.
+    { text: '3 target roles and 3 resumes at once: one resume per role, each role with its own matches and report', live: true },
+    { text: 'Gap analysis by AI: your chatbot compares your resume with each role and tells you what to change', live: true },
     { text: '10 direct messages a month: reach a team before any match', live: false },
   ],
   employer: [
@@ -62,6 +64,8 @@ const endsOn = (ts: number | null) => (ts ? new Date(ts).toLocaleDateString('en-
 export function PremiumAction({ compact = false }: { compact?: boolean }) {
   const { state, busy, error, start, needCitizenship } = usePremium();
   if (!state) return <p className="askai-state"><Loader2 size={14} className="spin" /> Loading…</p>;
+  // Demo accounts are shared: nothing can be activated in them (founder, 2026-11-27).
+  if (state.demo) return <div className={`pt-status off${compact ? ' compact' : ''}`}><Lock size={15} /><span><b>Demo account:</b> Premium can’t be activated here because demo accounts are shared. Create your own free account to start the free {state.trialDays}-day trial.</span></div>;
   if (state.active) return <div className={`pt-status on${compact ? ' compact' : ''}`}><Check size={15} />
     <span>{state.source === 'trial' ? <>Premium trial active: <b>{state.daysLeft} {state.daysLeft === 1 ? 'day' : 'days'} left</b> (until {endsOn(state.trialEndsAt)})</> : state.source === 'demo' ? 'Premium is included in this demo account' : <>Premium active until {endsOn(state.paidUntil)}</>}</span></div>;
   if (state.trialUsed) return <div className={`pt-status off${compact ? ' compact' : ''}`}><Crown size={15} /><span>Your free trial ended on {endsOn(state.trialEndsAt)}. Premium payments are opening soon; we will never charge without asking you first.</span></div>;

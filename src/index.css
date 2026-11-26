@@ -5519,6 +5519,12 @@ button.rs-row:hover { border-color:#fd267a; }
 .rs-role-pick select { width:100%; padding:9px 11px; border:1px solid #e1e4ec; border-radius:10px; background:#fff; font:700 13.5px 'Manrope',sans-serif; color:#0d1834; }
 .rs-card.rs-gap { padding:14px 16px; }
 .rs-card.rs-chat { padding:0; }
+/* Use My ChatBot: Premium members only; demo accounts can't activate anything (2026-11-27). */
+.cb-gate { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 14px; padding:12px 14px; border-radius:12px; background:#fff7e8; border:1px solid #f6dfb0; color:#5c4400; font-size:13.5px; }
+.cb-gate span { flex:1; min-width:220px; }
+.cb-gate.demo { background:#f1f3f8; border-color:#dfe3ec; color:#344054; }
+.rs-premium-tag { display:inline-flex; align-items:center; gap:4px; color:#9a5b00 !important; font-weight:700; }
+.rs-premium-tag .text-button { padding:0; font-size:inherit; font-weight:800; color:#c2410c; text-decoration:underline; }
 .rs-mock { position:relative; justify-self:start; max-width:88%; }
 .rs-mock .rs-blur { filter:blur(4px); user-select:none; max-width:none; }
 .rs-mock-lock { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:6px; color:#4c1d95; font:800 12.5px 'Manrope',sans-serif; }

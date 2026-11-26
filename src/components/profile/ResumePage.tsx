@@ -64,7 +64,8 @@ export function ResumePage({ data, setData, navigate }: { data: Bootstrap; setDa
     catch (e) { setError(e instanceof Error ? e.message : 'Could not remove it'); } finally { setBusy(''); }
   };
   const askAi = async () => {
-    if (!chatReady) { if (premium) navigate('assistant'); else setPremiumInfo(true); return; }
+    // Not a Premium member with a connected chatbot: "Ask AI" opens the Premium options price page (founder, 2026-11-27).
+    if (!chatReady) { navigate('billing'); return; }
     const q = draft.trim(); if (!q || !opt) return;
     const key = opt.key; const history = chat[key] || [];
     setChat((c) => ({ ...c, [key]: [...history, { role: 'user', content: q }] })); setDraft(''); setAsking(true);
@@ -112,7 +113,9 @@ export function ResumePage({ data, setData, navigate }: { data: Bootstrap; setDa
     {/* The free script gap analysis was removed from the page (founder, 2026-11-27): only the AI gap analysis. */}
     {/* 4. AI gap analysis: the first question already typed; "Ask AI" asks your chatbot or opens Premium options. */}
     {opt && <section className={chatReady ? 'rs-card rs-chat' : 'rs-card rs-chat locked'}>
-      <div className="rs-chat-head"><Bot size={15} /> <b>Gap analysis by AI</b><small>{chatReady ? 'Your own chatbot reads this resume and the role' : 'Premium · your own Claude or ChatGPT'}</small></div>
+      <div className="rs-chat-head"><Bot size={15} /> <b>Gap analysis by AI</b>
+        {chatReady ? <small>Your own chatbot reads this resume and the role</small>
+          : <small className="rs-premium-tag"><Crown size={12} /> Premium members feature · <button type="button" className="text-button" onClick={() => navigate('billing')}>See Premium options</button></small>}</div>
       <div className="rs-chat-log">
         {msgs.map((m, i) => <p key={i} className={m.role}>{m.content}</p>)}
         {!msgs.length && !chatReady && <>

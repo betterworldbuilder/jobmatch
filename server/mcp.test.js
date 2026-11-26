@@ -39,6 +39,9 @@ test('connector key → MCP initialize, tools/list, tools/call; no key → 401; 
   assert.equal(reg.status, 201);
   const me = { id: reg.body.user.id, cookie: reg.session };
   assert.equal((await call('POST', '/api/mcp', { jsonrpc: '2.0', id: 1, method: 'initialize' })).status, 401);
+  // AI agents are for Premium members (founder, 2026-11-27): refused before, allowed once the trial runs.
+  assert.equal((await call('POST', '/api/me/connector-keys', { userId: me.id, label: 'Claude' }, { Cookie: me.cookie })).status, 402);
+  assert.equal((await call('POST', '/api/premium/trial', { citizenship: 'Vietnam' }, { Cookie: me.cookie })).status, 200);
   const created = await call('POST', '/api/me/connector-keys', { userId: me.id, label: 'Claude' }, { Cookie: me.cookie });
   assert.equal(created.status, 201, JSON.stringify(created.body));
   assert.match(created.body.key, /^jmn_/);
