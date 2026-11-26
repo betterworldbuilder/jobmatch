@@ -1,0 +1,25 @@
+About the job
+This is a demo job description written for JobsMatchNow. AWS is hiring a Lead AI Engineer. AWS helps organizations build, deploy, and scale securely in the cloud.
+
+The role
+Lead the design and delivery of production AI services on AWS.
+
+What you will do
+- Design, build and ship Python and TensorFlow features end to end
+- Review code, write tests and keep production healthy
+- Work 4 overlapping hours a day with the product team and share progress in writing
+
+What we are looking for
+- Solid, recent experience with Python
+- Solid, recent experience with TensorFlow
+- Solid, recent experience with AWS
+- Solid, recent experience with MLOps
+- English and Vietnamese for daily work
+
+Nice to have
+- Kubernetes
+- CI/CD
+- Remote collaboration
+
+How to apply
+Like this role on JobsMatchNow. If the team likes you back, a conversation opens and you can talk right away.

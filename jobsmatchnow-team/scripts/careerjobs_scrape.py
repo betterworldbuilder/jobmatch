@@ -68,7 +68,7 @@ def save(rows):
 def main():
     status, res = call("GET", "/api/sources")
     if status != 200:
-        print(f"Job Scraper not reachable at {API} ({status}): start it with ~/jobscraper/start.sh start")
+        print(f"Job Scraper not reachable at {API} ({status}): start it with ~/jobmatch3/jobscraper/start.sh start")
         return 1
     # Only the websites ticked in the Job Scraper's Career sites tab.
     sources = [s for s in res.get("sources", []) if s.get("enabled", True)]

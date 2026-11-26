@@ -5469,6 +5469,17 @@ button.rs-row:hover { border-color:#fd267a; }
 .cl-cand-skills { display:flex; flex-wrap:wrap; gap:3px; margin-top:2px; }
 .cl-cand-skills i { font-style:normal; font-size:10.5px; padding:1px 6px; border-radius:999px; background:#eef4ff; color:#0f62fe; }
 
+/* Job Scraper window (JobFinder account, 2026-11-26): the local scraper's compact mode in a JM frame. */
+.js-window { position:fixed; inset:24px; z-index:80; display:flex; flex-direction:column; max-width:1180px; margin:0 auto; border-radius:20px; background:#fff; box-shadow:0 30px 80px rgba(13,24,52,.35); overflow:hidden; }
+.js-window header { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-bottom:1px solid #eceef4; }
+.js-window header strong { display:inline-flex; align-items:center; gap:7px; font:800 15px 'Manrope', sans-serif; color:#0d1834; }
+.js-window header strong svg { color:#fd267a; }
+.js-window header span { display:flex; align-items:center; gap:8px; }
+.js-window iframe { flex:1; width:100%; border:0; background:#fff; }
+.js-help { margin:0; padding:7px 14px; border-top:1px solid #eceef4; color:#667085; font-size:11.5px; }
+.js-help code { padding:1px 5px; border-radius:6px; background:#f3f4f8; }
+@media (max-width:640px) { .js-window { inset:0; border-radius:0; } }
+
 /* Profile status under the sidebar profile card (2026-11-26). */
 .workspace-switch .profile-status { display:flex; align-items:center; gap:5px; width:100%; margin-top:6px; padding:5px 10px; border:0; border-radius:10px; font:700 11.5px 'Manrope', sans-serif; text-align:left; }
 .workspace-switch .profile-status.ok { background:rgba(17,163,90,.16); color:#4ade80; }

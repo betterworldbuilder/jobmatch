@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, BriefcaseBusiness, Check, FileUp, Link2, Linkedin, Loader2, Plus, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BriefcaseBusiness, Check, ExternalLink, FileUp, Link2, Linkedin, Loader2, Plus, ScanSearch, Sparkles, X } from 'lucide-react';
 import { api } from '../../api';
 import { JobLinkImport } from './JobLinkImport';
 import { featureOn } from '../../lib/flags';
 import type { JobImportResult, Person } from '../../types';
 
 type Mode = 'choose' | 'feed' | 'linkedin' | 'success';
+/** The local Job Scraper (~/jobmatch3/jobscraper/start.sh) on the founder's computer, shown in its compact embed mode. */
+const SCRAPER_URL = 'http://localhost:8920';
 type LinkedInDraft = { url: string; title: string; description: string };
 const emptyLinkedIn = (): LinkedInDraft => ({ url: '', title: '', description: '' });
 
@@ -23,6 +25,7 @@ export function JobImportModal({ viewer, onClose, onImported, onManual }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
+  const [scraperOpen, setScraperOpen] = useState(false);
 
   const finish = (value: JobImportResult) => {
     setResult(value);
@@ -68,6 +71,19 @@ export function JobImportModal({ viewer, onClose, onImported, onManual }: {
         <button onClick={() => setMode('linkedin')}><span className="linkedin"><Linkedin /></span><strong>LinkedIn jobs</strong><small>Paste links and descriptions</small><ArrowRight /></button>
         <button onClick={onManual}><span className="pink"><BriefcaseBusiness /></span><strong>Create manually</strong><small>Build one offer from scratch</small><ArrowRight /></button>
         {featureOn('jobLink') && <button onClick={() => setLinkOpen(true)}><span className="blue"><Link2 /></span><strong>Import job from link</strong><small>Paste a link, review, save or publish</small><ArrowRight /></button>}
+        {/* Job Scraper (founder, 2026-11-26): JobFinder account only; the scraper runs on the founder's computer. */}
+        {viewer.jobFinder && <button onClick={() => setScraperOpen(true)}><span className="pink"><ScanSearch /></span><strong>Job Scraper</strong><small>Links, career sites, mailbox alerts, library</small><ArrowRight /></button>}
+      </div>}
+      {scraperOpen && <div className="js-window" role="dialog" aria-modal="true" aria-label="Job Scraper">
+        <header>
+          <strong><ScanSearch size={17} /> Job Scraper</strong>
+          <span>
+            <a className="secondary-button small" href={`${SCRAPER_URL}/`} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} /> Open in a tab</a>
+            <button type="button" className="job-import-close" aria-label="Close the Job Scraper" onClick={() => { setScraperOpen(false); onImported(); }}><X size={18} /></button>
+          </span>
+        </header>
+        <iframe title="Job Scraper" src={`${SCRAPER_URL}/?embed=1`} />
+        <p className="js-help">Empty window? Start the scraper on this computer: <code>~/jobmatch3/jobscraper/start.sh</code>, then reopen. Roles you send to JobFinder appear in My Jobs list when you close this window.</p>
       </div>}
       {/* The JobFinder account imports external listings (company + recruiter contact fields); others import their own role. */}
       {linkOpen && <JobLinkImport mode={viewer.jobFinder ? 'jobfinder' : 'recruiter'} onClose={() => setLinkOpen(false)} onDone={() => { setLinkOpen(false); onImported(); }} />}

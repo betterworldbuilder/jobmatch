@@ -1,0 +1,13 @@
+{
+  "name": "jobscraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Turn a job link or job text into a JobsMatchNow job file (jobsmatchnow-job/v1). Zero dependencies.",
+  "bin": { "jobscraper": "bin/jobscraper.mjs" },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": { "node": ">=18" }
+}

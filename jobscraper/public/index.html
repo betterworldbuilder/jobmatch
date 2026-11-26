@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Scraper for JobsMatchNow</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css">
+  <!-- Compact JobsMatchNow look when opened inside JobsMatchNow (?embed=1, 2026-11-26). -->
+  <script>if (/[?&]embed=1/.test(location.search) || window.top !== window) { document.documentElement.classList.add('embed'); addEventListener('DOMContentLoaded', () => document.querySelector('.more-exports')?.removeAttribute('open')); }</script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo">JS</span><div><strong>Job Scraper</strong><small>Job link → JobsMatchNow job file</small></div></div>
+    <nav><button type="button" id="new-job" class="ghost">+ New job</button></nav>
+  </header>
+
+  <main class="layout">
+    <section class="col-main">
+      <article class="card" id="input-card">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" class="tab on" data-tab="link">Job link</button>
+          <button type="button" role="tab" class="tab" data-tab="paste">Paste job text</button>
+          <button type="button" role="tab" class="tab" data-tab="list">List of links</button>
+          <button type="button" role="tab" class="tab" data-tab="sites">Career sites</button>
+          <button type="button" role="tab" class="tab" data-tab="mailbox">Mailbox</button>
+        </div>
+        <div id="mailbox-wrap" hidden>
+          <section>
+            <h3>LinkedIn job alerts from your mailbox</h3>
+            <p class="hint long">Reads the Gmail label <b>linkjobs</b> (read only: nothing is moved, marked or deleted; last 30 days), lists each job, reads the jobs that match your job types (Career sites → Job types), and imports them into the JobFinder account, published in My Jobs list. The same three steps run every day at 06:00 UTC.</p>
+            <div id="mb-setup" class="mb-setup"></div>
+            <div class="mb-counts" id="mb-counts"></div>
+            <div class="row-actions">
+              <button type="button" class="primary" data-mb="all">Do all 3 steps</button>
+              <button type="button" class="secondary" data-mb="fetch">1 · Read mailbox</button>
+              <button type="button" class="secondary" data-mb="scrape">2 · Read matching jobs</button>
+              <button type="button" class="secondary" data-mb="import">3 · Import to JobFinder account</button>
+            </div>
+            <pre id="mb-log" class="mb-log" hidden></pre>
+            <h3>Newest jobs from your alerts</h3>
+            <div class="mb-rows-wrap"><table class="mb-rows"><thead><tr><th>Email</th><th>Job</th><th>Read</th><th>In JobFinder</th></tr></thead><tbody id="mb-rows"></tbody></table></div>
+          </section>
+        </div>
+        <div id="sites-wrap" hidden>
+          <section class="jt">
+            <h3>Job types to scrape</h3>
+            <p class="hint long">Only jobs whose title matches are read: on every career site below and in the daily LinkedIn-alert run. None ticked and no words = every job.</p>
+            <div id="jt-types" class="jt-types"></div>
+            <label class="field"><span>Your own words (comma separated), e.g. <code>rust, quant, salesforce</code></span><input id="jt-custom" type="text" autocomplete="off"></label>
+            <button type="button" id="jt-save" class="secondary">Save job types</button>
+          </section>
+          <section class="sites-add">
+            <h3>Add a website</h3>
+            <label class="field"><span>Careers page, job-board search page, Greenhouse / Lever / Ashby board, or RSS feed of jobs</span>
+              <input id="site-url" type="url" placeholder="https://careers.example.com/jobs or https://jobs.lever.co/company" autocomplete="off"></label>
+            <div class="sites-row">
+              <label class="field"><span>Name (optional)</span><input id="site-name" type="text" autocomplete="off"></label>
+              <label class="field"><span>Workers from (optional)</span><input id="site-region" type="text" placeholder="Vietnam, EU / UK, US, Remote" autocomplete="off"></label>
+            </div>
+            <label class="field"><span>Own keywords for this site (optional; otherwise the job types above)</span><input id="site-keywords" type="text" autocomplete="off"></label>
+            <div class="row-actions">
+              <button type="button" id="site-preview" class="secondary">Preview jobs</button>
+              <button type="button" id="site-add" class="primary">Add website</button>
+            </div>
+            <div id="site-preview-out" class="sites-preview"></div>
+          </section>
+          <section>
+            <div class="sites-head"><h3>Websites (<span id="sites-count">0</span>)</h3>
+              <span><button type="button" id="sites-defaults" class="ghost">Add the main job boards</button> <button type="button" id="sites-check-all" class="primary">Find new jobs on selected</button></span></div>
+            <p class="sites-select"><label><input type="checkbox" id="sites-all"> Select all</label> <span id="sites-selected" class="hint"></span>
+              <span class="hint long">Only ticked websites are scraped, here and in the daily 06:00 UTC run.</span></p>
+            <div id="sites-results" class="sites-results" hidden></div>
+            <ul id="sites" class="sites"></ul>
+            <p class="hint long">JobServe: run your search on jobserve.com and add the results address (<code>…/JobSearch.aspx?shid=…</code>); JobServe's own keywords decide which jobs come back. Search links with filters that a site's robots.txt blocks (e.g. Glints <code>explore?…</code>): use the site's city or category page instead. VietnamWorks and Navigos Search job pages can't be read by this tool (built in the browser). LinkedIn, Indeed and Glassdoor listings are never read.</p>
+          </section>
+        </div>
+        <label class="field" id="list-wrap" hidden><span>Links, one per line. A line that is not a link (e.g. <code>ai</code>, <code>sw eng</code>, <code>cloud</code>, <code>data</code>) is the group for the links below it.</span>
+          <textarea id="list" rows="12" placeholder="ai&#10;https://www.linkedin.com/jobs/view/…&#10;&#10;data&#10;https://careers.example.com/jobs/…"></textarea></label>
+        <label class="field" id="url-wrap"><span>Job link <em id="link-hint"></em></span>
+          <input id="url" type="url" placeholder="https://careers.example.com/jobs/123 or a LinkedIn job link" autocomplete="off"></label>
+        <label class="field" id="paste-wrap" hidden><span>Job description</span>
+          <textarea id="paste" rows="10" placeholder="Paste the title and the full job description"></textarea></label>
+        <div id="notice" class="notice" hidden></div>
+        <div class="row-actions">
+          <button type="button" id="read-link" class="primary">Read job from link</button>
+          <button type="button" id="parse-text" class="primary" hidden>Parse job text</button>
+          <button type="button" id="make-list" class="primary" hidden>Create list</button>
+          <select id="recent-lists" class="recent" aria-label="Open a saved list" hidden></select>
+          <span id="busy" class="busy" hidden>Working…</span>
+        </div>
+        <label class="optin"><input type="checkbox" id="allow-linkedin"> <span><b>Read public LinkedIn job pages</b>: signed out, one page every 3 seconds, no sign-in, no getting past LinkedIn's checks. This goes against LinkedIn's User Agreement and robots.txt and LinkedIn may block your IP; your choice. Pages LinkedIn won't show fall back to Paste text.</span></label>
+        <p class="hint long">One page per request. We read only public pages that allow tools (robots.txt), never sign in, and never read LinkedIn, Indeed or Glassdoor pages: paste their text instead and the link is kept as the source.</p>
+      </article>
+
+      <article class="card batch" id="batch" hidden></article>
+      <article class="card multi" id="multi" hidden></article>
+      <form id="editor" class="editor" hidden autocomplete="off"></form>
+    </section>
+
+    <aside class="col-side">
+      <article class="card">
+        <h2>Library</h2>
+        <ul id="library" class="library"><li class="empty">No saved jobs yet.</li></ul>
+        <button type="button" class="primary block" id="lib-send-all">Send all to JobFinder</button>
+        <div class="import-out" id="lib-send-out"></div>
+        <details class="more-exports" open>
+          <summary>More exports</summary>
+          <button type="button" class="primary block" id="lib-import-btn">CSV for JobsMatchNow import</button>
+          <div class="import-out" id="lib-import"></div>
+          <a class="secondary block" href="/api/export.csv" id="download-csv">Full CSV (all fields)</a>
+          <a class="secondary block" href="/api/export?download=1" id="download-all">Download all (.json)</a>
+        </details>
+      </article>
+      <article class="card jmn standalone-only" id="jmn">
+        <h2>Send to JobsMatchNow</h2>
+        <div id="jmn-out">
+          <p class="hint">Sign in with the JobFinder account. Saved jobs go to <b>JobFinder listings</b> as <b>drafts</b>; you review and publish them in JobsMatchNow. Your password is sent only to JobsMatchNow and never saved here.</p>
+          <label class="field"><span>Address</span><input id="jmn-base" type="url" value="https://jobsmatchnow.com"></label>
+          <label class="field"><span>Email</span><input id="jmn-email" type="email" autocomplete="username"></label>
+          <label class="field"><span>Password</span><input id="jmn-pass" type="password" autocomplete="current-password"></label>
+          <button type="button" class="primary block" id="jmn-login">Sign in</button>
+        </div>
+        <div id="jmn-in" hidden>
+          <p class="hint" id="jmn-who"></p>
+          <button type="button" class="primary block" id="jmn-send">Send saved jobs as drafts</button>
+          <button type="button" class="ghost block" id="jmn-logout">Sign out</button>
+        </div>
+        <ul id="jmn-results" class="results"></ul>
+      </article>
+      <article class="card howto standalone-only">
+        <h2>Using the file</h2>
+        <ol>
+          <li>The download is a plain JSON file (<code>jobsmatchnow-job/v1</code>): one object per job, fields named like the JobsMatchNow job editor, plus <code>source.url</code>.</li>
+          <li>Any app that accepts a JSON job feed can read it (it has <code>jobs[]</code> with <code>title</code>, <code>description</code>, <code>location</code>, <code>url</code>).</li>
+        </ol>
+        <p class="hint">This tool works on its own and never sends anything anywhere. Fields marked <span class="tag check">Check</span> were read from free text; <span class="tag none">Not provided</span> means the source didn&rsquo;t say.</p>
+      </article>
+    </aside>
+  </main>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

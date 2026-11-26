@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 scripts/linkjobs_fetch.py
-/home/dzoan/jobscraper/start.sh start
+/home/dzoan/jobmatch3/jobscraper/start.sh start
 # Exit 3 = LinkedIn refused / asked to sign in: still import what was scraped before it stopped.
 python3 scripts/linkjobs_scrape.py || [ $? -eq 3 ]
 # Career sites saved in the Job Scraper (Michael Page, ITviec, TopCV, careers pages, job boards, RSS feeds).
