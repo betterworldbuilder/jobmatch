@@ -27,7 +27,7 @@ import { HeroAlt, HeroDefault, HeroImage } from './components/landing/HeroBanner
 import { CANDIDATE_OFFERS, LaunchOffers } from './components/LaunchOffers';
 import { PlanCardView, TrialCardView } from './components/landing/PlanCards';
 import { ANNUAL_MONTHS_CHARGED, applyLivePlans, BOOST, EXTRA_JOB_SLOT, HEADLINE_PLANS, planCard, POSTING_TERM_DAYS, SINGLE_POSTING, TRIAL } from './lib/plans';
-import { CandidateWizard } from './components/profile/CandidateWizard';
+import { CANDIDATE_STEPS, CandidateWizard } from './components/profile/CandidateWizard';
 import { CandidateProfilePage } from './components/profile/CandidateProfilePage';
 import { RecruiterWizard } from './components/profile/RecruiterWizard';
 import { RecruiterProfilePage } from './components/profile/RecruiterProfilePage';
@@ -687,6 +687,16 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     if (!p) return;
     clearPendingJob(); setJobSheet(p);
     void groupsApi.event('grp_returned', p.src);
+  }, [data === null, data?.viewer.onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
+  // First screen after a quick sign-up (founder, 2026-11-26): recruiters → the new-role form, candidates → the role they
+  // are looking for (wizard "Preferences" step, closable). A claim link (→ Surf) or a candidate profile (→ back there) wins.
+  useEffect(() => {
+    if (!data || data.viewer.onboarding) return;
+    let q: string | null = null; let other = false;
+    try { q = localStorage.getItem('jm-quick-start'); localStorage.removeItem('jm-quick-start'); other = Boolean(localStorage.getItem('jm-claim') || localStorage.getItem('jm-next')); } catch { /* private mode */ }
+    if (!q || other) return;
+    if (data.viewer.role === 'employer') { setView('jobs'); setManualJobRequest((v) => v + 1); showNotice('Welcome! Add your first role: candidates who match it appear in Surf.'); }
+    else if (data.viewer.role === 'candidate') setEditStep(CANDIDATE_STEPS.indexOf('Preferences'));
   }, [data === null, data?.viewer.onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
   // A recruiter who came from a blurred candidate profile: back to that profile, now unblurred (2026-11-26).
   useEffect(() => {

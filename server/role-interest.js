@@ -121,7 +121,11 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
     const slug = assignProfileSlug(db, candidate);
     row.status = 'submitted';
     // ?v=<row id>: when the recruiter opens the profile from this email, the candidate sees "Application viewed".
-    const msg = interestEmail({ job, candidate, origin, unsubscribeUrl: ctx.unsubscribeUrl(origin, email), profileUrl: `${origin}/${slug}?v=${row.id}`, roleUrl: `${origin}${rolePath(job)}`, claimLink: ctx.claimLink?.(job.id, email) || null });
+    // The profile link also carries the claim token, so "Register" there opens the quick, pre-filled recruiter sign-up.
+    const claimLink = ctx.claimLink?.(job.id, email) || null;
+    const cm = String(claimLink || '').match(/\/claim\/([^/]+)\/([0-9a-f]+)$/);
+    const claimQ = cm ? `&claim=${encodeURIComponent(`${decodeURIComponent(cm[1])}.${cm[2]}`)}` : '';
+    const msg = interestEmail({ job, candidate, origin, unsubscribeUrl: ctx.unsubscribeUrl(origin, email), profileUrl: `${origin}/${slug}?v=${row.id}${claimQ}`, roleUrl: `${origin}${rolePath(job)}`, claimLink });
     return { rowId: row.id, mail: { to: email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: msg.subject, text: msg.text, html: msg.html, channel: 'outreach', unsubscribeUrl: ctx.unsubscribeUrl(origin, email) } };
   }).catch(() => null);
   if (!prepared || prepared.skip) return prepared ? { status: prepared.skip } : null;

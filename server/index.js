@@ -780,7 +780,22 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
     // Every real account needs a password — DEMO_AUTH only affects the demo
     // personas, never sign-up. The one passwordless path is dev-only mock SSO.
     const mockSsoSignup = mockSso && (provider === 'linkedin' || provider === 'google');
-    if ((!mockSsoSignup || password !== undefined) && !validPassword(password)) throw new ValidationError('password', `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+    // Quick recruiter sign-up (founder, 2026-11-26): name + email only, profile and password later. The account gets a
+    // "set your password" email (that link is also how they sign in again). The email counts as verified only when it is
+    // the recruiter address the claim link (?claim=<jobId>.<sig>) was sent to.
+    // Both sides (founder, 2026-11-26): recruiters then add a role, candidates the role they are looking for.
+    const quick = req.body.quick === true && password === undefined;
+    let quickClaimVerified = false;
+    if (quick) {
+      const m = String(req.body.claim || '').match(/^(.+)\.([0-9a-f]{32})$/);
+      if (m) {
+        const db0 = await store.read();
+        const job0 = db0.jobs.find((j) => j.id === m[1]);
+        const rec0 = job0 ? jobContactRec(db0, job0.id)?.email : '';
+        quickClaimVerified = Boolean(rec0 && rec0.toLowerCase() === email.toLowerCase() && roleClaimOk(db0, job0, m[2]));
+      }
+    }
+    if (!quick && (!mockSsoSignup || password !== undefined) && !validPassword(password)) throw new ValidationError('password', `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
     if (req.body.conductAccepted !== true) throw new ValidationError('conductAccepted', 'You must agree to the Code of Conduct to register');
     const user = await store.transaction((db) => {
       const existing = db.users.find((item) => item.email && item.email.toLowerCase() === email.toLowerCase());
@@ -792,7 +807,7 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
       }
       // Password accounts need email verification once a mailer is configured;
       // without one (demo/dev) they're auto-verified so the flow stays usable.
-      const needsVerification = Boolean(password) && mailerConfigured();
+      const needsVerification = (Boolean(password) || (quick && !quickClaimVerified)) && mailerConfigured();
       const created = {
         id: `u-${crypto.randomUUID().slice(0, 8)}`, role, name, email,
         ...(role === 'employer' ? { kind: kind || 'company', ...(country ? { country } : {}) } : {}),
@@ -803,8 +818,10 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
         emailVerified: !needsVerification,
         title: role === 'candidate' ? 'New member' : 'Recruiter',
         photo: photo || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`,
-        skills: [], languages: [], experienceLevel: 'mid', completeness: 15, onboarding: true, createdAt: Date.now(),
+        // Quick sign-up skips the profile wizard: the profile is filled in later (founder, 2026-11-26).
+        skills: [], languages: [], experienceLevel: 'mid', completeness: 15, onboarding: !quick, createdAt: Date.now(),
         conductAcceptedAt: Date.now(),
+        ...(quick ? { quickSignup: true } : {}),
       };
       // Where the visitor came from (job groups / LinkedIn links, 2026-11-25): only known values, no tracking ids.
       const acq = req.body?.source && typeof req.body.source === 'object' ? req.body.source : {};
@@ -824,7 +841,12 @@ app.post('/api/auth/register', authLimiter, async (req, res, next) => {
       }
       return created;
     });
-    if (user.emailVerified === false) await sendVerificationEmail(user).catch((e) => console.error('verify email failed', e.message));
+    if (quick) {
+      // One email: set a password (also confirms the address). Valid 7 days; "Forgot password" sends a new one.
+      const link = `${publicOrigin}${APP_PATH}?reset=${encodeURIComponent(actionToken('reset', user.id, 7 * 24 * 3600 * 1000))}`;
+      await sendMail({ to: user.email, subject: 'Welcome to JobsMatchNow: set your password',
+        text: `Hello ${user.name.split(' ')[0]},\n\nYour free ${user.role === 'employer' ? 'recruiter' : 'JobsMatchNow'} account is ready. Set your password to sign in again from any device:\n${link}\n\nThis link works for 7 days. ${user.role === 'employer' ? 'You can add your roles' : 'You can tell us the role you are looking for'} and complete your profile any time.\n\nThe JobsMatchNow team` }).catch((e) => console.error('quick signup email failed', e.message));
+    } else if (user.emailVerified === false) await sendVerificationEmail(user).catch((e) => console.error('verify email failed', e.message));
     issueSession(res, user);
     res.status(201).json({ user: publicProfile(user) });
   } catch (error) { next(error); }
@@ -5310,8 +5332,12 @@ app.post('/api/jobfinder/test-roles/sample-email', async (req, res, next) => {
       return { tester: { email: tester.email, name: tester.name }, slug: assignProfileSlug(db, tester), job: { ...job } };
     });
     const origin = publicOrigin;
+    // Same links as a real cold email: the claim is signed for the role's recruiter address (the tester inbox here).
+    const recEmail = (await store.read()).jobContacts?.find((c) => c.jobId === prep.job.id)?.email || prep.tester.email;
+    const claimLink = roleInterestCtx.claimLink(prep.job.id, recEmail);
+    const cm = String(claimLink || '').match(/\/claim\/([^/]+)\/([0-9a-f]+)$/);
     const msg = interestEmail({ job: prep.job, candidate: prep.tester, origin, unsubscribeUrl: roleInterestCtx.unsubscribeUrl(origin, prep.tester.email),
-      profileUrl: `${origin}/${prep.slug}`, roleUrl: `${origin}${rolePath(prep.job)}`, claimLink: roleInterestCtx.claimLink(prep.job.id, prep.tester.email) });
+      profileUrl: `${origin}/${prep.slug}${cm ? `?claim=${encodeURIComponent(`${decodeURIComponent(cm[1])}.${cm[2]}`)}` : ''}`, roleUrl: `${origin}${rolePath(prep.job)}`, claimLink });
     const info = mailerConfigured() ? await sendMail({ to: prep.tester.email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: `[Sample] ${msg.subject}`, text: msg.text, html: msg.html, channel: 'outreach', unsubscribeUrl: roleInterestCtx.unsubscribeUrl(origin, prep.tester.email) }) : null;
     res.json({ role: prep.job.title, delivered: Boolean(info?.delivered), mailer: mailerConfigured() });
   } catch (error) { next(error); }

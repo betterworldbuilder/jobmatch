@@ -5469,6 +5469,10 @@ button.rs-row:hover { border-color:#fd267a; }
 .cl-cand-skills { display:flex; flex-wrap:wrap; gap:3px; margin-top:2px; }
 .cl-cand-skills i { font-style:normal; font-size:10.5px; padding:1px 6px; border-radius:999px; background:#eef4ff; color:#0f62fe; }
 
+/* Quick recruiter sign-up (2026-11-26): name + email only. */
+.auth-quick-note { margin:10px 0 0; color:#5b6475; font-size:12.5px; line-height:1.5; text-align:center; }
+.auth-quick-note .text-button { padding:0; font-size:inherit; text-decoration:underline; }
+
 /* Role page opened from the recruiter's email (2026-11-26): the role as a phone card + "View resume". */
 .rl-recruiter { max-width:420px; margin:0 auto; display:grid; gap:12px; }
 .rl-recruiter .overline { text-align:center; }

@@ -23,7 +23,9 @@ export const TRACKED_EVENTS = ['signup_completed', 'role_posted', 'swipe', 'matc
   'jf_message_sent', 'jf_message_failed', 'jf_apply_clicked', 'jf_claim_requested', 'jf_claim_approved', 'jf_job_reported_closed',
   // Public job groups (/app/{group}) and LinkedIn links (2026-11-25).
   'grp_viewed', 'grp_filter', 'grp_job_selected', 'grp_gate_shown', 'grp_register_started', 'grp_register_completed', 'grp_returned',
-  'li_visit', 'li_signup', 'li_apply'];
+  'li_visit', 'li_signup', 'li_apply',
+  // Stage 1 claim links (2026-11-26): recruiter opened the email link / claimed the role.
+  'role_link_opened', 'role_claimed'];
 
 /** 'team' for any hiring-side account (company or headhunter), else 'candidate'. */
 export function actorSide(user) {

@@ -236,8 +236,11 @@ function BlockedList({ demo }: { demo: boolean }) {
 export function RegisterModal({ onClose, onComplete }: { onClose: () => void; onComplete: (user: SessionUser) => void }) {
   const config = useAuthConfig();
   // Quick sign-up from a recruiter email link (founder, 2026-11-26): role, name and email we already have are pre-filled.
-  const [prefill] = useState<{ role?: Role; name?: string; email?: string }>(() => { try { return JSON.parse(sessionStorage.getItem('jm-prefill') || '{}'); } catch { return {}; } });
-  const [role, setRole] = useState<Role>(prefill.role === 'employer' ? 'employer' : 'candidate');
+  const [prefill] = useState<{ role?: Role; name?: string; email?: string; claim?: string }>(() => { try { return JSON.parse(sessionStorage.getItem('jm-prefill') || '{}'); } catch { return {}; } });
+  // Fast recruiter registration (founder, 2026-11-26): name + email only; password and profile later.
+  // The default sign-up for everyone (founder, 2026-11-26); "Use the full sign-up" keeps the long form.
+  const [quick, setQuick] = useState(true);
+  const [role, setRole] = useState<Role>(prefill.role === 'employer' || new URLSearchParams(window.location.search).get('quick') === 'recruiter' ? 'employer' : 'candidate');
   const [name, setName] = useState(prefill.name || '');
   const [email, setEmail] = useState(prefill.email || '');
   const [password, setPassword] = useState('');
@@ -263,6 +266,29 @@ export function RegisterModal({ onClose, onComplete }: { onClose: () => void; on
     catch (e) { setError(e instanceof Error ? e.message : 'Registration failed'); }
     finally { setBusy(null); setSubmitting(false); }
   };
+
+  if (quick) return <ModalShell title={role === 'employer' ? 'Create your free recruiter account' : 'Join JobsMatchNow free'}
+    subtitle={role === 'employer' ? 'Just your name and email. Add your role now, complete your profile later.' : 'Just your name and email. Tell us the role you want, complete your profile later.'} onClose={onClose}>
+    {!prefill.claim && <div className="role-choice" role="radiogroup" aria-label="I am a">
+      <button type="button" className={role === 'candidate' ? 'role-option role-cand active' : 'role-option role-cand'} onClick={() => setRole('candidate')} aria-pressed={role === 'candidate'}><User size={17} /><strong>Candidate</strong><small>Find your next role</small></button>
+      <button type="button" className={role === 'employer' ? 'role-option role-rec active' : 'role-option role-rec'} onClick={() => setRole('employer')} aria-pressed={role === 'employer'}><BriefcaseBusiness size={17} /><strong>Company HR or Recruiter</strong><small>Find great people</small></button>
+    </div>}
+    <form className="auth-form" onSubmit={(event) => { event.preventDefault(); if (!name.trim() || !email.trim()) return; setSubmitting(true);
+      run(async () => {
+        const { user } = await api.register({ role, ...(role === 'employer' ? { kind: 'company' as const } : {}), name: name.trim(), email: email.trim(), conductAccepted: true, quick: true, ...(prefill.claim ? { claim: prefill.claim } : {}) });
+        // First screen after a quick sign-up: recruiters add a role, candidates the role they want (App reads this).
+        try { localStorage.setItem('jm-quick-start', role); } catch { /* private mode */ }
+        return { ...user, isNew: true };
+      }); }}>
+      <input className="auth-input" placeholder="Full name" value={name} onChange={(event) => setName(event.target.value)} required aria-label="Full name" autoComplete="name" autoFocus={!name} />
+      <input className="auth-input" type="email" placeholder={role === 'employer' ? 'Work email' : 'Email address'} value={email} onChange={(event) => setEmail(event.target.value)} required aria-label="Email address" autoComplete="email" />
+      <button type="submit" className="primary-button auth-submit" disabled={submitting || !name.trim() || !email.trim()}>{submitting ? <Loader2 size={16} className="spin" /> : <>Start free <ArrowRight size={16} /></>}</button>
+    </form>
+    <p className="auth-quick-note">By continuing you agree to the <button type="button" className="text-button" onClick={() => setConductOpen(true)}>Code of Conduct</button>, the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. We email you a link to set your password.</p>
+    {error && <p className="auth-error">{error}</p>}
+    <p className="auth-quick-note"><button type="button" className="text-button" onClick={() => setQuick(false)}>Use the full sign-up</button></p>
+    {conductOpen && <ConductModal onClose={() => setConductOpen(false)} />}
+  </ModalShell>;
 
   return <ModalShell title="Join JobsMatchNow" subtitle="Create your account in under a minute." onClose={onClose}>
     {/* Full tours under the subtitle (founder, 2026-11-24). */}

@@ -22,7 +22,9 @@ test('track bumps a bounded (week, name, demo, dim) counter; untrack retracts it
   assert.equal(db.eventCounts.length, 2, 'retracting an unknown bucket never creates one');
   assert.throws(() => track(db, 'made_up_event'), /Unknown analytics event/);
   assert.deepEqual(TRACKED_EVENTS.slice(0, 5), ['signup_completed', 'role_posted', 'swipe', 'match_created', 'first_message']);
-  assert.ok(TRACKED_EVENTS.slice(5).every((name) => /^(jf|grp|li)_/.test(name)), 'only the JobFinder, job-group and LinkedIn funnels are added');
+  assert.ok(TRACKED_EVENTS.slice(5).every((name) => /^(jf|grp|li|role)_/.test(name)), 'only the JobFinder, job-group, LinkedIn and Stage 1 role-link funnels are added');
+  // The claim page logs these (a missing name crashed it with a 500 on 2026-11-26).
+  assert.ok(TRACKED_EVENTS.includes('role_link_opened') && TRACKED_EVENTS.includes('role_claimed'));
 });
 
 test('counter rows carry no user ids or free text', () => {

@@ -16,10 +16,29 @@ type PublicProfile = {
 
 const asset = (p?: string) => (!p ? '' : /^(https?:|data:)/.test(p) ? p : `${apiBase}${p}`);
 
+/** Quick recruiter sign-up (founder, 2026-11-26): the name + email we have, and the claim token, for the register form. */
+function savePrefill(v: ClaimView | null, token: string) {
+  try { sessionStorage.setItem('jm-prefill', JSON.stringify({ role: 'employer', name: v?.prefill?.name || '', email: v?.prefill?.email || '', claim: token })); } catch { /* private mode */ }
+}
+/** ?claim=<jobId>.<sig> on a public page (from the recruiter's email). */
+function claimFromUrl() {
+  const m = (new URLSearchParams(window.location.search).get('claim') || '').match(/^(.+)\.([0-9a-f]{16,})$/);
+  return m ? { jobId: m[1], sig: m[2] } : null;
+}
+
 export function PublicProfilePage({ slug }: { slug: string }) {
   const [p, setP] = useState<PublicProfile | null>(null);
   const [error, setError] = useState('');
   const [resumeAsk, setResumeAsk] = useState(false);
+  // From the recruiter's email (?claim=…): "Register" opens the quick form with their name + email, then their role.
+  const [claim] = useState(claimFromUrl);
+  const [cv, setCv] = useState<ClaimView | null>(null);
+  useEffect(() => { if (claim) api.getClaim(claim.jobId, claim.sig).then(setCv).catch(() => undefined); }, [claim]);
+  const register = (auth: 'register' | 'login') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (claim) { savePrefill(cv, `${claim.jobId}.${claim.sig}`); window.location.href = `/app/?claim=${encodeURIComponent(`${claim.jobId}.${claim.sig}`)}&auth=${auth}`; return; }
+    window.location.href = `/app/?auth=${auth}${auth === 'register' ? '&quick=recruiter' : ''}&next=${encodeURIComponent(`/${slug}`)}`;
+  };
   useEffect(() => {
     // ?v= from a recruiter email: lets the candidate see "Application viewed" (2026-11-26).
     const v = new URLSearchParams(window.location.search).get('v');
@@ -54,8 +73,8 @@ export function PublicProfilePage({ slug }: { slug: string }) {
             <strong>Register free to see this candidate</strong>
             <p>Name, photo, full profile{p.hasResume ? ', resume' : ''} and skills{p.skills.length ? ` (${p.skills.join(', ')}${p.moreSkills ? ` and ${p.moreSkills} more` : ''})` : ''}. Create a free recruiter account in 1 minute, then like back to chat.</p>
             <div className="pp-actions">
-              <a className="primary-button" href={`/app/?auth=register&next=${encodeURIComponent(`/${p.slug}`)}`}>Register free as a recruiter <ArrowRight size={15} /></a>
-              <a className="secondary-button" href={`/app/?auth=login&next=${encodeURIComponent(`/${p.slug}`)}`}>I already have an account</a>
+              <a className="primary-button" href={`/app/?auth=register&quick=recruiter&next=${encodeURIComponent(`/${p.slug}`)}`} onClick={register('register')}>Register free as a recruiter <ArrowRight size={15} /></a>
+              <a className="secondary-button" href={`/app/?auth=login&next=${encodeURIComponent(`/${p.slug}`)}`} onClick={register('login')}>I already have an account</a>
             </div>
           </div>
         </div>
@@ -82,8 +101,8 @@ export function PublicProfilePage({ slug }: { slug: string }) {
         {resumeAsk && <div className="pp-resume-gate" role="dialog" aria-label="Download the resume">
           <p><b>Register to view {p.name.split(' ')[0]}&rsquo;s resume.</b> Create a free recruiter account on JobsMatchNow (1 minute). Like {p.name.split(' ')[0]} back: when you both say yes, the full resume and contact details unlock and you can chat right away.</p>
           <div className="pp-actions">
-            <a className="primary-button" href="/app/?auth=register">Register free as a recruiter <ArrowRight size={15} /></a>
-            <a className="secondary-button" href="/app/?auth=login">I already have an account</a>
+            <a className="primary-button" href="/app/?auth=register&quick=recruiter" onClick={register('register')}>Register free as a recruiter <ArrowRight size={15} /></a>
+            <a className="secondary-button" href="/app/?auth=login" onClick={register('login')}>I already have an account</a>
           </div>
         </div>}
         <p className="pp-note">Recruiter? Join JobsMatchNow for free to see full profiles and resumes, like back and chat with candidates.</p>
@@ -104,7 +123,7 @@ export function ClaimPage({ jobId, sig }: { jobId: string; sig: string }) {
   // Quick sign-up (founder, 2026-11-26): the recruiter's name + email we already have pre-fill the recruiter form; after
   // sign-up the role is claimed into their account and they land in Surf with these candidates.
   const goSignUp = (auth: 'register' | 'login') => {
-    try { if (v?.prefill) sessionStorage.setItem('jm-prefill', JSON.stringify({ role: 'employer', name: v.prefill.name, email: v.prefill.email })); } catch { /* private mode */ }
+    savePrefill(v, `${jobId}.${sig}`);
     window.location.href = `/app/?claim=${encodeURIComponent(`${jobId}.${sig}`)}&auth=${auth}`;
   };
   const claim = async () => {
@@ -150,7 +169,7 @@ export function RoleLinkPage({ slug }: { slug: string }) {
   const [jobId, setJobId] = useState('');
   const [error, setError] = useState('');
   // ?claim=<jobId>.<sig> from the recruiter's email (founder, 2026-11-26): recruiter view + "View resume" → quick sign-up.
-  const [claim] = useState(() => { const m = (new URLSearchParams(window.location.search).get('claim') || '').match(/^(.+)\.([0-9a-f]{16,})$/); return m ? { jobId: m[1], sig: m[2] } : null; });
+  const [claim] = useState(claimFromUrl);
   const [cv, setCv] = useState<ClaimView | null>(null);
   useEffect(() => { if (claim) api.getClaim(claim.jobId, claim.sig).then(setCv).catch(() => undefined); }, [claim]);
   useEffect(() => {
@@ -163,7 +182,7 @@ export function RoleLinkPage({ slug }: { slug: string }) {
   if (jobId && claim && claim.jobId === jobId) {
     const n = cv ? cv.candidates.length + cv.hidden : 0;
     const viewResume = () => {
-      try { if (cv?.prefill) sessionStorage.setItem('jm-prefill', JSON.stringify({ role: 'employer', name: cv.prefill.name, email: cv.prefill.email })); } catch { /* private mode */ }
+      savePrefill(cv, `${claim.jobId}.${claim.sig}`);
       window.location.href = `/app/?claim=${encodeURIComponent(`${claim.jobId}.${claim.sig}`)}&auth=register`;
     };
     return <PublicJobCardPage jobId={jobId} recruiter={{ claimSig: claim.sig, onView: viewResume, note: `${n ? `${n} ${n === 1 ? 'candidate has' : 'candidates have'} applied to your role.` : 'Candidates are applying to your role.'} Create your free recruiter account in 1 minute (your name and email are filled in) to view their resumes and connect.` }} />;

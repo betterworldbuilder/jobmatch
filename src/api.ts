@@ -126,7 +126,7 @@ export const api = {
   loginPassword: (email: string, password: string) => request<{ user: SessionUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   ssoLogin: (provider: 'linkedin' | 'google') => request<{ user: SessionUser }>('/api/auth/sso', { method: 'POST', body: JSON.stringify({ provider }) }),
   // Sign-ups from a job group / job / LinkedIn link carry where they came from (counts only; see lib/pendingJob).
-  register: (payload: { role: Role; kind?: EmployerKind; provider?: string; name: string; email: string; password?: string; photo?: string; conductAccepted?: boolean; country?: string; citizenship?: string }) => request<{ user: SessionUser }>('/api/auth/register', { method: 'POST', body: JSON.stringify({ ...payload, source: acquisitionSource() }) }),
+  register: (payload: { role: Role; kind?: EmployerKind; provider?: string; name: string; email: string; password?: string; photo?: string; conductAccepted?: boolean; country?: string; citizenship?: string; quick?: boolean; claim?: string }) => request<{ user: SessionUser }>('/api/auth/register', { method: 'POST', body: JSON.stringify({ ...payload, source: acquisitionSource() }) }),
   me: () => request<{ authenticated: boolean; user: SessionUser }>('/api/auth/me'),
   logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
   forgotPassword: (email: string) => request<{ ok: boolean; mailer: boolean; account?: boolean }>('/api/auth/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
