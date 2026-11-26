@@ -68,6 +68,7 @@ ${p('The candidate is interested in connecting with you. Feel free to review the
 ${p('Have an awesome day,<br><b>JobMatcher</b><br>The JobsMatchNow team')}
 ${p(`Not a member yet? Join us at ${a(`${origin}/app/`)}`)}
 ${about.map(([k, v]) => p(`<b>${e(k)}</b><br>${e(v).replace('free.', '<b>free</b>.').replace('no strings attached!', '<b>no strings attached!</b>')}`)).join('\n')}
+<a href="${e(origin)}/" style="display:block;margin:6px 0 18px"><img src="${e(origin)}/email-hero.jpg" width="560" alt="JobsMatchNow: Stop chasing jobs and candidates. Let the perfect match chase you." style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:12px"></a>
 ${p(`Sent at the candidate’s request through JobsMatchNow.<br>Don’t want these emails? <a href="${e(unsubscribeUrl)}" style="color:#6b7280">Unsubscribe</a>`, 'font-size:12px;color:#6b7280')}
 </div></body></html>`;
   return { subject: `A candidate is interested in your ${job.title} role`, text, html, candidateFirst: String(candidate?.name || '').split(' ')[0] };

@@ -77,6 +77,7 @@ test('the interest email follows the founder template: role link on JobsMatchNow
   assert.match(m.text, /Have an awesome day,\nJobMatcher\nThe JobsMatchNow team/);
   // HTML version: small logo on top, same links, escaped values.
   assert.match(m.html, /<img src="https:\/\/jobsmatchnow\.com\/logo\.png" width="36" height="36"/);
+  assert.match(m.html, /<img src="https:\/\/jobsmatchnow\.com\/email-hero\.jpg" width="560"[^>]*>[\s\S]*Sent at the candidate/, 'small hero image at the bottom');
   assert.ok(m.html.includes('href="https://jobsmatchnow.com/linh.tran"') && m.html.includes('<b>Data Engineer</b>'));
   assert.ok(!interestEmail({ ...base, job: { ...base.job, title: '<script>x' } }).html.includes('<script>'), 'title escaped');
   assert.match(m.text, /Sent at the candidate’s request through JobsMatchNow\./);

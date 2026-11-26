@@ -18,7 +18,7 @@ import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, re
 import { anonymizeText, convertDocxToPdf, detectTools, docxToHtml, extractDocxText, extractPdfText, makeSimplePdf, pdfThumbnail } from './resume.js';
 import { applyJob, assertPublishable, heuristicParse, legacySkills, parseJobText, parseSalaryText, parseStrength, summaryFromText } from './jobs.js';
 import { aiParseJob, importAiAllowed } from './import-ai.js';
-import { afterRoleInterest, markViewedByRow, mountRoleInterest, runFollowups, trackerFor } from './role-interest.js';
+import { afterRoleInterest, FROM_NAME, interestEmail, markViewedByRow, mountRoleInterest, RELAY_EMAIL, runFollowups, trackerFor } from './role-interest.js';
 import { assignProfileSlug, ensureProfileSlugs, findRoleBySlug, maskJobContacts, publicProfileView, rolePath } from './public-urls.js';
 import { claimLinksOn, claimUrl, mountClaims, stage1Funnel } from './stage1.js';
 import { backupToS3, mirrorToS3, removeFromS3, restoreFromS3, s3Enabled } from './storage.js';
@@ -5294,6 +5294,26 @@ app.post('/api/jobfinder/test-roles/resend', async (req, res, next) => {
     const results = [];
     for (const jobId of prep.liked) results.push({ jobId, status: (await afterRoleInterest(roleInterestCtx, { candidateId: prep.testerId, jobId }).catch(() => null))?.status || 'none' });
     res.json({ roles: prep.roles, resent: results });
+  } catch (error) { next(error); }
+});
+// Sample of the recruiter cold email, for checking the template (founder, 2026-11-26): built for one of the tester's
+// test roles and sent ONLY to the tester's own inbox. Import key only; records nothing.
+app.post('/api/jobfinder/test-roles/sample-email', async (req, res, next) => {
+  try {
+    if (!process.env.JOBFINDER_IMPORT_KEY || !importKeyOk(req.headers.authorization)) { const error = new Error('Missing or invalid import key'); error.status = 401; throw error; }
+    const testerEmail = String(req.body?.testerEmail || '').trim().toLowerCase();
+    const prep = await store.transaction((db) => {
+      const tester = db.users.find((u) => String(u.email || '').toLowerCase() === testerEmail && u.tester === true);
+      if (!tester) { const error = new Error('No tester account with that email'); error.status = 404; throw error; }
+      const job = db.jobs.find((j) => Array.isArray(j.visibleTo) && j.visibleTo.includes(tester.id));
+      if (!job) { const error = new Error('The tester has no test roles'); error.status = 404; throw error; }
+      return { tester: { email: tester.email, name: tester.name }, slug: assignProfileSlug(db, tester), job: { ...job } };
+    });
+    const origin = publicOrigin;
+    const msg = interestEmail({ job: prep.job, candidate: prep.tester, origin, unsubscribeUrl: roleInterestCtx.unsubscribeUrl(origin, prep.tester.email),
+      profileUrl: `${origin}/${prep.slug}`, roleUrl: `${origin}${rolePath(prep.job)}`, claimLink: roleInterestCtx.claimLink(prep.job.id, prep.tester.email) });
+    const info = mailerConfigured() ? await sendMail({ to: prep.tester.email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: `[Sample] ${msg.subject}`, text: msg.text, html: msg.html, channel: 'outreach', unsubscribeUrl: roleInterestCtx.unsubscribeUrl(origin, prep.tester.email) }) : null;
+    res.json({ role: prep.job.title, delivered: Boolean(info?.delivered), mailer: mailerConfigured() });
   } catch (error) { next(error); }
 });
 // Outreach dashboard + recruiter contact book for the JobFinder account (founder, 2026-11-26).
