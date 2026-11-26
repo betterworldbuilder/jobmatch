@@ -59,22 +59,30 @@ test('the interest email follows the founder template: role link on JobsMatchNow
     profileUrl: 'https://jobsmatchnow.com/linh.tran', roleUrl: 'https://jobsmatchnow.com/role/data/dataeng-1' };
   const m = interestEmail(base);
   assert.equal(m.subject, 'A candidate is interested in your Data Engineer role');
-  assert.match(m.text, /^Hello Jane,/);
-  assert.match(m.text, /great fit for your Data Engineer role at Acme Data\./);
-  // The posting link is always the role on JobsMatchNow (founder, 2026-11-26), never the outside site.
-  assert.match(m.text, /Your job posting: https:\/\/jobsmatchnow\.com\/role\/data\/dataeng-1\n/);
+  // Founder's mail template (2026-11-26).
+  assert.match(m.text, /^Hello Jane,\n\nIt’s your lucky day! 🎉/);
+  assert.match(m.text, /Our team at JobsMatchNow has decided to help you hire better and faster/);
+  assert.match(m.text, /great fit for your Data Engineer position at Acme Data\./);
+  // The posting link is always the role on JobsMatchNow, never the outside site.
+  assert.match(m.text, /Your job posting:\nhttps:\/\/jobsmatchnow\.com\/role\/data\/dataeng-1\n/);
   assert.ok(!m.text.includes('linkedin.com'), 'no outside posting link');
-  assert.match(m.text, /Connect with candidate: https:\/\/jobsmatchnow\.com\/linh\.tran/);
-  assert.match(m.text, /The candidate can be a great match with your role\./);
+  assert.match(m.text, /Candidate profile:\nhttps:\/\/jobsmatchnow\.com\/linh\.tran/);
+  assert.match(m.text, /The candidate is interested in connecting with you\./);
+  assert.match(m.text, /Who are we\?\n.*\n\nWhat problem do we solve\?\n.*\n\nHow much does it cost\?\nYour first trial month is free/);
   // With a claim link, the posting link carries the claim token (recruiter view + quick sign-up).
-  assert.match(interestEmail({ ...base, claimLink: 'https://jobsmatchnow.com/claim/j-1/0123456789abcdef0123456789abcdef' }).text,
-    /Your job posting: https:\/\/jobsmatchnow\.com\/role\/data\/dataeng-1\?claim=j-1\.0123456789abcdef0123456789abcdef/);
+  const withClaim = interestEmail({ ...base, claimLink: 'https://jobsmatchnow.com/claim/j-1/0123456789abcdef0123456789abcdef' });
+  assert.match(withClaim.text, /Your job posting:\nhttps:\/\/jobsmatchnow\.com\/role\/data\/dataeng-1\?claim=j-1\.0123456789abcdef0123456789abcdef/);
+  assert.match(withClaim.text, /See all candidates for this role and reply for free:\nhttps:\/\/jobsmatchnow\.com\/claim\/j-1\//);
   assert.match(m.text, /Not a member yet\? Join us at https:\/\/jobsmatchnow\.com\/app\//);
-  assert.match(m.text, /Best regards,\nJobMatcher\nJobsMatchNow/);
+  assert.match(m.text, /Have an awesome day,\nJobMatcher\nThe JobsMatchNow team/);
+  // HTML version: small logo on top, same links, escaped values.
+  assert.match(m.html, /<img src="https:\/\/jobsmatchnow\.com\/logo\.png" width="36" height="36"/);
+  assert.ok(m.html.includes('href="https://jobsmatchnow.com/linh.tran"') && m.html.includes('<b>Data Engineer</b>'));
+  assert.ok(!interestEmail({ ...base, job: { ...base.job, title: '<script>x' } }).html.includes('<script>'), 'title escaped');
   assert.match(m.text, /Sent at the candidate’s request through JobsMatchNow\./);
   assert.ok(!m.text.includes('secret@example.com'), 'no candidate email');
   // No LinkedIn URL: the role's JobsMatchNow page is used.
-  assert.match(interestEmail({ ...base, job: { ...base.job, externalUrl: undefined } }).text, /Your job posting: https:\/\/jobsmatchnow\.com\/role\/data\/dataeng-1/);
+  assert.match(interestEmail({ ...base, job: { ...base.job, externalUrl: undefined } }).text, /Your job posting:\nhttps:\/\/jobsmatchnow\.com\/role\/data\/dataeng-1/);
 });
 
 test('JobFinder role: import keeps the private contact; a real candidate apply emails the recruiter once', async () => {
@@ -109,7 +117,8 @@ test('JobFinder role: import keeps the private contact; a real candidate apply e
   const me = (await call('GET', `/api/bootstrap?userId=${cand.id}`, undefined, cand.cookie)).body.viewer;
   assert.match(me.profileSlug, /^interest\.candidate\d*$/);
   assert.ok(sent[0].text.includes(`/${me.profileSlug}`), 'profile link in the email');
-  const roleLink = sent[0].text.match(/Your job posting: (\S+)/)[1];
+  const roleLink = sent[0].text.match(/Your job posting:\n(\S+)/)[1];
+  assert.match(sent[0].html, /logo\.png/, 'HTML version with the logo is sent');
   assert.match(roleLink, /\/role\/data\/dataeng-[a-z0-9]+$/);
   // Both public addresses resolve.
   // Anonymous visitors get the blurred teaser (founder, 2026-11-26): no name, photo or about until they register.

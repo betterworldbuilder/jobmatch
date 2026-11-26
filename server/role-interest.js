@@ -32,28 +32,45 @@ export function interestEmail({ job, candidate, origin, unsubscribeUrl, profileU
   const cm = String(claimLink || '').match(/\/claim\/([^/]+)\/([0-9a-f]+)$/);
   const token = cm ? `${decodeURIComponent(cm[1])}.${cm[2]}` : '';
   const posting = token ? `${roleUrl}?claim=${encodeURIComponent(token)}` : roleUrl;
+  // Founder's mail template (2026-11-26), sent as plain text + HTML with the small JobsMatchNow logo on top.
+  const at = job.company ? ` at ${job.company}` : '';
+  const links = [['Your job posting:', posting], ['Candidate profile:', profileUrl],
+    // Stage 1 (behind ROLE_CLAIM_LINKS): one click to every applicant and to claiming the role.
+    ...(claimLink ? [['See all candidates for this role and reply for free:', claimLink]] : [])];
+  const about = [['Who are we?', 'JobsMatchNow is a platform that matches recruiters and candidates directly.'],
+    ['What problem do we solve?', 'Hiring can take too much time. We help you discover interested candidates and, if you both match, start conversations faster, with fewer unnecessary steps.'],
+    ['How much does it cost?', 'Your first trial month is free. If you’re not happy, that’s it: no strings attached!']];
   const text = [
-    `Hello ${first || 'Hiring Team'},`,
-    '',
-    `We’ve found a candidate who believes their skills and experience are a great fit for your ${job.title} role${job.company ? ` at ${job.company}` : ''}.`,
-    '',
-    `Your job posting: ${posting}`,
-    `Connect with candidate: ${profileUrl}`,
-    // Stage 1 (2026-11-26, behind ROLE_CLAIM_LINKS): one click to every applicant and to claiming the role.
-    ...(claimLink ? [`See all candidates for this role and reply (free): ${claimLink}`] : []),
-    '',
-    'The candidate can be a great match with your role. Feel free to review their profile and connect with them on JobsMatchNow.',
-    '',
-    `Not a member yet? Join us at ${origin}/app/`,
-    '',
-    'Best regards,',
-    'JobMatcher',
-    'JobsMatchNow',
-    '',
+    `Hello ${first || 'Hiring Team'},`, '',
+    'It’s your lucky day! 🎉', '',
+    'Our team at JobsMatchNow has decided to help you hire better and faster by finding your ideal match, for free!', '',
+    `And here’s some good news: we’ve found a great candidate who believes their skills and experience are a great fit for your ${job.title} position${at}.`, '',
+    ...links.flatMap(([k, v]) => [k, v, '']),
+    'The candidate is interested in connecting with you. Feel free to review their profile and connect with them on JobsMatchNow.', '',
+    'Have an awesome day,', 'JobMatcher', 'The JobsMatchNow team', '',
+    `Not a member yet? Join us at ${origin}/app/`, '',
+    ...about.flatMap(([k, v]) => [k, v, '']),
     'Sent at the candidate’s request through JobsMatchNow.',
     `Don’t want these emails? ${unsubscribeUrl}`,
   ].join('\n');
-  return { subject: `A candidate is interested in your ${job.title} role`, text, candidateFirst: String(candidate?.name || '').split(' ')[0] };
+  const e = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const a = (u) => `<a href="${e(u)}" style="color:#1a56db">${e(u)}</a>`;
+  const p = (inner, extra = '') => `<p style="margin:0 0 14px;${extra}">${inner}</p>`;
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#ffffff">
+<div style="max-width:600px;padding:20px 16px;font:15px/1.5 Arial,Helvetica,sans-serif;color:#1f2937">
+<a href="${e(origin)}/" style="display:inline-block;margin:0 0 18px;text-decoration:none"><img src="${e(origin)}/logo.png" width="36" height="36" alt="" style="vertical-align:middle;border:0;border-radius:8px"> <span style="vertical-align:middle;font:800 20px Arial,Helvetica,sans-serif;color:#0d1834">Jobs<span style="color:#1a56db">Match</span><span style="color:#ffffff;background:#fd267a;border-radius:6px;padding:0 5px;margin-left:2px">Now</span></span></a>
+${p(`Hello ${e(first || 'Hiring Team')},`)}
+${p('<b>It’s your lucky day! 🎉</b>')}
+${p('Our team at <b>JobsMatchNow</b> has decided to help you hire better and faster by finding your ideal match, <b>for free!</b>')}
+${p(`And here’s some good news: we’ve found a great candidate who believes their skills and experience are a great fit for your <b>${e(job.title)}</b> position${e(at)}.`)}
+${links.map(([k, v]) => p(`<b>${e(k)}</b><br>${a(v)}`)).join('\n')}
+${p('The candidate is interested in connecting with you. Feel free to review their profile and connect with them on JobsMatchNow.')}
+${p('Have an awesome day,<br><b>JobMatcher</b><br>The JobsMatchNow team')}
+${p(`Not a member yet? Join us at ${a(`${origin}/app/`)}`)}
+${about.map(([k, v]) => p(`<b>${e(k)}</b><br>${e(v).replace('free.', '<b>free</b>.').replace('no strings attached!', '<b>no strings attached!</b>')}`)).join('\n')}
+${p(`Sent at the candidate’s request through JobsMatchNow.<br>Don’t want these emails? <a href="${e(unsubscribeUrl)}" style="color:#6b7280">Unsubscribe</a>`, 'font-size:12px;color:#6b7280')}
+</div></body></html>`;
+  return { subject: `A candidate is interested in your ${job.title} role`, text, html, candidateFirst: String(candidate?.name || '').split(' ')[0] };
 }
 
 export function mountRoleInterest(app, { store, secret }) {
@@ -104,7 +121,7 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
     row.status = 'submitted';
     // ?v=<row id>: when the recruiter opens the profile from this email, the candidate sees "Application viewed".
     const msg = interestEmail({ job, candidate, origin, unsubscribeUrl: ctx.unsubscribeUrl(origin, email), profileUrl: `${origin}/${slug}?v=${row.id}`, roleUrl: `${origin}${rolePath(job)}`, claimLink: ctx.claimLink?.(job.id, email) || null });
-    return { rowId: row.id, mail: { to: email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: msg.subject, text: msg.text, channel: 'outreach', unsubscribeUrl: ctx.unsubscribeUrl(origin, email) } };
+    return { rowId: row.id, mail: { to: email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: msg.subject, text: msg.text, html: msg.html, channel: 'outreach', unsubscribeUrl: ctx.unsubscribeUrl(origin, email) } };
   }).catch(() => null);
   if (!prepared || prepared.skip) return prepared ? { status: prepared.skip } : null;
   let status = 'not_sent';
