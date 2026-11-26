@@ -133,6 +133,90 @@ function applyJobFinderFields(job, body) {
   applyJob(job, rest);
 }
 
+// ---------- Batch import from the Job Scraper (founder, 2026-11-26) ----------
+// Scrapy turns the founder's "linkjobs" Gmail alerts into jobsmatchnow-job/v1 files; scripts/linkjobs_import.py posts
+// them here with the import key. Every job lands as a JobFinder DRAFT (the founder reviews and publishes in the
+// JobFinder manager); a link already listed is skipped, never overwritten.
+export const IMPORT_BATCH_MAX = 50;
+const JOB_FIELDS = ['title', 'company', 'department', 'location', 'country', 'type', 'workMode', 'seniority', 'fullDescription', 'description',
+  'requiredSkillsDetail', 'niceToHaves', 'requiredLanguages', 'responsibilities', 'salaryRange', 'salaryPeriod', 'benefits', 'contractDuration',
+  'startDate', 'workVisaRequired', 'visaSponsorship', 'relocationSupport', 'recruiterName', 'recruiterTitle'];
+/** The same link written two ways (LinkedIn tracking params, trailing slash) counts as one. */
+export function sourceKey(u) {
+  const s = String(u || '').trim();
+  const li = s.match(/linkedin\.com\/jobs\/view\/(?:[^/?#]*-)?(\d{6,})/i);
+  if (li) return `linkedin:${li[1]}`;
+  try { const x = new URL(s); return `${x.hostname.replace(/^www\./, '')}${x.pathname.replace(/\/+$/, '')}`.toLowerCase(); } catch { return s.toLowerCase(); }
+}
+/** One scraped job → the body the JobFinder form would send (nulls dropped). */
+export function scrapedToBody(j) {
+  const body = {};
+  for (const k of JOB_FIELDS) if (j[k] !== null && j[k] !== undefined && !(Array.isArray(j[k]) && !j[k].length) && j[k] !== '') body[k] = j[k];
+  const src = j.source?.url || j.externalUrl || j.url;
+  if (src) body.sourceUrl = src;
+  body.sourceName = j.source?.name || 'Job Scraper';
+  if (j.externalUrl || src) body.applyUrl = j.externalUrl || src;
+  if (j.deadline) body.closingDate = j.deadline;
+  const groups = (j.jobGroups?.length ? j.jobGroups : j.suggestedJobGroups) || [];
+  if (groups.length) body.jobGroups = groups;
+  return body;
+}
+/** Apply fields one validation error at a time: a value the app does not accept is dropped, the rest is kept. */
+function applyLenient(job, body, dropped) {
+  const b = { ...body };
+  for (let i = 0; i < 12; i += 1) {
+    try { applyJobFinderFields(job, b); return; } catch (error) {
+      // Shared validators name the field 'url' / 'date': map them back to the optional fields that use them.
+      const f = error?.field === 'url' && 'applyUrl' in b ? 'applyUrl' : error?.field === 'date' && 'closingDate' in b ? 'closingDate' : error?.field;
+      if (!(error instanceof ValidationError) || !f || !(f in b) || ['title', 'company', 'sourceUrl'].includes(f)) throw error;
+      dropped.push(f); delete b[f]; delete job[f];
+    }
+  }
+}
+/** Import scraped jobs as JobFinder drafts. Returns one result per input, in order. */
+export function importScrapedJobs(db, items, { ownerId, audit, now = Date.now() } = {}) {
+  ensureCollections(db);
+  const owner = db.users.find((u) => u.id === ownerId);
+  const known = new Map(db.jobs.filter((j) => isJobFinderJob(j) && j.jobFinder.sourceUrl).map((j) => [sourceKey(j.jobFinder.sourceUrl), j.id]));
+  return items.slice(0, IMPORT_BATCH_MAX).map((raw) => {
+    const j = raw && typeof raw === 'object' && Array.isArray(raw.jobs) ? raw.jobs[0] : raw;
+    const ref = String(j?.source?.url || j?.externalUrl || j?.url || j?.title || '').slice(0, 300);
+    try {
+      if (!j || typeof j !== 'object') throw new ValidationError('job', 'Not a job');
+      const body = scrapedToBody(j);
+      if (!body.sourceUrl) throw new ValidationError('sourceUrl', 'The job has no source link');
+      body.sourceUrl = validateJobUrl(body.sourceUrl).href;
+      const key = sourceKey(body.sourceUrl);
+      if (known.has(key)) return { ref, status: 'duplicate', id: known.get(key) };
+      const job = {
+        id: `jf-${crypto.randomUUID().slice(0, 12)}`, employerId: owner.id, createdAt: now, applicants: 0, accent: '#0f62fe',
+        jobFinder: { addedBy: 'JobFinder', employerStatus: 'pending', listingStatus: 'draft', discoveredAt: nowIso(), lastCheckedAt: nowIso() },
+      };
+      const dropped = [];
+      applyLenient(job, body, dropped);
+      assignGroups(db, job, body);
+      if (!job.title) throw new ValidationError('title', 'The job title is required');
+      if (!job.company) throw new ValidationError('company', 'The employer / company is required');
+      const sourceJobId = key.startsWith('linkedin:') ? key.slice(9) : undefined;
+      job.jobFinder.import = { method: 'imported', extraction: str(raw?.generator || 'jobscraper', 120), sourceJobId, importedBy: 'import-key', importedAt: now, ...(dropped.length ? { dropped } : {}) };
+      db.jobs.push(job);
+      refreshPublic(db, job);
+      history(db, job.id, owner.id, 'imported', { listingStatus: 'draft', method: 'imported', via: 'linkjobs' }, audit);
+      known.set(key, job.id);
+      return { ref, status: 'created', id: job.id, title: job.title, company: job.company, ...(dropped.length ? { dropped } : {}) };
+    } catch (error) {
+      return { ref, status: 'failed', error: String(error?.message || error).slice(0, 200) };
+    }
+  });
+}
+/** The import key from the server env (JOBFINDER_IMPORT_KEY, 32+ chars); off when unset. */
+export function importKeyOk(header, key = process.env.JOBFINDER_IMPORT_KEY) {
+  if (!key || key.length < 32) return false;
+  const got = String(header || '').replace(/^Bearer\s+/i, '');
+  const a = crypto.createHash('sha256').update(got).digest(); const b = crypto.createHash('sha256').update(key).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
 /** What a public visitor or candidate may see about a JobFinder job (no contacts, no internal data). */
 export function publicJobView(db, job) {
   const jf = job.jobFinder;
@@ -295,6 +379,24 @@ export function mountJobFinder(app, ctx) {
         return { job, duplicates: findDuplicates(db, job) };
       });
       res.status(201).json(result);
+    } catch (error) { next(error); }
+  });
+
+  // Batch import from scripts/linkjobs_import.py. Auth: the import key only (no session, no cookies). Drafts only.
+  app.post('/api/jobfinder/import-batch', ...(limiter ? [limiter] : []), async (req, res, next) => {
+    try {
+      if (!process.env.JOBFINDER_IMPORT_KEY) { const e = new Error('Batch import is not switched on'); e.status = 404; throw e; }
+      if (!importKeyOk(req.headers.authorization)) { const e = new Error('Missing or invalid import key'); e.status = 401; throw e; }
+      const items = Array.isArray(req.body?.jobs) ? req.body.jobs : null;
+      if (!items || !items.length) throw new ValidationError('jobs', 'Send { jobs: [...] }');
+      if (items.length > IMPORT_BATCH_MAX) throw new ValidationError('jobs', `At most ${IMPORT_BATCH_MAX} jobs per call`);
+      const results = await store.transaction((db) => {
+        const owner = jobFinderAccount(db);
+        if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
+        return importScrapedJobs(db, items, { ownerId: owner.id, audit });
+      });
+      const count = (s) => results.filter((r) => r.status === s).length;
+      res.json({ created: count('created'), duplicate: count('duplicate'), failed: count('failed'), results });
     } catch (error) { next(error); }
   });
 
