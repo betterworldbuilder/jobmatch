@@ -26,7 +26,8 @@ const EXTRAS: Record<Props['role'], Extra[]> = {
     { key: 'profile', label: 'My profile', icon: User, view: 'profile' },
   ],
   employer: [
-    { key: 'explorer', label: 'Candidate Explorer', icon: Compass, view: 'discover' },
+    // One-word label so it fits the bar on one line (founder, 2026-11-26: "Candidate Explorer" wrapped out of the bar).
+    { key: 'explorer', label: 'Explorer', icon: Compass, view: 'discover' },
     { key: 'selected', label: 'Selected', icon: Users, view: 'selected' },
     { key: 'stages', label: 'Hiring Stages', icon: ListChecks, view: 'stages' },
     { key: 'hired', label: 'Hired', icon: Trophy, view: 'hired' },

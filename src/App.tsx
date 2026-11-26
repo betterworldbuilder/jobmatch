@@ -9,6 +9,7 @@ import { MobileTabs } from './components/MobileTabs';
 import { likesWaiting, workModesText } from './lib/today';
 import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Ban, Flag,Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
+import { showNotice } from './lib/notice';
 import { apiBase, groupsApi, JOBFINDER_LIKED_EVENT, JOBFINDER_OPEN_EVENT, SESSION_EXPIRED_EVENT, type JfLikeResult } from './api';
 import { InterestPanel, JobFinderManager } from './components/jobfinder/JobFinder';
 import { OutreachPage } from './components/jobfinder/Outreach';
@@ -703,7 +704,8 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
     const dot = c.lastIndexOf('.');
     const viewerId = data.viewer.id;
     api.postClaim(c.slice(0, dot), c.slice(dot + 1))
-      .then(async (r) => { setData(await api.bootstrap(viewerId)); setView('home'); window.alert(r.already ? 'This role is already in your My Jobs list.' : 'Role claimed: it is now in your My Jobs list, with the candidates who applied.'); })
+      // Land in Surf with the role and its recommended candidates (founder, 2026-11-26).
+      .then(async (r) => { try { sessionStorage.removeItem('jm-prefill'); } catch { /* private mode */ } setData(await api.bootstrap(viewerId)); setView('match'); showNotice(r.already ? 'This role is already in your account: here are its candidates.' : 'Your role is now in your account. Swipe right on the candidates you like: a chat opens when they like you back.'); })
       .catch((e) => window.alert(e instanceof Error ? e.message : 'Could not claim this role'));
   }, [data === null, data?.viewer.onboarding]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

@@ -53,7 +53,7 @@ test('parser finds the recruiter email, phone and name in the job text', () => {
   assert.equal(p.company, 'Acme Data');
 });
 
-test('the interest email follows the founder template: posting URL (LinkedIn first) and the candidate profile link', () => {
+test('the interest email follows the founder template: role link on JobsMatchNow and "Connect with candidate"', () => {
   const base = { job: { title: 'Data Engineer', company: 'Acme Data', recruiterName: 'Jane Doe', externalUrl: 'https://www.linkedin.com/jobs/view/123/' },
     candidate: { name: 'Linh Tran', email: 'secret@example.com' }, origin: 'https://jobsmatchnow.com', unsubscribeUrl: 'https://jobsmatchnow.com/u',
     profileUrl: 'https://jobsmatchnow.com/linh.tran', roleUrl: 'https://jobsmatchnow.com/role/data/dataeng-1' };
@@ -61,8 +61,14 @@ test('the interest email follows the founder template: posting URL (LinkedIn fir
   assert.equal(m.subject, 'A candidate is interested in your Data Engineer role');
   assert.match(m.text, /^Hello Jane,/);
   assert.match(m.text, /great fit for your Data Engineer role at Acme Data\./);
-  assert.match(m.text, /Your job posting: https:\/\/www\.linkedin\.com\/jobs\/view\/123\//);
-  assert.match(m.text, /Candidate profile: https:\/\/jobsmatchnow\.com\/linh\.tran/);
+  // The posting link is always the role on JobsMatchNow (founder, 2026-11-26), never the outside site.
+  assert.match(m.text, /Your job posting: https:\/\/jobsmatchnow\.com\/role\/data\/dataeng-1\n/);
+  assert.ok(!m.text.includes('linkedin.com'), 'no outside posting link');
+  assert.match(m.text, /Connect with candidate: https:\/\/jobsmatchnow\.com\/linh\.tran/);
+  assert.match(m.text, /The candidate can be a great match with your role\./);
+  // With a claim link, the posting link carries the claim token (recruiter view + quick sign-up).
+  assert.match(interestEmail({ ...base, claimLink: 'https://jobsmatchnow.com/claim/j-1/0123456789abcdef0123456789abcdef' }).text,
+    /Your job posting: https:\/\/jobsmatchnow\.com\/role\/data\/dataeng-1\?claim=j-1\.0123456789abcdef0123456789abcdef/);
   assert.match(m.text, /Not a member yet\? Join us at https:\/\/jobsmatchnow\.com\/app\//);
   assert.match(m.text, /Best regards,\nJobMatcher\nJobsMatchNow/);
   assert.match(m.text, /Sent at the candidate’s request through JobsMatchNow\./);

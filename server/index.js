@@ -5305,7 +5305,7 @@ app.get('/api/jobfinder/outreach', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 // Stage 1 (2026-11-26): the recruiter's claim page /claim/<jobId>/<sig>, and the weekly funnel for the admin dashboard.
-mountClaims(app, { store, authSession, secret: () => sessionSecret, contactOf: jobContactRec, track });
+mountClaims(app, { store, authSession, secret: () => sessionSecret, contactOf: jobContactRec, track, scoreCandidateForJob });
 app.get('/api/admin/stage1', async (req, res, next) => {
   try { requireAdminRole(authSession(req)); res.json(stage1Funnel(await store.read())); } catch (error) { next(error); }
 });

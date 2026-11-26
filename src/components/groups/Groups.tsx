@@ -70,7 +70,7 @@ function openJob(id: string, from?: string, src?: string) {
   window.location.href = `/?${q}`;
 }
 
-function Card({ c, onView }: { c: GroupCard; onView: () => void }) {
+function Card({ c, onView, viewLabel = 'View job' }: { c: GroupCard; onView: () => void; viewLabel?: string }) {
   return <article className="grp-card">
     <div className="grp-card-top">
       <div><h3>{c.title}</h3><p className="grp-co">{c.company}</p></div>
@@ -89,7 +89,7 @@ function Card({ c, onView }: { c: GroupCard; onView: () => void }) {
     {c.preview && <p className="grp-preview">{c.preview}</p>}
     <div className="grp-card-foot">
       <small>{c.postedAt ? `Added ${fmtDate(c.postedAt)}` : ''}{c.groups.length ? ` · ${c.groups.map((g) => g.name).join(' · ')}` : ''}</small>
-      <button type="button" className="primary-button small" onClick={onView}>View job <ArrowRight size={13} /></button>
+      <button type="button" className="primary-button small" onClick={onView}>{viewLabel} <ArrowRight size={13} /></button>
     </div>
   </article>;
 }
@@ -186,7 +186,9 @@ export function GroupPage({ slug: initialSlug }: { slug: string }) {
 }
 
 /** /app/job/{id}: one job's public card (the link recruiters paste in LinkedIn's "external website"). */
-export function PublicJobCardPage({ jobId }: { jobId: string }) {
+/** `recruiter` (founder, 2026-11-26): the role's own recruiter, from the email link: the role as a phone card with a
+ *  "View resume" button that opens the pre-filled recruiter sign-up. */
+export function PublicJobCardPage({ jobId, recruiter }: { jobId: string; recruiter?: { onView: () => void; note: string } }) {
   const [src] = useState(() => (new URLSearchParams(window.location.search).get('src') === 'linkedin' ? 'linkedin' : undefined));
   const [c, setC] = useState<GroupCard | null>(null);
   const [error, setError] = useState('');
@@ -195,6 +197,12 @@ export function PublicJobCardPage({ jobId }: { jobId: string }) {
   useEffect(() => { groupsApi.job(jobId, src ? `src=${src}` : '').then((r) => { setC(r.job); document.title = `${r.job.title} at ${r.job.company} · JobsMatchNow`; }).catch((e) => setError(e instanceof Error ? e.message : 'This job is not available')); }, [jobId, src]);
   return <PublicShell>
     {!c ? <section className="jf-public-card"><h1>{error ? 'Job not available' : 'Loading…'}</h1>{error && <p>{error}. <a href="/">See open jobs on JobsMatchNow</a></p>}</section>
+      : recruiter ? <section className="grp-wrap rl-recruiter">
+        <span className="overline">Your role on JobsMatchNow · recruiter view</span>
+        <Card c={c} viewLabel="View resume" onView={recruiter.onView} />
+        <p className="rl-note">{recruiter.note}</p>
+        <button type="button" className="primary-button rl-cta" onClick={recruiter.onView}>View resume <ArrowRight size={15} /></button>
+      </section>
       : <section className="grp-wrap"><Card c={c} onView={() => (signedIn ? openJob(c.id, undefined, src) : setGate(true))} />
         {c.groups.length > 0 && <p className="grp-note">More jobs like this: {c.groups.map((g, i) => <span key={g.id}>{i ? ' · ' : ''}<a href={`/app/${g.slug}`}>{g.name}</a></span>)}</p>}
         {c.jobFinder && c.jobFinder.employerStatus !== 'member' && <p className="grp-note"><a href={`/jobs/${c.id}`}>Is this your job? Claim it</a></p>}

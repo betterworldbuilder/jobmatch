@@ -235,9 +235,11 @@ function BlockedList({ demo }: { demo: boolean }) {
 
 export function RegisterModal({ onClose, onComplete }: { onClose: () => void; onComplete: (user: SessionUser) => void }) {
   const config = useAuthConfig();
-  const [role, setRole] = useState<Role>('candidate');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  // Quick sign-up from a recruiter email link (founder, 2026-11-26): role, name and email we already have are pre-filled.
+  const [prefill] = useState<{ role?: Role; name?: string; email?: string }>(() => { try { return JSON.parse(sessionStorage.getItem('jm-prefill') || '{}'); } catch { return {}; } });
+  const [role, setRole] = useState<Role>(prefill.role === 'employer' ? 'employer' : 'candidate');
+  const [name, setName] = useState(prefill.name || '');
+  const [email, setEmail] = useState(prefill.email || '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<SsoBusy>(null);
   const [submitting, setSubmitting] = useState(false);

@@ -27,18 +27,22 @@ export const FROM_NAME = 'JobMatcher at JobsMatchNow';
  */
 export function interestEmail({ job, candidate, origin, unsubscribeUrl, profileUrl, roleUrl, claimLink }) {
   const first = String(job.recruiterName || '').trim().split(/\s+/)[0];
-  const posting = job.externalUrl || job.sourceUrl || job.jobFinder?.sourceUrl || roleUrl;
+  // "Your job posting" opens the role on JobsMatchNow as the recruiter sees it (phone view + "View resume"), never the
+  // outside site (founder, 2026-11-26). The claim token lets that page pre-fill the recruiter's quick sign-up.
+  const cm = String(claimLink || '').match(/\/claim\/([^/]+)\/([0-9a-f]+)$/);
+  const token = cm ? `${decodeURIComponent(cm[1])}.${cm[2]}` : '';
+  const posting = token ? `${roleUrl}?claim=${encodeURIComponent(token)}` : roleUrl;
   const text = [
     `Hello ${first || 'Hiring Team'},`,
     '',
     `We’ve found a candidate who believes their skills and experience are a great fit for your ${job.title} role${job.company ? ` at ${job.company}` : ''}.`,
     '',
     `Your job posting: ${posting}`,
-    `Candidate profile: ${profileUrl}`,
+    `Connect with candidate: ${profileUrl}`,
     // Stage 1 (2026-11-26, behind ROLE_CLAIM_LINKS): one click to every applicant and to claiming the role.
     ...(claimLink ? [`See all candidates for this role and reply (free): ${claimLink}`] : []),
     '',
-    'The candidate is interested in connecting with you. Feel free to review their profile and connect with them on JobsMatchNow.',
+    'The candidate can be a great match with your role. Feel free to review their profile and connect with them on JobsMatchNow.',
     '',
     `Not a member yet? Join us at ${origin}/app/`,
     '',

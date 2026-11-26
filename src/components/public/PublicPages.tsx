@@ -101,13 +101,18 @@ export function ClaimPage({ jobId, sig }: { jobId: string; sig: string }) {
     api.getClaim(jobId, sig).then((r) => { setV(r); document.title = `Candidates for ${r.job.title} · JobsMatchNow`; })
       .catch((e) => setError(e instanceof Error ? e.message : 'This link is not valid'));
   }, [jobId, sig]);
-  const goSignUp = (auth: 'register' | 'login') => { window.location.href = `/app/?claim=${encodeURIComponent(`${jobId}.${sig}`)}&auth=${auth}`; };
+  // Quick sign-up (founder, 2026-11-26): the recruiter's name + email we already have pre-fill the recruiter form; after
+  // sign-up the role is claimed into their account and they land in Surf with these candidates.
+  const goSignUp = (auth: 'register' | 'login') => {
+    try { if (v?.prefill) sessionStorage.setItem('jm-prefill', JSON.stringify({ role: 'employer', name: v.prefill.name, email: v.prefill.email })); } catch { /* private mode */ }
+    window.location.href = `/app/?claim=${encodeURIComponent(`${jobId}.${sig}`)}&auth=${auth}`;
+  };
   const claim = async () => {
     setBusy(true);
     try { const r = await api.postClaim(jobId, sig); setDone(r.already ? 'This role is already in your account.' : 'Done: the role and its candidates are now in your account.'); }
     catch (e) {
       const msg = e instanceof Error ? e.message : '';
-      if (/sign in/i.test(msg)) goSignUp('register'); else setError(msg || 'Could not claim this role');
+      if (/sign in/i.test(msg)) goSignUp('login'); else setError(msg || 'Could not claim this role');
     } finally { setBusy(false); }
   };
   return <PublicShell>
@@ -117,22 +122,25 @@ export function ClaimPage({ jobId, sig }: { jobId: string; sig: string }) {
         <span className="overline">Your role on JobsMatchNow</span>
         <h1>{v.job.title}</h1>
         <p className="cl-sub">{[v.job.company, v.job.location, v.job.workMode, v.job.type].filter(Boolean).join(' · ')} · <a href={v.job.path}>See the role page</a></p>
-        <h2>{v.candidates.length + v.hidden} {v.candidates.length + v.hidden === 1 ? 'candidate has' : 'candidates have'} applied</h2>
-        {v.candidates.length ? <ul className="cl-list">{v.candidates.map((c) => <li key={c.slug}>
-          <a href={`/${c.slug}`} target="_blank" rel="noopener noreferrer">
-            {c.photo ? <img src={asset(c.photo)} alt="" /> : <span className="cl-initials">{c.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('')}</span>}
-            <span><strong>{c.name}</strong><small>{[c.title, c.yearsExperience ? `${c.yearsExperience} yrs` : '', [c.city, c.country].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}</small>
-              {c.skills.length > 0 && <em>{c.skills.join(' · ')}</em>}</span>
-          </a></li>)}</ul>
-          : <p className="cl-empty">No public profiles yet. New applicants appear here.</p>}
-        {v.hidden > 0 && <p className="cl-note">+ {v.hidden} with a private profile: claim the role to see them in your account.</p>}
+        <h2>{v.candidates.length + v.hidden} {v.candidates.length + v.hidden === 1 ? 'candidate has' : 'candidates have'} applied · recommended candidates for your role</h2>
+        {/* Carousel of recommended candidates (founder, 2026-11-26): applicants first; full profiles after sign-up. */}
+        {(v.recommended?.length ?? 0) > 0 ? <div className="cl-carousel" role="list" aria-label="Recommended candidates">
+          {v.recommended!.map((c) => <article key={c.id} className="cl-cand" role="listitem">
+            <div className="cl-cand-photo">{c.photo ? <img src={asset(c.photo)} alt="" /> : <span>{c.firstName.slice(0, 1)}</span>}
+              {c.match !== null && <em>{c.match}%</em>}{c.applied && <b>Applied</b>}</div>
+            <strong>{c.firstName}</strong>
+            <small>{[c.title, c.yearsExperience ? `${c.yearsExperience} yrs` : ''].filter(Boolean).join(' · ')}</small>
+            {(c.city || c.country) && <small>{[c.city, c.country].filter(Boolean).join(', ')}</small>}
+            {c.skills.length > 0 && <span className="cl-cand-skills">{c.skills.map((s) => <i key={s}>{s}</i>)}</span>}
+          </article>)}
+        </div> : <p className="cl-empty">No candidates yet. New applicants appear here.</p>}
         {done ? <p className="cl-done">{done} <a href="/app/">Open My Jobs list</a></p>
           : v.claimed && !v.claimedByYou ? <p className="cl-note">This role has already been claimed by a recruiter.</p>
             : <div className="pp-actions">
-              <button type="button" className="primary-button" onClick={() => void claim()} disabled={busy || v.preview}>Claim this role and reply to candidates (free)</button>
-              <button type="button" className="secondary-button" onClick={() => goSignUp('login')} disabled={v.preview}>I already have an account</button>
+              <button type="button" className="primary-button" onClick={() => goSignUp('register')} disabled={busy || v.preview}>View profiles <ArrowRight size={15} /></button>
+              <button type="button" className="secondary-button" onClick={() => void claim()} disabled={busy || v.preview}>I already have an account</button>
             </div>}
-        <p className="pp-note">Claiming moves this role into your own free JobsMatchNow recruiter account: you see every applicant, like back to open a chat, and edit the role.</p>
+        <p className="pp-note">Free recruiter account in 1 minute (your name and email are filled in). Your role is added to it with these candidates: like back to open a chat.</p>
       </section>}
   </PublicShell>;
 }
@@ -141,6 +149,10 @@ export function ClaimPage({ jobId, sig }: { jobId: string; sig: string }) {
 export function RoleLinkPage({ slug }: { slug: string }) {
   const [jobId, setJobId] = useState('');
   const [error, setError] = useState('');
+  // ?claim=<jobId>.<sig> from the recruiter's email (founder, 2026-11-26): recruiter view + "View resume" → quick sign-up.
+  const [claim] = useState(() => { const m = (new URLSearchParams(window.location.search).get('claim') || '').match(/^(.+)\.([0-9a-f]{16,})$/); return m ? { jobId: m[1], sig: m[2] } : null; });
+  const [cv, setCv] = useState<ClaimView | null>(null);
+  useEffect(() => { if (claim) api.getClaim(claim.jobId, claim.sig).then(setCv).catch(() => undefined); }, [claim]);
   useEffect(() => {
     fetch(`${apiBase}/api/public/role/${encodeURIComponent(slug)}`).then(async (r) => {
       const body = await r.json().catch(() => ({}));
@@ -148,6 +160,14 @@ export function RoleLinkPage({ slug }: { slug: string }) {
       setJobId(body.jobId);
     }).catch((e) => setError(e instanceof Error ? e.message : 'This role is not available'));
   }, [slug]);
+  if (jobId && claim && claim.jobId === jobId) {
+    const n = cv ? cv.candidates.length + cv.hidden : 0;
+    const viewResume = () => {
+      try { if (cv?.prefill) sessionStorage.setItem('jm-prefill', JSON.stringify({ role: 'employer', name: cv.prefill.name, email: cv.prefill.email })); } catch { /* private mode */ }
+      window.location.href = `/app/?claim=${encodeURIComponent(`${claim.jobId}.${claim.sig}`)}&auth=register`;
+    };
+    return <PublicJobCardPage jobId={jobId} recruiter={{ onView: viewResume, note: `${n ? `${n} ${n === 1 ? 'candidate has' : 'candidates have'} applied to your role.` : 'Candidates are applying to your role.'} Create your free recruiter account in 1 minute (your name and email are filled in) to view their resumes and connect.` }} />;
+  }
   if (jobId) return <PublicJobCardPage jobId={jobId} />;
   return <PublicShell><section className="jf-public-card"><h1>{error ? 'Role not available' : 'Loading…'}</h1>{error && <p>{error}. <a href="/app/">See open roles on JobsMatchNow</a></p>}</section></PublicShell>;
 }

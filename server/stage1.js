@@ -39,7 +39,29 @@ export function applicantsOf(db, jobId) {
   return { candidates: shown, hidden };
 }
 
-export function mountClaims(app, { store, authSession, secret, contactOf, track }) {
+/**
+ * Carousel of candidates for a role (claim page, founder 2026-11-26): applicants first (with photo, they applied to this
+ * recruiter), then the best-matching real candidates with a public profile (no photo). First name, title, years, city,
+ * 3 skills and the match score; full profiles unlock once the recruiter registers.
+ */
+export function recommendedFor(db, job, applicants, score) {
+  const first = (n) => String(n || '').trim().split(/\s+/)[0] || 'Candidate';
+  const view = (u, applied) => {
+    const skills = (u.skillsDetail || []).slice().sort((a, b) => (b.level || 0) - (a.level || 0)).map((s) => s.name).concat(u.skills || []).filter((s, i, all) => s && all.indexOf(s) === i).slice(0, 3);
+    const m = score ? score(u, job) : null;
+    return { id: u.profileSlug || u.id, firstName: first(u.name), title: u.title || u.headline || '', yearsExperience: u.yearsExperience, city: u.city, country: u.country,
+      skills, match: typeof m?.score === 'number' ? Math.round(m.score) : null, applied, ...(applied && u.photo ? { photo: u.photo } : {}) };
+  };
+  const appliedIds = new Set();
+  const out = [];
+  for (const a of applicants || []) { const u = (db.users || []).find((x) => x.profileSlug === a.slug); if (u) { appliedIds.add(u.id); out.push(view(u, true)); } }
+  const others = (db.users || []).filter((u) => u.role === 'candidate' && real(u) && u.publicProfile !== false && !appliedIds.has(u.id) && u.jobStatus?.kind !== 'hired')
+    .map((u) => ({ u, s: score ? score(u, job)?.score || 0 : 0 })).sort((a, b) => b.s - a.s).slice(0, Math.max(0, 10 - out.length));
+  for (const { u } of others) out.push(view(u, false));
+  return out;
+}
+
+export function mountClaims(app, { store, authSession, secret, contactOf, track, scoreCandidateForJob }) {
   const verified = (db, jobId, sig) => {
     const job = (db.jobs || []).find((j) => j.id === jobId);
     const email = contactOf(db, jobId)?.email;
@@ -64,9 +86,14 @@ export function mountClaims(app, { store, authSession, secret, contactOf, track 
           // The page lists the applicants: their applications now show "Application viewed" (48 h answer clock).
           markViewedForJob(db, job.id);
         }
+        const applicants = applicantsOf(db, job.id);
         return {
           job: { id: job.id, title: job.title, company: job.company, location: job.location, workMode: job.workMode, type: job.type, summary: job.description, path: rolePath(job) },
-          ...applicantsOf(db, job.id),
+          ...applicants,
+          // Carousel (founder, 2026-11-26): the applicants first, then the best-matching candidates; first names only.
+          recommended: recommendedFor(db, job, applicants.candidates, scoreCandidateForJob),
+          // Quick sign-up: the recruiter's name and email we already have (this signed link was sent to that email).
+          prefill: { name: job.recruiterName || '', email: contactOf(db, job.id)?.email || '' },
           claimed: !isJobFinderUser(owner),
           claimedByYou: Boolean(viewer && owner && viewer.id === owner.id && !isJobFinderUser(owner)),
           preview: isJobFinderUser(viewer),

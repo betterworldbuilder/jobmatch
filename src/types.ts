@@ -92,6 +92,10 @@ export interface ClaimCandidate { slug: string; name: string; title?: string; ph
 export interface ClaimView {
   job: { id: string; title: string; company?: string; location?: string; workMode?: string; type?: string; summary?: string; path: string };
   candidates: ClaimCandidate[]; hidden: number; claimed: boolean; claimedByYou: boolean; preview: boolean;
+  /** Carousel: applicants first, then best matches (first names only; photos for applicants). */
+  recommended?: { id: string; firstName: string; title: string; yearsExperience?: number; city?: string; country?: string; skills: string[]; match: number | null; applied: boolean; photo?: string }[];
+  /** Quick sign-up: the recruiter's name and email (the link was sent to that email). */
+  prefill?: { name: string; email: string };
 }
 export interface Stage1Week { week: string; likes: number; emailsSent: number; linkOpens: number; claims: number; likeBacks: number; matches: number; conversations: number; interviews: number }
 export interface Stage1Funnel { weeks: Stage1Week[]; snapshot: { rolesLive: number; importedRolesLive: number; importedWithRecruiterEmail: number; claimedRoles: number }; claimLinksOn: boolean }
