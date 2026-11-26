@@ -13,7 +13,6 @@ const ACCEPT = '.pdf,.docx,application/pdf,application/vnd.openxmlformats-office
 const FIRST_QUESTION = 'What is the current gap between the role and my resume?';
 const kb = (n: number) => `${Math.max(1, Math.round(n / 1024))} KB`;
 const when = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-type Gap = Awaited<ReturnType<typeof api.resumeGapBasic>>;
 type Msg = { role: 'user' | 'assistant'; content: string };
 type Opt = { key: string; label: string; role: string; jobId?: string; target: boolean };
 
@@ -32,7 +31,6 @@ export function ResumePage({ data, setData, navigate }: { data: Bootstrap; setDa
   const [status, setStatus] = useState<{ premium: boolean; ai: boolean } | null>(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [gap, setGap] = useState<Gap | 'loading' | null>(null);
   const [chat, setChat] = useState<Record<string, Msg[]>>({});
   const [draft, setDraft] = useState(FIRST_QUESTION);
   const [asking, setAsking] = useState(false);
@@ -41,14 +39,8 @@ export function ResumePage({ data, setData, navigate }: { data: Bootstrap; setDa
   const target = useRef<string>('');
   const own = opt?.target ? perRole[opt.role] : undefined;
   const active = own || main;
-  const fileKey = `${main?.id || ''}|${own?.id || ''}`;
 
   useEffect(() => { api.aiChatStatus().then((s) => setStatus({ premium: Boolean(s.premium?.active), ai: Boolean(s.enabled) })).catch(() => setStatus({ premium: false, ai: false })); }, []);
-  useEffect(() => {
-    if (!opt) return;
-    setGap('loading');
-    api.resumeGapBasic(v.id, opt.role, opt.jobId).then(setGap).catch(() => setGap(null));
-  }, [opt?.key, fileKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setDraft(FIRST_QUESTION); }, [opt?.key]);
   const premium = Boolean(status?.premium);
   const chatReady = Boolean(status?.premium && status.ai);
@@ -81,10 +73,9 @@ export function ResumePage({ data, setData, navigate }: { data: Bootstrap; setDa
     finally { setAsking(false); }
   };
 
-  const g = gap;
   return <div className="page rs-page">
     <div className="page-title"><div><span className="overline">Documents</span><h1>My Resume</h1>
-      <p>The resume recruiters get, and how it fits each role. PDF or DOCX, up to {MAX_KB} KB.</p></div></div>
+      <p>The resume recruiters get for each role. PDF or DOCX, up to {MAX_KB} KB.</p></div></div>
     {error && <p className="auth-error">{error}</p>}
     <input ref={fileRef} type="file" accept={ACCEPT} hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }} />
 
@@ -118,21 +109,7 @@ export function ResumePage({ data, setData, navigate }: { data: Bootstrap; setDa
       </div>
     </section>
 
-    {/* 3. Resume vs role gap analysis (our own script, free). */}
-    {opt && <section className="rs-card rs-gap">
-      <div className="rs-gap-head"><Sparkles size={15} /> <b>Resume vs role gap analysis</b>{g && g !== 'loading' && typeof g.score === 'number' && <span className={`rs-score ${g.score >= 70 ? 'hi' : g.score >= 40 ? 'mid' : 'lo'}`}>{g.score}% match</span>}</div>
-      {g === 'loading' ? <small className="rs-muted"><Loader2 size={12} className="spin" /> Comparing your resume with {opt.label}…</small>
-        : !g ? <small className="rs-muted">The analysis is not available right now.</small>
-          : g.noResume ? <small className="rs-muted">Upload a resume to see how it fits this role.</small>
-            : g.noText ? <small className="rs-muted">We could not read the text of this resume: upload a text-based PDF or a DOCX file.</small>
-              : <>
-                <small className="rs-muted">{g.forJob ? 'Based on the skills this job asks for.' : g.jobs ? `Based on the skills ${g.jobs} open ${g.broad ? 'similar' : `"${opt.role}"`} roles on JobsMatchNow ask for.` : 'No open role like this on JobsMatchNow yet: tips only.'}</small>
-                {!!g.matched?.length && <div className="rs-chips"><span className="rs-chip-label">In your resume</span>{g.matched.map((s) => <i key={s} className="ok"><Check size={11} /> {s}</i>)}</div>}
-                {!!g.missing?.length && <div className="rs-chips"><span className="rs-chip-label">Missing</span>{g.missing.slice(0, 10).map((s) => <i key={s} className="no"><X size={11} /> {s}</i>)}</div>}
-                {!!g.tips?.length && <ul className="rs-tips">{g.tips.map((t) => <li key={t}>{t}</li>)}</ul>}
-              </>}
-    </section>}
-
+    {/* The free script gap analysis was removed from the page (founder, 2026-11-27): only the AI gap analysis. */}
     {/* 4. AI gap analysis: the first question already typed; "Ask AI" asks your chatbot or opens Premium options. */}
     {opt && <section className={chatReady ? 'rs-card rs-chat' : 'rs-card rs-chat locked'}>
       <div className="rs-chat-head"><Bot size={15} /> <b>Gap analysis by AI</b><small>{chatReady ? 'Your own chatbot reads this resume and the role' : 'Premium · your own Claude or ChatGPT'}</small></div>
