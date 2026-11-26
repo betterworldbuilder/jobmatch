@@ -29,6 +29,17 @@ test('not twice: skipped when the JobFinder consent email already went', async (
   assert.equal(db.roleInterestMails.length, 0);
 });
 
+test('external roles email, internal roles never (founder rule)', async () => {
+  // A CSV / ATS file import is external too.
+  const db = base(); Object.assign(db.jobs[0], { id: 'j-csv', jobFinder: undefined, sourceSystem: 'file' }); db.jobContacts = [{ jobId: 'j-csv', email: 'r@acme.example' }];
+  await afterRoleInterest(mkCtx(db, []), { candidateId: 'c1', jobId: 'j-csv' });
+  assert.equal(db.roleInterestMails.length, 1, 'imported from a file: email prepared');
+  // A role made in the editor (no import marks) is internal: no email, even with a recruiter email.
+  const db2 = base(); Object.assign(db2.jobs[0], { id: 'j-made', jobFinder: undefined }); db2.jobContacts = [{ jobId: 'j-made', email: 'r@acme.example' }];
+  assert.equal(await afterRoleInterest(mkCtx(db2, []), { candidateId: 'c1', jobId: 'j-made' }), null);
+  assert.equal(db2.roleInterestMails.length, 0);
+});
+
 test('no recruiter email, or a demo candidate: nothing', async () => {
   const db = base(); db.jobContacts = [];
   assert.equal(await afterRoleInterest(mkCtx(db, []), { candidateId: 'c1', jobId: 'jf-1' }), null);

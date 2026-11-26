@@ -78,6 +78,11 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
     // job text gets the same email. Not twice: if JobFinder's consent-based email already went for this candidate and
     // role, this one is skipped.
     if (!job || !candidate || candidate.role !== 'candidate' || candidate.demo || candidate.sample || job.demo) return null;
+    // Founder rule (2026-11-26): EXTERNAL roles only — imported from outside (JobFinder listing: Scrapy, mailbox, career
+    // sites, job link; or a CSV / ATS / LinkedIn file import). They are the Stage 1 outreach that brings recruiters onto
+    // JobsMatchNow. INTERNAL roles, created inside JobsMatchNow (role editor, quick post), never send this email.
+    const external = isJobFinderJob(job) || Boolean(job.sourceSystem);
+    if (!external) return null;
     if (isJobFinderJob(job) && (db.jfOutreach || []).some((o) => o.jobId === jobId && o.candidateId === candidateId && ['sent', 'submitted'].includes(o.status))) return { skip: 'already_sent_by_jobfinder' };
     const owner = db.users.find((u) => u.id === job.employerId);
     if (!isJobFinderUser(owner)) return null;
