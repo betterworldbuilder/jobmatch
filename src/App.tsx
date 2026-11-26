@@ -122,7 +122,8 @@ type NavItem = { label: string; short?: string; icon: typeof Compass; view?: Vie
 const CHATBOT_LABEL = featureOn('agents') ? 'Use My ChatBot' : 'Use your chatbot here';
 const candidateNav: NavItem[] = [
   // "My dashboard" (was "Things to do") is first in the menu (founder, 2026-11-22); the app still opens on Find My Match.
-  { label: 'My dashboard', short: 'Dashboard', icon: Compass, anchor: 'td-today' },
+  // Renamed "My jobs Search" (founder, 2026-11-26).
+  { label: 'My jobs Search', short: 'Job Search', icon: Compass, anchor: 'td-today' },
   // Right under My dashboard (founder, 2026-11-25): every job applied to, per target role.
   { label: 'Jobs Applied (liked)', short: 'Applied', icon: Inbox, view: 'applied' },
   // "Find My Match" (the swipe deck + Recommended Roles) is the page the app opens on.
@@ -144,7 +145,7 @@ const candidateNav: NavItem[] = [
 ];
 // One colour per menu item, so each section is easy to spot.
 const NAV_COLORS: Record<string, string> = {
-  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'My Jobs list': '#ff6d9c', 'Jobs Applied (liked)': '#f472b6', 'Applications (likes)': '#f472b6', 'Jobs Candidates': '#f472b6', 'JobFinder listings': '#38bdf8', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
+  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'My jobs Search': '#ff6d9c', 'My Jobs list': '#ff6d9c', 'Jobs Applied (liked)': '#f472b6', 'Applications (likes)': '#f472b6', 'Jobs Candidates': '#f472b6', 'JobFinder listings': '#38bdf8', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
   Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', 'Use My ChatBot': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
   'Coffee Invitations': '#e0a96d', 'Hired Results': '#fbbf24', 'Interview AI coach': '#a78bfa', 'Recruiter Invitation': '#2dd4bf', Interviews: '#2dd4bf',
