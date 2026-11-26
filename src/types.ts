@@ -106,6 +106,8 @@ export interface Job {
   claimUrl?: string;
   /** "For who": worker groups the role is open to (vn, us, eu, sg, au, apac, remote); see src/lib/forWho.ts. */
   forWho?: string[];
+  /** Test role: visible only to a tester account; always flagged with a red TEST ROLE stamp (2026-11-26). */
+  testRole?: boolean;
   /** The role's own recruiter shown on the card (e.g. imported listings); falls back to the account's. */
   recruiterName?: string; recruiterTitle?: string;
   /** Candidates: this role's recruiter can be reached through the JobsMatchNow relay address. */

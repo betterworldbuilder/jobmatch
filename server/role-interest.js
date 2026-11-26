@@ -147,7 +147,7 @@ export async function runFollowups(ctx, { now = Date.now() } = {}) {
     const out = [];
     const firsts = new Map();
     for (const m of db.roleInterestMails || []) {
-      if (m.status !== 'sent' || !m.sentAt) continue;
+      if (m.status !== 'sent' || !m.sentAt || m.withdrawnAt) continue; // a withdrawn application gets no follow-up
       const k = `${m.jobId}|${m.recipientHash}`;
       if (!firsts.has(k) || m.sentAt < firsts.get(k).sentAt) firsts.set(k, m);
     }

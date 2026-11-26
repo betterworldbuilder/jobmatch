@@ -2529,6 +2529,30 @@ app.post('/api/swipes', async (req, res, next) => {
 });
 
 // Rewind/Undo: remove the actor's most recent swipe, and any match it created.
+// Withdraw an application (founder, 2026-11-26): a candidate cancels a job they applied to (liked) and did NOT match on
+// yet. The like is removed (gone from Jobs Applied and the recruiter's applicants). A recruiter email that already went
+// out can't be recalled; it is marked withdrawn so no follow-up counts this candidate. After a match: Stop process.
+app.post('/api/applications/:jobId/withdraw', async (req, res, next) => {
+  try {
+    const session = authSession(req);
+    if (!session) { const error = new Error('Sign in to continue'); error.status = 401; throw error; }
+    const out = await store.transaction((db) => {
+      const user = db.users.find((u) => u.id === session.sub);
+      if (!user || user.role !== 'candidate') { const error = new Error('Only candidates can withdraw an application'); error.status = 403; throw error; }
+      const jobId = String(req.params.jobId);
+      if (db.matches.some((m) => m.candidateId === user.id && m.jobId === jobId)) { const error = new Error('You already matched on this role: use “Stop process” in the conversation instead'); error.status = 409; throw error; }
+      const before = db.swipes.length;
+      db.swipes = db.swipes.filter((s) => !(s.actorId === user.id && s.targetType === 'job' && s.targetId === jobId && s.direction === 'like'));
+      const removed = before - db.swipes.length;
+      if (!removed) { const error = new Error('No application to withdraw'); error.status = 404; throw error; }
+      for (const m of db.roleInterestMails || []) if (m.jobId === jobId && m.candidateId === user.id) m.withdrawnAt = Date.now();
+      logBillingEvent(db, user.id, 'application_withdrawn', 'job', jobId, {});
+      return { ok: true, removed };
+    });
+    res.json(out);
+  } catch (error) { next(error); }
+});
+
 app.post('/api/swipes/undo', async (req, res, next) => {
   try {
     const actorId = resolveActor(req, reqString(req.body, 'actorId', { max: 128 }));

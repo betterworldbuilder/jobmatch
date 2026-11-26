@@ -31,6 +31,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   // credentials: session cookie must travel on native (Capacitor) origins too
   const response = await fetch(`${apiBase}${url}`, { ...init, credentials: 'include', headers: { 'Content-Type': 'application/json', ...init?.headers } });
   const body = await response.json().catch(() => ({}));
+  // The API restarts for ~30 s during an update (nginx answers 502/503/504): say so instead of a vague error.
+  if ([502, 503, 504].includes(response.status) && !body.error) throw new Error('JobsMatchNow is updating. Please try again in a minute.');
   if (!response.ok) { noticeSessionExpired(response.status, body.error); throw new Error(body.error || 'Something went wrong. Please try again.'); }
   return body as T;
 }
@@ -189,6 +191,8 @@ export const api = {
   adminDecideVerification: (userId: string, decision: 'approve' | 'reject', reason?: string) => request<{ verification: NonNullable<Person['verification']> }>(`/api/admin/verifications/${encodeURIComponent(userId)}/${decision}`, { method: 'POST', body: JSON.stringify({ reason }) }),
   adminVerificationSelfieUrl: (userId: string) => `${apiBase}/api/admin/verifications/${encodeURIComponent(userId)}/selfie`,
   createJob: (payload: JobDraft & { employerId: string; postSource?: 'editor' | 'quick_post' }) => request<{ job: Job }>('/api/jobs', { method: 'POST', body: JSON.stringify(payload) }),
+  // Withdraw an application not matched yet (2026-11-26).
+  withdrawApplication: (jobId: string) => request<{ ok: boolean }>(`/api/applications/${encodeURIComponent(jobId)}/withdraw`, { method: 'POST', body: '{}' }),
   // Upload a cover letter (PDF / DOCX / TXT) → its text for the profile's cover letter box (2026-11-26). Not stored.
   coverLetterText: async (userId: string, file: File): Promise<{ text: string; length: number }> => {
     const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/cover-letter/extract`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });

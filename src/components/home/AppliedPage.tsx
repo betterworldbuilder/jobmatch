@@ -70,8 +70,16 @@ export function ApplicationsList({ data, setData, navigate, onOpenMessages, comp
 }
 
 /** Candidate: jobs applied to (liked), per target role. */
-export function JobsAppliedList({ data, navigate, onOpenMessages, compact }: Props) {
+export function JobsAppliedList({ data, setData, navigate, onOpenMessages, compact }: Props) {
   const [role, setRole] = useState('all');
+  const [withdrawing, setWithdrawing] = useState('');
+  const withdraw = async (jobId: string, title: string) => {
+    if (!window.confirm(`Withdraw your application to "${title}"?\n\nIt leaves your Jobs Applied list and the recruiter's applicants. You can apply again later.`)) return;
+    setWithdrawing(jobId);
+    try { await api.withdrawApplication(jobId); setData(await api.bootstrap(data.viewer.id)); }
+    catch (e) { window.alert(e instanceof Error ? e.message : 'Could not withdraw'); }
+    finally { setWithdrawing(''); }
+  };
   const targets = useMemo(() => (data.viewer.preferences?.desiredRoles?.length ? data.viewer.preferences.desiredRoles : [data.viewer.title].filter(Boolean) as string[]), [data.viewer]);
   const applied = data.applied || [];
   const withRole = applied.map((a) => ({ ...a, role: roleFor(a.job.title, targets) }));
@@ -90,7 +98,8 @@ export function JobsAppliedList({ data, navigate, onOpenMessages, compact }: Pro
     if (t?.state === 'no_consent') return { cls: 'off', text: 'Recruiter not contacted', sub: 'Your public profile is off: turn it on in your profile so the recruiter can see you.' };
     if (t?.state === 'pending') return { cls: 'wait', text: 'Contacting the recruiter…' };
     const jf = a.job.jobFinder;
-    if (jf) return { cls: 'wait', text: jf.myOutreach ? outreachText(jf.myOutreach) : jf.reachability === 'email' ? 'Interest not sent yet' : 'Saved · recruiter contact not yet available' };
+    if (jf) return jf.myOutreach ? { cls: 'sent', text: outreachText(jf.myOutreach) }
+      : { cls: 'wait', text: 'Applied · reaching the recruiter', sub: 'JobsMatchNow is reaching out to the recruiter for you; you will see here when they view your profile.' };
     return { cls: 'wait', text: 'Waiting for the team' };
   };
   const shown = compact ? rows.slice(0, 5) : rows;
@@ -103,7 +112,7 @@ export function JobsAppliedList({ data, navigate, onOpenMessages, compact }: Pro
         return <li key={a.jobId} className="ap-row">
           <span className="ap-face logo">{(a.job.company || '?').slice(0, 1)}</span>
           <div className="ap-main">
-            <strong>{a.job.title}{a.superLike && <Star size={12} className="ap-star" aria-label="Super Like" />}</strong>
+            <strong>{a.job.testRole && <span className="test-flag">TEST ROLE</span>}{a.job.title}{a.superLike && <Star size={12} className="ap-star" aria-label="Super Like" />}</strong>
             <small>{[a.job.company, a.job.location].filter(Boolean).join(' · ')}{a.job.jobFinder ? ' · Added by JobFinder' : ''}</small>
             <small className="ap-meta">{role === 'all' && targets.length > 1 && <>{a.role} · </>}Applied {fmt(a.at)}{a.src === 'linkedin' && <> · <Linkedin size={11} /> from LinkedIn</>}</small>
             {a.tracker && !a.matchId && a.open && ['contacted', 'viewed'].includes(a.tracker.state) && <ol className="ap-steps" aria-label="Application status">
@@ -113,7 +122,9 @@ export function JobsAppliedList({ data, navigate, onOpenMessages, compact }: Pro
           </div>
           <span className={`ap-status ${s.cls}`}>{s.cls === 'ok' && <Check size={12} />}{s.text}</span>
           {a.matchId ? <button type="button" className="ap-btn msg" onClick={() => onOpenMessages?.(a.matchId!)}><MessageCircle size={14} /> Message</button>
-            : a.open ? <button type="button" className="ap-btn" onClick={() => window.dispatchEvent(new CustomEvent(a.job.jobFinder ? JOBFINDER_OPEN_EVENT : OPEN_JOB_EVENT, { detail: { jobId: a.jobId } }))}><MapPin size={14} /> {a.job.jobFinder ? 'Send interest' : 'View'}</button> : null}
+            : a.open ? <button type="button" className="ap-btn" onClick={() => window.dispatchEvent(new CustomEvent(a.job.jobFinder ? JOBFINDER_OPEN_EVENT : OPEN_JOB_EVENT, { detail: { jobId: a.jobId } }))}><MapPin size={14} /> View</button> : null}
+          {/* Withdraw (founder, 2026-11-26): before a match only; after a match the chat's "Stop process" applies. */}
+          {!a.matchId && <button type="button" className="ap-withdraw" disabled={withdrawing === a.jobId} onClick={() => void withdraw(a.jobId, a.job.title)}>{withdrawing === a.jobId ? 'Withdrawing…' : 'Withdraw'}</button>}
         </li>;
       })}</ul>}
   </section>;

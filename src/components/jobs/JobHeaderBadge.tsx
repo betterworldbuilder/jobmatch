@@ -55,7 +55,7 @@ export function JobHeaderBadge({ job, compact = false, actions, className = '' }
     <div className="job-header-primary">
       <CompanyLogoMark job={job} small={compact} />
       <div className="job-header-copy">
-        <h2>{job.title}{job.verified && <BadgeCheck aria-label="Verified job" size={17} />}</h2>
+        <h2>{job.testRole && <span className="test-flag">TEST ROLE</span>}{job.title}{job.verified && <BadgeCheck aria-label="Verified job" size={17} />}</h2>
         <strong>{job.company}</strong>
       </div>
       {actions && <div className="job-header-actions">{actions}</div>}

@@ -59,6 +59,7 @@ export function RoleSummaryPage({ job: j, photo = rolePhoto(j), onRecruiter }: {
     <div className="nm-photo rp-brand" />
     {/* Scrollable like the job description page (founder, 2026-11-22); mark + ID stamp sit in the top row, never over text. */}
     <div className="nm-card-info rp-summary"><div className="rp-summary-inner">
+      {j.testRole && <span className="rp-test-stamp" title="Only the tester account sees this role">TEST ROLE</span>}
       <div className="rp-top-row">
         <span className="rp-brand-mark" aria-hidden="true">{(j.company || '?').slice(0, 1).toUpperCase()}</span>
         {photo && <figure className="rp-stamp" title={j.recruiter?.name ? `Recruiter: ${j.recruiter.name}` : 'Recruiter'}>
