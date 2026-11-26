@@ -26,7 +26,7 @@ export const FROM_NAME = 'JobMatcher at JobsMatchNow';
  */
 export function interestEmail({ job, candidate, origin, unsubscribeUrl, profileUrl, roleUrl, claimLink }) {
   const first = String(job.recruiterName || '').trim().split(/\s+/)[0];
-  const posting = job.externalUrl || job.sourceUrl || roleUrl;
+  const posting = job.externalUrl || job.sourceUrl || job.jobFinder?.sourceUrl || roleUrl;
   const text = [
     `Hello ${first || 'Hiring Team'},`,
     '',
@@ -74,7 +74,11 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
     ensureCollections(db);
     const job = db.jobs.find((j) => j.id === jobId);
     const candidate = db.users.find((u) => u.id === candidateId);
-    if (!job || !candidate || candidate.role !== 'candidate' || candidate.demo || candidate.sample || job.demo || isJobFinderJob(job)) return null;
+    // Imported JobFinder listings are included too (founder, 2026-11-26, option B): their recruiter email found in the
+    // job text gets the same email. Not twice: if JobFinder's consent-based email already went for this candidate and
+    // role, this one is skipped.
+    if (!job || !candidate || candidate.role !== 'candidate' || candidate.demo || candidate.sample || job.demo) return null;
+    if (isJobFinderJob(job) && (db.jfOutreach || []).some((o) => o.jobId === jobId && o.candidateId === candidateId && ['sent', 'submitted'].includes(o.status))) return { skip: 'already_sent_by_jobfinder' };
     const owner = db.users.find((u) => u.id === job.employerId);
     if (!isJobFinderUser(owner)) return null;
     const email = contactOf(db, jobId)?.email;
