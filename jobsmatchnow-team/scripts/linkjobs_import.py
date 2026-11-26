@@ -137,9 +137,18 @@ def main():
     for path, label, date_col in LISTS:
         created, duplicate, failed, left, budget = import_csv(path, label, date_col, key, budget)
         if not DRY:
-            print(f"{label}: imported as drafts {created}; already listed {duplicate}; failed {failed}; still to do {left}.")
+            print(f"{label}: imported and published {created}; already listed {duplicate}; failed {failed}; still to do {left}.")
     if not DRY:
-        print(f"Review and publish in {BASE}/app/ -> JobFinder listings.")
+        # Duplicate guardrail (founder, 2026-11-26): remove duplicate roles left in the account (kept: the one with
+        # applications, else the oldest; copies with applications of their own stay).
+        req = urllib.request.Request(BASE + "/api/jobfinder/dedupe", data=b"{}", method="POST",
+                                     headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}", "User-Agent": "jobsmatchnow-linkjobs-import"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                print(f"Duplicates removed: {json.loads(r.read() or b'{}').get('removed', 0)}")
+        except (urllib.error.URLError, ValueError) as e:
+            print(f"Duplicate check skipped ({clean(getattr(e, 'reason', e))})")
+        print(f"Imported roles are live in {BASE}/app/ -> My Jobs list.")
     return 0
 
 

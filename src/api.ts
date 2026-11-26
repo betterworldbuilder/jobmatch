@@ -71,7 +71,11 @@ export const jf = {
   // "Update roles" from Scrapy's folder (2026-11-26).
   importState: () => request<{ lastEmailDate: string | null; lastRunAt: number | null; knownKeys: string[] }>('/api/jobfinder/import-state'),
   importFiles: (body: { jobs: unknown[]; emailDate?: string }) => request<ScrapedImportResult>('/api/jobfinder/import-files', json('POST', body)),
+  // Duplicate roles of the JobFinder account (2026-11-26): dryRun lists them, otherwise the extra copies are taken off.
+  dedupe: (body: { dryRun?: boolean }) => request<DedupeResult>('/api/jobfinder/dedupe', json('POST', body)),
 };
+type DedupeRole = { id: string; title: string; company?: string; location?: string };
+export type DedupeResult = { removed: number; dryRun: boolean; groups: { keep: DedupeRole; removed: DedupeRole[]; kept: (DedupeRole & { why: string })[] }[] };
 export type ScrapedImportResult = { created: number; duplicate: number; failed: number; results: { ref: string; status: 'created' | 'duplicate' | 'failed'; id?: string; error?: string }[] };
 
 /** Import a job from a link (2026-11-25): analyze → review → save draft / publish. */

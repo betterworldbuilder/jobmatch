@@ -158,9 +158,60 @@ const normText = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' '
 export function findImportDuplicate(db, employerId, { urls = [], title, company, location } = {}) {
   const keys = new Set(urls.filter(Boolean).map(sourceKey));
   const t = normText(title); const c = normText(company); const l = normText(location);
-  return db.jobs.find((j) => j.employerId === employerId && j.status !== 'removed' && j.jobFinder?.listingStatus !== 'removed' && !j.deletedAt && (
-    (keys.size && [j.sourceUrl, j.externalUrl, j.jobFinder?.sourceUrl, j.jobFinder?.applyUrl].some((u) => u && keys.has(sourceKey(u))))
+  // A filled, expired or removed role may be posted again: only roles still on offer count.
+  return db.jobs.find((j) => j.employerId === employerId && !['removed', 'filled', 'expired', 'suspended'].includes(String(j.status)) && j.jobFinder?.listingStatus !== 'removed' && !j.deletedAt && (
+    // The job's own posting link only: an apply link is often one generic page shared by every role of a company.
+    (keys.size && [j.sourceUrl, j.externalUrl, j.jobFinder?.sourceUrl].some((u) => u && keys.has(sourceKey(u))))
     || (t && c && normText(j.title) === t && normText(j.company) === c && normText(j.location) === l))) || null;
+}
+/**
+ * Remove duplicate roles of one account (founder, 2026-11-26). Roles are the same when they share a link (any form)
+ * or title + company + location. Per group one role is kept: the one with applications / matches, else the oldest.
+ * The others are taken off the site, never deleted (JobFinder listing → "removed"; other role → "paused"), and a role
+ * that has applications or matches of its own is always kept. `dryRun` only reports.
+ */
+export function dedupeRoles(db, employerId, { dryRun = false, actorId = employerId, audit, now = Date.now() } = {}) {
+  const live = db.jobs.filter((j) => j.employerId === employerId && !j.deletedAt && !['removed', 'filled', 'expired', 'suspended', 'paused'].includes(String(j.status))
+    && !['removed', 'claimed'].includes(j.jobFinder?.listingStatus));
+  const parent = new Map(live.map((j) => [j.id, j.id]));
+  const find = (x) => { while (parent.get(x) !== x) x = parent.get(x); return x; };
+  const union = (a, b) => { const ra = find(a); const rb = find(b); if (ra !== rb) parent.set(rb, ra); };
+  const byKey = new Map();
+  for (const j of live) {
+    const keys = [j.jobFinder?.sourceUrl, j.sourceUrl, j.externalUrl].filter(Boolean).map((u) => `u:${sourceKey(u)}`);
+    const t = normText(j.title); const c = normText(j.company);
+    if (t && c) keys.push(`t:${t}|${c}|${normText(j.location)}`);
+    for (const k of keys) { if (byKey.has(k)) union(byKey.get(k), j.id); else byKey.set(k, j.id); }
+  }
+  const groups = new Map();
+  for (const j of live) { const r = find(j.id); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(j); }
+  const activity = (j) => (db.swipes || []).filter((s) => s.targetType === 'job' && s.targetId === j.id && s.direction === 'like').length
+    + (db.matches || []).filter((m) => m.jobId === j.id).length;
+  const out = []; let removed = 0;
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const ranked = list.map((j) => ({ j, a: activity(j) })).sort((x, y) => y.a - x.a || (x.j.createdAt || 0) - (y.j.createdAt || 0));
+    const keep = ranked[0].j;
+    const g = { keep: { id: keep.id, title: keep.title, company: keep.company, location: keep.location }, removed: [], kept: [] };
+    for (const { j, a } of ranked.slice(1)) {
+      if (a > 0) { g.kept.push({ id: j.id, title: j.title, why: 'has applications or matches' }); continue; }
+      g.removed.push({ id: j.id, title: j.title, company: j.company, location: j.location });
+      removed += 1;
+      if (dryRun) continue;
+      if (j.jobFinder) {
+        j.jobFinder.listingStatus = 'removed';
+        ensureCollections(db); internalOf(db, j.id).removedReason = `duplicate of ${keep.id}`;
+        refreshPublic(db, j);
+        history(db, j.id, actorId, 'remove', { reason: 'duplicate', of: keep.id }, audit);
+      } else {
+        j.status = 'paused';
+        audit?.(db, actorId, 'job_duplicate_paused', 'job', j.id, { of: keep.id });
+      }
+      Object.assign(j, { duplicateOf: keep.id, duplicateRemovedAt: now });
+    }
+    out.push(g);
+  }
+  return { groups: out, removed, dryRun };
 }
 /** One scraped job → the body the JobFinder form would send (nulls dropped). */
 export function scrapedToBody(j) {
@@ -220,7 +271,7 @@ export function importScrapedJobs(db, items, { ownerId, audit, setContact, now =
       body.sourceUrl = validateJobUrl(body.sourceUrl).href;
       const key = sourceKey(body.sourceUrl);
       if (known.has(key)) return { ref, status: 'duplicate', id: known.get(key) };
-      const same = findImportDuplicate(db, owner.id, { urls: [body.sourceUrl, body.applyUrl], title: body.title, company: body.company, location: body.location });
+      const same = findImportDuplicate(db, owner.id, { urls: [body.sourceUrl], title: body.title, company: body.company, location: body.location });
       if (same) return { ref, status: 'duplicate', id: same.id };
       const job = {
         id: `jf-${crypto.randomUUID().slice(0, 12)}`, employerId: owner.id, createdAt: now, applicants: 0, accent: '#0f62fe',
@@ -413,6 +464,10 @@ export function mountJobFinder(app, ctx) {
         assignGroups(db, job, req.body);
         if (!job.title) throw new ValidationError('title', 'The job title is required');
         if (!job.company) throw new ValidationError('company', 'The employer / company is required');
+        // Duplicate guardrail (2026-11-26): same link, or same title + company + location, is refused unless confirmed.
+        const same = req.body.allowDuplicate === true ? null
+          : findImportDuplicate(db, owner.id, { urls: [job.jobFinder.sourceUrl], title: job.title, company: job.company, location: job.location });
+        if (same) { const e = new Error(`Duplicate role: "${same.title}" (${[same.company, same.location].filter(Boolean).join(', ')}) is already listed`); e.status = 409; e.duplicateOf = same.id; throw e; }
         // Job-link import: the source link must pass the URL safety check; who imported it comes from the session.
         const imp = req.body.importInfo;
         if (imp && typeof imp === 'object') {
@@ -441,6 +496,8 @@ export function mountJobFinder(app, ctx) {
       const owner = jobFinderAccount(db);
       if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
       const out = importScrapedJobs(db, items, { ownerId: owner.id, audit, setContact: setJobContact });
+      // Duplicates that slipped in another way (older imports, hand-made roles) are cleaned after every import.
+      if (out.some((r) => r.status === 'created')) dedupeRoles(db, owner.id, { audit });
       const d = /^\d{4}-\d{2}-\d{2}$/.test(String(emailDate || '')) ? emailDate : null;
       if (d && out.some((r) => r.status !== 'failed')) {
         if (!db.jfImportState || typeof db.jfImportState !== 'object') db.jfImportState = {};
@@ -457,6 +514,20 @@ export function mountJobFinder(app, ctx) {
       if (!process.env.JOBFINDER_IMPORT_KEY) { const e = new Error('Batch import is not switched on'); e.status = 404; throw e; }
       if (!importKeyOk(req.headers.authorization)) { const e = new Error('Missing or invalid import key'); e.status = 401; throw e; }
       res.json(await runImport(req.body?.jobs, req.body?.emailDate));
+    } catch (error) { next(error); }
+  });
+  // Remove duplicate roles of the JobFinder account (founder, 2026-11-26). { dryRun: true } only lists them.
+  app.post('/api/jobfinder/dedupe', ...(limiter ? [limiter] : []), async (req, res, next) => {
+    try {
+      const keyOk = process.env.JOBFINDER_IMPORT_KEY && importKeyOk(req.headers.authorization);
+      if (!keyOk) requireManager(await store.read(), session(req));
+      const dryRun = req.body?.dryRun === true;
+      const run = (db) => {
+        const owner = jobFinderAccount(db);
+        if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
+        return dedupeRoles(db, owner.id, { dryRun, actorId: keyOk ? owner.id : session(req).sub, audit });
+      };
+      res.json(dryRun ? run(await store.read()) : await store.transaction(run));
     } catch (error) { next(error); }
   });
   // Publish every imported JobFinder draft and fill its recruiter contact from the job text when it has none

@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { unlinkSync } from 'node:fs';
-import { findImportDuplicate, importKeyOk, importScrapedJobs, scrapedToBody, sourceKey } from './jobfinder.js';
+import { dedupeRoles, findImportDuplicate, importKeyOk, importScrapedJobs, scrapedToBody, sourceKey } from './jobfinder.js';
 
 /* Batch import of Scrapy's jobsmatchnow-job/v1 files (2026-11-26). Synthetic accounts and jobs only. */
 const KEY = 'k'.repeat(40);
@@ -75,6 +75,27 @@ test('recruiter email / phone in the job text → the private contact; the file 
   assert.equal(saved.length, 2);
   assert.equal(saved[0].email, 'hr@acme-vn.com'); assert.match(saved[0].phone || '', /90 123 4567/);
   assert.equal(saved[1].email, 'jane@corp.example.net');
+});
+
+test('remove duplicates: one kept per group (applications first, else oldest), the rest taken off, never deleted', () => {
+  const db = { users: [{ id: 'jf1', role: 'employer', jobFinder: true }], swipes: [{ targetType: 'job', targetId: 'b', direction: 'like', actorId: 'c1' }], matches: [], jobs: [
+    { id: 'a', employerId: 'jf1', status: 'active', createdAt: 1, title: 'Data Engineer', company: 'Acme', location: 'Hanoi', jobFinder: { listingStatus: 'published', sourceUrl: 'https://x.example/jobs/1001' } },
+    { id: 'b', employerId: 'jf1', status: 'active', createdAt: 2, title: 'Data Engineer', company: 'ACME', location: 'Hanoi', jobFinder: { listingStatus: 'published', sourceUrl: 'https://y.example/jobs/2002' } },
+    { id: 'c', employerId: 'jf1', status: 'active', createdAt: 3, title: 'Other title', company: 'Acme', location: 'Hanoi', jobFinder: { listingStatus: 'published', sourceUrl: 'https://x.example/jobs/1001?utm_source=z' } },
+    { id: 'd', employerId: 'jf1', status: 'active', createdAt: 4, title: 'Data Engineer', company: 'Acme', location: 'Hanoi' },
+    { id: 'e', employerId: 'jf1', status: 'active', createdAt: 5, title: 'ML Engineer', company: 'Acme', location: 'Hanoi', jobFinder: { listingStatus: 'published' } },
+  ] };
+  const preview = dedupeRoles(db, 'jf1', { dryRun: true });
+  assert.equal(preview.removed, 3); assert.equal(db.jobs.find((j) => j.id === 'a').jobFinder.listingStatus, 'published', 'dry run changes nothing');
+  const r = dedupeRoles(db, 'jf1');
+  assert.equal(r.groups[0].keep.id, 'b', 'the copy with an application is kept');
+  const by = (id) => db.jobs.find((j) => j.id === id);
+  assert.equal(by('a').jobFinder.listingStatus, 'removed'); assert.equal(by('a').status, 'removed');
+  assert.equal(by('c').jobFinder.listingStatus, 'removed', 'same link in another form');
+  assert.equal(by('d').status, 'paused', 'a plain role is paused, not deleted'); assert.equal(by('d').duplicateOf, 'b');
+  assert.equal(by('e').jobFinder.listingStatus, 'published', 'a different role is untouched');
+  assert.equal(db.jobs.length, 5, 'nothing deleted');
+  assert.equal(dedupeRoles(db, 'jf1').removed, 0, 'running again finds nothing');
 });
 
 test('import key: off when unset or short, exact match only', () => {

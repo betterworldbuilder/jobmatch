@@ -405,6 +405,22 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
     } finally { setPublishing(''); }
     if (failed.length) window.alert(`${failed.length} not published:\n\n${failed.slice(0, 8).join('\n')}${failed.length > 8 ? '\n…' : ''}\n\nOpen the role with the pencil, complete it, then publish.`);
   };
+  // Remove duplicates (founder, 2026-11-26), JobFinder account: preview, confirm, then the extra copies go off the site
+  // (kept: the role with applications/matches, else the oldest). Imports also clean duplicates on their own.
+  const [deduping, setDeduping] = useState(false);
+  const removeDuplicates = async () => {
+    setDeduping(true);
+    try {
+      const preview = await jf.dedupe({ dryRun: true });
+      if (!preview.removed) { window.alert('No duplicate roles found.'); return; }
+      const lines = preview.groups.filter((g) => g.removed.length).slice(0, 12).map((g) => `• ${g.keep.title}${g.keep.company ? ` · ${g.keep.company}` : ''}: ${g.removed.length} copy(ies)`);
+      if (!window.confirm(`${preview.removed} duplicate role(s) found:\n\n${lines.join('\n')}${preview.groups.length > 12 ? '\n…' : ''}\n\nRemove the extra copies? One role of each stays (the one with applications, else the oldest). Copies with applications of their own are kept.`)) return;
+      const done = await jf.dedupe({});
+      await reload();
+      window.alert(`${done.removed} duplicate role(s) removed.`);
+    } catch (e) { window.alert(e instanceof Error ? e.message : 'Could not check duplicates'); }
+    finally { setDeduping(false); }
+  };
   // Delete one role / all roles (founder, 2026-11-25). Always confirmed: a deleted role takes its matches and chats with it.
   const [deleting, setDeleting] = useState(false);
   const deleteRoles = async (jobs: Job[]) => {
@@ -468,6 +484,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
       <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet." action={bestMatchFirst ? 'Sort by: Best Match' : 'Sort by: Name'} onAction={() => setBestMatchFirst((value) => !value)}
         extra={ownJobs.length || data.viewer.jobFinder ? <span className="td-role-tools">
           {data.viewer.jobFinder && <UpdateRolesButton onDone={() => void reload()} />}
+          {data.viewer.jobFinder && <button type="button" className="td-dedupe" onClick={() => void removeDuplicates()} disabled={deduping}>{deduping ? 'Checking…' : 'Remove duplicates'}</button>}
           {workerCodes.length > 1 && <select className="td-role-show" value={workers} onChange={(e) => setWorkers(e.target.value)} aria-label="For who">
             <option value="">All workers</option>{workerCodes.map((c) => <option key={c} value={c}>For {FOR_WHO[c]}</option>)}<option value="none">For who not known</option>
           </select>}

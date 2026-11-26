@@ -196,7 +196,9 @@ export interface SkillQuestions { skill: string; questions: string[] }
 export interface InterviewPrep { generator: string; topics: string[]; skillQuestions: SkillQuestions[]; askThem: string }
 export interface InterviewKit { generator: string; skillQuestions: SkillQuestions[]; gapProbes?: { skill: string; question: string }[]; gaps: string[]; salarySummary: string; salaryStatus: SalaryStatus }
 export interface ScreeningAnswer { question: string; answer: string }
-export type JobDraft = Partial<Omit<Job, 'id' | 'match' | 'salaryRange'>> & { salaryRange?: SalaryRange | null };
+export type JobDraft = Partial<Omit<Job, 'id' | 'match' | 'salaryRange'>> & { salaryRange?: SalaryRange | null;
+  /** Create even though the same role is already on offer (duplicate guardrail, recruiter confirmed). */
+  allowDuplicate?: boolean };
 export interface JobImportResult { jobs: Job[]; found: number; skipped: number; updated?: number; live?: boolean;
   /** Duplicate guardrail: roles not created because the same role is already in the account (2026-11-26). */
   duplicates?: { title: string; existingId: string; existingTitle: string }[]; ai?: { used: number; failed: number; reason?: string } }

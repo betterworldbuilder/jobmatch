@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { api } from '../../api';
+import { withDuplicateConfirm } from '../../lib/duplicate';
 import { Field, Segmented, TagInput, TextInput } from '../profile/fields';
 import type { Person } from '../../types';
 
@@ -52,7 +53,8 @@ export function QuickPostRole({ viewer, onPosted, onCancel }: { viewer: Person; 
     if (errors.length) return;
     setSaving(true); setError('');
     try {
-      await api.createJob({
+      const created = await withDuplicateConfirm((allowDuplicate) => api.createJob({
+        ...(allowDuplicate ? { allowDuplicate } : {}),
         employerId: viewer.id, postSource: 'quick_post', status: 'active', type: 'Full-time',
         title: form.title.trim(), location: form.location.trim(), workMode: form.workMode,
         ...(form.workMode === 'Remote' ? { remoteScope: 'worldwide' as const } : { hiringRadiusKm: DEFAULT_RADIUS_KM }),
@@ -61,8 +63,8 @@ export function QuickPostRole({ viewer, onPosted, onCancel }: { viewer: Person; 
         niceToHaves: form.niceToHaves, requiredLanguages: form.languages,
         ...(form.description.trim() ? { description: form.description.trim() } : {}),
         ...(form.fullDescription.trim() ? { fullDescription: form.fullDescription.trim() } : {}),
-      });
-      onPosted();
+      }));
+      if (created) onPosted();
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not post this role'); }
     finally { setSaving(false); }
   };

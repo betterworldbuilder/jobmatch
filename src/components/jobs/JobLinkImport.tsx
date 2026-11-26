@@ -85,6 +85,8 @@ export function JobLinkImport({ mode, onClose, onDone }: { mode: Mode; onClose: 
           description: form.description, fullDescription: form.description, seniority: form.experienceLevel || undefined, closingDate: form.deadline || undefined,
           sourceName: form.sourceName, sourceUrl: form.sourceUrl || undefined, applyUrl: form.applyUrl || undefined, listingStatus: publish ? 'published' : 'draft', jobGroups: form.jobGroups,
           importInfo: { method, extraction: a.extraction, sourceJobId: a.sourceJobId || undefined },
+          // The possible duplicates were shown and the user confirmed: the server's guardrail lets it through.
+          ...(dupesOk ? { allowDuplicate: true } : {}),
         });
         let note: string | undefined;
         if (form.contactEmail || form.contactName) {

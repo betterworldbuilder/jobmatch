@@ -5359,3 +5359,5 @@ button.rs-row:hover { border-color:#fd267a; }
 .td-publish-all { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border:1px solid #0f62fe; border-radius:999px; background:#0f62fe; color:#fff; font-size:12px; font-weight:700; cursor:pointer; }
 .td-publish-all:disabled { opacity:.6; cursor:default; }
 @media (max-width:639px) { .td-role-head > span.td-role-draft { grid-row:auto; } }
+.td-dedupe { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border:1px solid #dfe4ec; border-radius:999px; background:#fff; color:#3b4255; font-size:12px; font-weight:700; cursor:pointer; }
+.td-dedupe:disabled { opacity:.6; cursor:default; }

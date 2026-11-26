@@ -1842,6 +1842,11 @@ app.post('/api/jobs', async (req, res, next) => {
         responseTime: '< 1 week', applicants: 0, status: 'draft', createdAt, expiresAt: createdAt + JOB_EXPIRY_DAYS * DAY_MS,
       }, req.body, { strict: true });
       assignGroups(db, created, req.body); // job groups (founder, 2026-11-25): the recruiter's own choice
+      // Duplicate guardrail (founder, 2026-11-26): the same role (same link, or same title + company + location) still
+      // on offer is refused, unless the recruiter confirms a genuine second opening (allowDuplicate).
+      const same = req.body.allowDuplicate === true ? null
+        : findImportDuplicate(db, employerId, { urls: [created.externalUrl, created.sourceUrl], title: created.title, company: created.company, location: created.location });
+      if (same) { const error = new Error(`Duplicate role: "${same.title}" (${[same.company, same.location].filter(Boolean).join(', ')}) is already in your roles`); error.status = 409; throw error; }
       // Item 11: suggest screening questions from the required skills.
       if (!created.screeningQuestions?.length) created.screeningQuestions = suggestScreeningQuestions(created);
       // Inherit the recruiter's location so distance matching works out of the box.

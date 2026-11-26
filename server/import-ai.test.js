@@ -175,8 +175,12 @@ test('recruiter email per role: JobFinder only, private; candidates only get the
 
 test('salary is optional to publish; a given salary must be real', async () => {
   const rec = await register('Salary Recruiter', `salary-${pid}@example.com`);
-  const post = (over) => call('POST', '/api/jobs', { employerId: rec.id, postSource: 'quick_post', status: 'active', type: 'Full-time', title: 'Frontend Engineer', location: 'Remote', workMode: 'Remote', requiredSkillsDetail: [{ name: 'React', weight: 3 }], description: 'React role.', ...over }, rec.cookie);
+  // The same role is posted several times here on purpose: confirmed as a second opening (duplicate guardrail).
+  const post = (over) => call('POST', '/api/jobs', { employerId: rec.id, postSource: 'quick_post', status: 'active', type: 'Full-time', title: 'Frontend Engineer', location: 'Remote', workMode: 'Remote', requiredSkillsDetail: [{ name: 'React', weight: 3 }], description: 'React role.', allowDuplicate: true, ...over }, rec.cookie);
   assert.equal((await post({})).status, 201, 'no salary');
+  // Duplicate guardrail (2026-11-26): the same role again without confirmation is refused and named.
+  const again = await post({ allowDuplicate: undefined });
+  assert.equal(again.status, 409); assert.match(again.body.error || '', /^Duplicate role: "Frontend Engineer"/);
   const min = await post({ salaryRange: { min: 40000, currency: 'USD' } });
   assert.equal(min.status, 201); assert.equal((min.body.job || min.body).salary, 'From $40k');
   assert.equal((await post({ salaryRange: { min: 0, max: 0, currency: 'USD' } })).status, 400);

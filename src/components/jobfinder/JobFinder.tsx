@@ -10,6 +10,7 @@ import { api, groupsApi, jf } from '../../api';
 import { JobGroupsField, LinkedInTools } from '../groups/Groups';
 import { JobLinkImport } from '../jobs/JobLinkImport';
 import { FOR_WHO, FOR_WHO_CODES, FOR_WHO_SHORT, type ForWho } from '../../lib/forWho';
+import { withDuplicateConfirm } from '../../lib/duplicate';
 import type { JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, Job, JobFinderInfo, JobFinderPublicJob } from '../../types';
 
 export const REACH_TEXT: Record<JfReach, string> = {
@@ -270,7 +271,8 @@ export function JobFinderManager() {
   const save = async () => {
     if (!form) return; setError('');
     try {
-      const res = editing ? await jf.update(editing, toBody(form)) : await jf.create(toBody(form));
+      const res = editing ? await jf.update(editing, toBody(form)) : await withDuplicateConfirm((allowDuplicate) => jf.create({ ...toBody(form), ...(allowDuplicate ? { allowDuplicate } : {}) }));
+      if (!res) return;
       setDupes(res.duplicates); setForm(null); setEditing(null); setPaste(''); load();
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save'); }
   };

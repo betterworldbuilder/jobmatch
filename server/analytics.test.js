@@ -90,6 +90,8 @@ after(() => {
 });
 
 const quickPost = (overrides = {}) => ({
+  // Every test here posts the same role again on purpose: confirmed as a second opening (duplicate guardrail).
+  allowDuplicate: true,
   employerId: 'employer-demo', postSource: 'quick_post', status: 'active', type: 'Full-time',
   title: 'Analytics Test Engineer', location: 'Ho Chi Minh City', workMode: 'Hybrid', hiringRadiusKm: 40,
   salaryRange: { min: 30000, max: 45000, currency: 'USD' },

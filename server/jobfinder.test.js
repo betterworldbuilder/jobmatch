@@ -54,7 +54,10 @@ test('JobFinder end to end: permissions, privacy, consent, sending, fallbacks, c
   assert.equal(plain.status, 201, JSON.stringify(plain.body));
   assert.deepEqual(plain.body.job.requiredSkills, ['Kubernetes', 'Go']); assert.equal(plain.body.job.salary, 'USD 3,000–4,000 / month');
   assert.equal(plain.body.job.workMode, undefined, 'not stated stays empty');
-  const dup = await call('POST', '/api/jobfinder/jobs', { ...listing, sourceUrl: 'https://other.example/1', listingStatus: 'draft' }, jf.cookie);
+  // Duplicate guardrail (2026-11-26): refused unless confirmed; once confirmed, still flagged.
+  const refused = await call('POST', '/api/jobfinder/jobs', { ...listing, sourceUrl: 'https://other.example/1', listingStatus: 'draft' }, jf.cookie);
+  assert.equal(refused.status, 409); assert.match(refused.body.error || '', /^Duplicate role/);
+  const dup = await call('POST', '/api/jobfinder/jobs', { ...listing, sourceUrl: 'https://other.example/1', listingStatus: 'draft', allowDuplicate: true }, jf.cookie);
   assert.equal(dup.body.duplicates.length, 1, 'same company + title + location is flagged');
 
   // 3-4. Public page: JobFinder attribution, pending membership, honest reachability; no private data.

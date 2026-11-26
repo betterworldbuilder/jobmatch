@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { Chips, Field, LevelTagInput, MultiSegmented, Segmented, TagInput, TextInput, Toggle } from '../profile/fields';
 import { FOR_WHO, FOR_WHO_CODES, FOR_WHO_SHORT, forWhoOf, inferForWho, type ForWho } from '../../lib/forWho';
 import { featureOn } from '../../lib/flags';
+import { withDuplicateConfirm } from '../../lib/duplicate';
 import { demoAdapter, pasteAdapter } from '../../lib/jobSources';
 import { samplePasteText } from '../../content/jobSamples';
 import type { Job, JobDraft, Person, Seniority } from '../../types';
@@ -228,7 +229,11 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
     try {
       let jobId = job?.id;
       if (job) await api.updateJob(job.id, payload);
-      else { const { job: created } = await api.createJob({ ...payload, employerId: viewer.id }); jobId = created.id; }
+      else {
+        const res = await withDuplicateConfirm((allowDuplicate) => api.createJob({ ...payload, employerId: viewer.id, ...(allowDuplicate ? { allowDuplicate } : {}) }));
+        if (!res) { setSaving(false); return; }
+        jobId = res.job.id;
+      }
       // JobFinder only: the private recruiter email/phone (never on the role, never shown to candidates).
       const contactChanged = form.contactEmail.trim() !== (job?.contactEmail || '') || form.contactPhone.trim() !== (job?.contactPhone || '');
       if (viewer.jobFinder && jobId && contactChanged) await api.setJobContact(jobId, { email: form.contactEmail.trim(), phone: form.contactPhone.trim() });
