@@ -12,6 +12,8 @@ import { DashboardTitle } from './MatchHome';
 export const OPEN_JOB_EVENT = 'jmn:open-job';
 type Props = { data: Bootstrap; setData: (d: Bootstrap) => void; navigate: (v: View) => void; onOpenMessages?: (matchId: string) => void; compact?: boolean };
 const fmt = (t?: number) => (t ? new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '');
+/** "Fri, Nov 28, 3:40 PM": the 48 h answer deadline. */
+const fmtDay = (t: number) => new Date(t).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 function RolePicker({ options, value, onChange, label }: { options: { key: string; label: string; n: number }[]; value: string; onChange: (v: string) => void; label: string }) {
   const total = options.reduce((s, o) => s + o.n, 0);
@@ -76,9 +78,17 @@ export function JobsAppliedList({ data, navigate, onOpenMessages, compact }: Pro
   const keys = [...new Set(withRole.map((a) => a.role))];
   const options = keys.map((k) => ({ key: k, label: k, n: withRole.filter((a) => a.role === k).length }));
   const rows = withRole.filter((a) => role === 'all' || a.role === role);
-  const status = (a: typeof rows[number]) => {
+  const status = (a: typeof rows[number]): { cls: string; text: string; sub?: string } => {
     if (a.matchId) return { cls: 'ok', text: 'Matched' };
     if (!a.open) return { cls: 'off', text: 'Role closed' };
+    // Application tracker (founder, 2026-11-26): recruiter contacted → application viewed → answer within 48 h.
+    const t = a.tracker;
+    if (t?.state === 'viewed') return Date.now() < (t.answerBy || 0)
+      ? { cls: 'viewed', text: 'Application viewed', sub: `The recruiter viewed your profile ${fmt(t.viewedAt || 0)}. Expect an answer by ${fmtDay(t.answerBy || 0)} (48 h rule).` }
+      : { cls: 'late', text: 'Viewed · no answer yet', sub: `Viewed ${fmt(t.viewedAt || 0)}; the 48 h passed. Keep applying: we follow up with the recruiter.` };
+    if (t?.state === 'contacted') return { cls: 'sent', text: 'Recruiter contacted', sub: `We emailed the recruiter your profile ${fmt(t.contactedAt || 0)}. You will see here when they view it.` };
+    if (t?.state === 'no_consent') return { cls: 'off', text: 'Recruiter not contacted', sub: 'Your public profile is off: turn it on in your profile so the recruiter can see you.' };
+    if (t?.state === 'pending') return { cls: 'wait', text: 'Contacting the recruiter…' };
     const jf = a.job.jobFinder;
     if (jf) return { cls: 'wait', text: jf.myOutreach ? outreachText(jf.myOutreach) : jf.reachability === 'email' ? 'Interest not sent yet' : 'Saved · recruiter contact not yet available' };
     return { cls: 'wait', text: 'Waiting for the team' };
@@ -96,6 +106,10 @@ export function JobsAppliedList({ data, navigate, onOpenMessages, compact }: Pro
             <strong>{a.job.title}{a.superLike && <Star size={12} className="ap-star" aria-label="Super Like" />}</strong>
             <small>{[a.job.company, a.job.location].filter(Boolean).join(' · ')}{a.job.jobFinder ? ' · Added by JobFinder' : ''}</small>
             <small className="ap-meta">{role === 'all' && targets.length > 1 && <>{a.role} · </>}Applied {fmt(a.at)}{a.src === 'linkedin' && <> · <Linkedin size={11} /> from LinkedIn</>}</small>
+            {a.tracker && !a.matchId && a.open && ['contacted', 'viewed'].includes(a.tracker.state) && <ol className="ap-steps" aria-label="Application status">
+              {[['Applied', true], ['Recruiter contacted', true], ['Viewed', a.tracker.state === 'viewed'], ['Answer', false]].map(([label, done], i) => <li key={String(label)} className={done ? 'done' : i === (a.tracker!.state === 'viewed' ? 3 : 2) ? 'next' : ''}>{String(label)}</li>)}
+            </ol>}
+            {s.sub && <small className={`ap-sub ${s.cls}`}>{s.sub}</small>}
           </div>
           <span className={`ap-status ${s.cls}`}>{s.cls === 'ok' && <Check size={12} />}{s.text}</span>
           {a.matchId ? <button type="button" className="ap-btn msg" onClick={() => onOpenMessages?.(a.matchId!)}><MessageCircle size={14} /> Message</button>

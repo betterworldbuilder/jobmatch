@@ -18,7 +18,9 @@ export function PublicProfilePage({ slug }: { slug: string }) {
   const [p, setP] = useState<PublicProfile | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
-    fetch(`${apiBase}/api/public/profile/${encodeURIComponent(slug)}`).then(async (r) => {
+    // ?v= from a recruiter email: lets the candidate see "Application viewed" (2026-11-26).
+    const v = new URLSearchParams(window.location.search).get('v');
+    fetch(`${apiBase}/api/public/profile/${encodeURIComponent(slug)}${v && /^[0-9a-f-]{36}$/.test(v) ? `?v=${v}` : ''}`).then(async (r) => {
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(body.error || 'This profile is not public');
       setP(body.profile); document.title = `${body.profile.name} · JobsMatchNow`;

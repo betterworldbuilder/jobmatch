@@ -95,7 +95,8 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
     if (candidate.publicProfile === false) { row.status = 'no_consent'; return { skip: 'no_consent' }; }
     const slug = assignProfileSlug(db, candidate);
     row.status = 'submitted';
-    const msg = interestEmail({ job, candidate, origin, unsubscribeUrl: ctx.unsubscribeUrl(origin, email), profileUrl: `${origin}/${slug}`, roleUrl: `${origin}${rolePath(job)}`, claimLink: ctx.claimLink?.(job.id, email) || null });
+    // ?v=<row id>: when the recruiter opens the profile from this email, the candidate sees "Application viewed".
+    const msg = interestEmail({ job, candidate, origin, unsubscribeUrl: ctx.unsubscribeUrl(origin, email), profileUrl: `${origin}/${slug}?v=${row.id}`, roleUrl: `${origin}${rolePath(job)}`, claimLink: ctx.claimLink?.(job.id, email) || null });
     return { rowId: row.id, mail: { to: email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: msg.subject, text: msg.text } };
   }).catch(() => null);
   if (!prepared || prepared.skip) return prepared ? { status: prepared.skip } : null;
@@ -108,3 +109,93 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
 }
 
 export const defaultSend = (mail) => sendMail(mail);
+
+// ---------- Follow-up 24 h after a cold email with no claim (founder, 2026-11-26) ----------
+export const FOLLOWUP_AFTER_MS = Number(process.env.ROLE_FOLLOWUP_AFTER_H || 24) * 3600 * 1000;
+
+/** The follow-up: founder's template style. `newCount` = candidates who applied after the first email. */
+export function followupEmail({ job, newCount, waiting, origin, unsubscribeUrl, roleUrl, claimLink }) {
+  const first = String(job.recruiterName || '').trim().split(/\s+/)[0];
+  const posting = job.externalUrl || job.sourceUrl || job.jobFinder?.sourceUrl || roleUrl;
+  const headline = newCount > 0
+    ? `${newCount} more candidate${newCount === 1 ? '' : 's'} applied to your ${job.title} role${job.company ? ` at ${job.company}` : ''} since our last email.`
+    : `${waiting > 1 ? `${waiting} candidates are` : 'A candidate is'} still waiting for your answer on your ${job.title} role${job.company ? ` at ${job.company}` : ''}.`;
+  const text = [
+    `Hello ${first || 'Hiring Team'},`, '', headline, '',
+    `Your job posting: ${posting}`,
+    ...(claimLink ? [`See all candidates for this role and reply (free): ${claimLink}`] : [`See the role: ${roleUrl}`]),
+    '', 'Candidates on JobsMatchNow expect an answer within 48 hours: a quick yes or no helps them a lot.', '',
+    `Not a member yet? Join us at ${origin}/app/`, '', 'Best regards,', 'JobMatcher', 'JobsMatchNow', '',
+    'Sent because candidates applied to your role through JobsMatchNow.', `Don’t want these emails? ${unsubscribeUrl}`,
+  ].join('\n');
+  const subject = newCount > 0 ? `${newCount} more candidate${newCount === 1 ? '' : 's'} applied to your ${job.title} role` : `Candidates are waiting for your answer: ${job.title}`;
+  return { subject, text };
+}
+
+/**
+ * One follow-up per role and recipient, 24 h after the first cold email that sent, when the role is still not claimed
+ * (still owned by the JobFinder account). Same limits as the cold email: suppression list, weekly cap per recipient.
+ */
+export async function runFollowups(ctx, { now = Date.now() } = {}) {
+  const { store, origin, contactOf } = ctx;
+  const due = await store.transaction((db) => {
+    ensureCollections(db);
+    if (!Array.isArray(db.roleFollowups)) db.roleFollowups = [];
+    const out = [];
+    const firsts = new Map();
+    for (const m of db.roleInterestMails || []) {
+      if (m.status !== 'sent' || !m.sentAt) continue;
+      const k = `${m.jobId}|${m.recipientHash}`;
+      if (!firsts.has(k) || m.sentAt < firsts.get(k).sentAt) firsts.set(k, m);
+    }
+    for (const [k, m] of firsts) {
+      if (now - m.sentAt < FOLLOWUP_AFTER_MS || db.roleFollowups.some((f) => `${f.jobId}|${f.recipientHash}` === k)) continue;
+      const job = db.jobs.find((j) => j.id === m.jobId);
+      const owner = job && db.users.find((u) => u.id === job.employerId);
+      const email = job && contactOf(db, job.id)?.email;
+      const row = { id: crypto.randomUUID(), jobId: m.jobId, recipientHash: m.recipientHash, createdAt: now };
+      db.roleFollowups.push(row);
+      if (!job || !isJobFinderUser(owner) || !email || hashEmail(email) !== m.recipientHash) { row.status = 'skipped'; continue; } // claimed or contact changed
+      if (db.jfSuppress.some((x) => x.hash === m.recipientHash)) { row.status = 'suppressed'; continue; }
+      const sentWeek = (db.roleInterestMails || []).filter((x) => x.recipientHash === m.recipientHash && x.status === 'sent' && x.sentAt > now - WEEK).length
+        + db.roleFollowups.filter((x) => x.recipientHash === m.recipientHash && x.status === 'sent' && x.sentAt > now - WEEK).length;
+      if (sentWeek >= maxPerRecipientWeek()) { row.status = 'capped'; continue; }
+      const likes = (db.swipes || []).filter((s) => s.targetType === 'job' && s.targetId === job.id && s.direction === 'like' && db.users.some((u) => u.id === s.actorId && u.role === 'candidate' && !u.demo && !u.sample));
+      const newCount = likes.filter((s) => (s.createdAt || 0) > m.sentAt).length;
+      row.status = 'submitted';
+      const msg = followupEmail({ job, newCount, waiting: likes.length, origin, unsubscribeUrl: ctx.unsubscribeUrl(origin, email), roleUrl: `${origin}${rolePath(job)}`, claimLink: ctx.claimLink?.(job.id, email) || null });
+      out.push({ rowId: row.id, mail: { to: email, replyTo: RELAY_EMAIL, fromName: FROM_NAME, subject: msg.subject, text: msg.text } });
+    }
+    return out;
+  }).catch(() => []);
+  let sent = 0;
+  for (const d of due) {
+    let status = 'not_sent';
+    if ((ctx.mailerConfigured || mailerConfigured)()) { try { const info = await ctx.send(d.mail); status = info?.delivered ? 'sent' : 'not_sent'; } catch { status = 'failed'; } }
+    if (status === 'sent') sent += 1;
+    await store.transaction((db) => { const r = (db.roleFollowups || []).find((x) => x.id === d.rowId); if (r) Object.assign(r, { status, sentAt: status === 'sent' ? Date.now() : undefined }); }).catch(() => {});
+  }
+  return { due: due.length, sent };
+}
+
+/** The recruiter opened the candidate's profile from the email (?v=<row id>) → the candidate sees "Application viewed". */
+export function markViewedByRow(db, rowId, candidateId) {
+  const row = (db.roleInterestMails || []).find((m) => m.id === rowId && m.candidateId === candidateId);
+  if (row && !row.viewedAt) { row.viewedAt = Date.now(); return true; }
+  return false;
+}
+/** The recruiter opened the claim page (it lists the applicants) → every applicant of that role was viewed. */
+export function markViewedForJob(db, jobId) {
+  let n = 0;
+  for (const m of db.roleInterestMails || []) if (m.jobId === jobId && m.status === 'sent' && !m.viewedAt) { m.viewedAt = Date.now(); n += 1; }
+  return n;
+}
+
+/** What a candidate sees for one application (Jobs Applied): contacted → viewed → answer expected in 48 h. */
+export function trackerFor(db, jobId, candidateId) {
+  const m = (db.roleInterestMails || []).find((x) => x.jobId === jobId && x.candidateId === candidateId);
+  if (!m) return null;
+  if (m.status === 'no_consent') return { state: 'no_consent' };
+  if (m.status !== 'sent') return { state: 'pending' };
+  return { state: m.viewedAt ? 'viewed' : 'contacted', contactedAt: m.sentAt, viewedAt: m.viewedAt || undefined, answerBy: m.viewedAt ? m.viewedAt + 48 * 3600 * 1000 : undefined };
+}

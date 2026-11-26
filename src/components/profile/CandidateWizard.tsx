@@ -5,6 +5,31 @@ import { CameraCaptureModal } from '../CameraCaptureModal';
 import { Chips, Field, LevelTagInput, MultiSegmented, Repeat, Segmented, TagInput, TextInput, Toggle } from './fields';
 import { RecommendationLetters } from './CandidateCards';
 import { TEXT_MAX, clipText, fitSentences } from '../../lib/textLimit';
+
+/**
+ * A short cover letter from what the resume / profile says (founder, 2026-11-26): name, title, years, strongest
+ * skills, industries and the latest job. Nothing invented; empty parts are left out. Fits the 500-character box.
+ */
+export function draftCoverLetter(p: { name?: string; title?: string; yearsExperience?: string; skillsDetail?: { name: string; level: number }[];
+  industries?: string[]; workExperience?: { title?: string; company?: string }[] }): string {
+  const first = String(p.name || '').trim().split(/\s+/)[0];
+  const years = Number(p.yearsExperience) > 0 ? `${Number(p.yearsExperience)} years of experience` : '';
+  const who = [p.title ? `a ${p.title}` : '', years ? `with ${years}` : ''].filter(Boolean).join(' ');
+  const top = (p.skillsDetail || []).slice().sort((a, b) => b.level - a.level).slice(0, 4).map((s) => s.name);
+  const last = (p.workExperience || []).find((w) => w.title || w.company);
+  const lines = [
+    'Hello,',
+    `I'm ${first || 'a candidate'}${who ? `, ${who}` : ''}.`,
+    last ? `Most recently I worked${last.title ? ` as ${last.title}` : ''}${last.company ? ` at ${last.company}` : ''}.` : '',
+    top.length ? `My strongest skills are ${top.slice(0, -1).join(', ')}${top.length > 1 ? ' and ' : ''}${top[top.length - 1]}.` : '',
+    p.industries?.length ? `I have worked in ${p.industries.slice(0, 3).join(', ')}.` : '',
+    'I would be glad to talk about how I can help your team.',
+    first ? `Best regards, ${first}` : 'Best regards',
+  ].filter(Boolean);
+  let text = lines.join('\n');
+  while (text.length > TEXT_MAX && lines.length > 4) { lines.splice(lines.length - 3, 1); text = lines.join('\n'); }
+  return text.slice(0, TEXT_MAX);
+}
 import { IdVerification } from './IdVerification';
 import type { AgePrivacy, ContactChannel, ContactChannelType, Education, LanguageTag, Person, Recommendation, ResumeMeta, Seniority, SkillTag, WorkExperience } from '../../types';
 
@@ -325,11 +350,30 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
           education: fill(current.education, fields.education),
           certifications: fill(current.certifications, fields.certifications),
           links: fields.links ? { ...fields.links, ...current.links } : current.links,
+          // An empty cover letter gets a short draft from the resume (founder, 2026-11-26); a written one is never touched.
+          coverLetter: current.coverLetter.trim() ? current.coverLetter : draftCoverLetter({
+            name: viewer.name, title: current.title || fields.title, yearsExperience: current.yearsExperience || (fields.yearsExperience !== undefined ? String(fields.yearsExperience) : ''),
+            skillsDetail, industries: fill(current.industries, fields.industries), workExperience: fill(current.workExperience, fields.workExperience),
+          }),
         };
       });
       setParseNote(`${generator === 'claude' ? 'AI-read your resume.' : 'Read your resume.'} ${parsed.length ? `${parsed.length} skills found${added ? `, ${added} new` : ''}; your skills are now sorted strongest first.` : 'No skills found in it.'} Review, then continue to save.`);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not read your resume'); }
     finally { setParsing(false); }
+  };
+
+  // Upload a cover letter (PDF / DOCX / TXT): its text fills the box (cut to the limit); review, then continue to save.
+  const [clBusy, setClBusy] = useState(false);
+  const [clNote, setClNote] = useState('');
+  const uploadCoverLetter = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) { setClNote('Cover letter must be 5 MB or smaller'); return; }
+    setClBusy(true); setClNote('');
+    try {
+      const { text, length } = await api.coverLetterText(viewer.id, file);
+      patch({ coverLetter: text.slice(0, TEXT_MAX) });
+      setClNote(length > TEXT_MAX ? `Your letter has ${length} characters: the first ${TEXT_MAX} are kept. Shorten it if needed.` : 'Cover letter added. Review it, then continue to save.');
+    } catch (e) { setClNote(e instanceof Error ? e.message : 'Could not read that file'); }
+    finally { setClBusy(false); }
   };
 
   // Upload a resume and pre-fill the whole wizard from it (review then continue).
@@ -502,7 +546,17 @@ export function CandidateWizard({ viewer, initialStep = 0, onDone, onCancel }: {
           </button>
           <span className="wz-parse-note">{parseNote || (form.resume ? 'Reads your resume and sorts your skills, strongest first, with a level for each. Your own levels are kept; nothing is saved until you continue.' : 'Upload a resume first, then parse it.')}</span>
         </div>
-        <Field label="Cover letter (optional)"><textarea className="wz-input wz-textarea" rows={4} maxLength={TEXT_MAX} value={form.coverLetter} onChange={(e) => patch({ coverLetter: e.target.value.slice(0, TEXT_MAX) })} placeholder="A short default note recruiters see with your profile." /><Count value={form.coverLetter} /></Field>
+        <Field label="Cover letter (optional)"><textarea className="wz-input wz-textarea" rows={4} maxLength={TEXT_MAX} value={form.coverLetter} onChange={(e) => patch({ coverLetter: e.target.value.slice(0, TEXT_MAX) })} placeholder="A short default note recruiters see with your profile." /><Count value={form.coverLetter} />
+          {/* Cover letter from the resume, or an uploaded letter (founder, 2026-11-26). Review before saving. */}
+          <div className="wz-cl-tools">
+            <button type="button" className="text-button" disabled={!form.resume || parsing} onClick={() => patch({ coverLetter: draftCoverLetter({ ...form, name: viewer.name }) })} title={form.resume ? 'Writes a short note from your profile and resume (only what they say)' : 'Upload and parse a resume first'}><Sparkles size={13} /> Draft from my resume</button>
+            <label className="text-button wz-cl-upload">
+              <input type="file" hidden accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadCoverLetter(f); }} />
+              {clBusy ? <><Loader2 size={13} className="spin" /> Reading…</> : <><Upload size={13} /> Upload a cover letter</>}
+            </label>
+            {clNote && <small className="wz-cl-note">{clNote}</small>}
+          </div>
+        </Field>
       </div>}
 
       {step === 2 && <div className="wz-body">

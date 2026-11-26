@@ -13,6 +13,7 @@
 import crypto from 'node:crypto';
 import { ValidationError } from './matching.js';
 import { involvesDemo } from './analytics.js';
+import { isRestricted } from './test-roles.js';
 
 export const RESERVED_SLUGS = ['app', 'api', 'assets', 'admin', 'jobs', 'job', 'ref', 'downloads', 'legal', 'index', 'sw', 'manifest',
   'static', 'login', 'register', 'signup', 'settings', 'home', 'privacy', 'terms', 'help', 'groups', 'group', 'search', 'public', 'icons', 'images'];
@@ -59,6 +60,7 @@ export function assignGroups(db, job, body) {
 /** Live, real job that may be listed publicly (group pages need a group as well). */
 export function isPublicJob(db, job) {
   if (!job || String(job.status).toLowerCase() !== 'active') return false;
+  if (isRestricted(job)) return false; // test roles never appear publicly (2026-11-26)
   if (job.demo || job.sample || job.demoTemplate) return false;
   if (job.jobFinder && !['published', 'claimed'].includes(job.jobFinder.listingStatus)) return false;
   const owner = db.users.find((u) => u.id === job.employerId);
@@ -262,7 +264,8 @@ export function mountGroups(app, ctx) {
       const viewer = db.users.find((u) => u.id === s.sub);
       if (!viewer) { const e = new Error('Sign in to continue'); e.status = 401; throw e; }
       const job = db.jobs.find((j) => j.id === req.params.id);
-      if (!job || (job.employerId !== viewer.id && !isPublicJob(db, job) && !(viewer.demo && job.demo && String(job.status).toLowerCase() === 'active'))) { const e = new Error('This job is not available any more'); e.status = 404; throw e; }
+      const testFor = isRestricted(job) && job.visibleTo.includes(viewer.id) && String(job.status).toLowerCase() === 'active';
+      if (!job || (job.employerId !== viewer.id && !testFor && !isPublicJob(db, job) && !(viewer.demo && job.demo && String(job.status).toLowerCase() === 'active'))) { const e = new Error('This job is not available any more'); e.status = 404; throw e; }
       res.json({ job: jobFullView(db, job, viewer), liked: db.swipes.some((w) => w.actorId === viewer.id && w.targetType === 'job' && w.targetId === job.id && w.direction === 'like') });
     } catch (e) { next(e); }
   });

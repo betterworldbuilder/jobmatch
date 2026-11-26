@@ -10,6 +10,7 @@
 import crypto from 'node:crypto';
 import { isJobFinderUser } from './jobfinder.js';
 import { rolePath } from './public-urls.js';
+import { markViewedForJob } from './role-interest.js';
 
 export const claimLinksOn = (env = process.env) => String(env.ROLE_CLAIM_LINKS || '').toLowerCase() === 'on';
 
@@ -58,6 +59,8 @@ export function mountClaims(app, { store, authSession, secret, contactOf, track 
           if (!Array.isArray(db.claimEvents)) db.claimEvents = [];
           db.claimEvents.push({ id: crypto.randomUUID(), jobId: job.id, type: 'view', at: Date.now() });
           track?.(db, 'role_link_opened', {});
+          // The page lists the applicants: their applications now show "Application viewed" (48 h answer clock).
+          markViewedForJob(db, job.id);
         }
         return {
           job: { id: job.id, title: job.title, company: job.company, location: job.location, workMode: job.workMode, type: job.type, summary: job.description, path: rolePath(job) },

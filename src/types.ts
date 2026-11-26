@@ -1,5 +1,5 @@
 export type Role = 'candidate' | 'employer' | 'admin';
-export type View = 'jobfinder' | 'applied' | 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired' | 'prep';
+export type View = 'jobfinder' | 'outreach' | 'applied' | 'home' | 'discover' | 'matches' | 'companies' | 'messages' | 'pipeline' | 'jobs' | 'analytics' | 'profile' | 'meetings' | 'saved' | 'selected' | 'coffee' | 'billing' | 'admin-billing' | 'stages' | 'assistant' | 'feedback' | 'match' | 'hired' | 'prep';
 export type EmployerKind = 'company' | 'headhunter';
 /** A recommendation letter the candidate uploaded (PDF, Word or image). Opens for matched recruiters only. */
 export interface RecommendationDoc { id: string; originalName: string; ext: string; size: number; uploadedAt: number }
@@ -173,7 +173,17 @@ export type Facet = { name: string; n: number };
 export interface GroupPageData { group: JobGroup; jobs: GroupCard[]; total: number; nationalityNotStated: number; redirect?: string;
   facets: { countries: Facet[]; cities: Facet[]; modes: string[]; levels: string[]; withSalary: number; nationalities: string[]; europe: boolean } }
 /** "Jobs Applied (liked)": a job this candidate liked, with its state today. */
-export interface AppliedJob { jobId: string; at: number; superLike?: boolean; src?: string; matchId?: string; open: boolean; job: Job }
+export interface AppliedJob { jobId: string; at: number; superLike?: boolean; src?: string; matchId?: string; open: boolean; job: Job;
+  /** Application tracker (2026-11-26): recruiter contacted by email → application viewed → answer expected in 48 h. */
+  tracker?: ApplicationTracker }
+export type ApplicationTracker = { state: 'contacted' | 'viewed' | 'pending' | 'no_consent'; contactedAt?: number; viewedAt?: number; answerBy?: number };
+/** Outreach dashboard + recruiter contact book (JobFinder account, 2026-11-26). */
+export interface OutreachRole { id: string; title: string; company?: string; location?: string; live: boolean; recruiterName: string; recruiterEmail: string; unsubscribed: boolean;
+  applicants: number; coldSent: number; lastSentAt: number | null; followupSentAt: number | null; opens: number; viewed: number; claimed: boolean; answered: number; hot: boolean; notSent: number }
+export interface OutreachRecruiter { email: string; names: string[]; companies: string[]; roles: { id: string; title: string; claimed: boolean }[]; applicants: number; coldSent: number;
+  followups: number; opens: number; viewed: number; claimed: number; answered: number; lastSentAt: number | null; unsubscribed: boolean; hot: boolean }
+export interface OutreachReport { totals: { roles: number; withEmail: number; applicants: number; coldSent: number; followups: number; opened: number; claimed: number; answered: number; hot: number; recruiters: number };
+  roles: OutreachRole[]; recruiters: OutreachRecruiter[] }
 export type JfReach = 'email' | 'apply' | 'none';
 export type JfOutreach = { status: 'submitted' | 'sent' | 'failed' | 'not_sent' | 'suppressed'; viaAuto?: boolean; submittedAt?: number; sentAt?: number; failedAt?: number; reason?: string; shared?: { skills: string[]; profileLink: string | null; replyEmail: boolean } } | null;
 export interface JobFinderInfo {

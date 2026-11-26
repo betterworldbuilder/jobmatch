@@ -20,6 +20,7 @@ import { involvesDemo } from './analytics.js';
 import { assignGroups, assignGroupsFromTitles, createGroup, groupsForTitle } from './groups.js';
 import { validateJobUrl } from './url-safety.js';
 import { cleanForWho, FOR_WHO_CODES, forWhoOf, inferForWho } from './for-who.js';
+import { hiddenFrom } from './test-roles.js';
 
 /** How a listing's content arrived (job-link import, 2026-11-25). */
 export const IMPORT_METHODS = ['imported', 'pasted', 'manual'];
@@ -518,6 +519,31 @@ export function mountJobFinder(app, ctx) {
       res.json(await runImport(req.body?.jobs, req.body?.emailDate));
     } catch (error) { next(error); }
   });
+  // Test roles (founder, 2026-11-26): create JobFinder roles visible ONLY to a tester account, or restrict existing ones.
+  // Import key only. { testerEmail, jobs?: [scraped-style jobs], restrictJobIds?: [ids] }.
+  app.post('/api/jobfinder/test-roles', ...(limiter ? [limiter] : []), async (req, res, next) => {
+    try {
+      if (!process.env.JOBFINDER_IMPORT_KEY || !importKeyOk(req.headers.authorization)) { const e = new Error('Missing or invalid import key'); e.status = 401; throw e; }
+      const out = await store.transaction((db) => {
+        const email = String(req.body?.testerEmail || '').trim().toLowerCase();
+        const tester = db.users.find((u) => String(u.email || '').toLowerCase() === email);
+        if (!tester) { const e = new Error('No account with that tester email'); e.status = 404; throw e; }
+        const owner = jobFinderAccount(db);
+        if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
+        const restrict = (job) => { job.visibleTo = [...new Set([...(job.visibleTo || []), tester.id])]; job.testRole = true; };
+        const created = Array.isArray(req.body?.jobs) && req.body.jobs.length
+          ? importScrapedJobs(db, req.body.jobs.slice(0, 10), { ownerId: owner.id, audit, setContact: setJobContact }) : [];
+        for (const r of created) if (r.id) { const j = db.jobs.find((x) => x.id === r.id); if (j) restrict(j); }
+        const restricted = [];
+        for (const id of Array.isArray(req.body?.restrictJobIds) ? req.body.restrictJobIds : []) {
+          const j = db.jobs.find((x) => x.id === id && x.employerId === owner.id);
+          if (j) { restrict(j); restricted.push(j.id); }
+        }
+        return { tester: tester.id, created, restricted };
+      });
+      res.json(out);
+    } catch (error) { next(error); }
+  });
   // Job groups for the JobFinder account (founder, 2026-11-26): add a custom group (name + title keywords; matching roles
   // join it at once), and give every role without a group the groups its title matches.
   app.post('/api/jobfinder/job-groups', ...(limiter ? [limiter] : []), async (req, res, next) => {
@@ -720,7 +746,7 @@ export function mountJobFinder(app, ctx) {
       const view = await store.transaction((db) => {
         ensureCollections(db);
         const job = db.jobs.find((j) => j.id === req.params.id && isJobFinderJob(j));
-        if (!job || ['draft', 'removed'].includes(job.jobFinder.listingStatus)) { const e = new Error('This job is not available'); e.status = 404; throw e; }
+        if (!job || ['draft', 'removed'].includes(job.jobFinder.listingStatus) || hiddenFrom(job, session(req)?.sub)) { const e = new Error('This job is not available'); e.status = 404; throw e; }
         internalOf(db, job.id).stats.views += 1;
         if (req.query.notrack !== '1') track(db, 'jf_job_viewed', { demo: false });
         const view = publicJobView(db, job);

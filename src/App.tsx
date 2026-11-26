@@ -11,6 +11,7 @@ import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell
 import { api } from './api';
 import { apiBase, groupsApi, JOBFINDER_LIKED_EVENT, JOBFINDER_OPEN_EVENT, SESSION_EXPIRED_EVENT, type JfLikeResult } from './api';
 import { InterestPanel, JobFinderManager } from './components/jobfinder/JobFinder';
+import { OutreachPage } from './components/jobfinder/Outreach';
 import { AdminJobGroupsPage, JobDetailsSheet } from './components/groups/Groups';
 import { AppliedPage, OPEN_JOB_EVENT } from './components/home/AppliedPage';
 import { capturePendingFromUrl, clearPendingJob, readPendingJob, type PendingJob } from './lib/pendingJob';
@@ -662,7 +663,9 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   // New bar + Search & Filters (founder, 2026-11-24; preview ?filters=1): the meetings page is called "Interviews".
   const filtersOn = featureOn('filters');
   // "JobFinder listings" left the menu (founder, 2026-11-26): imported roles live in My Jobs list like any other role.
-  const baseNav = role === 'candidate' ? candidateNav : employerNav;
+  // The JobFinder account gets "Outreach" (cold emails, opens, claims, recruiter contact book) after My Jobs list.
+  const baseNav = role === 'candidate' ? candidateNav
+    : data?.viewer.jobFinder ? [employerNav[0], { label: 'Outreach', short: 'Outreach', icon: Send, view: 'outreach' as View }, ...employerNav.slice(1)] : employerNav;
   // JobFinder interest panel: after a like on a JobFinder job, from a notification, or from the public job page.
   const [jfPanel, setJfPanel] = useState<string | null>(null);
   useEffect(() => {
@@ -806,6 +809,7 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'selected') return <SelectedCandidates data={data} setData={setData} onOpenMessages={onOpenMessages} />;
   if (view === 'coffee') return <CoffeeInvitations data={data} onOpenMessages={onOpenMessages} />;
   if (view === 'jobfinder' && data.viewer.jobFinder) return <JobFinderManager />;
+  if (view === 'outreach' && data.viewer.jobFinder) return <OutreachPage />;
   if (view === 'applied') return <AppliedPage data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} />;
   if (view === 'hired') return <HiredResults data={data} onOpenMessages={onOpenMessages} />;
   if (view === 'prep') return <InterviewPreparation data={data} navigate={navigate} />;

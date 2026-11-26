@@ -5370,3 +5370,65 @@ button.rs-row:hover { border-color:#fd267a; }
 .td-group-head:first-child { margin-top:2px; }
 .td-group-head span { padding:1px 8px; border-radius:999px; background:#eef4ff; color:#0f62fe; font-size:11px; font-weight:800; }
 @media (max-width:640px) { .td-role-toolbar label { flex:1 1 45%; } .td-role-toolbar select { flex:1; min-width:0; } }
+
+/* Application tracker on Jobs Applied (2026-11-26), desktop + phone */
+.ap-status.sent { background:#eef4ff; color:#0f62fe; }
+.ap-status.viewed { background:#e8f7ee; color:#11703a; }
+.ap-status.late { background:#fff1ee; color:#b42318; }
+.ap-steps { list-style:none; display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 0; padding:0; }
+.ap-steps li { position:relative; padding:2px 8px 2px 18px; border-radius:999px; background:#f3f5f9; color:#7a8494; font-size:10.5px; font-weight:700; }
+.ap-steps li::before { content:''; position:absolute; left:7px; top:50%; width:6px; height:6px; margin-top:-3px; border-radius:50%; background:#c3c9d4; }
+.ap-steps li.done { background:#e8f7ee; color:#11703a; }
+.ap-steps li.done::before { background:#11a35a; }
+.ap-steps li.next { background:#fff6e0; color:#8a5a00; }
+.ap-steps li.next::before { background:#e7a100; }
+.ap-sub { display:block; margin-top:4px; font-size:11.5px; line-height:1.35; color:#5b6475; }
+.ap-sub.viewed { color:#11703a; }
+.ap-sub.late { color:#b42318; }
+.jm-notice { position:fixed; left:50%; bottom:96px; transform:translateX(-50%); z-index:9999; width:min(520px, calc(100vw - 32px)); padding:12px 16px; border-radius:14px; background:#0d1834; color:#fff; font-size:13px; line-height:1.4; box-shadow:0 12px 34px rgba(13,24,52,.28); cursor:pointer; }
+@media (min-width:900px) { .jm-notice { bottom:28px; } }
+
+/* Outreach dashboard + recruiter contact book (2026-11-26) */
+.or-page { max-width:1180px; }
+.or-page .err { color:#b42318; }
+.or-funnel { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 12px; }
+.or-funnel span { display:grid; min-width:96px; padding:8px 12px; border:1px solid #e6e8ef; border-radius:12px; background:#fff; font-size:11.5px; color:#5b6475; }
+.or-funnel b { font-size:20px; color:#0d1834; }
+.or-hot-note { display:flex; align-items:center; gap:6px; margin:0 0 12px; padding:8px 12px; border-radius:10px; background:#fff1ee; color:#b42318; font-size:13px; }
+.or-tools { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
+.or-tabs { display:inline-flex; gap:4px; }
+.or-tabs button { padding:6px 12px; border:1px solid #dfe4ec; border-radius:999px; background:#fff; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.or-tabs button.on { border-color:#0f62fe; background:#eef4ff; color:#0f62fe; }
+.or-search { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border:1px solid #dfe4ec; border-radius:999px; background:#fff; }
+.or-search input { border:0; outline:0; font:inherit; font-size:12.5px; min-width:220px; }
+.or-check { display:inline-flex; gap:6px; align-items:center; font-size:12.5px; font-weight:700; }
+.or-table-wrap { overflow-x:auto; border:1px solid #e6e8ef; border-radius:12px; background:#fff; }
+.or-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.or-table th { text-align:left; padding:8px 10px; background:#f6f8fb; color:#5b6475; font-size:11.5px; white-space:nowrap; }
+.or-table td { padding:8px 10px; border-top:1px solid #eef0f4; vertical-align:top; }
+.or-table td small { display:block; color:#5b6475; font-size:11px; }
+.or-table tr.hot td { background:#fffaf5; }
+.or-table tr.hot strong svg { color:#e8590c; }
+.or-yes { padding:1px 8px; border-radius:999px; background:#e8f7ee; color:#11703a; font-weight:800; font-size:11px; }
+@media (max-width:640px) { .or-search input { min-width:0; width:150px; } }
+
+/* ID check: front + back slots, several photos each (2026-11-26) */
+.idv-sides { display:grid; gap:10px; margin-top:8px; }
+.idv-sides.n2 { grid-template-columns:1fr 1fr; }
+.idv-side { display:grid; gap:6px; align-content:start; }
+.idv-side-label { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:800; color:#3b4255; }
+.idv-side-label svg { color:#11a35a; }
+.idv-files { list-style:none; margin:0; padding:0; display:grid; gap:4px; }
+.idv-files li { display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:8px; background:#fff; border:1px solid #e6e8ef; font-size:11.5px; min-width:0; }
+.idv-files li span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.idv-files li em { font-style:normal; color:#b42318; font-size:10.5px; flex:none; max-width:55%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.idv-files li.ok svg:first-child { color:#11a35a; }
+.idv-files li.bad svg:first-child { color:#b42318; }
+.idv-files li button { border:0; background:transparent; color:#7a8494; cursor:pointer; padding:2px; display:grid; place-items:center; }
+.idv-check { margin-top:10px; }
+.idv-hint { margin:6px 0 0; font-size:11.5px; color:#5b6475; }
+@media (max-width:560px) { .idv-sides.n2 { grid-template-columns:1fr; } }
+/* Cover letter: draft from resume / upload a letter (2026-11-26) */
+.wz-cl-tools { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; margin-top:6px; }
+.wz-cl-tools .text-button { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer; }
+.wz-cl-note { flex:1 1 100%; color:#5b6475; font-size:11.5px; }

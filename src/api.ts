@@ -1,5 +1,6 @@
-import type { GroupCard, GroupPageData, JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, JobFinderPublicJob, JobGroup } from './types';
+import type { GroupCard, GroupPageData, JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, JobFinderPublicJob, JobGroup, OutreachReport } from './types';
 import { acquisitionSource } from './lib/pendingJob';
+import { showNotice } from './lib/notice';
 import type { AdminCatalog, AdminKpi, AdminPaymentMethods, AdminPlanInput, BankInstructionsPayload, ClaimView, ConnectorKey, IntegrationStatus, LivePlan, RecommendationDoc, Stage1Funnel, WebAnalyticsReport } from './types';
 import type { ActionQueueItem,AdminAnalyticsOverview, AdminJobSummary, AdminPlansOverview, AdminRecruiterStatus, AdminUserDetail, AdminUserSummary, AuthConfig, BillingEvent, BillingInfo, Bootstrap, BoostRecord, EmployerKind, InterviewPrep, Job, JobDraft, JobImportResult, JobMatch, JobPostCredit, Message, Note, Payment, PaymentMethod, PendingVerification, PipelineStep, Person, ProfileVariant, RecommendationRequest, Referral, Report, ReportCategory, ResumeMeta, Review, Role, ScheduledCall, ScreeningAnswer, SessionUser, SupportRequest, TeamInfo, WeightedSkill } from './types';
 
@@ -73,6 +74,8 @@ export const jf = {
   importFiles: (body: { jobs: unknown[]; emailDate?: string }) => request<ScrapedImportResult>('/api/jobfinder/import-files', json('POST', body)),
   // Duplicate roles of the JobFinder account (2026-11-26): dryRun lists them, otherwise the extra copies are taken off.
   dedupe: (body: { dryRun?: boolean }) => request<DedupeResult>('/api/jobfinder/dedupe', json('POST', body)),
+  // Outreach dashboard + recruiter contact book (2026-11-26).
+  outreach: () => request<OutreachReport>('/api/jobfinder/outreach'),
   // Custom job group (2026-11-26): name + title keywords; matching roles join it at once.
   addGroup: (body: { name: string; keywords: string }) => request<{ group: { id: string; name: string; slug: string; keywords: string[] }; added: number }>('/api/jobfinder/job-groups', json('POST', body)),
 };
@@ -186,6 +189,13 @@ export const api = {
   adminDecideVerification: (userId: string, decision: 'approve' | 'reject', reason?: string) => request<{ verification: NonNullable<Person['verification']> }>(`/api/admin/verifications/${encodeURIComponent(userId)}/${decision}`, { method: 'POST', body: JSON.stringify({ reason }) }),
   adminVerificationSelfieUrl: (userId: string) => `${apiBase}/api/admin/verifications/${encodeURIComponent(userId)}/selfie`,
   createJob: (payload: JobDraft & { employerId: string; postSource?: 'editor' | 'quick_post' }) => request<{ job: Job }>('/api/jobs', { method: 'POST', body: JSON.stringify(payload) }),
+  // Upload a cover letter (PDF / DOCX / TXT) → its text for the profile's cover letter box (2026-11-26). Not stored.
+  coverLetterText: async (userId: string, file: File): Promise<{ text: string; length: number }> => {
+    const response = await fetch(`${apiBase}/api/users/${encodeURIComponent(userId)}/cover-letter/extract`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'Could not read that cover letter');
+    return body;
+  },
   importJobFile: async (employerId: string, sourceSystem: string, file: File): Promise<JobImportResult> => {
     const params = new URLSearchParams({ employerId, sourceSystem });
     const response = await fetch(`${apiBase}/api/jobs/import-file?${params}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });
@@ -212,7 +222,12 @@ export const api = {
   jobPrep: (jobId: string) => request<InterviewPrep>(`/api/jobs/${encodeURIComponent(jobId)}/prep`),
   suggestScreening: (requiredSkillsDetail: WeightedSkill[]) => request<{ questions: string[] }>('/api/coach/screening', { method: 'POST', body: JSON.stringify({ requiredSkillsDetail }) }),
   matchIcebreakers: (matchId: string) => request<{ icebreakers: string[]; generator: string }>(`/api/matches/${encodeURIComponent(matchId)}/icebreakers`),
-  swipe: (payload: { actorId: string; targetId: string; targetType: 'job' | 'candidate'; direction: 'like' | 'pass'; superLike?: boolean; answers?: ScreeningAnswer[]; note?: string; jobId?: string; src?: string }) => request<{ match: JobMatch | null; likesRemaining: number; duplicate: boolean; jobFinder?: JfLikeResult }>('/api/swipes', { method: 'POST', body: JSON.stringify(payload) }),
+  swipe: (payload: { actorId: string; targetId: string; targetType: 'job' | 'candidate'; direction: 'like' | 'pass'; superLike?: boolean; answers?: ScreeningAnswer[]; note?: string; jobId?: string; src?: string }) => request<{ match: JobMatch | null; likesRemaining: number; duplicate: boolean; jobFinder?: JfLikeResult; recruiterNotified?: string }>('/api/swipes', { method: 'POST', body: JSON.stringify(payload) })
+    .then((r) => {
+      // Applied to a JobFinder role and its recruiter was just emailed: confirm it (founder, 2026-11-26).
+      if (r.recruiterNotified === 'sent') showNotice('Applied ✓ The recruiter has been contacted by email. In Jobs Applied you will see when they view your profile; expect an answer within 48 h after that.');
+      return r;
+    }),
   undoSwipe: (actorId: string) => request<{ undone: { targetId: string; targetType: string; direction: string } | null; likesRemaining?: number }>('/api/swipes/undo', { method: 'POST', body: JSON.stringify({ actorId }) }),
   // Recruitment process rules: Hired fills the role and thanks the other candidates; stopping needs a reason + feedback.
   hireMatch: (id: string) => request<JobMatch & { effects?: { closed: number; meetingsCancelled: number; messages: number } }>(`/api/matches/${id}`, { method: 'PATCH', body: JSON.stringify({ stage: 'Hired' }) }),

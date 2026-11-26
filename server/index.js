@@ -18,7 +18,7 @@ import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, re
 import { anonymizeText, convertDocxToPdf, detectTools, docxToHtml, extractDocxText, extractPdfText, makeSimplePdf, pdfThumbnail } from './resume.js';
 import { applyJob, assertPublishable, heuristicParse, legacySkills, parseJobText, parseSalaryText, parseStrength, summaryFromText } from './jobs.js';
 import { aiParseJob, importAiAllowed } from './import-ai.js';
-import { afterRoleInterest, mountRoleInterest } from './role-interest.js';
+import { afterRoleInterest, markViewedByRow, mountRoleInterest, runFollowups, trackerFor } from './role-interest.js';
 import { assignProfileSlug, ensureProfileSlugs, findRoleBySlug, maskJobContacts, publicProfileView, rolePath } from './public-urls.js';
 import { claimLinksOn, claimUrl, mountClaims, stage1Funnel } from './stage1.js';
 import { backupToS3, mirrorToS3, removeFromS3, restoreFromS3, s3Enabled } from './storage.js';
@@ -66,6 +66,9 @@ import { confirmPayment } from './billing/confirm.js';
 import { assignGroups, cleanSrc, ensureGroups, mountGroups } from './groups.js';
 import { afterJobFinderLike, ensureCollections as ensureJobFinderCollections, findImportDuplicate, isJobFinderJob, isJobFinderUser, jobFinderIds, memberJobFinder, mountJobFinder, reachabilityOf } from './jobfinder.js';
 import { mountJobLinkImport } from './job-link-import.js';
+import { isManager as isJobFinderManager } from './jobfinder.js';
+import { outreachReport } from './outreach.js';
+import { isRestricted } from './test-roles.js';
 import { runDailyBilling } from './billing/daily.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -436,7 +439,7 @@ app.get('/api/showcase', async (_req, res, next) => {
   try {
     const db = await store.read();
     const jobs = db.jobs
-      .filter((job) => job.demo || String(job.status).toLowerCase() === 'active')
+      .filter((job) => (job.demo || String(job.status).toLowerCase() === 'active') && !isRestricted(job))
       .slice(-10).reverse()
       .map((job) => {
         const employer = db.users.find((user) => user.id === job.employerId);
@@ -1500,6 +1503,28 @@ app.delete('/api/users/:id/recommendation-docs/:docId', async (req, res, next) =
   } catch (error) { next(error); }
 });
 
+// Upload a cover letter (founder, 2026-11-26): PDF / DOCX / TXT → its text, to fill the profile's cover letter box.
+// The file is read in a temporary folder and deleted at once; nothing is stored until the candidate saves the form.
+app.post('/api/users/:id/cover-letter/extract', express.raw({ type: 'application/octet-stream', limit: '5mb' }), async (req, res, next) => {
+  try {
+    requireSelf(req, req.params.id);
+    if (!Buffer.isBuffer(req.body) || !req.body.length) throw new ValidationError('file', 'Choose a cover letter file');
+    const name = decodeURIComponent(String(req.headers['x-filename'] || 'letter.txt')).slice(0, 200);
+    const ext = (name.match(/\.(pdf|docx|txt|md)$/i)?.[1] || '').toLowerCase();
+    if (!ext) throw new ValidationError('file', 'Use a PDF, Word (.docx) or text file');
+    let text = '';
+    if (ext === 'txt' || ext === 'md') text = req.body.toString('utf8');
+    else {
+      const tmp = path.join(os.tmpdir(), `cl-${crypto.randomUUID()}.${ext}`);
+      try { await fs.promises.writeFile(tmp, req.body); text = ext === 'docx' ? await extractDocxText(tmp) : await extractPdfText(tmp); }
+      finally { await fs.promises.unlink(tmp).catch(() => undefined); }
+    }
+    text = String(text || '').replace(/\r/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    if (!text) throw new ValidationError('file', 'No text found in this file (a scanned image?). Paste the text instead.');
+    res.json({ text: text.slice(0, 4000), length: text.length });
+  } catch (error) { next(error); }
+});
+
 // Auto-fill the candidate profile from the uploaded resume's extracted text.
 // Returns parsed fields for the wizard to pre-fill; never persisted here.
 app.post('/api/users/:id/resume/autofill', async (req, res, next) => {
@@ -2345,7 +2370,9 @@ app.get('/api/bootstrap', async (req, res, next) => {
         if (!card && !raw) return null;
         const match = pool.matches.find((m) => m.candidateId === viewer.id && m.jobId === s.targetId);
         const job = card || { id: raw.id, title: raw.title, company: raw.company, location: raw.location, workMode: raw.workMode, status: raw.status, employerId: raw.employerId };
-        return { jobId: s.targetId, at: s.createdAt, superLike: s.superLike === true || undefined, src: s.src, matchId: match?.id, open: Boolean(card), job };
+        // Application tracker (2026-11-26): recruiter contacted → application viewed → answer expected within 48 h.
+        const tracker = trackerFor(db, s.targetId, viewer.id) || undefined;
+        return { jobId: s.targetId, at: s.createdAt, superLike: s.superLike === true || undefined, src: s.src, matchId: match?.id, open: Boolean(card), job, tracker };
       }).filter(Boolean) : undefined;
     const myNotices = (db.billingNotifications || []).filter((entry) => entry.userId === viewer.id && (billing || entry.kind === 'jobfinder_contact'));
     const billingNotifications = billing || myNotices.length ? myNotices.slice(-20).reverse() : undefined;
@@ -5214,6 +5241,20 @@ mountJobFinder(app, jobFinderCtx);
 const roleInterestCtx = { store, origin: publicOrigin, contactOf: jobContactRec, scoreCandidateForJob, send: (mail) => sendMail(mail), ...mountRoleInterest(app, { store, secret: () => sessionSecret }),
   // "See your candidates / claim this role" link in the email: only when ROLE_CLAIM_LINKS=on (Stage 1, 2026-11-26).
   claimLink: (jobId, email) => (claimLinksOn() ? claimUrl(publicOrigin, sessionSecret, jobId, email) : null) };
+// Follow-up 24 h after a cold email with no claim (founder, 2026-11-26): checked every hour (not in tests).
+if (process.env.NODE_ENV !== 'test') {
+  const runFollowupsNow = () => runFollowups(roleInterestCtx).then((r) => { if (r.due) console.log(`role follow-ups: ${r.due} due, ${r.sent} sent`); }).catch(() => {});
+  setInterval(runFollowupsNow, 3600000).unref?.();
+  setTimeout(runFollowupsNow, 120000).unref?.();
+}
+// Outreach dashboard + recruiter contact book for the JobFinder account (founder, 2026-11-26).
+app.get('/api/jobfinder/outreach', async (req, res, next) => {
+  try {
+    const db = await store.read();
+    if (!isJobFinderManager(db, authSession(req))) { const error = new Error('Only JobFinder can see outreach'); error.status = 403; throw error; }
+    res.json(outreachReport(db, { contactOf: jobContactRec }));
+  } catch (error) { next(error); }
+});
 // Stage 1 (2026-11-26): the recruiter's claim page /claim/<jobId>/<sig>, and the weekly funnel for the admin dashboard.
 mountClaims(app, { store, authSession, secret: () => sessionSecret, contactOf: jobContactRec, track });
 app.get('/api/admin/stage1', async (req, res, next) => {
@@ -5229,6 +5270,9 @@ app.get('/api/public/profile/:slug', async (req, res, next) => {
     const user = db.users.find((u) => u.profileSlug && u.profileSlug === String(req.params.slug).toLowerCase());
     const profile = publicProfileView(user, user?.photo);
     if (!profile) { const error = new Error('This profile is not public'); error.status = 404; throw error; }
+    // Opened from a recruiter email (?v=<mail row id>): the candidate's application shows "Application viewed".
+    const v = String(req.query.v || '');
+    if (/^[0-9a-f-]{36}$/.test(v)) await store.transaction((d) => markViewedByRow(d, v, user.id)).catch(() => {});
     res.json({ profile, appUrl: `${publicOrigin}/app/` });
   } catch (error) { next(error); }
 });
@@ -5236,7 +5280,8 @@ app.get('/api/public/role/:slug', async (req, res, next) => {
   try {
     const db = await store.read();
     const job = findRoleBySlug(db, req.params.slug);
-    if (!job || HIDDEN_FROM_CANDIDATES.includes(String(job.status).toLowerCase())) { const error = new Error('This role is not available'); error.status = 404; throw error; }
+    const viewerId = authSession(req)?.sub;
+    if (!job || HIDDEN_FROM_CANDIDATES.includes(String(job.status).toLowerCase()) || (isRestricted(job) && !job.visibleTo.includes(viewerId) && viewerId !== job.employerId)) { const error = new Error('This role is not available'); error.status = 404; throw error; }
     res.json({ jobId: job.id, path: rolePath(job) });
   } catch (error) { next(error); }
 });
