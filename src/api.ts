@@ -68,7 +68,11 @@ export const jf = {
   interest: (id: string) => request<{ job: JobFinderPublicJob; reachability: JfReach; liked: boolean; outreach: JfOutreach; consent: JfConsent; shareOptions: { skills: string[]; links: Record<string, string> }; draftBody: string | null; mailer: boolean }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/interest`),
   setConsent: (body: { autoSend: boolean; agree?: boolean; skills: string[]; profileLink: string | null; replyEmail: boolean }) => request<{ consent: JfConsent }>('/api/jobfinder/consent', json('PUT', body)),
   send: (id: string, body: { consent: true; share: { skills: string[]; profileLink: string | null; replyEmail: boolean }; body?: string }) => request<{ outreach: JfOutreach }>(`/api/jobfinder/jobs/${encodeURIComponent(id)}/send`, json('POST', body)),
+  // "Update roles" from Scrapy's folder (2026-11-26).
+  importState: () => request<{ lastEmailDate: string | null; lastRunAt: number | null; knownKeys: string[] }>('/api/jobfinder/import-state'),
+  importFiles: (body: { jobs: unknown[]; emailDate?: string }) => request<ScrapedImportResult>('/api/jobfinder/import-files', json('POST', body)),
 };
+export type ScrapedImportResult = { created: number; duplicate: number; failed: number; results: { ref: string; status: 'created' | 'duplicate' | 'failed'; id?: string; error?: string }[] };
 
 /** Import a job from a link (2026-11-25): analyze → review → save draft / publish. */
 export type LinkField<T = string> = { value: T | null; from: 'source' | 'text' | 'link' | null; review: boolean };

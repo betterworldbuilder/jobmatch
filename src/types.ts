@@ -195,7 +195,9 @@ export interface InterviewPrep { generator: string; topics: string[]; skillQuest
 export interface InterviewKit { generator: string; skillQuestions: SkillQuestions[]; gapProbes?: { skill: string; question: string }[]; gaps: string[]; salarySummary: string; salaryStatus: SalaryStatus }
 export interface ScreeningAnswer { question: string; answer: string }
 export type JobDraft = Partial<Omit<Job, 'id' | 'match' | 'salaryRange'>> & { salaryRange?: SalaryRange | null };
-export interface JobImportResult { jobs: Job[]; found: number; skipped: number; updated?: number; live?: boolean; ai?: { used: number; failed: number; reason?: string } }
+export interface JobImportResult { jobs: Job[]; found: number; skipped: number; updated?: number; live?: boolean;
+  /** Duplicate guardrail: roles not created because the same role is already in the account (2026-11-26). */
+  duplicates?: { title: string; existingId: string; existingTitle: string }[]; ai?: { used: number; failed: number; reason?: string } }
 export type StepKind = 'match' | 'hr' | 'technical' | 'manager' | 'culture' | 'assignment' | 'offer' | 'hired' | 'other';
 /** One hiring step (a round). `owner` = who runs it (e.g. "Priya Nair, Talent Partner"); `date` = YYYY-MM-DD. */
 export interface PipelineStep { id: string; name: string; owner: string; hidden?: boolean; kind?: StepKind; date?: string; format?: string }

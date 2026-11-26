@@ -1,7 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { unlinkSync } from 'node:fs';
-import { importKeyOk, importScrapedJobs, scrapedToBody, sourceKey } from './jobfinder.js';
+import { findImportDuplicate, importKeyOk, importScrapedJobs, scrapedToBody, sourceKey } from './jobfinder.js';
 
 /* Batch import of Scrapy's jobsmatchnow-job/v1 files (2026-11-26). Synthetic accounts and jobs only. */
 const KEY = 'k'.repeat(40);
@@ -32,11 +32,13 @@ test('import: drafts only, duplicates skipped, bad values dropped not fatal, mis
   const r = importScrapedJobs(db, [
     scraped('222222'),
     { format: 'jobsmatchnow-job/v1', jobs: [scraped('222222', { title: 'Same link again' })] },
-    scraped('333333', { type: 'Gig of the year', seniority: 'galactic' }),
+    scraped('333333', { title: 'Cloud Engineer', type: 'Gig of the year', seniority: 'galactic' }),
+    scraped('343434'), // other link, same title + company + location as the first: guardrail
     scraped('444444', { title: null }),
     scraped('555555', { source: null, externalUrl: null }),
   ], { ownerId: 'jf1' });
-  assert.deepEqual(r.map((x) => x.status), ['created', 'duplicate', 'created', 'failed', 'failed']);
+  assert.deepEqual(r.map((x) => x.status), ['created', 'duplicate', 'created', 'duplicate', 'failed', 'failed']);
+  assert.equal(r[3].id, r[0].id);
   assert.equal(r[1].id, r[0].id);
   assert.deepEqual(r[2].dropped.sort(), ['seniority', 'type']);
   const job = db.jobs.find((j) => j.id === r[0].id);
@@ -45,6 +47,20 @@ test('import: drafts only, duplicates skipped, bad values dropped not fatal, mis
   assert.deepEqual(job.requiredSkills, ['Docker', 'GCP']); assert.equal(job.fullDescription, 'About the Role\nRun our cloud.');
   assert.deepEqual(job.jobGroups || [], [], 'unknown group ids are dropped');
   assert.equal(db.jobs.length, 2);
+  assert.equal(db.jobs.find((j) => j.id === r[2].id).title, 'Cloud Engineer');
+});
+
+test('duplicate guardrail: same link in any form, or same title + company + location', () => {
+  const db = { users: [{ id: 'e1', role: 'employer' }], jobs: [
+    { id: 'a', employerId: 'e1', status: 'active', title: 'Data Engineer', company: 'Acme', location: 'Hanoi', externalUrl: 'https://www.linkedin.com/jobs/view/777777/?trk=x' },
+    { id: 'b', employerId: 'e1', status: 'removed', title: 'Old Role', company: 'Acme', location: 'Hanoi' },
+    { id: 'c', employerId: 'e2', status: 'active', title: 'Data Engineer', company: 'Acme', location: 'Hanoi' },
+  ] };
+  assert.equal(findImportDuplicate(db, 'e1', { urls: ['https://linkedin.com/jobs/view/777777'] })?.id, 'a');
+  assert.equal(findImportDuplicate(db, 'e1', { title: 'data engineer', company: 'ACME', location: 'Hanoi ' })?.id, 'a');
+  assert.equal(findImportDuplicate(db, 'e1', { title: 'Data Engineer', company: 'Acme', location: 'HCMC' }), null, 'other city = other role');
+  assert.equal(findImportDuplicate(db, 'e1', { title: 'Old Role', company: 'Acme', location: 'Hanoi' }), null, 'removed roles do not block');
+  assert.equal(findImportDuplicate(db, 'e2', { urls: ['https://linkedin.com/jobs/view/777777'] }), null, 'only the same account');
 });
 
 test('import key: off when unset or short, exact match only', () => {
@@ -81,6 +97,39 @@ test('route: 404 when switched off, 401 without the right key, drafts with the k
   const ok = await call('/api/jobfinder/import-batch', { jobs: [scraped('666666')] }, { Authorization: `Bearer ${KEY}` });
   assert.equal(ok.status, 200, JSON.stringify(ok.body));
   assert.equal(ok.body.created, 1);
-  const again = await call('/api/jobfinder/import-batch', { jobs: [scraped('666666')] }, { Authorization: `Bearer ${KEY}` });
+  const again = await call('/api/jobfinder/import-batch', { jobs: [scraped('666666')], emailDate: '2026-11-20' }, { Authorization: `Bearer ${KEY}` });
   assert.equal(again.body.duplicate, 1);
+
+  // "Update roles" button: signed-in JobFinder manager only; remembers the newest email date; lists known links.
+  const other = await call('/api/auth/register', { role: 'employer', kind: 'company', name: 'Other Team', email: `ot-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+  assert.equal((await call('/api/jobfinder/import-files', { jobs: [scraped('888888')] }, { Cookie: other.session })).status, 403);
+  assert.equal((await call('/api/jobfinder/import-files', { jobs: [scraped('888888')] })).status, 403, 'anonymous');
+  const btn = await call('/api/jobfinder/import-files', { jobs: [scraped('888888', { title: 'Platform Engineer' })], emailDate: '2026-11-25' }, { Cookie: reg.session });
+  assert.equal(btn.status, 200, JSON.stringify(btn.body)); assert.equal(btn.body.created, 1);
+  // Same title + company + location under another link = duplicate (guardrail), not a second role.
+  const twin = await call('/api/jobfinder/import-files', { jobs: [scraped('999999', { title: 'Platform Engineer' })], emailDate: '2026-11-24' }, { Cookie: reg.session });
+  assert.equal(twin.body.duplicate, 1);
+  const res = await fetch(`${base}/api/jobfinder/import-state`, { headers: { Cookie: reg.session } });
+  const state = await res.json();
+  assert.equal(state.lastEmailDate, '2026-11-25', 'newest date wins, an older one never moves it back');
+  assert.ok(state.knownKeys.includes('linkedin:666666') && state.knownKeys.includes('linkedin:888888'));
+  assert.equal((await fetch(`${base}/api/jobfinder/import-state`, { headers: { Cookie: other.session } })).status, 403);
+});
+
+test('recruiter file import: the same role twice in one file, or already listed, is skipped and named', async () => {
+  const rec = await call('/api/auth/register', { role: 'employer', kind: 'company', name: 'Dup Team', company: 'Dup Co', email: `dup-${process.pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
+  assert.equal(rec.status, 201, JSON.stringify(rec.body));
+  const csv = 'title,location,description,url\n'
+    + 'Data Engineer,Hanoi,"Build pipelines with Python and Spark for our analytics team, every day.",https://jobs.example/1\n'
+    + 'Data Engineer,Hanoi,"Build pipelines with Python and Spark for our analytics team, again and again.",https://jobs.example/2\n';
+  const up = async (name) => {
+    const r = await fetch(`${base}/api/jobs/import-file?employerId=${rec.body.user.id}&sourceSystem=file`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'x-filename': name, Cookie: rec.session }, body: csv });
+    return { status: r.status, body: await r.json() };
+  };
+  const first = await up('a.csv');
+  assert.equal(first.status, 201, JSON.stringify(first.body));
+  assert.equal(first.body.jobs.length, 1, 'second row = same title + company + location');
+  assert.equal(first.body.duplicates.length, 1);
+  const second = await up('b.csv');
+  assert.equal(second.body.jobs.length, 0, 'a re-import under another file name creates nothing');
 });

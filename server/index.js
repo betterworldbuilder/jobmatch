@@ -64,7 +64,7 @@ import { decodeJws, getTransactionInfo, isAppleConfigured, subscriptionProductId
 import { assertRecruiterAccess, requireAdminRole } from './billing/middleware.js';
 import { confirmPayment } from './billing/confirm.js';
 import { assignGroups, cleanSrc, ensureGroups, mountGroups } from './groups.js';
-import { afterJobFinderLike, ensureCollections as ensureJobFinderCollections, isJobFinderJob, isJobFinderUser, jobFinderIds, memberJobFinder, mountJobFinder, reachabilityOf } from './jobfinder.js';
+import { afterJobFinderLike, ensureCollections as ensureJobFinderCollections, findImportDuplicate, isJobFinderJob, isJobFinderUser, jobFinderIds, memberJobFinder, mountJobFinder, reachabilityOf } from './jobfinder.js';
 import { mountJobLinkImport } from './job-link-import.js';
 import { runDailyBilling } from './billing/daily.js';
 
@@ -1705,6 +1705,7 @@ async function importJobDrafts(employerId, sourceSystem, entries, { ai = null } 
     const jobs = [];
     let skipped = 0;
     let updated = 0;
+    const duplicates = [];
     for (const item of prepared) {
       const duplicate = db.jobs.find((job) => job.employerId === employerId
         && job.sourceSystem === item.metadata.sourceSystem
@@ -1741,6 +1742,13 @@ async function importJobDrafts(employerId, sourceSystem, entries, { ai = null } 
         if (changed) { d.updatedAt = Date.now(); updated += 1; } else skipped += 1;
         continue;
       }
+      // Duplicate guardrail (founder, 2026-11-26): the same role arriving another way (other file, LinkedIn paste,
+      // job link, Scrapy) or twice in one file is skipped and named, never created twice.
+      const same = findImportDuplicate(db, employerId, {
+        urls: [item.metadata.sourceUrl, item.parsed.externalUrl],
+        title: item.parsed.title, company: item.parsed.company || employer.company || employer.name, location: item.parsed.location,
+      });
+      if (same) { skipped += 1; duplicates.push({ title: item.parsed.title || same.title, existingId: same.id, existingTitle: same.title }); continue; }
       const job = {
         id: `j-${crypto.randomUUID().slice(0, 8)}`,
         employerId,
@@ -1775,7 +1783,7 @@ async function importJobDrafts(employerId, sourceSystem, entries, { ai = null } 
       db.jobs.push(job);
       jobs.push(job);
     }
-    return { jobs, skipped, updated, live: goLive, ai: ai?.allowed ? { used: aiStats.used, failed: aiStats.failed, reason: aiStats.reason || undefined } : undefined };
+    return { jobs, skipped, updated, duplicates, live: goLive, ai: ai?.allowed ? { used: aiStats.used, failed: aiStats.failed, reason: aiStats.reason || undefined } : undefined };
   });
 }
 

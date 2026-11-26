@@ -106,6 +106,9 @@ export function JobImportModal({ viewer, onClose, onImported, onManual }: {
         <p>{result.live ? 'Your imported offers are active now. The full job description is in Role details; edit any offer to add salary, skills or hiring details.' : 'We created reviewable drafts. Complete any missing salary, work mode, culture, or hiring details before publishing.'}</p>
         {(result.updated || 0) > 0 && <small>{result.updated} existing {result.updated === 1 ? 'job was' : 'jobs were'} updated with the full job description.</small>}
         {result.skipped > 0 && <small>{result.skipped} existing {result.skipped === 1 ? 'job was' : 'jobs were'} skipped to prevent duplicates.</small>}
+        {(result.duplicates?.length ?? 0) > 0 && <details className="ji-dupes"><summary>Duplicates not imported ({result.duplicates!.length})</summary>
+          <ul>{result.duplicates!.slice(0, 20).map((d, i) => <li key={`${d.existingId}-${i}`}>{d.title}{d.existingTitle !== d.title ? <> → already listed as <b>{d.existingTitle}</b></> : ' (same link, or same title, company and location)'}</li>)}</ul>
+        </details>}
         {result.ai && result.ai.used > 0 && <small>{result.ai.used} {result.ai.used === 1 ? 'role was' : 'roles were'} completed with Claude (the built-in parser found too little).</small>}
         {result.ai && result.ai.reason === 'no_key' && <small>Some roles were hard to read. Save your Claude key in Use My ChatBot and import again to complete them with Claude.</small>}
         {result.ai && result.ai.failed > 0 && result.ai.reason !== 'no_key' && <small>Claude could not complete {result.ai.failed} {result.ai.failed === 1 ? 'role' : 'roles'} ({result.ai.reason}); the built-in parser's result was kept.</small>}

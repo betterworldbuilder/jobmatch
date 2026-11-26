@@ -40,8 +40,8 @@ def import_key():
     return ""
 
 
-def post(key, job):
-    data = json.dumps({"jobs": [job]}).encode()
+def post(key, job, email_date=""):
+    data = json.dumps({"jobs": [job], "emailDate": email_date}).encode()
     req = urllib.request.Request(BASE + "/api/jobfinder/import-batch", data=data, method="POST",
                                  headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}",
                                           "User-Agent": "jobsmatchnow-linkjobs-import"})
@@ -108,7 +108,7 @@ def main():
             continue
         if i:
             time.sleep(PAUSE)
-        status, res = post(key, job)
+        status, res = post(key, job, row.get("email_date", ""))
         if status in (401, 404):
             print(f"Stopped: the site answered {status} ({res.get('error') or 'import key refused or import switched off'}).")
             return 2

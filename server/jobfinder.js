@@ -148,6 +148,19 @@ export function sourceKey(u) {
   if (li) return `linkedin:${li[1]}`;
   try { const x = new URL(s); return `${x.hostname.replace(/^www\./, '')}${x.pathname.replace(/\/+$/, '')}`.toLowerCase(); } catch { return s.toLowerCase(); }
 }
+const normText = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+/**
+ * Duplicate guardrail for every role import (founder, 2026-11-26): an employer's existing role (not removed) is the
+ * same job when it has the same link (source / external / JobFinder source URL, LinkedIn job id) or the same
+ * title + company + location. Returns that role or null.
+ */
+export function findImportDuplicate(db, employerId, { urls = [], title, company, location } = {}) {
+  const keys = new Set(urls.filter(Boolean).map(sourceKey));
+  const t = normText(title); const c = normText(company); const l = normText(location);
+  return db.jobs.find((j) => j.employerId === employerId && j.status !== 'removed' && j.jobFinder?.listingStatus !== 'removed' && !j.deletedAt && (
+    (keys.size && [j.sourceUrl, j.externalUrl, j.jobFinder?.sourceUrl, j.jobFinder?.applyUrl].some((u) => u && keys.has(sourceKey(u))))
+    || (t && c && normText(j.title) === t && normText(j.company) === c && normText(j.location) === l))) || null;
+}
 /** One scraped job → the body the JobFinder form would send (nulls dropped). */
 export function scrapedToBody(j) {
   const body = {};
@@ -188,6 +201,8 @@ export function importScrapedJobs(db, items, { ownerId, audit, now = Date.now() 
       body.sourceUrl = validateJobUrl(body.sourceUrl).href;
       const key = sourceKey(body.sourceUrl);
       if (known.has(key)) return { ref, status: 'duplicate', id: known.get(key) };
+      const same = findImportDuplicate(db, owner.id, { urls: [body.sourceUrl, body.applyUrl], title: body.title, company: body.company, location: body.location });
+      if (same) return { ref, status: 'duplicate', id: same.id };
       const job = {
         id: `jf-${crypto.randomUUID().slice(0, 12)}`, employerId: owner.id, createdAt: now, applicants: 0, accent: '#0f62fe',
         jobFinder: { addedBy: 'JobFinder', employerStatus: 'pending', listingStatus: 'draft', discoveredAt: nowIso(), lastCheckedAt: nowIso() },
@@ -382,21 +397,50 @@ export function mountJobFinder(app, ctx) {
     } catch (error) { next(error); }
   });
 
-  // Batch import from scripts/linkjobs_import.py. Auth: the import key only (no session, no cookies). Drafts only.
+  // Batch import of Scrapy's job files. Two doors, same rules (drafts only, duplicate guardrail):
+  //  - /import-batch: scripts/linkjobs_import.py (daily), import key only (no session, no cookies);
+  //  - /import-files: the "Update roles" button, signed-in JobFinder manager.
+  // `emailDate` (the linkjobs.csv email_date of the rows sent) moves the remembered "last imported email date".
+  const runImport = async (items, emailDate) => {
+    if (!Array.isArray(items) || !items.length) throw new ValidationError('jobs', 'Send { jobs: [...] }');
+    if (items.length > IMPORT_BATCH_MAX) throw new ValidationError('jobs', `At most ${IMPORT_BATCH_MAX} jobs per call`);
+    const results = await store.transaction((db) => {
+      const owner = jobFinderAccount(db);
+      if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
+      const out = importScrapedJobs(db, items, { ownerId: owner.id, audit });
+      const d = /^\d{4}-\d{2}-\d{2}$/.test(String(emailDate || '')) ? emailDate : null;
+      if (d && out.some((r) => r.status !== 'failed')) {
+        if (!db.jfImportState || typeof db.jfImportState !== 'object') db.jfImportState = {};
+        if (!db.jfImportState.lastEmailDate || d > db.jfImportState.lastEmailDate) db.jfImportState.lastEmailDate = d;
+        db.jfImportState.lastRunAt = Date.now();
+      }
+      return out;
+    });
+    const count = (s) => results.filter((r) => r.status === s).length;
+    return { created: count('created'), duplicate: count('duplicate'), failed: count('failed'), results };
+  };
   app.post('/api/jobfinder/import-batch', ...(limiter ? [limiter] : []), async (req, res, next) => {
     try {
       if (!process.env.JOBFINDER_IMPORT_KEY) { const e = new Error('Batch import is not switched on'); e.status = 404; throw e; }
       if (!importKeyOk(req.headers.authorization)) { const e = new Error('Missing or invalid import key'); e.status = 401; throw e; }
-      const items = Array.isArray(req.body?.jobs) ? req.body.jobs : null;
-      if (!items || !items.length) throw new ValidationError('jobs', 'Send { jobs: [...] }');
-      if (items.length > IMPORT_BATCH_MAX) throw new ValidationError('jobs', `At most ${IMPORT_BATCH_MAX} jobs per call`);
-      const results = await store.transaction((db) => {
-        const owner = jobFinderAccount(db);
-        if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
-        return importScrapedJobs(db, items, { ownerId: owner.id, audit });
-      });
-      const count = (s) => results.filter((r) => r.status === s).length;
-      res.json({ created: count('created'), duplicate: count('duplicate'), failed: count('failed'), results });
+      res.json(await runImport(req.body?.jobs, req.body?.emailDate));
+    } catch (error) { next(error); }
+  });
+  app.post('/api/jobfinder/import-files', ...(limiter ? [limiter] : []), async (req, res, next) => {
+    try {
+      requireManager(await store.read(), session(req));
+      res.json(await runImport(req.body?.jobs, req.body?.emailDate));
+    } catch (error) { next(error); }
+  });
+  // What the button needs to skip old rows before sending anything: the last imported email date + the links listed.
+  app.get('/api/jobfinder/import-state', async (req, res, next) => {
+    try {
+      const db = await store.read();
+      requireManager(db, session(req));
+      const owner = jobFinderAccount(db);
+      const keys = db.jobs.filter((j) => j.employerId === owner?.id && j.jobFinder?.listingStatus !== 'removed')
+        .flatMap((j) => [j.jobFinder?.sourceUrl, j.sourceUrl, j.externalUrl]).filter(Boolean).map(sourceKey);
+      res.json({ lastEmailDate: db.jfImportState?.lastEmailDate || null, lastRunAt: db.jfImportState?.lastRunAt || null, knownKeys: [...new Set(keys)] });
     } catch (error) { next(error); }
   });
 

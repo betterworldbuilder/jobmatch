@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../api';
 import { RolePreview } from '../jobs/RolePreview';
+import { UpdateRolesButton } from '../jobs/UpdateRoles';
 import type { Bootstrap, HiringStatus, Job, MatchEvidence, Note, Person, RoleMatchGroup, View } from '../../types';
 
 import { exportJobs, jobRow, type ExportFormat } from '../../lib/jobExport';
@@ -441,8 +442,9 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
 
     <section className="td-section td-role-section" id="td-roles">
       <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet." action={bestMatchFirst ? 'Sort by: Best Match' : 'Sort by: Name'} onAction={() => setBestMatchFirst((value) => !value)}
-        extra={ownJobs.length ? <span className="td-role-tools">
-          <details className="td-export">
+        extra={ownJobs.length || data.viewer.jobFinder ? <span className="td-role-tools">
+          {data.viewer.jobFinder && <UpdateRolesButton onDone={() => void reload()} />}
+          {ownJobs.length > 0 && <details className="td-export">
             <summary><Download size={13} /> Export</summary>
             <div className="td-export-menu" role="menu">
               <button role="menuitem" onClick={(e) => { runExport('xlsx'); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; }}>Excel (.xlsx)</button>
@@ -451,7 +453,7 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
               <button role="menuitem" onClick={(e) => { runExport('xml'); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; }}>XML job feed (.xml)</button>
               <small>All {ownJobs.length} of your roles, past and current. The CSV uses the same columns as Import.</small>
             </div>
-          </details>
+          </details>}
           {roles.some((group) => group.job.employerId === data.viewer.id) && <button className="td-delete-all" onClick={() => void deleteRoles(roles.map((group) => group.job).filter((job) => job.employerId === data.viewer.id))} disabled={deleting}><Trash2 size={13} /> {deleting ? 'Deleting…' : 'Delete all jobs'}</button>}
         </span> : null} />
       <div className="td-role-list">

@@ -1,0 +1,7 @@
+# Personal mail data: keep on this machine only.
+linkjobs.csv
+linkjobs.csv.tmp
+.linkjobs_state.json
+jobs/
+logs/
+*.mbox
