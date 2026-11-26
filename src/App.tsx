@@ -152,14 +152,14 @@ const NAV_COLORS: Record<string, string> = {
 };
 // Mirrors the candidate menu (same order and pages), plus the recruiter-only lists.
 const employerNav: NavItem[] = [
-  // Recruiters: "My Jobs list" (founder, 2026-11-25: was "My dashboard"; candidates keep "My dashboard").
-  { label: 'My Jobs list', short: 'Jobs', icon: Compass, view: 'home' },
-  // Right under My Jobs list (founder, 2026-11-25): candidates who applied, per role.
-  { label: 'Jobs Candidates', short: 'Candidates', icon: Inbox, view: 'applied' }, // was "Applications (likes)" (founder, 2026-11-25)
-  // "Find My Match": the candidate swipe deck + Recommended Candidates, the page recruiters open on too.
+  // "Find My Match" first (founder, 2026-11-26): the swipe deck recruiters open on.
   { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
+  // Recruiters: "My Jobs list" (founder, 2026-11-25: was "My dashboard"): only the roles list (2026-11-26).
+  { label: 'My Jobs list', short: 'Jobs', icon: Compass, view: 'home' },
   // Order (founder, 2026-11-22): My JobMatches, then Conversations, then Coffee Invitations.
-  { label: 'My JobMatches', icon: BriefcaseBusiness, anchor: 'td-roles' },
+  // My JobMatches (founder, 2026-11-26): matches, applications and the rest of the recruiter dashboard; "Jobs Candidates"
+  // (a duplicate) left the menu.
+  { label: 'My JobMatches', short: 'Matches', icon: BriefcaseBusiness, view: 'applied' },
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'Coffee Invitations', short: 'Coffee', icon: Coffee, view: 'coffee' },
   { label: 'Selected Candidates', short: 'Candidates', icon: Users, view: 'selected' },
@@ -670,7 +670,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   // "JobFinder listings" left the menu (founder, 2026-11-26): imported roles live in My Jobs list like any other role.
   // The JobFinder account gets "Outreach" (cold emails, opens, claims, recruiter contact book) after My Jobs list.
   const baseNav = role === 'candidate' ? candidateNav
-    : data?.viewer.jobFinder ? [employerNav[0], { label: 'Outreach', short: 'Outreach', icon: Send, view: 'outreach' as View }, ...employerNav.slice(1)] : employerNav;
+    : data?.viewer.jobFinder ? [employerNav[0], employerNav[1], { label: 'Outreach', short: 'Outreach', icon: Send, view: 'outreach' as View }, ...employerNav.slice(2)] : employerNav;
   // JobFinder interest panel: after a like on a JobFinder job, from a notification, or from the public job page.
   const [jfPanel, setJfPanel] = useState<string | null>(null);
   useEffect(() => {
@@ -841,7 +841,10 @@ function ViewRouter({ view, role, data, setData, navigate, onEditProfile, profil
   if (view === 'coffee') return <CoffeeInvitations data={data} onOpenMessages={onOpenMessages} />;
   if (view === 'jobfinder' && data.viewer.jobFinder) return <JobFinderManager />;
   if (view === 'outreach' && data.viewer.jobFinder) return <OutreachPage />;
-  if (view === 'applied') return <AppliedPage data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} />;
+  // Recruiters: "Jobs Candidates" = matches, applications and the rest of the dashboard (founder, 2026-11-26).
+  if (view === 'applied') return role === 'candidate'
+    ? <AppliedPage data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} />
+    : <RecruiterHome part="candidates" data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onAddJobs={onAddJobs} onOpenMessages={onOpenMessages} onEditJob={onEditJob} />;
   if (view === 'hired') return <HiredResults data={data} onOpenMessages={onOpenMessages} />;
   if (view === 'prep') return <InterviewPreparation data={data} navigate={navigate} />;
   if (view === 'billing' && role === 'candidate') return <CandidateSubscription data={data} navigate={navigate} />;

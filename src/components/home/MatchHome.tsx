@@ -80,6 +80,8 @@ type HomeProps = {
   onAddJobs?: () => void;
   onOpenMessages?: (matchId: string) => void;
   onEditJob?: (jobId: string) => void;
+  /** Recruiters: 'roles' = My Jobs list (roles only); 'candidates' = Jobs Candidates (everything else). */
+  part?: 'roles' | 'candidates';
 };
 
 function firstName(name = 'there') {
@@ -364,7 +366,7 @@ export function CandidateHome({ data, setData, navigate, onEditProfile, onOpenMe
   </main>;
 }
 
-export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJobs, onOpenMessages, onEditJob }: HomeProps) {
+export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJobs, onOpenMessages, onEditJob, part = 'roles' }: HomeProps) {
   const [selected, setSelected] = useState<Person | null>(null);
   // "How candidates see this role" preview (founder, 2026-11-22).
   const [previewJob, setPreviewJob] = useState<Job | null>(null);
@@ -520,18 +522,60 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
 
   const upcomingCalls = [...data.calls].filter((call) => call.startAt >= Date.now()).sort((a, b) => a.startAt - b.startAt);
 
+  // Founder, 2026-11-26: "My Jobs list" shows only the roles; everything else (matches, applications, today, pipeline,
+  // candidates to review, recent views, coffee, conversations) is on "Jobs Candidates".
+  const modals = <>
+    {previewJob && <RolePreview job={previewJob} recruiter={data.viewer} onClose={() => setPreviewJob(null)} onEdit={onEditJob ? () => { const id = previewJob.id; setPreviewJob(null); onEditJob(id); } : undefined} />}
+    {selected && <CandidateProfileModal candidate={selected} onClose={() => setSelected(null)} onTalk={() => { const person = selected; setSelected(null); void talk(person); }} viewerId={data.viewer.id} notes={data.notes} onNoteSaved={(note) => setData({ ...data, notes: [...data.notes.filter((n) => n.id !== note.id), note] })} />}
+  </>;
+  if (part === 'candidates') return <main className="td-dashboard td-recruiter">
+    <header className="td-recruiter-head">
+      <div><h1 className="td-recruiter-title">My JobMatches</h1><p>Your matches, the candidates who applied, and what needs you today.</p></div>
+    </header>
+    {/* Every mutual match, newest first, with its role. */}
+    <section className="td-section" id="td-all-matches">
+      <DashboardTitle icon={Check} title={`My matches (${data.matches.length})`} subtitle="Candidates who liked your role and you liked back: open the chat." />
+      <div className="td-role-sublist">
+        {data.matches.length
+          ? [...data.matches].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).map((match) => <div key={match.id} className="td-match-item">
+            <small className="td-match-role"><BriefcaseBusiness size={11} /> {data.jobs.find((j) => j.id === match.jobId)?.title || match.job?.title || 'Role'}</small>
+            <CandidateRow person={match.candidate} matched onView={() => setSelected(match.candidate)} onTalk={() => onOpenMessages ? onOpenMessages(match.id) : navigate('messages')} />
+          </div>)
+          : <EmptyRow>No matches yet. Like back the candidates who applied to open a chat.</EmptyRow>}
+      </div>
+    </section>
+    {/* Applications (likes) per role. */}
+    <ApplicationsList data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} compact />
+    <TodayPanel data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onOpenMessages={onOpenMessages} onScroll={scrollTo} />
+    <HiringPipelineBoard data={data} navigate={navigate} />
+    <CandidatesToReview data={data} setData={setData} onView={setSelected} onOpenMessages={onOpenMessages} />
+    <section className="td-bottom-grid recruiter">
+      <article className="td-list-panel" id="td-recent"><DashboardTitle icon={Eye} title="Recently Viewed Your Jobs" />{allPeople.slice(0, 4).map((person) => <button key={person.id} onClick={() => setSelected(person)}><img src={person.photo} alt="" /><span><strong>{person.name}</strong><small>Viewed a role recently</small></span><ArrowRight size={12} /></button>)}</article>
+      <article className="td-list-panel" id="td-coffee">
+        <DashboardTitle icon={Coffee} title="Coffee Requests" action="See all" onAction={() => navigate('meetings')} />
+        {upcomingCalls.length
+          ? upcomingCalls.slice(0, 4).map((call) => {
+            const match = data.matches.find((m) => m.id === call.matchId);
+            return <button key={call.id} onClick={() => navigate('meetings')}>
+              <img src={match?.candidate.photo} alt="" />
+              <span><strong>{match?.candidate.name}</strong><small>{new Date(call.startAt).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })} · {call.title}</small></span>
+              <ArrowRight size={12} />
+            </button>;
+          })
+          : <EmptyRow>No calls scheduled yet — propose one from a match.</EmptyRow>}
+      </article>
+      <article className="td-list-panel" id="td-conversations"><DashboardTitle icon={MessageCircle} title="Active Conversations" />{data.matches.slice(0, 4).map((match) => <button key={match.id} onClick={() => navigate('messages')}><img src={match.candidate.photo} alt="" /><span><strong>{match.candidate.name}</strong><small>{data.messages.filter((message) => message.matchId === match.id).at(-1)?.text || match.job.title}</small></span><Bell size={12} /></button>)}</article>
+    </section>
+    {modals}
+  </main>;
+
   return <main className="td-dashboard td-recruiter">
-    {/* Recruiter home template (same for every hiring team): roles first (founder, 2026-11-22) → today → pipeline → candidates to review. */}
     <header className="td-recruiter-head">
       <div><h1 className="td-recruiter-title">Your roles today</h1><p>Here’s who loves your jobs today.</p></div>
       <button className="primary-button" onClick={onAddJobs}>+ Add New Job Offers</button>
     </header>
-    {/* Applications (likes) per role (founder, 2026-11-25): replaces the "N candidates already like your roles" banner. */}
-    <ApplicationsList data={data} setData={setData} navigate={navigate} onOpenMessages={onOpenMessages} compact />
-
-
     <section className="td-section td-role-section" id="td-roles">
-      <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet."
+      <DashboardTitle icon={BriefcaseBusiness} title="My roles" subtitle="Each role, with its matches and the candidates who love it — not matched yet."
         extra={ownJobs.length || data.viewer.jobFinder ? <span className="td-role-tools">
           {data.viewer.jobFinder && <UpdateRolesButton onDone={() => void reload()} />}
           {data.viewer.jobFinder && <button type="button" className="td-dedupe" onClick={() => void removeDuplicates()} disabled={deduping}>{deduping ? 'Checking…' : 'Remove duplicates'}</button>}
@@ -622,29 +666,6 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
         </Fragment>)}
       </div>
     </section>
-
-    <TodayPanel data={data} setData={setData} navigate={navigate} onEditProfile={onEditProfile} onOpenMessages={onOpenMessages} onScroll={scrollTo} />
-    <HiringPipelineBoard data={data} navigate={navigate} />
-    <CandidatesToReview data={data} setData={setData} onView={setSelected} onOpenMessages={onOpenMessages} />
-
-    <section className="td-bottom-grid recruiter">
-      <article className="td-list-panel" id="td-recent"><DashboardTitle icon={Eye} title="Recently Viewed Your Jobs" />{allPeople.slice(0, 4).map((person) => <button key={person.id} onClick={() => setSelected(person)}><img src={person.photo} alt="" /><span><strong>{person.name}</strong><small>Viewed a role recently</small></span><ArrowRight size={12} /></button>)}</article>
-      <article className="td-list-panel" id="td-coffee">
-        <DashboardTitle icon={Coffee} title="Coffee Requests" action="See all" onAction={() => navigate('meetings')} />
-        {upcomingCalls.length
-          ? upcomingCalls.slice(0, 4).map((call) => {
-            const match = data.matches.find((m) => m.id === call.matchId);
-            return <button key={call.id} onClick={() => navigate('meetings')}>
-              <img src={match?.candidate.photo} alt="" />
-              <span><strong>{match?.candidate.name}</strong><small>{new Date(call.startAt).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })} · {call.title}</small></span>
-              <ArrowRight size={12} />
-            </button>;
-          })
-          : <EmptyRow>No calls scheduled yet — propose one from a match.</EmptyRow>}
-      </article>
-      <article className="td-list-panel" id="td-conversations"><DashboardTitle icon={MessageCircle} title="Active Conversations" />{data.matches.slice(0, 4).map((match) => <button key={match.id} onClick={() => navigate('messages')}><img src={match.candidate.photo} alt="" /><span><strong>{match.candidate.name}</strong><small>{data.messages.filter((message) => message.matchId === match.id).at(-1)?.text || match.job.title}</small></span><Bell size={12} /></button>)}</article>
-    </section>
-    {previewJob && <RolePreview job={previewJob} recruiter={data.viewer} onClose={() => setPreviewJob(null)} onEdit={onEditJob ? () => { const id = previewJob.id; setPreviewJob(null); onEditJob(id); } : undefined} />}
-    {selected && <CandidateProfileModal candidate={selected} onClose={() => setSelected(null)} onTalk={() => { const person = selected; setSelected(null); void talk(person); }} viewerId={data.viewer.id} notes={data.notes} onNoteSaved={(note) => setData({ ...data, notes: [...data.notes.filter((n) => n.id !== note.id), note] })} />}
+    {modals}
   </main>;
 }

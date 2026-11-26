@@ -5469,6 +5469,10 @@ button.rs-row:hover { border-color:#fd267a; }
 .cl-cand-skills { display:flex; flex-wrap:wrap; gap:3px; margin-top:2px; }
 .cl-cand-skills i { font-style:normal; font-size:10.5px; padding:1px 6px; border-radius:999px; background:#eef4ff; color:#0f62fe; }
 
+/* My Jobs list → "My matches" (2026-11-26): the role above each matched candidate. */
+.td-match-item { display:grid; gap:3px; }
+.td-match-role { display:inline-flex; align-items:center; gap:5px; color:#667085; font-size:11.5px; font-weight:700; }
+
 /* Job Scraper window (JobFinder account, 2026-11-26): the local scraper's compact mode in a JM frame. */
 .js-window { position:fixed; inset:24px; z-index:80; display:flex; flex-direction:column; max-width:1180px; margin:0 auto; border-radius:20px; background:#fff; box-shadow:0 30px 80px rgba(13,24,52,.35); overflow:hidden; }
 .js-window header { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-bottom:1px solid #eceef4; }
