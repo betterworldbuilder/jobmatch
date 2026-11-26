@@ -131,9 +131,10 @@ const candidateNav: NavItem[] = [
   { label: 'Jobs Applied (liked)', short: 'Applied', icon: Inbox, view: 'applied' },
   // The swipe deck the app opens on; candidates call it "Find JobMatches" (founder, 2026-11-26; was "Find My Match").
   { label: 'Find JobMatches', short: 'Match', icon: Flame, view: 'match' },
-  { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
+  // Job Matches right under Find JobMatches (founder, 2026-11-26).
   // "Saved" and "Recruiters that like you" left the menu (founder, 2026-11-22); both stay on the Things to do page.
   { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
+  { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   { label: 'Recruiter Invitation', short: 'Invites', icon: Calendar, view: 'meetings' },
   // AI interview preparation (refresh plan with your own chatbot = Premium), renamed and moved below the
   // invitations (founder, 2026-11-22).
