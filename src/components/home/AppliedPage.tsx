@@ -106,7 +106,7 @@ export function JobsAppliedList({ data, setData, navigate, onOpenMessages, compa
   return <section className={compact ? 'td-section ap-section compact' : 'td-section ap-section'} id="td-applied">
     <DashboardTitle icon={Send} title="Jobs Applied (liked)" subtitle="Every job you applied to. A chat opens when the team likes you back." action={compact && rows.length > 5 ? `See all ${rows.length}` : undefined} onAction={() => navigate('applied')} />
     <div className="ap-top"><RolePicker label="Role" options={options} value={role} onChange={setRole} /></div>
-    {rows.length === 0 ? <p className="ap-empty">{applied.length ? 'No applications for this role yet.' : 'Apply to a job from Find My Match: it shows up here.'} <button type="button" className="jf-textbtn" onClick={() => navigate('match')}>Find My Match</button></p>
+    {rows.length === 0 ? <p className="ap-empty">{applied.length ? 'No applications for this role yet.' : 'Apply to a job from Find JobMatches: it shows up here.'} <button type="button" className="jf-textbtn" onClick={() => navigate('match')}>Find My Match</button></p>
       : <ul className="ap-list">{shown.map((a) => {
         const s = status(a);
         return <li key={a.jobId} className="ap-row">

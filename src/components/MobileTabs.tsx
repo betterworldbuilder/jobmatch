@@ -47,7 +47,7 @@ export function MobileTabs({ role, userId, nav, navColors, view, activeAnchor, u
     const add = (it: Item) => map.set(it.key, it);
     add({ key: MENU_KEY, label: 'Global Menu', short: 'Menu', icon: LayoutGrid, color: '#fd267a', active: menuOpen, go: () => { setMenuOpen((o) => !o); setEditing(false); } });
     add({ key: 'profile', label: 'Profile', short: 'Profile', icon: User, color: '#7c3aed', active: !menuOpen && view === 'profile', go: () => { close(); setView('profile'); } });
-    add({ key: 'surf', label: 'Find My Match', short: 'Surf', icon: Waves, color: navColors['Find My Match'] || '#ff7a45', active: !menuOpen && view === 'match', go: () => { close(); gotoNav({ label: 'Surf', icon: Waves, view: 'match' }); } });
+    add({ key: 'surf', label: 'Find JobMatches', short: 'Surf', icon: Waves, color: navColors['Find JobMatches'] || '#ff7a45', active: !menuOpen && view === 'match', go: () => { close(); gotoNav({ label: 'Surf', icon: Waves, view: 'match' }); } });
     add({ key: 'likes', label: role === 'candidate' ? 'Recruiters that like you' : 'Candidates to review', short: 'Likes', icon: Heart, color: '#fd267a', badge: likes, active: !menuOpen && view === 'home' && activeAnchor === likesAnchor, go: () => { close(); gotoNav({ label: 'Likes', icon: Heart, anchor: likesAnchor }); } });
     add({ key: 'chat', label: 'Conversations', short: 'Chat', icon: MessageCircle, color: navColors.Conversations || '#3b82f6', badge: unread, active: !menuOpen && view === 'messages', go: () => { close(); setView('messages'); } });
     if (filtersOn && onFilter) add({ key: FILTER_KEY, label: 'Search & Filters', short: 'Filter', icon: SlidersHorizontal, color: '#0a66c2', badge: filterCount, active: filterOpen, go: () => { close(); onFilter(); } });

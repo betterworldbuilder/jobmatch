@@ -6,7 +6,7 @@ import { Check, Lightbulb, Loader2, Send } from 'lucide-react';
 import { api } from '../../api';
 import type { Bootstrap } from '../../types';
 
-export const FEEDBACK_AREAS = ['Find My Match (swipe)', 'My jobs Search', 'Job Matches & likes', 'Conversations & meetings', 'Hiring Stages', 'Reports & AI analyst', 'Profile', 'Premium options', 'Something else'];
+export const FEEDBACK_AREAS = ['Find JobMatches / Find My Match (swipe)', 'My Next Jobs', 'Job Matches & likes', 'Conversations & meetings', 'Hiring Stages', 'Reports & AI analyst', 'Profile', 'Premium options', 'Something else'];
 const IMPORTANCE = [
   { id: 'nice', label: 'Nice to have' },
   { id: 'important', label: 'Important' },

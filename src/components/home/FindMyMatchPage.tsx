@@ -37,7 +37,8 @@ export function FindMyMatchPage({ data, setData, navigate, onOpenMessages }: Pro
   const group = !candidate && selected ? (data.roleMatches || []).find((g) => g.job.id === selected.key) : undefined;
   const recruiterItems: Person[] | undefined = group ? data.candidates.map((c) => ({ ...c, match: group.scores?.[c.id] ?? c.match })) : undefined;
 
-  const header = <DashboardTitle icon={Sparkles} title="Find My Match"
+  // "Find JobMatches" for candidates and recruiters (founder, 2026-11-26; was "Find My Match").
+  const header = <DashboardTitle icon={Sparkles} title="Find JobMatches"
     subtitle={candidate ? 'Swipe right to show interest. A chat opens only if they like you back.' : 'Swipe right on candidates you want to meet. A chat opens only if they like you back.'}
     action="Open Discover" onAction={() => navigate('discover')} />;
 

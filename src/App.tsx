@@ -125,11 +125,12 @@ const CHATBOT_LABEL = featureOn('agents') ? 'Use My ChatBot' : 'Use your chatbot
 const candidateNav: NavItem[] = [
   // "My dashboard" (was "Things to do") is first in the menu (founder, 2026-11-22); the app still opens on Find My Match.
   // Renamed "My jobs Search" (founder, 2026-11-26).
-  { label: 'My jobs Search', short: 'Job Search', icon: Compass, anchor: 'td-today' },
+  // Renamed "My Next Jobs" (founder, 2026-11-26; was "My jobs Search").
+  { label: 'My Next Jobs', short: 'Next Jobs', icon: Compass, anchor: 'td-today' },
   // Right under My dashboard (founder, 2026-11-25): every job applied to, per target role.
   { label: 'Jobs Applied (liked)', short: 'Applied', icon: Inbox, view: 'applied' },
-  // "Find My Match" (the swipe deck + Recommended Roles) is the page the app opens on.
-  { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
+  // The swipe deck the app opens on; candidates call it "Find JobMatches" (founder, 2026-11-26; was "Find My Match").
+  { label: 'Find JobMatches', short: 'Match', icon: Flame, view: 'match' },
   { label: 'Conversations', short: 'Chat', icon: MessageCircle, view: 'messages' },
   // "Saved" and "Recruiters that like you" left the menu (founder, 2026-11-22); both stay on the Things to do page.
   { label: 'Job Matches', icon: Heart, anchor: 'td-matches' },
@@ -147,7 +148,7 @@ const candidateNav: NavItem[] = [
 ];
 // One colour per menu item, so each section is easy to spot.
 const NAV_COLORS: Record<string, string> = {
-  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'My jobs Search': '#ff6d9c', 'My Jobs list': '#ff6d9c', 'Jobs Applied (liked)': '#f472b6', 'Applications (likes)': '#f472b6', 'Jobs Candidates': '#f472b6', 'JobFinder listings': '#38bdf8', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
+  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'My jobs Search': '#ff6d9c', 'My Next Jobs': '#ff6d9c', 'Find JobMatches': '#ff8a3d', 'My Jobs list': '#ff6d9c', 'Jobs Applied (liked)': '#f472b6', 'Applications (likes)': '#f472b6', 'Jobs Candidates': '#f472b6', 'JobFinder listings': '#38bdf8', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
   Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', 'Use My ChatBot': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
   'Coffee Invitations': '#e0a96d', 'Hired Results': '#fbbf24', 'Interview AI coach': '#a78bfa', 'Recruiter Invitation': '#2dd4bf', Interviews: '#2dd4bf',
@@ -157,7 +158,7 @@ const employerNav: NavItem[] = [
   // Order (founder, 2026-11-26): My Jobs list, Find My Match, Jobs Candidates.
   // Recruiters: "My Jobs list" (founder, 2026-11-25: was "My dashboard"): only the roles list (2026-11-26).
   { label: 'My Jobs list', short: 'Jobs', icon: Compass, view: 'home' },
-  { label: 'Find My Match', short: 'Match', icon: Flame, view: 'match' },
+  { label: 'Find JobMatches', short: 'Match', icon: Flame, view: 'match' }, // was "Find My Match" (founder, 2026-11-26)
   // Jobs Candidates (restored, founder 2026-11-26): matches, applications and the rest of the recruiter dashboard.
   { label: 'Jobs Candidates', short: 'Candidates', icon: Inbox, view: 'applied' },
   // Order (founder, 2026-11-22): My JobMatches, then Conversations, then Coffee Invitations.
@@ -1329,8 +1330,6 @@ function Meetings({ role, data, setData, onOpenMessages, navigate, focusStages }
     <CalendarSync userId={data.viewer.id} />
     {/* Every booked interview, Google Calendar style (founder, 2026-11-26). */}
     <InterviewCalendar data={data} onOpenMessages={onOpenMessages} />
-    {/* Hiring Stages moved here (founder, 2026-11-26), for candidates and recruiters. */}
-    <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} embedded />
 
     <section className="td-section" id="meetings-upcoming">
       <DashboardTitle icon={Calendar} title="Upcoming" subtitle={`${upcoming.length} scheduled`} />
@@ -1357,6 +1356,9 @@ function Meetings({ role, data, setData, onOpenMessages, navigate, focusStages }
       <DashboardTitle icon={Clock3} title="Past meetings" subtitle={`${past.length} completed`} />
       <div className="meetings-list">{past.map((call) => <CallCard call={call} past key={call.id} />)}</div>
     </section>}
+
+    {/* Hiring Stages at the end of Interviews (founder, 2026-11-26), for candidates and recruiters. */}
+    <HiringStages data={data} setData={setData} onOpenMessages={onOpenMessages} embedded />
 
     {schedulingFor && <ScheduleCallModal match={schedulingFor} viewer={data.viewer} onClose={() => setSchedulingFor(null)}
       onScheduled={(call) => { setData({ ...data, calls: [...data.calls, call] }); setSchedulingFor(null); }}
