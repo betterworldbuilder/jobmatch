@@ -1135,7 +1135,12 @@ app.post('/api/users/:id/resume', uploadLimiter, express.raw({ type: () => true,
       const owner = db0.users.find((u) => u.id === req.params.id);
       const roles = owner?.preferences?.desiredRoles || [];
       if (!roles.includes(forRole)) throw new ValidationError('role', 'Pick one of your target roles');
-      if (!premiumFor(db0, owner).active) { const error = new Error('One resume per target role is part of Premium (multi-role). On the free plan your one resume is used for every role.'); error.status = 402; error.code = 'premium_required'; throw error; }
+      // One resume per role, 3 at most: role 1 uses the main resume (founder, 2026-11-27).
+      if (roles[0] === forRole) throw new ValidationError('role', 'Your first target role uses your main resume: replace that one instead.');
+      if (!premiumFor(db0, owner).active) { const error = new Error('One resume per target role is part of Premium (multi-role and multi-resume, up to 3). On the free plan your one resume is used for every role.'); error.status = 402; error.code = 'premium_required'; throw error; }
+      // Premium: up to 3 resumes in all (the main resume counts as one); replacing a role's resume is always fine.
+      const held = (owner.documents?.resume ? 1 : 0) + Object.keys(owner.documents?.roleResumes || {}).length;
+      if (!owner.documents?.roleResumes?.[forRole] && held >= 3) throw new ValidationError('role', 'Premium allows up to 3 resumes. Remove one (Use main resume) before adding another.');
       return await saveRoleResume(req, res, ext, forRole);
     }
     const originalName = decodeURIComponent(String(req.headers['x-filename'] || `resume.${ext}`)).replace(/[/\\]/g, '_').slice(0, 200);
@@ -1524,6 +1529,14 @@ function roleRequirements(db, role) {
   const list = [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([name, n]) => ({ name, count: n }));
   return { jobs: jobs.length, broad, list, skills: list.map((s) => `${s.name} (${s.count})`) };
 }
+/** One job's own required skills (a job the candidate applied to), in the same shape as roleRequirements. */
+function jobRequirements(db, jobId) {
+  const job = db.jobs.find((j) => j.id === jobId);
+  if (!job) return null;
+  const names = [...new Set([...(job.requiredSkillsDetail || []).map((x) => x.name), ...(job.requiredSkills || [])].map((x) => String(x || '').trim()).filter(Boolean))].slice(0, 20);
+  const list = names.map((name) => ({ name, count: 1 }));
+  return { jobs: 1, broad: false, list, skills: names, job };
+}
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** Our own resume vs role gap script (founder, 2026-11-26): no AI. Skills from the role data found / missing in the
  *  resume text, a weighted match %, and concrete tips. */
@@ -1557,7 +1570,9 @@ app.post('/api/users/:id/resume/gap-basic', rateLimit({ windowMs: 60 * 1000, max
     let text = '';
     try { text = resume.textName ? await fs.promises.readFile(path.join(RESUME_DIR, resume.textName), 'utf8') : ''; } catch { /* no text */ }
     if (text.trim().length < 80) return res.json({ role, resumeName: resume.originalName, noText: true });
-    res.json({ role, resumeName: resume.originalName, ...resumeGapBasic(text, roleRequirements(db, role)) });
+    // A job the candidate applied to: that job's own required skills; else the skills of open roles with this title.
+    const jobReq = req.body?.jobId ? jobRequirements(db, String(req.body.jobId)) : null;
+    res.json({ role, resumeName: resume.originalName, forJob: Boolean(jobReq), ...resumeGapBasic(text, jobReq || roleRequirements(db, role)) });
   } catch (error) { next(error); }
 });
 app.post('/api/users/:id/resume/gap', rateLimit({ windowMs: 60 * 1000, max: 5, bucket: 'resume-gap' }), async (req, res, next) => {
@@ -1576,9 +1591,11 @@ app.post('/api/users/:id/resume/gap', rateLimit({ windowMs: 60 * 1000, max: 5, b
     let text = '';
     try { text = resume.textName ? await fs.promises.readFile(path.join(RESUME_DIR, resume.textName), 'utf8') : ''; } catch { /* no text */ }
     if (text.trim().length < 80) return res.status(422).json({ error: 'We could not read the text of this resume. Upload a text-based PDF or a DOCX file.', code: 'no_text' });
-    const req2 = roleRequirements(db, role);
-    const context = [`TARGET ROLE: ${role}`,
-      req2.jobs ? `SKILLS THAT ${req2.jobs} OPEN "${role}" ROLES ON JOBSMATCHNOW ASK FOR (count of roles): ${req2.skills.join(', ')}` : 'No open role with this title on JobsMatchNow right now: use general knowledge of what this role usually requires, and say so.',
+    const jobReq = req.body?.jobId ? jobRequirements(db, String(req.body.jobId)) : null;
+    const req2 = jobReq || roleRequirements(db, role);
+    const context = [jobReq ? `JOB APPLIED TO: ${jobReq.job.title}${jobReq.job.company ? ` at ${jobReq.job.company}` : ''}` : `TARGET ROLE: ${role}`,
+      jobReq ? `THIS JOB'S REQUIRED SKILLS: ${req2.skills.join(', ') || 'not listed'}\nJOB DESCRIPTION (start): ${String(jobReq.job.fullDescription || jobReq.job.description || '').slice(0, 3000)}`
+        : req2.jobs ? `SKILLS THAT ${req2.jobs} OPEN "${role}" ROLES ON JOBSMATCHNOW ASK FOR (count of roles): ${req2.skills.join(', ')}` : 'No open role with this title on JobsMatchNow right now: use general knowledge of what this role usually requires, and say so.',
       `CANDIDATE'S RESUME (${resume.originalName}):\n${text.slice(0, 12000)}`].join('\n\n');
     // The member's own question from the resume chat box, else the full gap analysis.
     const own = String(req.body?.question || '').trim().slice(0, 600);

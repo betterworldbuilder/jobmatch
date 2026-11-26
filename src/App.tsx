@@ -7,7 +7,7 @@ import { AdminPasswordSetup } from './components/AdminPasswordSetup';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'motion/react';
 import { MobileTabs } from './components/MobileTabs';
 import { likesWaiting, workModesText } from './lib/today';
-import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileText, Filter, Ban, Flag,Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, BadgeCheck, Bot,Crown, BarChart3, Bell, Bookmark as BookmarkIcon, BriefcaseBusiness, Calendar, Check, ChevronDown, CircleHelp, Clock3, Coffee, Command, Compass, CreditCard, Download, ExternalLink, Eye, FileSearch, FileText, Filter, Ban, Flag,Flame, Gift, Handshake, Heart, Inbox, Layers3, Lightbulb, Linkedin, ListChecks, Loader2, Lock, LogOut, Mail, Map as MapIcon, MapPin, Menu, MessageCircle, MessageCircleQuestion, MoreHorizontal, RotateCcw, Search, Send, Settings, ShieldCheck, SlidersHorizontal, Sparkles, Star, Target, Trash2, Users, X, Zap } from 'lucide-react';
 import { api } from './api';
 import { showNotice } from './lib/notice';
 import { apiBase, groupsApi, JOBFINDER_LIKED_EVENT, JOBFINDER_OPEN_EVENT, SESSION_EXPIRED_EVENT, type JfLikeResult } from './api';
@@ -124,6 +124,8 @@ type NavItem = { label: string; short?: string; icon: typeof Compass; view?: Vie
 // Menu: short so it fits the sidebar (founder, 2026-11-25); the page title says "Your Chatbot and OpenClaw".
 const CHATBOT_LABEL = featureOn('agents') ? 'Use My ChatBot' : 'Use your chatbot here';
 const candidateNav: NavItem[] = [
+  // My Resume first, a normal menu item with a document + magnifier icon (founder, 2026-11-27).
+  { label: 'My Resume', short: 'Resume', icon: FileSearch, view: 'resume' },
   // "My dashboard" (was "Things to do") is first in the menu (founder, 2026-11-22); the app still opens on Find My Match.
   // Renamed "My jobs Search" (founder, 2026-11-26).
   // Renamed "My Next Jobs" (founder, 2026-11-26; was "My jobs Search").
@@ -151,7 +153,7 @@ const candidateNav: NavItem[] = [
 ];
 // One colour per menu item, so each section is easy to spot.
 const NAV_COLORS: Record<string, string> = {
-  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'My jobs Search': '#ff6d9c', 'My Next Jobs': '#ff6d9c', 'Find JobMatches': '#ff8a3d', 'My Jobs list': '#ff6d9c', 'Jobs Applied (liked)': '#f472b6', 'Applications (likes)': '#f472b6', 'Jobs Candidates': '#f472b6', 'JobFinder listings': '#38bdf8', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
+  Home: '#ff6d9c', 'Things to do': '#ff6d9c', 'My dashboard': '#ff6d9c', 'My jobs Search': '#ff6d9c', 'My Resume': '#a78bfa', 'My Next Jobs': '#ff6d9c', 'Find JobMatches': '#ff8a3d', 'My Jobs list': '#ff6d9c', 'Jobs Applied (liked)': '#f472b6', 'Applications (likes)': '#f472b6', 'Jobs Candidates': '#f472b6', 'JobFinder listings': '#38bdf8', 'Find My Match': '#ff8a3d', 'Look for new Matches': '#ff8a3d', 'Job Matches': '#ff4d6d', 'Recruiters that like you': '#f5c518',
   Conversations: '#3ea6ff', Saved: '#a78bfa', Meetings: '#2dd4bf', 'Hiring Stages': '#34d399', Reports: '#60a5fa',
   Subscription: '#fbbf24', 'Premium options': '#fbbf24', 'Use your chatbot here': '#c084fc', 'Use My ChatBot': '#c084fc', Feedback: '#facc15', 'My JobMatches': '#ff8a3d', 'Selected Candidates': '#34d399',
   'Coffee Invitations': '#e0a96d', 'Hired Results': '#fbbf24', 'Interview AI coach': '#a78bfa', 'Recruiter Invitation': '#2dd4bf', Interviews: '#2dd4bf',
@@ -788,9 +790,7 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
         {data && ((data.viewer.completeness ?? 0) >= 70
           ? <span className="profile-status ok"><Check size={13} /> Profile status: Complete</span>
           : <button type="button" className="profile-status todo" onClick={() => { setEditStep(0); setMobileNav(false); }}>Profile status: To be completed <ArrowRight size={13} /></button>)}
-        {/* My Resume under the profile (founder, 2026-11-26): candidates only. */}
-        {data && role === 'candidate' && <button type="button" className={view === 'resume' ? 'my-resume-link active' : 'my-resume-link'} onClick={() => { setActiveAnchor(''); setView('resume'); setMobileNav(false); }}>
-          <i className="nav-ico my-resume-ico"><FileText size={16} /></i> My Resume <small>{(() => { const n = (data.viewer.documents?.resume ? 1 : 0) + Object.keys(data.viewer.documents?.roleResumes || {}).length; return n ? `${n} file${n > 1 ? 's' : ''}` : 'Add yours'; })()}</small></button>}</div>
+</div>
       <nav className="sidebar-nav">{nav.map((item) => { const Icon = item.icon; return <button key={item.label} className={navActive(item) ? 'active' : ''} onClick={() => gotoNav(item)} style={{ ['--c' as string]: NAV_COLORS[item.label] || '#9fb3d9' }}><i className="nav-ico"><Icon size={18} /></i><span>{item.label}</span>{item.view === 'messages' && notifications.length > 0 && <em>{Math.min(notifications.length, 9)}</em>}</button>; })}</nav>
       <div className="sidebar-bottom"><button onClick={() => setRulesOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><ListChecks size={17} /></i>Recruitment process</button><button onClick={() => setConductOpen(true)} style={{ ['--c' as string]: '#34d399' }}><i className="nav-ico"><ShieldCheck size={17} /></i>Code of Conduct</button><button onClick={() => setSupportOpen(true)} style={{ ['--c' as string]: '#60a5fa' }}><i className="nav-ico"><CircleHelp size={17} /></i>Help center</button><button onClick={() => setSettingsOpen(true)} style={{ ['--c' as string]: '#c4b5fd' }}><i className="nav-ico"><Settings size={17} /></i>Settings</button><button className="logout-button" onClick={onExit} style={{ ['--c' as string]: '#fb7185' }}><i className="nav-ico"><LogOut size={17} /></i>Log out</button><p className="sidebar-legal">© 2026 JobsMatchNow SARL · <a href="/legal.html" target="_blank" rel="noopener">Legal notice</a></p></div>
     </aside>

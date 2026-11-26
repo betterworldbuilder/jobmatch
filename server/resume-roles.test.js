@@ -84,6 +84,14 @@ test('Premium: one resume per target role, downloadable by its owner only, remov
   assert.equal((await fetch(`${base}/api/users/${me.id}/resume/role?role=${encodeURIComponent('ML Engineer')}`)).status, 401, 'signed-out visitors cannot download (even in demo mode)');
   const other = await call('POST', '/api/auth/register', { role: 'employer', kind: 'company', name: 'Nosy Recruiter', email: `nosy-${pid}@example.com`, password: 'correct-horse-battery', conductAccepted: true });
   assert.equal((await fetch(`${base}/api/users/${me.id}/resume/role?role=${encodeURIComponent('ML Engineer')}`, { headers: { Cookie: other.session } })).status, 403, 'another account cannot download');
+  // Role 1 uses the main resume: no separate resume for it.
+  assert.equal((await call('POST', `/api/users/${me.id}/resume?role=${encodeURIComponent('Data Engineer')}`, pdf(10 * 1024), me.cookie, PDF)).status, 400);
+  // Up to 3 resumes in all (main + 2 role resumes here): a 4th is refused.
+  await call('PATCH', `/api/users/${me.id}`, { preferences: { desiredRoles: ['Data Engineer', 'ML Engineer', 'MLOps Engineer', 'AI Engineer'] } }, me.cookie);
+  assert.equal((await call('POST', `/api/users/${me.id}/resume?role=${encodeURIComponent('MLOps Engineer')}`, pdf(10 * 1024), me.cookie, PDF)).status, 201);
+  const fourth = await call('POST', `/api/users/${me.id}/resume?role=${encodeURIComponent('AI Engineer')}`, pdf(10 * 1024), me.cookie, PDF);
+  assert.equal(fourth.status, 400); assert.match(fourth.body.error, /up to 3 resumes/);
+  await call('DELETE', `/api/users/${me.id}/resume/role?role=${encodeURIComponent('MLOps Engineer')}`, null, me.cookie);
   const del = await call('DELETE', `/api/users/${me.id}/resume/role?role=${encodeURIComponent('ML Engineer')}`, null, me.cookie);
   assert.equal(del.status, 200);
   const after2 = await call('GET', `/api/bootstrap?userId=${me.id}`, null, me.cookie);
