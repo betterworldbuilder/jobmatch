@@ -18,7 +18,7 @@ import { applyCandidateProfile, applyRecruiterProfile, candidateCompleteness, re
 import { anonymizeText, convertDocxToPdf, detectTools, docxToHtml, extractDocxText, extractPdfText, makeSimplePdf, pdfThumbnail } from './resume.js';
 import { applyJob, assertPublishable, heuristicParse, legacySkills, parseJobText, parseSalaryText, parseStrength, summaryFromText } from './jobs.js';
 import { aiParseJob, importAiAllowed } from './import-ai.js';
-import { afterRoleInterest, FROM_NAME, interestEmail, markViewedByRow, mountRoleInterest, RELAY_EMAIL, runFollowups, trackerFor } from './role-interest.js';
+import { afterRoleInterest, FROM_NAME, interestEmail, markViewedByRow, mountRoleInterest, recruiterEmailOf, RELAY_EMAIL, runFollowups, trackerFor } from './role-interest.js';
 import { assignProfileSlug, ensureProfileSlugs, findRoleBySlug, maskJobContacts, publicProfileView, rolePath } from './public-urls.js';
 import { claimLinksOn, claimSig, claimUrl, mountClaims, stage1Funnel } from './stage1.js';
 import { backupToS3, mirrorToS3, removeFromS3, restoreFromS3, s3Enabled } from './storage.js';
@@ -5333,7 +5333,7 @@ app.post('/api/jobfinder/test-roles/sample-email', async (req, res, next) => {
     });
     const origin = publicOrigin;
     // Same links as a real cold email: the claim is signed for the role's recruiter address (the tester inbox here).
-    const recEmail = (await store.read()).jobContacts?.find((c) => c.jobId === prep.job.id)?.email || prep.tester.email;
+    const recEmail = recruiterEmailOf(await store.read(), prep.job.id, jobContactRec);
     const claimLink = roleInterestCtx.claimLink(prep.job.id, recEmail);
     const cm = String(claimLink || '').match(/\/claim\/([^/]+)\/([0-9a-f]+)$/);
     const msg = interestEmail({ job: prep.job, candidate: prep.tester, origin, unsubscribeUrl: roleInterestCtx.unsubscribeUrl(origin, prep.tester.email),
@@ -5351,7 +5351,9 @@ app.get('/api/jobfinder/outreach', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 // Stage 1 (2026-11-26): the recruiter's claim page /claim/<jobId>/<sig>, and the weekly funnel for the admin dashboard.
-mountClaims(app, { store, authSession, secret: () => sessionSecret, contactOf: jobContactRec, track, scoreCandidateForJob });
+mountClaims(app, { store, authSession, secret: () => sessionSecret, contactOf: jobContactRec, track, scoreCandidateForJob,
+  // Candidate's-eye view of the role (no contacts, external company hidden) for the email's job link page.
+  roleView: (db, job) => jobFullView(db, job, { id: '', role: 'visitor' }) });
 app.get('/api/admin/stage1', async (req, res, next) => {
   try { requireAdminRole(authSession(req)); res.json(stage1Funnel(await store.read())); } catch (error) { next(error); }
 });
@@ -5386,7 +5388,7 @@ app.get('/api/public/profile/:slug', async (req, res, next) => {
 // The recruiter's email link carries ?claim=<sig> (signed with the role's private recruiter email): it opens that role's
 // page even when the role is restricted (test roles), so the recruiter view + "View resume" work (2026-11-26).
 function roleClaimOk(db, job, sig) {
-  const email = job ? jobContactRec(db, job.id)?.email : '';
+  const email = job ? recruiterEmailOf(db, job.id, jobContactRec) : '';
   return Boolean(email && /^[0-9a-f]{32}$/.test(String(sig || '')) && claimSig(sessionSecret, job.id, email) === sig);
 }
 app.get('/api/public/role/:slug', async (req, res, next) => {

@@ -210,6 +210,8 @@
   .nm-list:not(.recs-open) ul.nm-carousel, .nm-list:not(.recs-open) .nm-list-empty, .nm-list:not(.recs-open) .nm-see-all { display:none; }
   /* The deck leaves room for the "Tap to view" bar above the bottom tab bar (role bar ~98 + tab bar ~70 + this bar ~46). */
   .td-match-page .nm-screen { height:calc(100svh - 98px - 70px - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); min-height:360px; }
+  /* Recruiters: no "Recommended Candidates" bar any more (2026-11-26), so the deck takes its 46px back. */
+  .td-match-page .nm-layout:not(:has(.nm-list)) .nm-screen { height:calc(100svh - 98px - 70px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
   /* Open: the badges and names clear the bottom tab bar. */
   /* No empty white gap under the badges (founder, 2026-11-26): .app-main already clears the tab bar, so the page and
      the open list add no second / third bottom padding. */

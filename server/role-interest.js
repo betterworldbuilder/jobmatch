@@ -22,6 +22,14 @@ const WEEK = 7 * 24 * 3600 * 1000;
 export const FROM_NAME = 'JobMatcher at JobsMatchNow';
 
 /**
+ * Imported external roles of the JobFinder account with no recruiter email (founder, 2026-11-26): the cold email, its
+ * follow-up and the claim link go to this inbox by default, so every role gets the same email and working links.
+ */
+export const DEFAULT_RECRUITER_INBOX = process.env.DEFAULT_RECRUITER_INBOX || 'jobsmatchnownoreply@gmail.com';
+export const recruiterEmailOf = (db, jobId, contactOf) => contactOf(db, jobId)?.email || DEFAULT_RECRUITER_INBOX;
+export const isDefaultInbox = (email) => String(email || '').toLowerCase() === DEFAULT_RECRUITER_INBOX.toLowerCase();
+
+/**
  * The email sent to the recruiter: the founder's template (2026-11-25), word for word, plus the legally needed
  * unsubscribe line. Job link: the LinkedIn/original posting URL, else the role's JobsMatchNow page.
  */
@@ -106,8 +114,8 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
     if (!isJobFinderUser(owner)) return null;
     // Not twice: skipped if JobFinder's consent-based email already went for this candidate and role.
     if ((db.jfOutreach || []).some((o) => o.jobId === jobId && o.candidateId === candidateId && ['sent', 'submitted'].includes(o.status))) return { skip: 'already_sent_by_jobfinder' };
-    const email = contactOf(db, jobId)?.email;
-    if (!email) return null;
+    // No recruiter email on file: the default inbox gets the email (founder, 2026-11-26).
+    const email = recruiterEmailOf(db, jobId, contactOf);
     if (!Array.isArray(db.roleInterestMails)) db.roleInterestMails = [];
     if (db.roleInterestMails.some((m) => m.jobId === jobId && m.candidateId === candidateId)) return { skip: 'duplicate' };
     const recipientHash = hashEmail(email);
@@ -115,7 +123,8 @@ export async function afterRoleInterest(ctx, { candidateId, jobId }) {
     db.roleInterestMails.push(row);
     if (db.jfSuppress.some((x) => x.hash === recipientHash)) { row.status = 'suppressed'; return { skip: 'suppressed' }; }
     const recent = db.roleInterestMails.filter((m) => m.recipientHash === recipientHash && m.status === 'sent' && m.createdAt > Date.now() - WEEK).length;
-    if (recent >= maxPerRecipientWeek()) { row.status = 'capped'; return { skip: 'capped' }; }
+    // The weekly cap protects real recruiters; our own default inbox is never capped.
+    if (!isDefaultInbox(email) && recent >= maxPerRecipientWeek()) { row.status = 'capped'; return { skip: 'capped' }; }
     // The candidate's profile link goes out only if their public profile is on (their approval).
     if (candidate.publicProfile === false) { row.status = 'no_consent'; return { skip: 'no_consent' }; }
     const slug = assignProfileSlug(db, candidate);
@@ -181,7 +190,7 @@ export async function runFollowups(ctx, { now = Date.now() } = {}) {
       if (now - m.sentAt < FOLLOWUP_AFTER_MS || db.roleFollowups.some((f) => `${f.jobId}|${f.recipientHash}` === k)) continue;
       const job = db.jobs.find((j) => j.id === m.jobId);
       const owner = job && db.users.find((u) => u.id === job.employerId);
-      const email = job && contactOf(db, job.id)?.email;
+      const email = job && recruiterEmailOf(db, job.id, contactOf);
       const row = { id: crypto.randomUUID(), jobId: m.jobId, recipientHash: m.recipientHash, createdAt: now };
       db.roleFollowups.push(row);
       if (!job || !isJobFinderUser(owner) || !email || hashEmail(email) !== m.recipientHash) { row.status = 'skipped'; continue; } // claimed or contact changed

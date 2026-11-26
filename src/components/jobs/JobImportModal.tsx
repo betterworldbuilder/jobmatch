@@ -8,6 +8,8 @@ import type { JobImportResult, Person } from '../../types';
 type Mode = 'choose' | 'feed' | 'linkedin' | 'success';
 /** The local Job Scraper (~/jobmatch3/jobscraper/start.sh) on the founder's computer, shown in its compact embed mode. */
 const SCRAPER_URL = 'http://localhost:8920';
+/** Local only (founder, 2026-11-26): the tile never shows on the live site, only when JobsMatchNow runs on this computer. */
+const LOCAL_APP = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
 type LinkedInDraft = { url: string; title: string; description: string };
 const emptyLinkedIn = (): LinkedInDraft => ({ url: '', title: '', description: '' });
 
@@ -72,7 +74,7 @@ export function JobImportModal({ viewer, onClose, onImported, onManual }: {
         <button onClick={onManual}><span className="pink"><BriefcaseBusiness /></span><strong>Create manually</strong><small>Build one offer from scratch</small><ArrowRight /></button>
         {featureOn('jobLink') && <button onClick={() => setLinkOpen(true)}><span className="blue"><Link2 /></span><strong>Import job from link</strong><small>Paste a link, review, save or publish</small><ArrowRight /></button>}
         {/* Job Scraper (founder, 2026-11-26): JobFinder account only; the scraper runs on the founder's computer. */}
-        {viewer.jobFinder && <button onClick={() => setScraperOpen(true)}><span className="pink"><ScanSearch /></span><strong>Job Scraper</strong><small>Links, career sites, mailbox alerts, library</small><ArrowRight /></button>}
+        {viewer.jobFinder && LOCAL_APP && <button onClick={() => setScraperOpen(true)}><span className="pink"><ScanSearch /></span><strong>Job Scraper</strong><small>Links, career sites, mailbox alerts, library</small><ArrowRight /></button>}
       </div>}
       {scraperOpen && <div className="js-window" role="dialog" aria-modal="true" aria-label="Job Scraper">
         <header>

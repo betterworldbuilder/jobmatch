@@ -22,7 +22,10 @@ const WHAT: Record<TestAction, string> = {
   recruiter: 'See recruiter profile: candidates see you and all your open roles here.',
 };
 
-export function RolePreview({ job, recruiter, onClose, onEdit }: { job: Job; recruiter: Person; onClose: () => void; onEdit?: () => void }) {
+/** `publicView` (founder, 2026-11-26): the job link in the recruiter's email opens this same swipe screen, with its own
+ *  heading and buttons (no Back / Edit, since the visitor is not signed in). */
+export function RolePreview({ job, recruiter, onClose, onEdit, publicView }: { job: Job; recruiter?: Person; onClose: () => void; onEdit?: () => void;
+  publicView?: { overline: string; heading: string; intro: string; actions: React.ReactNode } }) {
   const [page, setPage] = useState(0);
   const [round, setRound] = useState(0); // re-mounts the card after a test swipe, so it comes back
   const [note, setNote] = useState('Try it like a candidate: drag the card, tap › to flip pages, or use the buttons below. Nothing is saved.');
@@ -41,15 +44,19 @@ export function RolePreview({ job, recruiter, onClose, onEdit }: { job: Job; rec
   };
   // Candidates don't see the recruiter's own fit; the role is shown as published, with the recruiter's ID stamp.
   // The recruiter's email never shows; candidates see the JobsMatchNow relay line instead.
-  const shown: Job = { ...job, contactEmail: undefined, relayContact: Boolean(job.contactEmail || job.relayContact), match: undefined as unknown as Job['match'], recruiter: job.recruiter || { name: recruiter.name, title: recruiter.title, photo: recruiter.photo, company: recruiter.company } };
+  const shown: Job = { ...job, contactEmail: undefined, relayContact: Boolean(job.contactEmail || job.relayContact), match: undefined as unknown as Job['match'], recruiter: job.recruiter || (recruiter ? { name: recruiter.name, title: recruiter.title, photo: recruiter.photo, company: recruiter.company } : undefined) };
   return <div className="rpv-page" role="dialog" aria-label="Candidate view of this role">
-    <header className="rpv-head">
+    {publicView ? <header className="rpv-head">
+      <div><span className="overline">{publicView.overline}</span><h1>{publicView.heading}</h1><p>{publicView.intro}</p></div>
+      <div className="rpv-actions">{publicView.actions}</div>
+    </header>
+    : <header className="rpv-head">
       <div><span className="overline">Candidate view · test mode</span><h1>How Candidates See This Role</h1><p>The real Surf screen job seekers swipe, with {job.title} on it. Test it, then fix anything with Edit.</p></div>
       <div className="rpv-actions">
         <button type="button" className="secondary-button small" onClick={onClose}><ArrowLeft size={14} /> Back</button>
         {onEdit && <button type="button" className="primary-button small" onClick={onEdit}><Pencil size={14} /> Edit this role</button>}
       </div>
-    </header>
+    </header>}
     <div className="rpv-stage rpv-test">
       <div className="nm-phone-col">
         <div className="nm-glow" aria-hidden="true" />

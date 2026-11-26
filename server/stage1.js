@@ -10,7 +10,7 @@
 import crypto from 'node:crypto';
 import { isJobFinderUser } from './jobfinder.js';
 import { rolePath } from './public-urls.js';
-import { markViewedForJob } from './role-interest.js';
+import { markViewedForJob, recruiterEmailOf } from './role-interest.js';
 
 export const claimLinksOn = (env = process.env) => String(env.ROLE_CLAIM_LINKS || '').toLowerCase() === 'on';
 
@@ -61,10 +61,11 @@ export function recommendedFor(db, job, applicants, score) {
   return out;
 }
 
-export function mountClaims(app, { store, authSession, secret, contactOf, track, scoreCandidateForJob }) {
+export function mountClaims(app, { store, authSession, secret, contactOf, track, scoreCandidateForJob, roleView }) {
   const verified = (db, jobId, sig) => {
     const job = (db.jobs || []).find((j) => j.id === jobId);
-    const email = contactOf(db, jobId)?.email;
+    // The address the email went to: the recruiter's, else the default inbox (2026-11-26).
+    const email = job ? recruiterEmailOf(db, jobId, contactOf) : '';
     if (!job || !email || !/^[0-9a-f]{32}$/.test(String(sig)) || claimSig(secret(), jobId, email) !== sig) return null;
     return job;
   };
@@ -94,6 +95,8 @@ export function mountClaims(app, { store, authSession, secret, contactOf, track,
           recommended: recommendedFor(db, job, applicants.candidates, scoreCandidateForJob),
           // Quick sign-up: the recruiter's name and email we already have (this signed link was sent to that email).
           prefill: { name: job.recruiterName || '', email: contactOf(db, job.id)?.email || '' },
+          // The role as candidates see it, for the swipe-card page the email's job link opens (2026-11-26).
+          ...(roleView ? { role: roleView(db, job) } : {}),
           claimed: !isJobFinderUser(owner),
           claimedByYou: Boolean(viewer && owner && viewer.id === owner.id && !isJobFinderUser(owner)),
           preview: isJobFinderUser(viewer),

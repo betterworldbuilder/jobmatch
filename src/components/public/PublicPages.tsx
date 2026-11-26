@@ -6,6 +6,7 @@ import { ArrowRight, Briefcase, FileDown, Languages, Linkedin, MapPin } from 'lu
 import { api, apiBase } from '../../api';
 import type { ClaimView } from '../../types';
 import { PublicJobCardPage, PublicShell } from '../groups/Groups';
+import { RolePreview } from '../jobs/RolePreview';
 
 type PublicProfile = {
   slug: string; name: string; title?: string; photo?: string; yearsExperience?: number; city?: string; country?: string;
@@ -171,7 +172,8 @@ export function RoleLinkPage({ slug }: { slug: string }) {
   // ?claim=<jobId>.<sig> from the recruiter's email (founder, 2026-11-26): recruiter view + "View resume" → quick sign-up.
   const [claim] = useState(claimFromUrl);
   const [cv, setCv] = useState<ClaimView | null>(null);
-  useEffect(() => { if (claim) api.getClaim(claim.jobId, claim.sig).then(setCv).catch(() => undefined); }, [claim]);
+  const [cvFailed, setCvFailed] = useState(false);
+  useEffect(() => { if (claim) api.getClaim(claim.jobId, claim.sig).then(setCv).catch(() => setCvFailed(true)); }, [claim]);
   useEffect(() => {
     fetch(`${apiBase}/api/public/role/${encodeURIComponent(slug)}${claim ? `?claim=${claim.sig}` : ''}`, { credentials: 'include' }).then(async (r) => {
       const body = await r.json().catch(() => ({}));
@@ -185,6 +187,14 @@ export function RoleLinkPage({ slug }: { slug: string }) {
       savePrefill(cv, `${claim.jobId}.${claim.sig}`);
       window.location.href = `/app/?claim=${encodeURIComponent(`${claim.jobId}.${claim.sig}`)}&auth=register`;
     };
+    // The job link in the recruiter's email (founder, 2026-11-26): the role on the candidate swipe screen.
+    if (cv?.role) return <RolePreview job={cv.role} onClose={() => undefined} publicView={{
+      overline: 'Your role on JobsMatchNow',
+      heading: 'How Candidates See Your Role',
+      intro: `${cv.role.title} on the real Surf screen job seekers swipe. ${n ? `${n} ${n === 1 ? 'candidate has' : 'candidates have'} applied.` : ''}`.trim(),
+      actions: <button type="button" className="primary-button small" onClick={viewResume}>See your candidates <ArrowRight size={14} /></button>,
+    }} />;
+    if (!cv && !cvFailed) return <PublicShell><section className="jf-public-card"><h1>Loading…</h1></section></PublicShell>;
     return <PublicJobCardPage jobId={jobId} recruiter={{ claimSig: claim.sig, onView: viewResume, note: `${n ? `${n} ${n === 1 ? 'candidate has' : 'candidates have'} applied to your role.` : 'Candidates are applying to your role.'} Create your free recruiter account in 1 minute (your name and email are filled in) to view their resumes and connect.` }} />;
   }
   if (jobId) return <PublicJobCardPage jobId={jobId} />;

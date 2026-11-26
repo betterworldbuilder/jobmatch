@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { afterRoleInterest } from './role-interest.js';
+import { afterRoleInterest, DEFAULT_RECRUITER_INBOX } from './role-interest.js';
+import { hashEmail } from './jobfinder.js';
 
 /* Option B (founder, 2026-11-26): imported JobFinder listings with a recruiter email get the interest email on apply,
    never twice (skipped when JobFinder's consent-based email already went for the same candidate and role). */
@@ -41,9 +42,13 @@ test('the rule: any JobFinder-account role emails its recruiter; another recruit
   assert.equal(db2.roleInterestMails.length, 0);
 });
 
-test('no recruiter email, or a demo candidate: nothing', async () => {
-  const db = base(); db.jobContacts = [];
-  assert.equal(await afterRoleInterest(mkCtx(db, []), { candidateId: 'c1', jobId: 'jf-1' }), null);
+test('no recruiter email: the email goes to the default inbox; a demo candidate: nothing', async () => {
+  // Founder, 2026-11-26: every imported JobFinder role gets the email; without a recruiter email → jobsmatchnownoreply@gmail.com.
+  const db = base(); db.jobContacts = []; const sent = [];
+  await afterRoleInterest(mkCtx(db, sent), { candidateId: 'c1', jobId: 'jf-1' });
+  assert.equal(db.roleInterestMails.length, 1);
+  assert.equal(db.roleInterestMails[0].recipientHash, hashEmail(DEFAULT_RECRUITER_INBOX));
+  assert.equal(DEFAULT_RECRUITER_INBOX, 'jobsmatchnownoreply@gmail.com');
   const db2 = base(); db2.users[1].demo = true;
   assert.equal(await afterRoleInterest(mkCtx(db2, []), { candidateId: 'c1', jobId: 'jf-1' }), null);
 });

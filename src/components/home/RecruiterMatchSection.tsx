@@ -34,7 +34,9 @@ const workPref = (c: Person) => { const w = c.preferences?.workMode; return (w?.
 
 // Pages inside the candidate swipe card (founder, 2026-11-22), same order as the profile; the last page is the resume.
 export const CANDIDATE_PAGES = ['Who I am', 'My Dream Job', 'My Human Stack', 'My Skill Set', 'What I Have Built', 'Certifications', 'Recommendations', 'My Super Power', 'Resume'];
-const SWIPE_CARD_ORDER = [4, 1, 2, 3, 6, 5, 7]; // CandidateCards card numbers for pages 2–8
+/** Action bar under the deck + "Recommended Candidates": off for now (founder, 2026-11-26). */
+const SHOW_DECK_EXTRAS = false;
+const SWIPE_CARD_ORDER =[4, 1, 2, 3, 6, 5, 7]; // CandidateCards card numbers for pages 2–8
 
 function ResumePage({ person: c, unlocked }: { person: Person; unlocked: boolean }) {
   const r = c.documents?.resume;
@@ -189,10 +191,11 @@ export function RecruiterMatchSection({ data, setData, navigate, onOpenMessages,
           </div>
         </div>
         {/* Desktop: the phone bar's actions under the deck (founder, 2026-11-24); keyboard hint kept when the bar is off. */}
-        {featureOn('filters') ? <DeckActionBar role="employer" userId={data.viewer.id} navigate={navigate} likes={likesWaiting(data)} />
-          : <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>}
+        {/* Removed for now (founder, 2026-11-26): the action bar under the deck and "Recommended Candidates". */}
+        {SHOW_DECK_EXTRAS && (featureOn('filters') ? <DeckActionBar role="employer" userId={data.viewer.id} navigate={navigate} likes={likesWaiting(data)} />
+          : <div className="keyboard-hint nm-hint"><span><kbd>←</kbd> Pass</span><span><kbd>↑</kbd> Forward</span><span><kbd>→</kbd> Like</span><span>Click the deck first</span></div>)}
       </div>
-      <aside className={recsOpen ? 'nm-list recs-open' : 'nm-list'} aria-label="Recommended Candidates">
+      {SHOW_DECK_EXTRAS && <aside className={recsOpen ? 'nm-list recs-open' : 'nm-list'} aria-label="Recommended Candidates">
         <div className="nm-carousel-head">
           <h3>Recommended Candidates</h3>
           {/* Phones (founder, 2026-11-25): the badges open under the deck on "Tap to view". */}
@@ -215,7 +218,7 @@ export function RecruiterMatchSection({ data, setData, navigate, onOpenMessages,
             <button type="button" className="nm-row-like nm-mini-like" onClick={() => { if (!canLike) return; setLikedFromList((ids) => [...ids, p.id]); if (picked?.id === p.id) setPicked(null); void commitSwipe('like', p); }} disabled={busy || !canLike} aria-label={`Like ${maskedName(p.name)}`}><Heart size={15} /></button>
           </li>)}</ul>
           : <p className="nm-list-empty">No more candidates right now. Your roles stay visible to matching candidates.</p>}
-      </aside>
+      </aside>}
     </div>
     {detail && <ProfileModal person={detail} onClose={() => setDetail(null)} />}
     {forwardOpen && forwardText && <ForwardSheet {...forwardText} onClose={() => setForwardOpen(false)} />}

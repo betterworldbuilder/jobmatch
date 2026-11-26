@@ -8,8 +8,9 @@ import { __setTestSender } from './mailer.js';
 const DB_PATH = `/tmp/jobmatch-jobfinder-test-${process.pid}.json`;
 let server; let base;
 const sent = [];
+const toDefaultInbox = []; // cold emails for roles with no recruiter email (founder, 2026-11-26)
 let failNext = false;
-__setTestSender(async (msg) => { if (failNext) { failNext = false; const e = new Error('smtp down'); e.code = 'ECONNECTION'; throw e; } if (/candidate is interested/.test(msg.subject || '')) sent.push(msg); return { messageId: `<test-${sent.length}@jobsmatchnow>` }; });
+__setTestSender(async (msg) => { if (failNext) { failNext = false; const e = new Error('smtp down'); e.code = 'ECONNECTION'; throw e; } if (msg.to === 'jobsmatchnownoreply@gmail.com') toDefaultInbox.push(msg); else if (/candidate is interested/.test(msg.subject || '')) sent.push(msg); return { messageId: `<test-${sent.length}@jobsmatchnow>` }; });
 async function call(method, path, body, cookie) {
   if (!base) {
     process.env.NODE_ENV = 'test'; process.env.DB_PATH = DB_PATH;
@@ -84,6 +85,7 @@ test('JobFinder end to end: permissions, privacy, consent, sending, fallbacks, c
   assert.equal(like.status, 201); assert.equal(like.body.match, null);
   assert.equal(like.body.jobFinder.reachability, 'email'); assert.equal(like.body.jobFinder.outreach, null);
   assert.equal(sent.length, 0);
+  assert.equal(toDefaultInbox.length, 1, 'no recruiter email on file: the cold email went to the default inbox');
   assert.equal((await call('POST', `/api/jobfinder/jobs/${job.id}/send`, { share: { skills: ['Python'] } }, cand.cookie)).status, 400, 'consent required');
   // 8. Approved details only; no candidate email without permission.
   const send = await call('POST', `/api/jobfinder/jobs/${job.id}/send`, { consent: true, share: { skills: ['Python', 'Spark', 'Cobol'], profileLink: 'linkedin', replyEmail: false } }, cand.cookie);

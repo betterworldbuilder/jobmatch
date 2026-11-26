@@ -96,6 +96,8 @@ export interface ClaimView {
   recommended?: { id: string; firstName: string; title: string; yearsExperience?: number; city?: string; country?: string; skills: string[]; match: number | null; applied: boolean; photo?: string }[];
   /** Quick sign-up: the recruiter's name and email (the link was sent to that email). */
   prefill?: { name: string; email: string };
+  /** The role as candidates see it (swipe-card page of the email's job link). */
+  role?: Job;
 }
 export interface Stage1Week { week: string; likes: number; emailsSent: number; linkOpens: number; claims: number; likeBacks: number; matches: number; conversations: number; interviews: number }
 export interface Stage1Funnel { weeks: Stage1Week[]; snapshot: { rolesLive: number; importedRolesLive: number; importedWithRecruiterEmail: number; claimedRoles: number }; claimLinksOn: boolean }
