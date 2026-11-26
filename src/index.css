@@ -5341,3 +5341,11 @@ button.rs-row:hover { border-color:#fd267a; }
 .ji-dupes { font-size:12px; color:#5b6475; }
 .ji-dupes ul { margin:4px 0 0; padding-left:18px; }
 @media (max-width:640px) { .ur-panel { position:fixed; left:16px; right:16px; top:auto; bottom:88px; width:auto; } }
+
+/* "For who" (2026-11-26): role card line above the location; editor suggestion; JobFinder workers filter */
+.rp-forwho { display:flex; align-items:flex-start; gap:6px; margin:6px 0 2px; padding:6px 10px; border-radius:10px; background:rgba(255,255,255,.16); color:#fff; font-size:12px; line-height:1.35; }
+.rp-forwho svg { flex:none; margin-top:2px; }
+.rp-forwho b { font-weight:800; }
+.fw-suggest { display:block; margin-top:6px; font-size:12px; text-align:left; }
+.jf-forwho { display:inline-flex; flex-wrap:wrap; gap:4px; }
+.jf-forwho em { font-style:normal; font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px; background:#eef4ff; color:#0f62fe; }

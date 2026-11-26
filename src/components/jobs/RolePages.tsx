@@ -5,7 +5,9 @@
 //   2 Job description — the full JD, role details, must-have, nice-to-have, then the fit details
 //   3 Company — the recruiter's public company profile and the benefits ("Not added yet" when empty)
 import { useState } from 'react';
-import { Briefcase, Building2, CalendarClock, Check, ChevronRight, Globe, Languages, Mail, MapPin, ShieldCheck, Sparkles, Wallet, X } from 'lucide-react';
+import { Briefcase, Building2, CalendarClock, Check, ChevronRight, Globe, Languages, Mail, MapPin, ShieldCheck, Sparkles, Users, Wallet, X } from 'lucide-react';
+import { featureOn } from '../../lib/flags';
+import { forWhoOf, forWhoText } from '../../lib/forWho';
 import { RELAY_EMAIL, relayMailto } from '../../lib/relay';
 import { apiBase } from '../../api';
 import type { CompanyProfile, Job } from '../../types';
@@ -70,6 +72,8 @@ export function RoleSummaryPage({ job: j, photo = rolePhoto(j), onRecruiter }: {
       {!j.jobFinder && j.recruiter?.name && (onRecruiter
         ? <button type="button" className="rp-recruiter" onPointerDownCapture={(e) => e.stopPropagation()} onClick={onRecruiter}>Hiring: <b>{j.recruiter.name}</b>{j.recruiter.title ? ` · ${j.recruiter.title}` : ''} <span>See recruiter profile <ChevronRight size={12} /></span></button>
         : <p className="nm-hiring">Hiring: {j.recruiter.name}{j.recruiter.title ? ` · ${j.recruiter.title}` : ''}</p>)}
+      {/* "For who" (2026-11-26): which workers can apply, above the location; behind its switch (?forwho=1). */}
+      {featureOn('forWho') && forWhoOf(j).length > 0 && <p className="rp-forwho"><Users size={12} /> <span>For: <b>{forWhoText(forWhoOf(j))}</b></span></p>}
       <div className="nm-chips">
         {j.location && <span className="nm-chip"><MapPin size={11} /> {j.location}{showsCommute(j) ? ` · ${j.distanceKm} km away` : ''}</span>}
         {contract && <span className="nm-chip"><Briefcase size={11} /> {contract}</span>}

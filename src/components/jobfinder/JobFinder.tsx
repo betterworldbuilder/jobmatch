@@ -9,6 +9,7 @@ import { AlertTriangle, Check, ExternalLink, Flag, Link2, Mail, Plus, RefreshCw,
 import { api, groupsApi, jf } from '../../api';
 import { JobGroupsField, LinkedInTools } from '../groups/Groups';
 import { JobLinkImport } from '../jobs/JobLinkImport';
+import { FOR_WHO, FOR_WHO_CODES, FOR_WHO_SHORT, type ForWho } from '../../lib/forWho';
 import type { JfClaim, JfConsent, JfManagerRow, JfOutreach, JfReach, Job, JobFinderInfo, JobFinderPublicJob } from '../../types';
 
 export const REACH_TEXT: Record<JfReach, string> = {
@@ -250,7 +251,7 @@ export function JobFinderManager() {
   const [rows, setRows] = useState<JfManagerRow[]>([]);
   const [claims, setClaims] = useState<JfClaim[]>([]);
   const [error, setError] = useState('');
-  const [filters, setFilters] = useState({ q: '', status: '', reachability: '', sort: 'created' });
+  const [filters, setFilters] = useState({ q: '', status: '', reachability: '', forWho: '', sort: 'created' });
   const [form, setForm] = useState<Form | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [paste, setPaste] = useState('');
@@ -337,14 +338,17 @@ export function JobFinderManager() {
       <label className="jf-search"><Search size={14} /><input placeholder="Title, employer, location" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} /></label>
       <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} aria-label="Status"><option value="">All statuses</option><option value="draft">Draft</option><option value="published">Published</option><option value="expired">Expired</option><option value="claimed">Claimed</option><option value="removed">Removed</option></select>
       <select value={filters.reachability} onChange={(e) => setFilters({ ...filters, reachability: e.target.value })} aria-label="Reachability"><option value="">Any reachability</option><option value="email">Email</option><option value="apply">Apply link only</option><option value="none">None</option></select>
-      <select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} aria-label="Sort"><option value="created">Newest</option><option value="likes">Most applications</option><option value="checked">Oldest check</option></select>
+      {/* Workers filter (2026-11-26): roles for Vietnam-based, US-based, EU / UK-based, … or remote workers anywhere. */}
+      <select value={filters.forWho} onChange={(e) => setFilters({ ...filters, forWho: e.target.value })} aria-label="For who"><option value="">All workers</option>{FOR_WHO_CODES.map((c) => <option key={c} value={c}>For {FOR_WHO[c]}</option>)}<option value="none">For who not known</option></select>
+      <select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} aria-label="Sort"><option value="created">Newest</option><option value="workers">By workers (country)</option><option value="likes">Most applications</option><option value="checked">Oldest check</option></select>
       <button type="button" className="secondary-button small" onClick={load}><RefreshCw size={13} /> Refresh</button>
     </div>
 
     {rows.length === 0 ? <p className="jf-help">No listings yet. Add the first pilot job (AI / data / software engineering, Vietnam or USA).</p>
       : <ul className="jf-list">{rows.map((r) => <li key={r.id} className="jf-item">
         <div className="jf-item-head" role="button" tabIndex={0} onClick={() => setOpen(open === r.id ? null : r.id)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(open === r.id ? null : r.id); }}>
-          <div><strong>{r.title}</strong><small>{[r.company, r.location, r.workMode].filter(Boolean).join(' · ')}</small></div>
+          <div><strong>{r.title}</strong><small>{[r.company, r.location, r.workMode].filter(Boolean).join(' · ')}</small>
+            {(r.forWho?.length ?? 0) > 0 && <span className="jf-forwho">{(r.forWho as ForWho[]).map((c) => <em key={c}>{FOR_WHO_SHORT[c] || c}</em>)}</span>}</div>
           <span className={`jf-pill ${r.jobFinder.listingStatus}`}>{r.jobFinder.listingStatus}</span>
           <span className={`jf-pill reach-${r.jobFinder.reachability}`}>{r.jobFinder.reachability === 'email' ? 'email' : r.jobFinder.reachability === 'apply' ? 'apply link' : 'no contact'}</span>
           <span className="jf-nums">{r.likes} apps · {r.emails.sent} sent · {r.views} views · {r.matches} matches</span>

@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, ClipboardPaste, Download, Loader2, Sparkles, Upload } from 'lucide-react';
 import { api } from '../../api';
-import { Chips, Field, LevelTagInput, Segmented, TagInput, TextInput, Toggle } from '../profile/fields';
+import { Chips, Field, LevelTagInput, MultiSegmented, Segmented, TagInput, TextInput, Toggle } from '../profile/fields';
+import { FOR_WHO, FOR_WHO_CODES, FOR_WHO_SHORT, forWhoOf, inferForWho, type ForWho } from '../../lib/forWho';
+import { featureOn } from '../../lib/flags';
 import { demoAdapter, pasteAdapter } from '../../lib/jobSources';
 import { samplePasteText } from '../../content/jobSamples';
 import type { Job, JobDraft, Person, Seniority } from '../../types';
@@ -40,6 +42,7 @@ type Form = {
   jobGroups: string[];
   // Recruiter details (replace the cover image, founder 2026-11-25). Email/phone: JobFinder only, never shown to candidates.
   company: string; recruiterName: string; recruiterTitle: string; contactEmail: string; contactPhone: string;
+  forWho: ForWho[];
 };
 
 const emptyForm = (): Form => ({
@@ -56,6 +59,7 @@ const emptyForm = (): Form => ({
   hiringTimeline: '', backgroundCheck: false, referenceCheck: false,
   jobGroups: [],
   company: '', recruiterName: '', recruiterTitle: '', contactEmail: '', contactPhone: '',
+  forWho: [],
 });
 
 function fromJob(job: Job): Form {
@@ -87,6 +91,8 @@ function fromJob(job: Job): Form {
     jobGroups: job.jobGroups || [],
     company: job.company || '', recruiterName: job.recruiterName || '', recruiterTitle: job.recruiterTitle || '',
     contactEmail: job.contactEmail || '', contactPhone: job.contactPhone || '',
+    // The saved choice, else what the location and work mode say (the recruiter confirms it by saving).
+    forWho: forWhoOf(job),
   };
 }
 
@@ -148,6 +154,9 @@ function stepErrors(step: number, form: Form): string[] {
 export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; job?: Job; onSaved: () => void; onCancel: () => void }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<Form>(() => (job ? fromJob(job) : emptyForm()));
+  // "For who" (2026-11-26), behind its switch (preview ?forwho=1); suggestion from the location and work mode.
+  const forWhoOn = featureOn('forWho');
+  const suggestedForWho = inferForWho({ location: form.location, country: form.country, workMode: form.workMode as Job['workMode'], remoteScope: form.remoteScope });
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteUrl, setPasteUrl] = useState('');
   const [pasteText, setPasteText] = useState('');
@@ -213,6 +222,7 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
       managementStyleTags: form.managementStyleTags, teamStyle: form.teamStyle, teamSong: form.teamSong || undefined,
       hiringTimeline: form.hiringTimeline || undefined, backgroundCheck: form.backgroundCheck, referenceCheck: form.referenceCheck,
       jobGroups: form.jobGroups,
+      ...(forWhoOn ? { forWho: form.forWho } : {}),
       company: form.company.trim() || undefined, recruiterName: form.recruiterName.trim(), recruiterTitle: form.recruiterTitle.trim(),
     };
     try {
@@ -284,6 +294,10 @@ export function JobEditor({ viewer, job, onSaved, onCancel }: { viewer: Person; 
           <Field label="Urgency (optional)"><TextInput value={form.urgency} onChange={(e) => patch({ urgency: e.target.value })} placeholder="e.g. Hiring ASAP" /></Field>
           <Field label="Application deadline (optional)"><TextInput value={form.deadline} onChange={(e) => patch({ deadline: e.target.value })} placeholder="e.g. Aug 15" /></Field>
         </div>
+        {forWhoOn && <Field label="For who" hint="Which workers can apply, by where they live. Shown on the role's first page above the location.">
+          <MultiSegmented options={FOR_WHO_CODES} value={form.forWho} onChange={(forWho) => patch({ forWho })} labels={FOR_WHO} />
+          {!form.forWho.length && suggestedForWho.length > 0 && <button type="button" className="text-button fw-suggest" onClick={() => patch({ forWho: suggestedForWho })}>Use the suggestion from the location: {suggestedForWho.map((c) => FOR_WHO_SHORT[c]).join(', ')}</button>}
+        </Field>}
         <div className="wz-row">
           <Field label="Employment type" required><Segmented options={EMPLOYMENT_TYPES} value={form.type as typeof EMPLOYMENT_TYPES[number] | undefined} onChange={(type) => patch({ type })} /></Field>
           <Field label="Work mode" required><Segmented options={WORK_MODES} value={form.workMode as typeof WORK_MODES[number] | undefined} onChange={(workMode) => patch({ workMode })} /></Field>

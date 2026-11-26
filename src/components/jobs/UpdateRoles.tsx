@@ -49,20 +49,26 @@ export function UpdateRolesButton({ onDone }: { onDone: () => void }) {
     setMsg(''); setPlan(null); setProgress(null);
     if (!files?.length) return;
     const list = Array.from(files);
-    const csv = list.find((f) => base(f.name) === 'linkjobs.csv');
-    if (!csv) { setMsg('No linkjobs.csv in that folder. Choose jobsmatchnow-team/data/inbox-linkedin.'); return; }
+    // linkjobs.csv (LinkedIn alerts, has email dates) and/or careerjobs.csv (career sites): pick jobsmatchnow-team/data
+    // for both, or one of their folders.
+    const csvs = list.filter((f) => ['linkjobs.csv', 'careerjobs.csv'].includes(base(f.name)));
+    if (!csvs.length) { setMsg('No linkjobs.csv or careerjobs.csv in that folder. Choose jobsmatchnow-team/data.'); return; }
     setBusy(true);
     try {
       const state = await jf.importState();
       const known = new Set(state.knownKeys);
       const byName = new Map(list.filter((f) => f.name.endsWith('.jobsmatchnow.json')).map((f) => [base(f.name), f]));
       const p: Plan = { fresh: [], older: [], known: 0, noFile: 0, lastEmailDate: state.lastEmailDate };
-      for (const row of parseCsv(await csv.text())) {
-        if (row.scrape_status !== 'ok') continue;
-        if (['created', 'duplicate'].includes(row.import_status || '') || known.has(sourceKey(row.url))) { p.known += 1; continue; }
-        const file = row.job_file ? byName.get(base(row.job_file)) : undefined;
-        if (!file) { p.noFile += 1; continue; }
-        (!state.lastEmailDate || (row.email_date || '') >= state.lastEmailDate ? p.fresh : p.older).push({ row, file });
+      for (const csv of csvs) {
+        const career = base(csv.name) === 'careerjobs.csv';
+        for (const row of parseCsv(await csv.text())) {
+          if (row.scrape_status !== 'ok') continue;
+          if (['created', 'duplicate'].includes(row.import_status || '') || known.has(sourceKey(row.url))) { p.known += 1; continue; }
+          const file = row.job_file ? byName.get(base(row.job_file)) : undefined;
+          if (!file) { p.noFile += 1; continue; }
+          // Career-site rows have no email date: new by link only. LinkedIn rows: newer than the last imported email.
+          (career || !state.lastEmailDate || (row.email_date || '') >= state.lastEmailDate ? p.fresh : p.older).push({ row, file });
+        }
       }
       setPlan(p);
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Could not read the folder'); }
@@ -78,7 +84,7 @@ export function UpdateRolesButton({ onDone }: { onDone: () => void }) {
       try {
         const doc = JSON.parse(await file.text());
         const job = Array.isArray(doc?.jobs) ? doc.jobs[0] : doc;
-        const r = await jf.importFiles({ jobs: [job], emailDate: row.email_date || undefined });
+        const r = await jf.importFiles({ jobs: [job], emailDate: row.email_date || undefined }); // careerjobs rows: no email_date
         pr.created += r.created; pr.duplicate += r.duplicate; pr.failed += r.failed;
       } catch (e) {
         pr.failed += 1;
@@ -91,7 +97,7 @@ export function UpdateRolesButton({ onDone }: { onDone: () => void }) {
   };
 
   return <>
-    <button type="button" className="td-update-roles" onClick={() => input.current?.click()} disabled={busy} title="Import new jobs from Scrapy's folder (data/inbox-linkedin) as JobFinder drafts">
+    <button type="button" className="td-update-roles" onClick={() => input.current?.click()} disabled={busy} title="Import new jobs from Scrapy's folder (pick jobsmatchnow-team/data: LinkedIn alerts + career sites) as JobFinder drafts">
       {busy && !progress ? <Loader2 size={13} className="spin" /> : <FolderSync size={13} />} Update roles
     </button>
     {/* webkitdirectory: the browser lets the user pick a whole folder (Chrome, Edge, Firefox, Safari on desktop). */}

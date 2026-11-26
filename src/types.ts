@@ -104,6 +104,8 @@ export interface Job {
   contactEmail?: string; contactPhone?: string;
   /** JobFinder owner only: preview of the recruiter's "See your candidates / claim this role" link. */
   claimUrl?: string;
+  /** "For who": worker groups the role is open to (vn, us, eu, sg, au, apac, remote); see src/lib/forWho.ts. */
+  forWho?: string[];
   /** The role's own recruiter shown on the card (e.g. imported listings); falls back to the account's. */
   recruiterName?: string; recruiterTitle?: string;
   /** Candidates: this role's recruiter can be reached through the JobsMatchNow relay address. */
@@ -177,7 +179,7 @@ export interface JobFinderInfo {
   reachability?: JfReach; source?: string; sourceUrl?: string; applyUrl?: string; lastCheckedAt?: string; discoveredAt?: string; closingDate?: string;
   myOutreach?: JfOutreach;
 }
-export type JobFinderPublicJob = Pick<Job, 'id' | 'title' | 'company' | 'location' | 'workMode' | 'type' | 'salary' | 'salaryRange' | 'experienceLevel' | 'description' | 'fullDescription' | 'requiredSkills' | 'niceToHaves' | 'responsibilities' | 'requiredLanguages'> & { country?: string; jobFinder: JobFinderInfo; interested: number; missing: string[]; jobGroups?: string[]; gated?: boolean };
+export type JobFinderPublicJob = Pick<Job, 'id' | 'title' | 'company' | 'location' | 'workMode' | 'type' | 'salary' | 'salaryRange' | 'experienceLevel' | 'description' | 'fullDescription' | 'requiredSkills' | 'niceToHaves' | 'responsibilities' | 'requiredLanguages'> & { country?: string; jobFinder: JobFinderInfo; interested: number; missing: string[]; jobGroups?: string[]; gated?: boolean; forWho?: string[] };
 export type JfConsent = { autoSend: boolean; skills: string[]; profileLink: string | null; replyEmail: boolean; agreedAt: number | null; version: string | null };
 export type JfManagerRow = JobFinderPublicJob & {
   createdAt?: number; likes: number; emails: { submitted: number; sent: number; failed: number }; views: number; applyClicks: number; closedReports: number;

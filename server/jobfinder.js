@@ -19,6 +19,7 @@ import { ValidationError } from './matching.js';
 import { involvesDemo } from './analytics.js';
 import { assignGroups } from './groups.js';
 import { validateJobUrl } from './url-safety.js';
+import { cleanForWho, FOR_WHO_CODES, forWhoOf, inferForWho } from './for-who.js';
 
 /** How a listing's content arrived (job-link import, 2026-11-25). */
 export const IMPORT_METHODS = ['imported', 'pasted', 'manual'];
@@ -209,6 +210,9 @@ export function importScrapedJobs(db, items, { ownerId, audit, now = Date.now() 
       };
       const dropped = [];
       applyLenient(job, body, dropped);
+      // "For who": what the file says, else worked out from the location / work mode, with the site's region as a hint.
+      const fw = cleanForWho(j.forWho)?.length ? cleanForWho(j.forWho) : inferForWho(job, j.workersFrom || '');
+      if (fw.length) job.forWho = fw;
       assignGroups(db, job, body);
       if (!job.title) throw new ValidationError('title', 'The job title is required');
       if (!job.company) throw new ValidationError('company', 'The employer / company is required');
@@ -244,6 +248,7 @@ export function publicJobView(db, job) {
     // Aggregate only (claim page): how many candidates liked it. Never who.
     interested: db.swipes.filter((s) => s.targetType === 'job' && s.targetId === job.id && s.direction === 'like').length,
     jobGroups: job.jobGroups || [],
+    forWho: forWhoOf(job),
     missing: missingInfo(job),
   };
 }
@@ -342,6 +347,9 @@ export function mountJobFinder(app, ctx) {
       if (f.membership) jobs = jobs.filter((j) => j.jobFinder.employerStatus === f.membership);
       if (f.reachability) jobs = jobs.filter((j) => reachabilityOf(db, j) === f.reachability);
       if (q) jobs = jobs.filter((j) => [j.title, j.company, j.location].some((x) => String(x || '').toLowerCase().includes(q)));
+      // Workers filter (2026-11-26): roles for Vietnam-based, US-based, EU / UK-based, … or remote workers anywhere.
+      if (f.forWho === 'none') jobs = jobs.filter((j) => !forWhoOf(j).length);
+      else if (f.forWho && FOR_WHO_CODES.includes(String(f.forWho))) jobs = jobs.filter((j) => forWhoOf(j).includes(String(f.forWho)));
       const rows = jobs.map((j) => {
         const internal = db.jfInternal.find((r) => r.jobId === j.id) || { stats: {} };
         const out = db.jfOutreach.filter((o) => o.jobId === j.id);
@@ -359,7 +367,10 @@ export function mountJobFinder(app, ctx) {
         };
       });
       const sort = String(f.sort || 'created');
-      rows.sort((a, b) => (sort === 'likes' ? b.likes - a.likes || b.emails.sent - a.emails.sent : sort === 'checked' ? String(a.jobFinder.lastCheckedAt || '').localeCompare(String(b.jobFinder.lastCheckedAt || '')) : (b.createdAt || 0) - (a.createdAt || 0)));
+      // sort=workers groups the roles by worker group (Vietnam, US, EU / UK, …, Remote anywhere, then unknown), newest first.
+      const groupRank = (r) => { const c = (r.forWho || [])[0]; return c ? FOR_WHO_CODES.indexOf(c) : FOR_WHO_CODES.length; };
+      rows.sort((a, b) => (sort === 'likes' ? b.likes - a.likes || b.emails.sent - a.emails.sent : sort === 'checked' ? String(a.jobFinder.lastCheckedAt || '').localeCompare(String(b.jobFinder.lastCheckedAt || ''))
+        : sort === 'workers' ? groupRank(a) - groupRank(b) || (b.createdAt || 0) - (a.createdAt || 0) : (b.createdAt || 0) - (a.createdAt || 0)));
       res.json({ jobs: rows, account: jobFinderAccount(db) ? { id: jobFinderAccount(db).id, name: jobFinderAccount(db).name } : null });
     } catch (error) { next(error); }
   });

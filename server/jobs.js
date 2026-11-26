@@ -5,6 +5,7 @@
  */
 import { ValidationError } from './matching.js';
 import { serverAnthropicKey } from './server-ai.js';
+import { cleanForWho } from './for-who.js';
 
 export const JOB_STATUSES = ['draft', 'active', 'paused', 'filled'];
 export const HIRING_STATUSES = ['open', 'interviewing', 'hired'];
@@ -29,6 +30,8 @@ export function formatSalary({ min, max, currency }) {
 export function applyJob(job, body, { strict = false } = {}) {
   const set = (field, value) => { if (value !== undefined) job[field] = value; };
   set('title', str(body.title, 140));
+  // "For who" (2026-11-26): worker groups the role is open to (vn, us, eu, sg, au, apac, remote); [] clears it.
+  if (body.forWho !== undefined) { const fw = cleanForWho(body.forWho); if (fw?.length) job.forWho = fw; else delete job.forWho; }
   set('department', str(body.department, 80));
   // Recruiter details on the role (founder, 2026-11-25, replaces the cover image): company and recruiter name/title,
   // shown on the card. The recruiter's email and phone are NOT stored here (private, see jobContacts).

@@ -57,24 +57,30 @@ def post(key, job, email_date=""):
         return 0, {"error": str(e.reason)}
 
 
-def save(rows, fields):
-    tmp = CSV_PATH + ".tmp"
+def save(path, rows, fields):
+    tmp = path + ".tmp"
     with open(tmp, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
         w.writerows(rows)
-    os.replace(tmp, CSV_PATH)
-
+    os.replace(tmp, path)
 
 def clean(text):
     return " ".join(str(text or "unknown").replace(",", ";").split())[:120]
 
 
-def main():
-    if not os.path.exists(CSV_PATH):
-        print("No linkjobs.csv yet: run linkjobs_fetch.py and linkjobs_scrape.py first")
-        return 0
-    with open(CSV_PATH, newline="", encoding="utf-8") as f:
+# The lists to import: LinkedIn alerts (email_date moves the site's "last imported email date") and the career
+# sites checked by careerjobs_scrape.py (no email date: the Update roles button skips them by link instead).
+LISTS = [
+    (CSV_PATH, "LinkedIn alerts", "email_date"),
+    (os.path.join(ROOT, "data", "career-pages", "careerjobs.csv"), "Career sites", None),
+]
+
+
+def import_csv(path, label, date_col, key, budget):
+    if not os.path.exists(path):
+        return 0, 0, 0, 0, budget
+    with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         fields, rows = list(reader.fieldnames or []), list(reader)
     for k in NEW_FIELDS:
@@ -84,36 +90,28 @@ def main():
         for k in NEW_FIELDS:
             r[k] = r.get(k) or ""
     todo = [r for r in rows if r.get("scrape_status") == "ok" and r.get("job_file") and not r["import_status"].strip()]
-    if not todo:
-        print("Nothing new to import.")
-        return 0
-    key = "" if DRY else import_key()
-    if not DRY and not key:
-        print(f"No import key: set JOBFINDER_IMPORT_KEY or write it to {KEY_FILE} (chmod 600).")
-        return 2
-
     created = duplicate = failed = 0
-    for i, row in enumerate(todo[:MAX]):
-        path = os.path.join(ROOT, row["job_file"])
+    for row in todo[:budget]:
+        budget -= 1
+        path_job = os.path.join(ROOT, row["job_file"])
         try:
-            doc = json.load(open(path, encoding="utf-8"))
+            doc = json.load(open(path_job, encoding="utf-8"))
             job = doc["jobs"][0] if isinstance(doc, dict) and doc.get("jobs") else doc
         except (OSError, ValueError, KeyError, IndexError) as e:
             row["import_status"] = f"failed: bad job file ({clean(e)})"
             failed += 1
-            save(rows, fields)
+            save(path, rows, fields)
             continue
         if DRY:
-            print(f"would import: {job.get('title')} | {job.get('company')} | {row['url']}")
+            print(f"would import ({label}): {job.get('title')} | {job.get('company')} | {row['url']}")
             continue
-        if i:
-            time.sleep(PAUSE)
-        status, res = post(key, job, row.get("email_date", ""))
+        time.sleep(PAUSE)
+        status, res = post(key, job, row.get(date_col, "") if date_col else "")
         if status in (401, 404):
-            print(f"Stopped: the site answered {status} ({res.get('error') or 'import key refused or import switched off'}).")
-            return 2
+            raise SystemExit(f"Stopped: the site answered {status} ({res.get('error') or 'import key refused or import switched off'}).")
         if status == 429:
             print("Stopped: rate limit (429). The rest will go next run.")
+            budget = 0
             break
         result = (res.get("results") or [{}])[0] if status == 200 else {}
         s = result.get("status")
@@ -125,14 +123,23 @@ def main():
         else:
             row["import_status"] = f"failed: {clean(result.get('error') or res.get('error') or f'http {status}')}"
             failed += 1
-        save(rows, fields)
-
-    if DRY:
-        print(f"Dry run: {min(len(todo), MAX)} job(s) would be imported to {BASE}.")
-        return 0
+        save(path, rows, fields)
     left = sum(1 for r in rows if r.get("scrape_status") == "ok" and r.get("job_file") and not r["import_status"].strip())
-    print(f"Imported as drafts: {created}; already listed: {duplicate}; failed: {failed}; still to do: {left}. "
-          f"Review and publish in {BASE}/app/ -> JobFinder listings.")
+    return created, duplicate, failed, left, budget
+
+
+def main():
+    key = "" if DRY else import_key()
+    if not DRY and not key:
+        print(f"No import key: set JOBFINDER_IMPORT_KEY or write it to {KEY_FILE} (chmod 600).")
+        return 2
+    budget = MAX
+    for path, label, date_col in LISTS:
+        created, duplicate, failed, left, budget = import_csv(path, label, date_col, key, budget)
+        if not DRY:
+            print(f"{label}: imported as drafts {created}; already listed {duplicate}; failed {failed}; still to do {left}.")
+    if not DRY:
+        print(f"Review and publish in {BASE}/app/ -> JobFinder listings.")
     return 0
 
 
