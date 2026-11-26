@@ -1118,12 +1118,26 @@ async function processResume(userId, meta) {
 
 const uploadLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 30, bucket: 'upload' });
 
+// My Resume (founder, 2026-11-26): resumes are 500 KB at most. One resume for every target role on the free plan;
+// with Premium (multi-role) a candidate can add one resume per target role (?role=<target role>).
+const RESUME_MAX_BYTES = Number(process.env.RESUME_MAX_BYTES) || 500 * 1024;
 app.post('/api/users/:id/resume', uploadLimiter, express.raw({ type: () => true, limit: '10mb' }), async (req, res, next) => {
   try {
     requireSelf(req, req.params.id);
     const ext = RESUME_TYPES[req.headers['content-type']];
     if (!ext) { const error = new Error('Only PDF or DOCX resumes are accepted'); error.status = 415; throw error; }
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) throw new ValidationError('file', 'Empty upload');
+    if (req.body.length > RESUME_MAX_BYTES) { const error = new Error(`Your resume is ${Math.ceil(req.body.length / 1024)} KB: the limit is ${Math.round(RESUME_MAX_BYTES / 1024)} KB. Save it as a smaller PDF (fewer images) and try again.`); error.status = 413; throw error; }
+    // A resume for one target role: Premium only; on the free plan the one resume serves every role.
+    const forRole = String(req.query.role || '').trim().slice(0, 120);
+    if (forRole) {
+      const db0 = await store.read();
+      const owner = db0.users.find((u) => u.id === req.params.id);
+      const roles = owner?.preferences?.desiredRoles || [];
+      if (!roles.includes(forRole)) throw new ValidationError('role', 'Pick one of your target roles');
+      if (!premiumFor(db0, owner).active) { const error = new Error('One resume per target role is part of Premium (multi-role). On the free plan your one resume is used for every role.'); error.status = 402; error.code = 'premium_required'; throw error; }
+      return await saveRoleResume(req, res, ext, forRole);
+    }
     const originalName = decodeURIComponent(String(req.headers['x-filename'] || `resume.${ext}`)).replace(/[/\\]/g, '_').slice(0, 200);
     const id = crypto.randomUUID();
     const storedName = `${req.params.id}-${id}.${ext}`;
@@ -1443,6 +1457,144 @@ app.get('/api/users/:id/resume/original', async (req, res, next) => {
     res.setHeader('Content-Type', resume.mime);
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(resume.originalName)}"`);
     res.sendFile(path.join(RESUME_DIR, resume.storedName));
+  } catch (error) { next(error); }
+});
+
+// --- My Resume: one resume per target role (Premium) + resume vs role gap analysis (founder, 2026-11-26) ---
+async function saveRoleResume(req, res, ext, forRole) {
+  const originalName = decodeURIComponent(String(req.headers['x-filename'] || `resume.${ext}`)).replace(/[/\\]/g, '_').slice(0, 200);
+  const id = crypto.randomUUID();
+  const storedName = `${req.params.id}-${id}.${ext}`;
+  await fs.promises.writeFile(path.join(RESUME_DIR, storedName), req.body);
+  await mirror(path.join(RESUME_DIR, storedName));
+  const meta = await processResume(req.params.id, {
+    id, originalName, storedName, ext, size: req.body.length, mime: req.headers['content-type'], uploadedAt: Date.now(), role: forRole,
+    url: `/api/users/${req.params.id}/resume/role?role=${encodeURIComponent(forRole)}`,
+  });
+  await store.transaction((db) => {
+    const item = db.users.find((entry) => entry.id === req.params.id);
+    if (!item) { const error = new Error('User not found'); error.status = 404; throw error; }
+    assertDemoActor(req, db, item.id);
+    item.documents = { ...(item.documents || {}), roleResumes: { ...(item.documents?.roleResumes || {}), [forRole]: meta } };
+  });
+  res.status(201).json({ resume: meta, role: forRole });
+}
+const roleResumeOf = (user, role) => user?.documents?.roleResumes?.[role] || null;
+/** The signed-in owner only (never the demo-mode pass-through of requireSelf): resumes are private. */
+function requireOwnerSession(req, userId) {
+  const session = authSession(req);
+  if (!session) { const error = new Error('Sign in to continue'); error.status = 401; throw error; }
+  if (session.sub !== userId) { const error = new Error('This is not your resume'); error.status = 403; throw error; }
+}
+app.get('/api/users/:id/resume/role', async (req, res, next) => {
+  try {
+    requireOwnerSession(req, req.params.id);
+    const db = await store.read();
+    const r = roleResumeOf(db.users.find((u) => u.id === req.params.id), String(req.query.role || ''));
+    if (!r) { const error = new Error('No resume for this role'); error.status = 404; throw error; }
+    res.setHeader('Content-Type', r.mime);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(r.originalName)}"`);
+    res.sendFile(path.join(RESUME_DIR, r.storedName));
+  } catch (error) { next(error); }
+});
+app.delete('/api/users/:id/resume/role', async (req, res, next) => {
+  try {
+    requireOwnerSession(req, req.params.id);
+    const role = String(req.query.role || '');
+    await store.transaction((db) => {
+      const item = db.users.find((u) => u.id === req.params.id);
+      if (!item) { const error = new Error('User not found'); error.status = 404; throw error; }
+      assertDemoActor(req, db, item.id);
+      if (item.documents?.roleResumes?.[role]) { const next2 = { ...item.documents.roleResumes }; delete next2[role]; item.documents = { ...item.documents, roleResumes: next2 }; }
+    });
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+/** Skills that open roles with this title ask for (most frequent first), from active roles on JobsMatchNow. All the
+ *  title's words first; when no role has them all, roles sharing any of them (marked `broad`). */
+function roleRequirements(db, role) {
+  const words = String(role).toLowerCase().split(/[^a-z0-9+#.]+/).filter((w) => w.length > 2 && !['senior', 'junior', 'lead', 'the', 'and', 'principal', 'staff'].includes(w));
+  const live = db.jobs.filter((j) => String(j.status).toLowerCase() === 'active');
+  let jobs = live.filter((j) => words.length && words.every((w) => String(j.title || '').toLowerCase().includes(w)));
+  const broad = jobs.length === 0;
+  if (broad) jobs = live.filter((j) => words.some((w) => String(j.title || '').toLowerCase().includes(w)));
+  jobs = jobs.slice(0, 60);
+  const count = new Map();
+  for (const j of jobs) for (const s of new Set([...(j.requiredSkillsDetail || []).map((x) => x.name), ...(j.requiredSkills || [])].map((x) => String(x || '').trim()).filter(Boolean))) count.set(s, (count.get(s) || 0) + 1);
+  const list = [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([name, n]) => ({ name, count: n }));
+  return { jobs: jobs.length, broad, list, skills: list.map((s) => `${s.name} (${s.count})`) };
+}
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** Our own resume vs role gap script (founder, 2026-11-26): no AI. Skills from the role data found / missing in the
+ *  resume text, a weighted match %, and concrete tips. */
+export function resumeGapBasic(text, req) {
+  const t = ` ${String(text || '').toLowerCase().replace(/\s+/g, ' ')} `;
+  const has = (skill) => { const s = skill.toLowerCase(); return new RegExp(`(^|[^a-z0-9])${escRe(s)}([^a-z0-9]|$)`).test(t) || (s.length > 3 && t.includes(s)); };
+  const matched = []; const missing = [];
+  for (const s of req.list) (has(s.name) ? matched : missing).push(s);
+  const total = req.list.reduce((a, s) => a + s.count, 0);
+  const score = total ? Math.round((matched.reduce((a, s) => a + s.count, 0) / total) * 100) : null;
+  const words = t.trim().split(' ').length;
+  const tips = [];
+  if (missing.length) tips.push(`Add the skills you really have among: ${missing.slice(0, 5).map((s) => s.name).join(', ')} — with a line on where you used them.`);
+  if (!/\d+\s*%|\d+x\b|\$\s?\d|\d{2,}\s*(users|clients|customers|projects|people|engineers)/.test(t)) tips.push('Show results with numbers (%, users, time or money saved) in your last two roles.');
+  if (!/\b(\d+)\+?\s*(years|yrs)\b/.test(t)) tips.push('State your years of experience in the summary (e.g. "6 years in data engineering").');
+  if (words < 250) tips.push('Your resume is short: add 2–3 bullet points per recent role (what you built, with which tools, the result).');
+  if (words > 1400) tips.push('Your resume is long: keep it to 2 pages, most recent and most relevant work first.');
+  if (!/linkedin\.com|github\.com/.test(t)) tips.push('Add your LinkedIn (and GitHub or portfolio for technical roles).');
+  if (matched.length && !tips.length) tips.push('Strong match: put the matched skills in your summary line so recruiters see them first.');
+  return { score, matched: matched.map((s) => s.name), missing: missing.map((s) => s.name), tips: tips.slice(0, 5), jobs: req.jobs, broad: req.broad, words };
+}
+app.post('/api/users/:id/resume/gap-basic', rateLimit({ windowMs: 60 * 1000, max: 30, bucket: 'resume-gap-basic' }), async (req, res, next) => {
+  try {
+    requireOwnerSession(req, req.params.id);
+    const role = String(req.body?.role || '').trim().slice(0, 120);
+    if (!role) throw new ValidationError('role', 'Pick a target role');
+    const db = await store.read();
+    const user = db.users.find((u) => u.id === req.params.id);
+    const resume = roleResumeOf(user, role) || user?.documents?.resume;
+    if (!resume) return res.json({ role, noResume: true });
+    let text = '';
+    try { text = resume.textName ? await fs.promises.readFile(path.join(RESUME_DIR, resume.textName), 'utf8') : ''; } catch { /* no text */ }
+    if (text.trim().length < 80) return res.json({ role, resumeName: resume.originalName, noText: true });
+    res.json({ role, resumeName: resume.originalName, ...resumeGapBasic(text, roleRequirements(db, role)) });
+  } catch (error) { next(error); }
+});
+app.post('/api/users/:id/resume/gap', rateLimit({ windowMs: 60 * 1000, max: 5, bucket: 'resume-gap' }), async (req, res, next) => {
+  try {
+    requireOwnerSession(req, req.params.id);
+    const { user, db } = await aiChatUser(req);
+    const role = String(req.body?.role || '').trim().slice(0, 120);
+    if (!role) throw new ValidationError('role', 'Pick a target role');
+    const prem = premiumFor(db, user);
+    if (!prem.active) return res.status(402).json({ error: prem.trialUsed ? 'Your Premium trial has ended. The resume gap analysis uses your AI chatbot, part of Premium.' : `The resume gap analysis uses your AI chatbot, part of Premium. Start your free ${PREMIUM_TRIAL_DAYS}-day trial in Premium options.`, code: 'premium_required' });
+    const { cfg } = aiChatConfig(db, user);
+    if (!cfg.enabled) return res.status(503).json({ error: 'Connect your own Claude or ChatGPT key in "Use My ChatBot" to run the gap analysis.', code: cfg.reason || 'not_configured' });
+    if (aiUsageOf(db, user.id) >= cfg.limit) return res.status(429).json({ error: `You reached today's limit of ${cfg.limit} AI questions. It resets tomorrow.`, code: 'daily_limit' });
+    const resume = roleResumeOf(user, role) || user.documents?.resume;
+    if (!resume) throw new ValidationError('resume', 'Upload a resume first');
+    let text = '';
+    try { text = resume.textName ? await fs.promises.readFile(path.join(RESUME_DIR, resume.textName), 'utf8') : ''; } catch { /* no text */ }
+    if (text.trim().length < 80) return res.status(422).json({ error: 'We could not read the text of this resume. Upload a text-based PDF or a DOCX file.', code: 'no_text' });
+    const req2 = roleRequirements(db, role);
+    const context = [`TARGET ROLE: ${role}`,
+      req2.jobs ? `SKILLS THAT ${req2.jobs} OPEN "${role}" ROLES ON JOBSMATCHNOW ASK FOR (count of roles): ${req2.skills.join(', ')}` : 'No open role with this title on JobsMatchNow right now: use general knowledge of what this role usually requires, and say so.',
+      `CANDIDATE'S RESUME (${resume.originalName}):\n${text.slice(0, 12000)}`].join('\n\n');
+    // The member's own question from the resume chat box, else the full gap analysis.
+    const own = String(req.body?.question || '').trim().slice(0, 600);
+    const question = own || `Compare my resume with the target role "${role}". Give: 1) a fit score out of 100, 2) strengths that match, 3) the gaps (missing skills, experience or keywords), 4) the 5 most useful edits to make to this resume for this role. Be specific and short. Only use what is in the resume and the role data.`;
+    const history = Array.isArray(req.body?.history) ? req.body.history.slice(-6) : [];
+    const used = await store.transaction((tx) => {
+      if (!Array.isArray(tx.aiChatUsage)) tx.aiChatUsage = [];
+      const id = `${user.id}:${aiToday()}`;
+      let rec = tx.aiChatUsage.find((u) => u.id === id);
+      if (!rec) { rec = { id, userId: user.id, day: aiToday(), count: 0 }; tx.aiChatUsage.push(rec); }
+      rec.count += 1; return rec.count;
+    });
+    let answer;
+    try { answer = await callAiProvider(cfg, { context, question, history, role: 'candidate' }); }
+    catch (e) { return res.status(e.status || 502).json({ error: e.code === 'key_refused' ? 'Your AI provider refused your key. Connect it again in "Use My ChatBot".' : e.code === 'no_credit' ? 'Your AI provider account has no credit left.' : 'The AI service is not answering right now. Try again in a moment.', code: e.code || 'provider_error' }); }
+    res.json({ answer, role, resumeName: resume.originalName, provider: cfg.label, remaining: Math.max(0, cfg.limit - used) });
   } catch (error) { next(error); }
 });
 
