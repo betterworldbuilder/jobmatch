@@ -5200,6 +5200,8 @@ app.delete('/api/recommendation-requests/:id', async (req, res, next) => {
 const jobFinderCtx = {
   store, authSession, track, audit: logBillingEvent, sendMail, mailerConfigured, origin: publicOrigin, secret: sessionSecret,
   limiter: rateLimit({ windowMs: 60000, max: 30, bucket: 'jobfinder' }),
+  // Recruiter email/phone found in imported jobs → the private per-role contact (My Jobs list email column).
+  setJobContact: (db, jobId, changes) => setJobContact(db, jobId, changes),
 };
 mountJobFinder(app, jobFinderCtx);
 // Interest emails to the recruiters of the JobFinder account's roles (2026-11-25): anonymised, replies to the relay

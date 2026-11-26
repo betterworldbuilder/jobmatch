@@ -69,7 +69,8 @@ export function JobImportModal({ viewer, onClose, onImported, onManual }: {
         <button onClick={onManual}><span className="pink"><BriefcaseBusiness /></span><strong>Create manually</strong><small>Build one offer from scratch</small><ArrowRight /></button>
         {featureOn('jobLink') && <button onClick={() => setLinkOpen(true)}><span className="blue"><Link2 /></span><strong>Import job from link</strong><small>Paste a link, review, save or publish</small><ArrowRight /></button>}
       </div>}
-      {linkOpen && <JobLinkImport mode="recruiter" onClose={() => setLinkOpen(false)} onDone={() => { setLinkOpen(false); onImported(); }} />}
+      {/* The JobFinder account imports external listings (company + recruiter contact fields); others import their own role. */}
+      {linkOpen && <JobLinkImport mode={viewer.jobFinder ? 'jobfinder' : 'recruiter'} onClose={() => setLinkOpen(false)} onDone={() => { setLinkOpen(false); onImported(); }} />}
 
       {mode === 'feed' && <div className="job-import-form">
         <label><span>Where are the jobs from?</span>

@@ -661,9 +661,8 @@ function Workspace({ session, onSwitchUser, onExit }: { session: SessionUser; on
   // no longer changes the menu: it used to add a second "Find My Match" and make phone and desktop differ.
   // New bar + Search & Filters (founder, 2026-11-24; preview ?filters=1): the meetings page is called "Interviews".
   const filtersOn = featureOn('filters');
-  // The JobFinder account (and only it) gets its listings page right under My dashboard.
-  const baseNav = role === 'candidate' ? candidateNav
-    : data?.viewer.jobFinder ? [employerNav[0], employerNav[1], { label: 'JobFinder listings', short: 'JobFinder', icon: Search, view: 'jobfinder' as View }, ...employerNav.slice(2)] : employerNav;
+  // "JobFinder listings" left the menu (founder, 2026-11-26): imported roles live in My Jobs list like any other role.
+  const baseNav = role === 'candidate' ? candidateNav : employerNav;
   // JobFinder interest panel: after a like on a JobFinder job, from a notification, or from the public job page.
   const [jfPanel, setJfPanel] = useState<string | null>(null);
   useEffect(() => {

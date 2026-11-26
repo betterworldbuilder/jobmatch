@@ -14,7 +14,7 @@
  * never become a match. After an approved claim the job belongs to the real recruiter and the usual rules apply.
  */
 import crypto from 'node:crypto';
-import { applyJob } from './jobs.js';
+import { applyJob, heuristicParse } from './jobs.js';
 import { ValidationError } from './matching.js';
 import { involvesDemo } from './analytics.js';
 import { assignGroups } from './groups.js';
@@ -187,8 +187,26 @@ function applyLenient(job, body, dropped) {
     }
   }
 }
-/** Import scraped jobs as JobFinder drafts. Returns one result per input, in order. */
-export function importScrapedJobs(db, items, { ownerId, audit, now = Date.now() } = {}) {
+/** Recruiter email / phone written in a scraped job (the file's own fields first, else the job text). */
+export function contactFromScraped(j) {
+  const email = typeof j?.contactEmail === 'string' && /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/.test(j.contactEmail.trim()) ? j.contactEmail.trim() : undefined;
+  const phone = typeof j?.contactPhone === 'string' && j.contactPhone.trim() ? j.contactPhone.trim().slice(0, 30) : undefined;
+  if (email || phone) return { email, phone };
+  const text = [j?.fullDescription, j?.description].filter((x) => typeof x === 'string').join('\n').slice(0, 30000);
+  if (!text) return {};
+  const p = heuristicParse(text, null);
+  return { email: p.contactEmail, phone: p.contactPhone };
+}
+/** Publish an imported listing (founder, 2026-11-26: imports go live at once). Salary stays honest when not stated. */
+function publishImported(db, job, actorId, audit, now = Date.now()) {
+  Object.assign(job.jobFinder, { listingStatus: 'published', publishedBy: actorId, publishedAt: now });
+  if (!job.salaryRange && !job.salary) job.salary = 'Salary not disclosed';
+  refreshPublic(db, job);
+  history(db, job.id, actorId, 'publish', { via: 'import' }, audit);
+}
+
+/** Import scraped jobs as JobFinder listings, published at once (founder, 2026-11-26). One result per input, in order. */
+export function importScrapedJobs(db, items, { ownerId, audit, setContact, now = Date.now() } = {}) {
   ensureCollections(db);
   const owner = db.users.find((u) => u.id === ownerId);
   const known = new Map(db.jobs.filter((j) => isJobFinderJob(j) && j.jobFinder.sourceUrl).map((j) => [sourceKey(j.jobFinder.sourceUrl), j.id]));
@@ -221,8 +239,12 @@ export function importScrapedJobs(db, items, { ownerId, audit, now = Date.now() 
       db.jobs.push(job);
       refreshPublic(db, job);
       history(db, job.id, owner.id, 'imported', { listingStatus: 'draft', method: 'imported', via: 'linkjobs' }, audit);
+      // Recruiter email / phone found in the job: the private contact (My Jobs list email column; never shown to candidates).
+      const contact = contactFromScraped(j);
+      if (setContact && (contact.email || contact.phone)) setContact(db, job.id, { ...(contact.email ? { email: contact.email } : {}), ...(contact.phone ? { phone: contact.phone } : {}) });
+      publishImported(db, job, owner.id, audit, now);
       known.set(key, job.id);
-      return { ref, status: 'created', id: job.id, title: job.title, company: job.company, ...(dropped.length ? { dropped } : {}) };
+      return { ref, status: 'created', id: job.id, title: job.title, company: job.company, published: true, ...(contact.email ? { contact: 'email' } : {}), ...(dropped.length ? { dropped } : {}) };
     } catch (error) {
       return { ref, status: 'failed', error: String(error?.message || error).slice(0, 200) };
     }
@@ -314,7 +336,7 @@ export function composeMessage({ candidate, job, contact, share, body, origin, u
  * Mount the JobFinder routes. `ctx` carries the app's own helpers (they are private to index.js).
  */
 export function mountJobFinder(app, ctx) {
-  const { store, authSession, track, audit, sendMail, mailerConfigured, origin, secret, limiter } = ctx;
+  const { store, authSession, track, audit, sendMail, mailerConfigured, origin, secret, limiter, setJobContact } = ctx;
   const sign = (hash) => crypto.createHmac('sha256', secret).update(`jf-unsub:${hash}`).digest('base64url').slice(0, 32);
   const unsubscribeUrl = (email) => { const h = hashEmail(email); return `${origin}/api/jobfinder/unsubscribe?e=${h}&s=${sign(h)}`; };
   const maxPerDay = () => Number(process.env.JF_MAX_SENDS_PER_DAY || 10);
@@ -418,7 +440,7 @@ export function mountJobFinder(app, ctx) {
     const results = await store.transaction((db) => {
       const owner = jobFinderAccount(db);
       if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
-      const out = importScrapedJobs(db, items, { ownerId: owner.id, audit });
+      const out = importScrapedJobs(db, items, { ownerId: owner.id, audit, setContact: setJobContact });
       const d = /^\d{4}-\d{2}-\d{2}$/.test(String(emailDate || '')) ? emailDate : null;
       if (d && out.some((r) => r.status !== 'failed')) {
         if (!db.jfImportState || typeof db.jfImportState !== 'object') db.jfImportState = {};
@@ -435,6 +457,29 @@ export function mountJobFinder(app, ctx) {
       if (!process.env.JOBFINDER_IMPORT_KEY) { const e = new Error('Batch import is not switched on'); e.status = 404; throw e; }
       if (!importKeyOk(req.headers.authorization)) { const e = new Error('Missing or invalid import key'); e.status = 401; throw e; }
       res.json(await runImport(req.body?.jobs, req.body?.emailDate));
+    } catch (error) { next(error); }
+  });
+  // Publish every imported JobFinder draft and fill its recruiter contact from the job text when it has none
+  // (founder, 2026-11-26: "automatically publish all imported jobs"). Import key or a signed-in manager.
+  app.post('/api/jobfinder/publish-imported', ...(limiter ? [limiter] : []), async (req, res, next) => {
+    try {
+      const keyOk = process.env.JOBFINDER_IMPORT_KEY && importKeyOk(req.headers.authorization);
+      if (!keyOk) requireManager(await store.read(), session(req));
+      const out = await store.transaction((db) => {
+        ensureCollections(db);
+        const owner = jobFinderAccount(db);
+        if (!owner) { const e = new Error('The JobFinder account is missing'); e.status = 409; throw e; }
+        let published = 0; let contacts = 0;
+        for (const job of db.jobs) {
+          if (job.employerId !== owner.id || !job.jobFinder?.import || job.jobFinder.listingStatus !== 'draft') continue;
+          const has = (db.jobContacts || []).some((c) => c.jobId === job.id && (c.email || c.phone));
+          if (!has && setJobContact) { const c = contactFromScraped(job); if (c.email || c.phone) { setJobContact(db, job.id, { ...(c.email ? { email: c.email } : {}), ...(c.phone ? { phone: c.phone } : {}) }); contacts += 1; } }
+          publishImported(db, job, keyOk ? owner.id : session(req).sub, audit);
+          published += 1;
+        }
+        return { published, contacts };
+      });
+      res.json(out);
     } catch (error) { next(error); }
   });
   app.post('/api/jobfinder/import-files', ...(limiter ? [limiter] : []), async (req, res, next) => {

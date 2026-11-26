@@ -116,7 +116,7 @@ export function UpdateRolesButton({ onDone }: { onDone: () => void }) {
         <p>{progress.done < progress.total && busy ? <Loader2 size={13} className="spin" /> : null} {progress.done} / {progress.total} · <b>{progress.created}</b> added as drafts · {progress.duplicate} duplicates skipped · {progress.failed} failed</p>
         <div className="ur-actions">
           {busy ? <button type="button" className="text-button" onClick={() => { stop.current = true; }}>Stop</button>
-            : <><span className="muted">Review and publish them in JobFinder listings.</span><button type="button" className="text-button" onClick={() => setProgress(null)}>Close</button></>}
+            : <><span className="muted">They are live in My Jobs list.</span><button type="button" className="text-button" onClick={() => setProgress(null)}>Close</button></>}
         </div>
       </>}
     </div>}

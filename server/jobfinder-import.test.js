@@ -42,7 +42,8 @@ test('import: drafts only, duplicates skipped, bad values dropped not fatal, mis
   assert.equal(r[1].id, r[0].id);
   assert.deepEqual(r[2].dropped.sort(), ['seniority', 'type']);
   const job = db.jobs.find((j) => j.id === r[0].id);
-  assert.equal(job.jobFinder.listingStatus, 'draft'); assert.equal(job.status, 'draft');
+  // Imports go live at once (founder, 2026-11-26); no stated salary reads "Salary not disclosed".
+  assert.equal(job.jobFinder.listingStatus, 'published'); assert.equal(job.status, 'active'); assert.equal(job.salary, 'Salary not disclosed');
   assert.equal(job.employerId, 'jf1'); assert.equal(job.jobFinder.import.sourceJobId, '222222');
   assert.deepEqual(job.requiredSkills, ['Docker', 'GCP']); assert.equal(job.fullDescription, 'About the Role\nRun our cloud.');
   assert.deepEqual(job.jobGroups || [], [], 'unknown group ids are dropped');
@@ -61,6 +62,19 @@ test('duplicate guardrail: same link in any form, or same title + company + loca
   assert.equal(findImportDuplicate(db, 'e1', { title: 'Data Engineer', company: 'Acme', location: 'HCMC' }), null, 'other city = other role');
   assert.equal(findImportDuplicate(db, 'e1', { title: 'Old Role', company: 'Acme', location: 'Hanoi' }), null, 'removed roles do not block');
   assert.equal(findImportDuplicate(db, 'e2', { urls: ['https://linkedin.com/jobs/view/777777'] }), null, 'only the same account');
+});
+
+test('recruiter email / phone in the job text → the private contact; the file fields win', () => {
+  const db = { users: [{ id: 'jf1', role: 'employer', jobFinder: true }], jobs: [], swipes: [], matches: [] };
+  const saved = [];
+  importScrapedJobs(db, [
+    scraped('121212', { title: 'Data Lead', fullDescription: 'Lead our data team.\nSend your CV to hr@acme-vn.com or call +84 90 123 4567.' }),
+    scraped('131313', { title: 'ML Lead', contactEmail: 'jane@corp.example.net', fullDescription: 'Apply: other@x.io' }),
+    scraped('141414', { title: 'AI Lead', fullDescription: 'No contact here, apply on the site.' }),
+  ], { ownerId: 'jf1', setContact: (_db, jobId, c) => saved.push({ jobId, ...c }) });
+  assert.equal(saved.length, 2);
+  assert.equal(saved[0].email, 'hr@acme-vn.com'); assert.match(saved[0].phone || '', /90 123 4567/);
+  assert.equal(saved[1].email, 'jane@corp.example.net');
 });
 
 test('import key: off when unset or short, exact match only', () => {
@@ -118,8 +132,13 @@ test('route: 404 when switched off, 401 without the right key, drafts with the k
   // Imported drafts are listed in the account's own role list (My Jobs list), after the live roles (2026-11-26 fix).
   const boot = await (await fetch(`${base}/api/bootstrap?userId=${reg.body.user.id}`, { headers: { Cookie: reg.session } })).json();
   const roleIds = (boot.roleMatches || []).map((g) => g.job.id);
-  assert.ok(roleIds.includes(ok.body.results[0].id), 'the imported draft is in My Jobs list');
-  assert.equal(boot.roleMatches.find((g) => g.job.id === ok.body.results[0].id).job.status, 'draft');
+  assert.ok(roleIds.includes(ok.body.results[0].id), 'the imported role is in My Jobs list');
+  assert.equal(boot.roleMatches.find((g) => g.job.id === ok.body.results[0].id).job.status, 'active', 'published at once');
+
+  // Publishing older imported drafts: import key only (or a manager); nothing left to publish → 0.
+  assert.equal((await call('/api/jobfinder/publish-imported', {}, { Authorization: 'Bearer wrong' })).status, 403);
+  const pub = await call('/api/jobfinder/publish-imported', {}, { Authorization: `Bearer ${KEY}` });
+  assert.equal(pub.status, 200, JSON.stringify(pub.body)); assert.equal(pub.body.published, 0);
 });
 
 test('recruiter file import: the same role twice in one file, or already listed, is skipped and named', async () => {

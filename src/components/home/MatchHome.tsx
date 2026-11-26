@@ -6,6 +6,7 @@ import {
 import { api, jf } from '../../api';
 import { RolePreview } from '../jobs/RolePreview';
 import { UpdateRolesButton } from '../jobs/UpdateRoles';
+import { FOR_WHO, forWhoOf, type ForWho } from '../../lib/forWho';
 import type { Bootstrap, HiringStatus, Job, MatchEvidence, Note, Person, RoleMatchGroup, View } from '../../types';
 
 import { exportJobs, jobRow, type ExportFormat } from '../../lib/jobExport';
@@ -387,7 +388,11 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
   const [publishing, setPublishing] = useState('');
   const isDraft = (job: Job) => String(job.status).toLowerCase() === 'draft';
   const drafts = roles.filter((g) => g.job.employerId === data.viewer.id && isDraft(g.job)).map((g) => g.job);
-  const shownRoles = roles.filter((g) => (show === 'all' ? true : show === 'draft' ? isDraft(g.job) : !isDraft(g.job)));
+  // Workers filter (founder, 2026-11-26; was on the JobFinder listings page): roles for Vietnam-, US-, EU / UK-based… workers.
+  const [workers, setWorkers] = useState('');
+  const workerCodes = [...new Set(roles.flatMap((g) => forWhoOf(g.job)))];
+  const shownRoles = roles.filter((g) => (show === 'all' ? true : show === 'draft' ? isDraft(g.job) : !isDraft(g.job)))
+    .filter((g) => !workers || (workers === 'none' ? !forWhoOf(g.job).length : forWhoOf(g.job).includes(workers as ForWho)));
   const publishOne = async (job: Job) => (job.jobFinder ? jf.update(job.id, { action: 'publish' }) : api.updateJob(job.id, { status: 'active' }));
   const publish = async (jobs: Job[]) => {
     if (!jobs.length || publishing) return;
@@ -463,6 +468,9 @@ export function RecruiterHome({ data, setData, navigate, onEditProfile, onAddJob
       <DashboardTitle icon={BriefcaseBusiness} title="My JobMatches" subtitle="Each role, with its matches and the candidates who love it — not matched yet." action={bestMatchFirst ? 'Sort by: Best Match' : 'Sort by: Name'} onAction={() => setBestMatchFirst((value) => !value)}
         extra={ownJobs.length || data.viewer.jobFinder ? <span className="td-role-tools">
           {data.viewer.jobFinder && <UpdateRolesButton onDone={() => void reload()} />}
+          {workerCodes.length > 1 && <select className="td-role-show" value={workers} onChange={(e) => setWorkers(e.target.value)} aria-label="For who">
+            <option value="">All workers</option>{workerCodes.map((c) => <option key={c} value={c}>For {FOR_WHO[c]}</option>)}<option value="none">For who not known</option>
+          </select>}
           {drafts.length > 0 && <select className="td-role-show" value={show} onChange={(e) => setShow(e.target.value as typeof show)} aria-label="Show roles">
             <option value="all">All roles ({roles.length})</option><option value="live">Live ({roles.length - drafts.length})</option><option value="draft">Drafts ({drafts.length})</option>
           </select>}
